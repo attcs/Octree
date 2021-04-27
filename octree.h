@@ -80,7 +80,7 @@ namespace NTree
   concept AdaptorConcept =
     requires { AdaptorBasicsConcept<adaptor_type, point_type, box_type, geometry_type>; }
     && requires (box_type const& box, point_type const& pt) { { adaptor_type::does_box_contain_point(box, pt)}->std::convertible_to<bool>; }
-    && requires (box_type const& e1, box_type const& e2, bool e1_must_contain_e2) { { adaptor_type::are_boxes_overlaped(e1, e2, e1_must_contain_e2)}->std::convertible_to<bool>; }
+    && requires (box_type const& e1, box_type const& e2, bool e1_must_contain_e2) { { adaptor_type::are_boxes_overlapped(e1, e2, e1_must_contain_e2)}->std::convertible_to<bool>; }
     && requires (span<point_type const> const& vPoint) { { adaptor_type::box_of_points(vPoint)}->std::convertible_to<box_type>; }
     && requires (span<box_type const> const& vBox) { { adaptor_type::box_of_boxes(vBox)}->std::convertible_to<box_type>; }
   ;
@@ -117,11 +117,22 @@ namespace NTree
       return true;
     }
 
-    static constexpr bool are_boxes_overlaped(box_type const& e1, box_type const& e2, bool e1_must_contain_e2 = true)
+    static constexpr bool does_box_contain_point_strict(box_type const& box, point_type const& pt)
+    {
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        if (!(base::point_comp_c(base::box_min_c(box), iDimension) < base::point_comp_c(pt, iDimension) && base::point_comp_c(pt, iDimension) < base::point_comp_c(base::box_max_c(box), iDimension)))
+          return false;
+
+      return true;
+    }
+
+    static constexpr bool are_boxes_overlapped(box_type const& e1, box_type const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false)
     {
       return e1_must_contain_e2
         ? does_box_contain_point(e1, base::box_min_c(e2)) && does_box_contain_point(e1, base::box_max_c(e2))
-        : does_box_contain_point(e1, base::box_min_c(e2)) || does_box_contain_point(e1, base::box_max_c(e2)) || does_box_contain_point(e2, base::box_max_c(e1))
+        : fOverlapPtTouchAllowed 
+          ? does_box_contain_point(e1, base::box_min_c(e2)) || does_box_contain_point(e1, base::box_max_c(e2)) || does_box_contain_point(e2, base::box_max_c(e1))
+          : does_box_contain_point_strict(e1, base::box_min_c(e2)) || does_box_contain_point_strict(e1, base::box_max_c(e2)) || are_boxes_overlapped(e1, e2) || are_boxes_overlapped(e2, e1)
         ;
     }
 
@@ -161,11 +172,11 @@ namespace NTree
       for (autoc& e : vExtent)
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
-          if (base::point_comp_c(box_min_c(ext), iDimension) > base::point_comp_c(base::box_min_c(e), iDimension))
-            base::point_comp(box_min_c(ext), iDimension) = base::point_comp_c(base::box_min_c(e), iDimension);
+          if (base::point_comp_c(base::box_min_c(ext), iDimension) > base::point_comp_c(base::box_min_c(e), iDimension))
+            base::point_comp(base::box_min(ext), iDimension) = base::point_comp_c(base::box_min_c(e), iDimension);
 
-          if (base::point_comp_c(box_max_c(ext), iDimension) < base::point_comp_c(base::box_max_c(e), iDimension))
-            base::point_comp(box_max_c(ext), iDimension) = base::point_comp_c(base::box_max_c(e), iDimension);
+          if (base::point_comp_c(base::box_max_c(ext), iDimension) < base::point_comp_c(base::box_max_c(e), iDimension))
+            base::point_comp(base::box_max(ext), iDimension) = base::point_comp_c(base::box_max_c(e), iDimension);
         }
 
       return ext;
@@ -239,9 +250,9 @@ namespace NTree
     for (size_t i = 0; i < n; ++i)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        aid[i][0][iDimension] = static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(extents[i].Min, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension]);
+        aid[i][0][iDimension] = static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(adaptor_type::box_min_c(extents[i]), iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension]);
 
-      aid[i][1] = resolve_grid_id_point_limit(extents[i].Max, p0, p1, aRasterizer);
+      aid[i][1] = resolve_grid_id_point_limit<nDimension, point_type, adaptor_type>(adaptor_type::box_max_c(extents[i]), p0, p1, aRasterizer);
     }
     return aid;
   }
@@ -671,6 +682,9 @@ namespace NTree
     // Insert item into a node. If fInsertToLeaf is true: The smallest node will be chosen by the max depth. If fInsertToLeaf is false: The smallest existing level on the branch will be chosen.
     bool Insert(entity_id_type id, point_type const& pt, bool fInsertToLeaf = false)
     {
+      if (!_Ad::does_box_contain_point(this->_box, pt))
+        return false;
+
       autoc kNodeSmallest = FindSmallestNode(pt);
       if (!kNodeSmallest)
         return false;
@@ -762,18 +776,18 @@ namespace NTree
     }
 
     // Range search
-    vector<entity_id_type> RangeSearch(box_type const& range, vector<point_type> const& vpt) const
+    vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt) const
     {
       auto vidFound = vector<entity_id_type>();
 
       this->VisitNodes(base::GetHash(0, 0)
         , [&](Node const& pNode)
           {
-            return are_boxes_overlaped(range, pNode.box, false);
+            return are_boxes_overlapped(range, pNode.box, false);
           }
         , [&](Node const& pNode)
           {
-            return are_boxes_overlaped(range, pNode.box, true);
+            return are_boxes_overlapped(range, pNode.box, true);
           }
         , [&](Node const& pNode, bool fUnconditional)
           {
@@ -796,6 +810,7 @@ namespace NTree
     using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using base::_NodePartitioner;
     using base::_Ad;
+
   public:
     using base::entity_id_type;
     using base::tree_id_type;
@@ -819,7 +834,7 @@ namespace NTree
       ns.pNode->vid.insert(end(ns.pNode->vid), itBegin, itIntersected);
 
       autoc kChild = (ns.kNode << nDimension) | iChild;
-      auto& nodeChild = this->_createChild(*ns->pNode, iChild, kChild);
+      auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
 
       autoc nElement = distance(itIntersected, itEnd);
       if (nElement < base::_nElementMax || ns.nDepth == this->_nDepthMax)
@@ -836,7 +851,7 @@ namespace NTree
     static NTreeBoundingBox Create(span<box_type const> const& vExtent, bucket_id_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_noelement nElementMaxInNode = 11)
     {
       auto tree = NTreeBoundingBox{};
-      tree.Init(oextent.value_or(box_of_boxes<nDimension, geometry_type, span<box_type const>, box_type>(vExtent))
+      tree.Init(oextent.value_or(_Ad::box_of_boxes(vExtent))
         , nDepthMax
         , nElementMaxInNode
       );
@@ -848,7 +863,7 @@ namespace NTree
       auto& nodeRoot = tree._nodes.at(kRoot);
 
       autoc idLocationMax = pow_ce(tree._nRasterResolutionMax, nDimension);
-      autoc aidGrid = resolve_grid_id<nDimension>(vExtent, tree._box.Min, tree._box.Max, tree._nRasterResolutionMax);
+      autoc aidGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vExtent, _Ad::box_min(tree._box), _Ad::box_max(tree._box), tree.GetResolutionMax());
       autoc aidLocation = _getLocationId(aidGrid);
 
       auto vidPoint = base::_generatePointId(n);
@@ -897,8 +912,12 @@ namespace NTree
       return 0; // Not found
     }
 
+
     bool Insert(entity_id_type id, box_type const& ext, bool fInsertToLeaf = false)
     {
+      if (!_Ad::are_boxes_overlapped(this->_box, ext))
+        return false;
+
       autoc kNew = FindSmallestNode(ext);
       if (!kNew)
         return false; // new box is not in the handled space domain
@@ -1002,7 +1021,6 @@ namespace NTree
       return vidFound;
     }
 
-    mutable int nTest = 0; //!
   private: // Range search helper
     void _rangeSearchRec(vector<entity_id_type>& vidFound, tree_id_type kCurrent, Node const& pNode, bucket_id_type nDepth, box_type const& range, span<box_type const> const& vExtent, bool fFullyContained, bool fUnconditional) const
     {
@@ -1024,20 +1042,15 @@ namespace NTree
       }
       else
       {
-        std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return are_boxes_overlaped(range, vExtent[id], fFullyContained); });
-        nTest += pNode.vid.size();
+        std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return are_boxes_overlapped(range, vExtent[id], fFullyContained); });
         for (bucket_id_type i = 0; i < base::_nChild; ++i)
         {
           if (pNode.HasChild(i))
           {
             autoc kChild = flagPrefix | i;
             autoc& pNodeChild = this->_nodes.at(kChild);
-            ++nTest;
-            if (are_boxes_overlaped(range, pNodeChild.box, false))
-            {
-              ++nTest;
-              _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, are_boxes_overlaped(range, pNodeChild.box, true));
-            }
+            if (are_boxes_overlapped(range, pNodeChild.box, false))
+              _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, are_boxes_overlapped(range, pNodeChild.box, true));
           }
         }
       }
@@ -1047,7 +1060,6 @@ namespace NTree
     // Range search
     vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vExtent, bool fFullyContained = true) const
     {
-      nTest = 0;
       auto vidFound = vector<entity_id_type>();
       vidFound.reserve(100);
       autoce kRoot = base::GetHash(0, 0);
@@ -1061,11 +1073,17 @@ namespace NTree
     {
       autoce kRoot = tL.GetHash(0, 0);
       auto vResult = vector<std::pair<entity_id_type, entity_id_type>>{};
+      vResult.reserve(vExtentL.size() / 10);
 
-      auto q = queue<pair<decltype(tL._nodes)::const_iterator, decltype(tR._nodes)::const_iterator>>{};
-      for (q.emplace(tL._nodes.find(kRoot), tR._nodes.find(kRoot)); !q.empty(); q.pop())
+      using iter_type = decltype(tL._nodes)::const_iterator;
+      using iter_and_ent_type = std::pair<iter_type, vector<entity_id_type>>;
+
+      auto q = queue<std::pair<iter_and_ent_type, iter_and_ent_type>>{};
+      for (q.emplace(std::pair{ tL._nodes.find(kRoot), vector<entity_id_type>{} }, std::pair{ tR._nodes.find(kRoot), vector<entity_id_type>{} }); !q.empty(); q.pop())
       {
-        autoc[itNodeL, itNodeR] = q.front();
+        autoc& [itDL, itDR] = q.front();
+        autoc& [itNodeL, vidL] = itDL;
+        autoc& [itNodeR, vidR] = itDR;
 
         autoc& nodeL = itNodeL->second;
         autoc flagPrefixL = itNodeL->first << nDimension;
@@ -1073,31 +1091,80 @@ namespace NTree
         autoc& nodeR = itNodeR->second;
         autoc flagPrefixR = itNodeR->first << nDimension;
 
-        // Check the current content
-        for (autoc idL : nodeL.vid)
-          for (autoc idR : nodeR.vid)
-            if (_Ad::are_boxes_overlaped(vExtentL[idL], vExtentR[idR], false))
-              vResult.emplace_back(idL, idR);
+        // Check the current ascendant content 
+        {
+          for (autoc idL : vidL)
+            for (autoc idR : nodeR.vid)
+              if (_Ad::are_boxes_overlapped(vExtentL[idL], vExtentR[idR], false))
+                vResult.emplace_back(idL, idR);
+
+          for (autoc idR : vidR)
+            for (autoc idL : nodeL.vid)
+              if (_Ad::are_boxes_overlapped(vExtentL[idL], vExtentR[idR], false))
+                vResult.emplace_back(idL, idR);
+
+          for (autoc idL : nodeL.vid)
+            for (autoc idR : nodeR.vid)
+              if (_Ad::are_boxes_overlapped(vExtentL[idL], vExtentR[idR], false))
+                vResult.emplace_back(idL, idR);
+        }
+
+
+        auto vidLChild = vidL;
+
+        auto vidRChild = vidR;
+        vidRChild.insert(vidRChild.end(), nodeR.vid.begin(), nodeR.vid.end());
 
         // Check the child nodes extents
-        for (bucket_id_type iChildL = 0; iChildL < this->_nChild; ++iChildL)
+        if (nodeL.IsAnyChildExist())
         {
-          if (!nodeL.HasChild(iChildL))
-            continue;
+          vidLChild.insert(vidLChild.end(), nodeL.vid.begin(), nodeL.vid.end());
 
-          autoc& itNodeLL = tL._nodes.find(flagPrefixL | iChildL);
-          for (bucket_id_type iChildR = 0; iChildR < this->_nChild; ++iChildR)
+          for (bucket_id_type iChildL = 0; iChildL < base::_nChild; ++iChildL)
+          {
+            if (!nodeL.HasChild(iChildL))
+              continue;
+
+            autoc& itNodeLL = tL._nodes.find(flagPrefixL | iChildL);
+            if (nodeR.IsAnyChildExist())
+            {
+
+              for (bucket_id_type iChildR = 0; iChildR < base::_nChild; ++iChildR)
+              {
+                if (!nodeR.HasChild(iChildR))
+                  continue;
+
+                autoc itNodeRR = tR._nodes.find(flagPrefixR | iChildR);
+                if (_Ad::are_boxes_overlapped(itNodeLL->second.box, itNodeRR->second.box, false))
+                  q.emplace(std::pair{ itNodeLL, vidLChild }, std::pair{ itNodeRR, vidRChild });
+              }
+            }
+            else
+            {
+              if (_Ad::are_boxes_overlapped(itNodeLL->second.box, itNodeR->second.box, false))
+                q.emplace(std::pair{ itNodeLL, vidLChild }, itDR);
+            }
+          }
+        }
+        else
+        {
+          for (bucket_id_type iChildR = 0; iChildR < base::_nChild; ++iChildR)
           {
             if (!nodeR.HasChild(iChildR))
               continue;
 
             autoc itNodeRR = tR._nodes.find(flagPrefixR | iChildR);
-            if (_Ad::are_boxes_overlaped(itNodeLL->second.box, itNodeRR->second.box, false))
-              q.emplace(itNodeLL, itNodeRR);
+            if (_Ad::are_boxes_overlapped(itNodeL->second.box, itNodeRR->second.box, false))
+              q.emplace(itDL, std::pair{ itNodeRR, vidRChild });
           }
         }
       }
       return vResult;
+    }
+
+    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR) const
+    {
+      return CollisionDetection(*this, vExtentL, tR, vExtentR);
     }
   };
 

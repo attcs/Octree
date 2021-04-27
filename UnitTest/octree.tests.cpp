@@ -272,7 +272,7 @@ namespace DualtreePointTest
 
   TEST_CLASS(EditTest)
   {
-    TEST_METHOD(Insert_NonLeaf_Successful)
+    TEST_METHOD(Insert__NonLeaf__Successful)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
@@ -284,7 +284,7 @@ namespace DualtreePointTest
       Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3, 4 });
     }
 
-    TEST_METHOD(Insert_Leaf_Successful)
+    TEST_METHOD(Insert__Leaf__Successful)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
@@ -295,6 +295,18 @@ namespace DualtreePointTest
       Assert::AreEqual<size_t>(tree.GetSize(), 8);
       Assert::IsTrue(nodes.at(14).vid == vector<size_t>{ 4 });
     }
+
+    TEST_METHOD(Insert__OutOfSpace__ReturnsFalse)
+    {
+      autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
+      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      Assert::IsFalse(tree.Insert(4, Point1D{ 4.0 }, true));
+
+      autoc& nodes = tree.Get();
+      Assert::AreEqual<size_t>(tree.GetSize(), 7);
+      Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3 });
+    }
+
 
     TEST_METHOD(Update2p_)
     {
@@ -332,6 +344,64 @@ namespace DualtreeBoxTest
     {
       //!
     }
+
+    TEST_METHOD(CollistionDetection__0040_3565__P30)
+    {
+      autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
+      autoc treeL = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+
+      autoce vBoxR = array{ BoundingBox1D{ 3.5, 4.5 },  BoundingBox1D{ 4.5, 5.5 },  BoundingBox1D{ 5.5, 6.5 } };
+      autoc treeR = DualtreeBox::Create(vBoxR, 3, std::nullopt, 2);
+
+      autoc ret = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
+
+      autoce aExpected = std::pair{ 3, 0 };
+      Assert::AreEqual<size_t>(ret.size(), 1);
+      Assert::AreEqual<size_t>(ret[0].first, aExpected.first);
+      Assert::AreEqual<size_t>(ret[0].second, aExpected.second);
+    }
+
+    TEST_METHOD(CollistionDetection__Complex1)
+    {
+      autoce vBoxL = array
+      { 
+        BoundingBox1D{ 0.0, 4.0 }, 
+        BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 }, 
+        BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }
+      };
+      autoc treeL = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+
+      autoce vBoxR = array
+      { 
+        BoundingBox1D{ 2.0, 6.0 },
+        BoundingBox1D{ 2.0, 4.0 }, BoundingBox1D{ 4.0, 6.0 }, 
+        BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }, BoundingBox1D{ 4.0, 5.0 }, BoundingBox1D{ 5.0, 6.0 }
+      };
+      autoc treeR = DualtreeBox::Create(vBoxR, 3, std::nullopt, 2);
+
+      autoc ret = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
+
+      autoce aExpected = array
+      {
+        std::pair{ 0, 0 }, // Level 0
+        std::pair{ 0, 1 },
+        std::pair{ 2, 0 }, // Level 1
+        std::pair{ 2, 1 },
+        std::pair{ 0, 3 }, // Level 2
+        std::pair{ 2, 3 },
+        std::pair{ 5, 0 },
+        std::pair{ 5, 1 },
+        std::pair{ 5, 3 }, // ==
+        std::pair{ 0, 4 },
+        std::pair{ 2, 4 },
+        std::pair{ 6, 0 },
+        std::pair{ 6, 1 },
+        std::pair{ 6, 4 }, // ==
+      };
+      Assert::AreEqual<size_t>(ret.size(), aExpected.size());
+      Assert::IsTrue(std::ranges::is_permutation(aExpected, ret, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
+    }
+
   };
 
   TEST_CLASS(EditTest)
