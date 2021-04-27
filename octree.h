@@ -4,15 +4,12 @@
 #include <array>
 #include <bitset>
 #include <optional>
-#include <map>
 #include <span>
 #include <vector>
 #include <unordered_map>
 #include <queue>
-#include <variant>
 #include <algorithm>
 #include <numeric>
-#include <memory>
 #include <concepts>
 
 #include <assert.h>
@@ -28,13 +25,14 @@
 #define undef_autoce
 #endif
 
-namespace n_ary_tree
+namespace NTree
 {
+  constexpr int pow_ce(int a, unsigned char e) { return e == 0 ? 1 : a * pow_ce(a, e - 1); }
+
   namespace
   {
     using std::array;
     using std::bitset;
-    using std::map;
     using std::span;
     using std::vector;
     using std::unordered_map;
@@ -51,162 +49,188 @@ namespace n_ary_tree
   using dim_type = uint8_t;
   
   using bucket_id_type = uint8_t;
-  autoce OUT_OF_BUCKET = std::numeric_limits<bucket_id_type>::max();
 
   using max_noelement = uint16_t;
 
-  constexpr int pow_ce(int a, unsigned char e) { return e == 0 ? 1 : a * pow_ce(a, e - 1); }
+
+  template<dim_type nDimension, typename geometry_type = double>
+  using Point = array<geometry_type, nDimension>;
 
   template <dim_type nDimension, typename geometry_type = double>
   struct BoundingBox
   {
-    array<geometry_type, nDimension> Min;
-    array<geometry_type, nDimension> Max;
+    Point<nDimension, geometry_type> Min;
+    Point<nDimension, geometry_type> Max;
   };
 
-  //! adaptor namespace
-  // Adaptors to making indenpendent point_type and extent_type
-  template<dim_type nDimension, typename geometry_type = double>
-  constexpr geometry_type& point_adapt(array<geometry_type, nDimension>& pt, dim_type iDimension) { return pt[iDimension]; }
-  template<dim_type nDimension, typename geometry_type = double>
-  constexpr geometry_type const& point_adapt(array<geometry_type, nDimension> const& pt, dim_type iDimension) { return pt[iDimension]; }
 
-  template<dim_type nDimension, typename geometry_type = double>
-  inline bool extent_contains_point_adaptor(BoundingBox<nDimension, geometry_type> const& ext, array<geometry_type, nDimension> const& pt)
+  // Adaptor concepts
+
+  template <class adaptor_type, typename point_type, typename box_type, typename geometry_type = double>
+  concept AdaptorBasicsConcept =
+    requires (point_type & pt, dim_type iDimension) { {adaptor_type::point_comp(pt, iDimension)}->std::convertible_to<geometry_type&>; }
+    &&requires (point_type const& pt, dim_type iDimension) { {adaptor_type::point_comp_c(pt, iDimension)}->std::convertible_to<geometry_type const&>; }
+    && requires (box_type & box) { { adaptor_type::box_min(box) }->std::convertible_to<point_type &>; }
+    && requires (box_type & box) { { adaptor_type::box_max(box) }->std::convertible_to<point_type &>; }
+    && requires (box_type const& box) { { adaptor_type::box_min_c(box) }->std::convertible_to<point_type const&>; }
+    && requires (box_type const& box) { { adaptor_type::box_max_c(box) }->std::convertible_to<point_type const&>; }
+  ;
+
+  template <class adaptor_type, typename point_type, typename box_type, typename geometry_type = double>
+  concept AdaptorConcept =
+    requires { AdaptorBasicsConcept<adaptor_type, point_type, box_type, geometry_type>; }
+    && requires (box_type const& box, point_type const& pt) { { adaptor_type::does_box_contain_point(box, pt)}->std::convertible_to<bool>; }
+    && requires (box_type const& e1, box_type const& e2, bool e1_must_contain_e2) { { adaptor_type::are_boxes_overlaped(e1, e2, e1_must_contain_e2)}->std::convertible_to<bool>; }
+    && requires (span<point_type const> const& vPoint) { { adaptor_type::box_of_points(vPoint)}->std::convertible_to<box_type>; }
+    && requires (span<box_type const> const& vBox) { { adaptor_type::box_of_boxes(vBox)}->std::convertible_to<box_type>; }
+  ;
+
+
+  // Adaptors
+
+  template <dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
+  struct AdaptorGeneralBasics
   {
-    for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      if (!(ext.Min[iDimension] <= pt[iDimension] && pt[iDimension] <= ext.Max[iDimension]))
-        return false;
+    static constexpr geometry_type& point_comp(point_type& pt, dim_type iDimension) { return pt[iDimension]; }
+    static constexpr geometry_type const& point_comp_c(point_type const& pt, dim_type iDimension) { return pt[iDimension]; }
 
-    return true;
-  }
+    static constexpr point_type& box_min(box_type& box) { return box.Min; }
+    static constexpr point_type& box_max(box_type& box) { return box.Max; }
+    static constexpr point_type const& box_min_c(box_type const& box) { return box.Min; }
+    static constexpr point_type const& box_max_c(box_type const& box) { return box.Max; }
+  };
 
-  template<dim_type nDimension, typename geometry_type = double>
-  inline bool extents_overlap_adaptor(BoundingBox<nDimension, geometry_type> const& e1, BoundingBox<nDimension, geometry_type> const& e2, bool e1_must_contain_e2 = true)
+
+  template <dim_type nDimension, typename point_type, typename box_type, typename adaptor_basics_type, typename geometry_type = double>
+  struct AdaptorGeneralBase : adaptor_basics_type
   {
-    if (e1_must_contain_e2)
+    using base = adaptor_basics_type;
+    static_assert(AdaptorBasicsConcept<base, point_type, box_type, geometry_type>);
+
+
+    static constexpr bool does_box_contain_point(box_type const& box, point_type const& pt)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        if (!((e1.Min[iDimension] <= e2.Min[iDimension] && e2.Min[iDimension] <= e1.Max[iDimension]) && (e1.Min[iDimension] <= e2.Max[iDimension] && e2.Max[iDimension] <= e1.Max[iDimension])))
+        if (!(base::point_comp_c(base::box_min_c(box), iDimension) <= base::point_comp_c(pt, iDimension) && base::point_comp_c(pt, iDimension) <= base::point_comp_c(base::box_max_c(box), iDimension)))
           return false;
-    }
-    else
-    {
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        if (!(((e1.Min[iDimension] <= e2.Min[iDimension] && e2.Min[iDimension] <= e1.Max[iDimension]) || (e1.Min[iDimension] <= e2.Max[iDimension] && e2.Max[iDimension] <= e1.Max[iDimension]) || (e2.Min[iDimension] <= e1.Max[iDimension] && e1.Max[iDimension] <= e2.Max[iDimension]))))
-          return false;
-    }
-    return true;
-  }
 
-  template<dim_type nDimension, typename geometry_type, typename point_container_type, typename box_type>
-  box_type extent_of_points(point_container_type const& vPoint)
-  {
-    auto ext = box_type{};
-    for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-    {
-      ext.Min[iDimension] = +std::numeric_limits<geometry_type>::infinity();
-      ext.Max[iDimension] = -std::numeric_limits<geometry_type>::infinity();
+      return true;
     }
 
-    for (autoc& pt : vPoint)
+    static constexpr bool are_boxes_overlaped(box_type const& e1, box_type const& e2, bool e1_must_contain_e2 = true)
+    {
+      return e1_must_contain_e2
+        ? does_box_contain_point(e1, base::box_min_c(e2)) && does_box_contain_point(e1, base::box_max_c(e2))
+        : does_box_contain_point(e1, base::box_min_c(e2)) || does_box_contain_point(e1, base::box_max_c(e2)) || does_box_contain_point(e2, base::box_max_c(e1))
+        ;
+    }
+
+    static consteval box_type box_inverted_init()
+    {
+      auto ext = box_type{};
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
-        if (ext.Min[iDimension] > point_adapt(pt, iDimension))
-          ext.Min[iDimension] = point_adapt(pt, iDimension);
-        else if (ext.Max[iDimension] < point_adapt(pt, iDimension))
-          ext.Max[iDimension] = point_adapt(pt, iDimension);
+        base::point_comp(base::box_min(ext), iDimension) = +std::numeric_limits<geometry_type>::infinity();
+        base::point_comp(base::box_max(ext), iDimension) = -std::numeric_limits<geometry_type>::infinity();
       }
 
-    return ext;
-  }
-
-  template<dim_type nDimension, typename geometry_type, typename box_type>
-  consteval box_type extent_inverted_init()
-  {
-    auto ext = box_type{};
-    for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-    {
-      ext.Min[iDimension] = +std::numeric_limits<geometry_type>::infinity();
-      ext.Max[iDimension] = -std::numeric_limits<geometry_type>::infinity();
+      return ext;
     }
 
-    return ext;
-  }
+    static box_type box_of_points(span<point_type const> const& vPoint)
+    {
+      autoce extC = box_inverted_init();
+      auto ext = extC;
+      for (autoc& pt : vPoint)
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        {
+          if (base::point_comp_c(base::box_min_c(ext), iDimension) > base::point_comp_c(pt, iDimension))
+            base::point_comp(base::box_min(ext), iDimension) = base::point_comp_c(pt, iDimension);
 
-  template<dim_type nDimension, typename geometry_type, typename extent_container_type, typename box_type>
-  box_type extent_of_extents(extent_container_type const& vExtent)
-  {
-    autoce extC = extent_inverted_init<nDimension, geometry_type, box_type>();
-    auto ext = extC;
-    for (autoc& e : vExtent)
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      {
-        if (ext.Min[iDimension] > e.Min[iDimension])
-          ext.Min[iDimension] = e.Min[iDimension];
+          if (base::point_comp_c(base::box_max_c(ext), iDimension) < base::point_comp_c(pt, iDimension))
+            base::point_comp(base::box_max(ext), iDimension) = base::point_comp_c(pt, iDimension);
+        }
 
-        if (ext.Max[iDimension] < e.Max[iDimension])
-          ext.Max[iDimension] = e.Max[iDimension];
-      }
+      return ext;
+    }
 
-    return ext;
-  }
+    static box_type box_of_boxes(span<box_type const> const& vExtent)
+    {
+      autoce extC = box_inverted_init();
+      auto ext = extC;
+      for (autoc& e : vExtent)
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        {
+          if (base::point_comp_c(box_min_c(ext), iDimension) > base::point_comp_c(base::box_min_c(e), iDimension))
+            base::point_comp(box_min_c(ext), iDimension) = base::point_comp_c(base::box_min_c(e), iDimension);
 
+          if (base::point_comp_c(box_max_c(ext), iDimension) < base::point_comp_c(base::box_max_c(e), iDimension))
+            base::point_comp(box_max_c(ext), iDimension) = base::point_comp_c(base::box_max_c(e), iDimension);
+        }
 
-  template <dim_type nDimension, typename point_type>
+      return ext;
+    }
+  };
+
+  template<dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
+  using AdaptorGeneral = AdaptorGeneralBase<nDimension, point_type, box_type, AdaptorGeneralBasics<nDimension, point_type, box_type, geometry_type>, geometry_type>;
+  
+
+  // Grid
+  
+  template <dim_type nDimension, typename point_type, typename adaptor_type>
   constexpr array<double, nDimension> resolve_grid_get_rasterizer(point_type const& p0, point_type const& p1, uint16_t n_divide)
   {
     auto aRasterizer = array<double, nDimension>{};
     for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      aRasterizer[iDimension] = static_cast<double>(n_divide) / (point_adapt(p1, iDimension) - point_adapt(p0, iDimension));
+      aRasterizer[iDimension] = static_cast<double>(n_divide) / (adaptor_type::point_comp_c(p1, iDimension) - adaptor_type::point_comp_c(p0, iDimension));
 
     return aRasterizer;
   }
 
-  template <dim_type nDimension, typename point_type>
+  template <dim_type nDimension, typename point_type, typename adaptor_type>
   constexpr array<grid_id_type, nDimension> resolve_grid_id_point(point_type const& pe, point_type const& p0, point_type const& p1, array<double, nDimension> const& aRasterizer, uint16_t maxSlot)
   {
     auto aid = array<grid_id_type, nDimension>{};
     for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      aid[iDimension] = std::min<grid_id_type>(maxSlot, static_cast<grid_id_type>(static_cast<double>(point_adapt(pe, iDimension) - point_adapt(p0, iDimension)) * aRasterizer[iDimension]));
+      aid[iDimension] = std::min<grid_id_type>(maxSlot, static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension]));
 
     return aid;
   }
 
-  template <dim_type nDimension, typename point_type>
+  template <dim_type nDimension, typename point_type, typename adaptor_type>
   constexpr array<grid_id_type, nDimension> resolve_grid_id_point_limit(point_type const& pe, point_type const& p0, point_type const& p1, array<double, nDimension> const& aRasterizer)
   {
     auto aid = array<grid_id_type, nDimension>{};
     for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
     {
-      autoc id = static_cast<double>(point_adapt(pe, iDimension) - point_adapt(p0, iDimension)) * aRasterizer[iDimension];
+      autoc id = static_cast<double>(adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension];
       aid[iDimension] = static_cast<grid_id_type>(id == floor(id) ? id - 1 : id);
     }
     return aid;
   }
 
 
-
-  template <dim_type nDimension, typename point_type>
+  template <dim_type nDimension, typename point_type, typename adaptor_type>
   auto resolve_grid_id(span<point_type const> const& points, point_type const& p0, point_type const& p1, uint16_t n_divide)
   {
-    autoc aRasterizer = resolve_grid_get_rasterizer<nDimension, point_type>(p0, p1, n_divide);
+    autoc aRasterizer = resolve_grid_get_rasterizer<nDimension, point_type, adaptor_type>(p0, p1, n_divide);
 
     autoc maxSlot = n_divide - 1;
 
     autoc n = points.size();
     auto aid = vector<array<grid_id_type, nDimension>>(n);
     for (size_t i = 0; i < n; ++i)
-      aid[i] = resolve_grid_id_point(points[i], p0, p1, aRasterizer, maxSlot);
+      aid[i] = resolve_grid_id_point<nDimension, point_type, adaptor_type>(points[i], p0, p1, aRasterizer, maxSlot);
 
     return aid;
   }
 
 
-  template <dim_type nDimension, typename box_type, typename point_type>
+  template <dim_type nDimension, typename box_type, typename point_type, typename adaptor_type>
   auto resolve_grid_id(span<box_type const> const& extents, point_type const& p0, point_type const& p1, uint16_t n_divide)
   {
-    autoc aRasterizer = resolve_grid_get_rasterizer<nDimension, point_type>(p0, p1, n_divide);
+    autoc aRasterizer = resolve_grid_get_rasterizer<nDimension, point_type, adaptor_type>(p0, p1, n_divide);
 
     autoc maxSlot = n_divide - 1;
 
@@ -215,7 +239,7 @@ namespace n_ary_tree
     for (size_t i = 0; i < n; ++i)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        aid[i][0][iDimension] = static_cast<grid_id_type>(static_cast<double>(point_adapt(extents[i].Min, iDimension) - point_adapt(p0, iDimension)) * aRasterizer[iDimension]);
+        aid[i][0][iDimension] = static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(extents[i].Min, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension]);
 
       aid[i][1] = resolve_grid_id_point_limit(extents[i].Max, p0, p1, aRasterizer);
     }
@@ -223,7 +247,7 @@ namespace n_ary_tree
   }
 
 
-
+  // Location code
 
   namespace
   {
@@ -295,28 +319,37 @@ namespace n_ary_tree
   }
 
 
+  // NTrees
 
-
-
-
-  template<dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
-  class n_ary_tree_linear
+  // NTreeLinear: Non-owning base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
+  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+  class NTreeLinear
   {
   protected:
     static bucket_id_type constexpr _nChild = pow_ce(2, nDimension);
 
+    using _Ad = adaptor_type;
+    static_assert(AdaptorConcept<_Ad, point_type, box_type, geometry_type>);
+
   public:
     using entity_id_type = size_t;
-    using tree_id_type = location_id_type; // sane as the location_id_type, but depth is signed by a sentinel bit.
+    using tree_id_type = location_id_type; // same as the location_id_type, but depth is signed by a sentinel bit.
 
     struct Node
     {
+    private:
       using flag_child_exist = std::conditional<_nChild <= 8, uint8_t, bitset<_nChild>>::type;
+      flag_child_exist _hasChildK = 0;
 
-      flag_child_exist hasChildK = 0;
+    public:
       vector<entity_id_type> vid;
       box_type box;
+
+      constexpr void EnableChild(bucket_id_type iChild) { _hasChildK |= (1 << iChild); }
+      constexpr bool HasChild(bucket_id_type iChild) const { return _hasChildK & (1 << iChild); }
+      constexpr bool IsAnyChildExist() const { return _hasChildK > 0; }
     };
+
 
   protected: // member variables
     unordered_map<tree_id_type, Node> _nodes;
@@ -348,7 +381,7 @@ namespace n_ary_tree
 
     inline Node& _createChild(Node& nodeParent, bucket_id_type iChild, tree_id_type kChild)
     {
-      nodeParent.hasChildK |= 1 << iChild;
+      nodeParent.EnableChild(iChild);
 
       auto& nodeChild = _nodes[kChild];
 
@@ -357,8 +390,8 @@ namespace n_ary_tree
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fGreater = (flagChild & 0x0001);
-          nodeChild.box.Min[iDimension] = fGreater ? (nodeParent.box.Max[iDimension] + nodeParent.box.Min[iDimension]) / 2.0 : nodeParent.box.Min[iDimension];
-          nodeChild.box.Max[iDimension] = fGreater ? nodeParent.box.Max[iDimension] : ((nodeParent.box.Max[iDimension] + nodeParent.box.Min[iDimension]) / 2.0);
+          _Ad::point_comp(_Ad::box_min(nodeChild.box), iDimension) = fGreater ? (_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2) : _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension);
+          _Ad::point_comp(_Ad::box_max(nodeChild.box), iDimension) = fGreater ? _Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) : ((_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2));
           flagChild >>= 1;
         }
       }
@@ -366,8 +399,6 @@ namespace n_ary_tree
     }
 
   public:
-
-
     static constexpr size_t EstimateNodeNumber(size_t n, bucket_id_type nDepthMax, max_noelement nElementMax)
     {
       assert(nElementMax > 0);
@@ -380,20 +411,16 @@ namespace n_ary_tree
 
     static constexpr tree_id_type GetHash(bucket_id_type level, tree_id_type key)
     {
+      assert(key < (tree_id_type(1) << (level * nDimension)));
       return (1 << (level * nDimension)) | key;
     }
 
     static constexpr bucket_id_type GetDepth(tree_id_type key)
     {
       // Keep shifting off three bits at a time, increasing depth counter
-      for (bucket_id_type d = 0; key; d++)
-      {
-        // If only sentinel bit remains, exit with node depth
-        if (key == 1)
+      for (bucket_id_type d = 0; key; d++, key >>= nDimension)
+        if (key == 1) // If only sentinel bit remains, exit with node depth
           return d;
-
-        key >>= nDimension;
-      }
 
       assert(false); // Bad key
       return 0;
@@ -406,6 +433,15 @@ namespace n_ary_tree
 
     }
 
+    size_t GetSize() const { return _nodes.size(); }
+    auto const& GetBox() const { return _box; }
+    auto const& Get() const { return _nodes; }
+    auto const& Get(tree_id_type key) const { return _nodes.at(key); }
+    auto GetDepthMax() const { return _nDepthMax; }
+    auto GetResolutionMax() const { return _nRasterResolutionMax; }
+
+
+    // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
     void Init(box_type const& box, bucket_id_type nDepthMax, max_noelement nElementMax = 11)
     {
       assert(this->_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree is wanted to be reset, use the Clear() function before init.
@@ -422,11 +458,8 @@ namespace n_ary_tree
       nodeRoot.box = box;
     }
 
-    size_t GetSize() const { return _nodes.size(); }
-    auto const& GetBox() const { return _box; }
-    auto const& Get() const { return _nodes; }
-    auto const& Get(tree_id_type key) const { return _nodes.at(key); }
 
+    // Visit nodes with special selection and procedure
     template<typename fnSelector, typename fnProcedure>
     void VisitNodes(location_id_type kRoot, fnSelector const& selector, fnProcedure const& procedure) const
     {
@@ -438,11 +471,11 @@ namespace n_ary_tree
         procedure(key, _nodes.at(key));
 
         autoc flagPrefix = key << nDimension;
-        for (bucket_id_type i = 0; i < _nChild; ++i)
+        for (bucket_id_type iChild = 0; iChild < _nChild; ++iChild)
         {
-          if (node.hasChildK & (1 << i))
+          if (node.HasChild(iChild))
           {
-            autoc kChild = flagPrefix | i;
+            autoc kChild = flagPrefix | iChild;
             if (selector(kChild, _nodes.at(kChild)))
               q.push(kChild);
           }
@@ -450,6 +483,8 @@ namespace n_ary_tree
       }
     }
 
+
+    // Visit nodes with special selection and procedure and if unconditional selection is fulfilled descendants will not be test with selector
     template<typename fnSelector, typename fnSelectorUnconditional, typename fnProcedure>
     void VisitNodes(location_id_type kRoot, fnSelector const& selector, fnSelectorUnconditional const& selectorUnconditional, fnProcedure const& procedure) const
     {
@@ -470,11 +505,11 @@ namespace n_ary_tree
 
         bucket_id_type const nDepthChild = item.nDepth + 1;
         autoc flagPrefix = item.key << nDimension;
-        for (bucket_id_type i = 0; i < _nChild; ++i)
+        for (bucket_id_type iChild = 0; iChild < _nChild; ++iChild)
         {
-          if (item.pNode.hasChildK & (1 << i))
+          if (item.pNode.HasChild(iChild))
           {
-            autoc kChild = GetHash(nDepthChild, flagPrefix + i);
+            autoc kChild = GetHash(nDepthChild, flagPrefix + iChild);
             autoc& pNodeChild = _nodes.at(kChild);
             if (item.fUnconditional)
               q.push({ kChild, pNodeChild, nDepthChild, true });
@@ -486,12 +521,9 @@ namespace n_ary_tree
     }
 
 
-    inline bool IsAnyChildExist(Node const& node) const { return node.hasChildK > 0; }
-
-
-    bool Erase(entity_id_type id)
+    bool EraseId(entity_id_type id)
     {
-      return std::ranges::any_of(_nodes, [&](auto& node) { return erase(node.vid, id); });
+      return std::ranges::any_of(_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, id); });
     }
 
 
@@ -515,11 +547,11 @@ namespace n_ary_tree
     box_type GetExtent(tree_id_type key) const
     {
       auto e = box_type();
-      e.Min = _box.Min;
+      _Ad::box_min(e) = _Ad::box_min_c(_box);
 
       auto aSize = array<geometry_type, nDimension>();
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        aSize[iDimension] = point_adapt(_box.Max, iDimension) - point_adapt(_box.Min, iDimension);
+        aSize[iDimension] = _Ad::point_comp_c(_Ad::box_max_c(_box), iDimension) - _Ad::point_comp_c(_Ad::box_min_c(_box), iDimension);
 
       autoc nDepth = GetDepth(key);
       autoc nRasterResolution = pow_ce(2, nDepth);
@@ -529,15 +561,12 @@ namespace n_ary_tree
       for (bucket_id_type iDepth = 0; iDepth < nDepth; ++iDepth)
       {
         autoc r = rMax * (1 << iDepth);
-        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        {
-          e.Min[iDimension] += (aSize[iDimension] * r) * (keyShifted & 0x00000001);
-          keyShifted >>= 1;
-        }
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, keyShifted >>= 1)
+          _Ad::point_comp(_Ad::box_min(e), iDimension) += static_cast<geometry_type>((aSize[iDimension] * r)) * (keyShifted & 0x00000001);
       }
 
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        e.Max[iDimension] = e.Min[iDimension] + aSize[iDimension] * rMax;
+        _Ad::point_comp(_Ad::box_max(e), iDimension) = _Ad::point_comp_c(_Ad::box_min_c(e), iDimension) + static_cast<geometry_type>(aSize[iDimension] * rMax);
 
       return e;
     }
@@ -550,35 +579,24 @@ namespace n_ary_tree
     }
 
 
-    void Extend(bucket_id_type nDepth, tree_id_type kRootNew = 0)
-    {
-      /* //!
-      _nDepthMax += nDepth;
-
-      autoc nodes = _nodes;
-      _nodes.clear();
-
-      std::ranges::transform()
-
-      map<int, string> m{ {1, "mango"}, {2, "papaya"}, {3, "guava"} };
-      auto nh = m.extract(2);
-      nh.key() = 4;
-      m.insert(move(nh))
-      */
-    }
+    // Doubles the handled space relative to the root. iRootNew defines the relative location in the new space
+    //!IMPLEMENT void Extend(location_id_type iRootNew = 0) {}
   };
 
 
 
-  template<dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
-  class n_ary_tree_point : public n_ary_tree_linear<nDimension, point_type, box_type, geometry_type>
+  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+  class NTreePoint : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
-    using base = n_ary_tree_linear<nDimension, point_type, box_type, geometry_type>;
+  private:
+    using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using base::_NodePartitioner;
+    using base::_Ad;
+  public:
     using base::entity_id_type;
     using base::tree_id_type;
     using base::Node;
-   
+
   private:
     static inline vector<location_id_type> _getLocationId(vector<array<grid_id_type, nDimension>> const& vidGrid)
     {
@@ -592,18 +610,8 @@ namespace n_ary_tree
       if (itBegin == itEnd)
         return;
 
-      ns.pNode->hasChildK |= 1 << iChild;
-
-      autoc kChild = base::GetHash(ns.nDepth, (ns.kNode << nDimension) | iChild);
-      auto& nodeChild = this->_nodes[kChild];
-      auto flagChild = iChild;
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      {
-        autoc fGreater = (flagChild & 0x0001);
-        nodeChild.box.Min[iDimension] = fGreater ? (ns.pNode->box.Max[iDimension] + ns.pNode->box.Min[iDimension]) / 2.0 : ns.pNode->box.Min[iDimension];
-        nodeChild.box.Max[iDimension] = fGreater ? ns.pNode->box.Max[iDimension] : ((ns.pNode->box.Max[iDimension] + ns.pNode->box.Min[iDimension]) / 2.0);
-        flagChild >>= 1;
-      }
+      autoc kChild = (ns.kNode << nDimension) | iChild;
+      auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
 
       autoc nElement = distance(itBegin, itEnd);
       if (nElement < base::_nElementMax || ns.nDepth == this->_nDepthMax)
@@ -619,19 +627,19 @@ namespace n_ary_tree
   public:
 
     // Create
-    static n_ary_tree_point Create(span<point_type const> const& vpt, bucket_id_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_noelement nElementMaxInNode = 11)
+    static NTreePoint Create(span<point_type const> const& vpt, bucket_id_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_noelement nElementMaxInNode = 11)
     {
       autoc n = vpt.size();
 
-      auto tree = n_ary_tree_point{};
-      tree.Init(oextent.value_or(extent_of_points<nDimension, geometry_type, span<point_type const>, box_type>(vpt)), nDepthMax, nElementMaxInNode);
+      auto tree = NTreePoint{};
+      tree.Init(oextent.value_or(_Ad::box_of_points(vpt)), nDepthMax, nElementMaxInNode);
       tree._nodes.reserve(base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
 
       autoce kRoot = base::GetHash(0, 0);
       auto& nodeRoot = tree._nodes.at(kRoot);
 
       autoc idLocationMax = pow_ce(tree._nRasterResolutionMax, nDimension);
-      autoc aidGrid = resolve_grid_id<nDimension>(vpt, tree._box.Min, tree._box.Max, tree._nRasterResolutionMax);
+      autoc aidGrid = resolve_grid_id<nDimension, point_type, _Ad>(vpt, _Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc aidLocation = _getLocationId(aidGrid);
 
       auto vidPoint = base::_generatePointId(n);
@@ -667,7 +675,7 @@ namespace n_ary_tree
       if (!kNodeSmallest)
         return false;
 
-      autoc aGrid = resolve_grid_id<nDimension, point_type>(vector{ pt }, this->_box.Min, this->_box.Max, this->_nRasterResolutionMax).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->_nRasterResolutionMax).at(0);
       autoc idLocation = Morton(aGrid);
       auto kNode = this->GetHash(this->_nDepthMax, idLocation);
 
@@ -691,14 +699,14 @@ namespace n_ary_tree
           kNodeParent = kNodeParent >>= nDimension;
           assert(kNodeParent);
           auto& nodeParent = this->_nodes[kNodeParent];
-          nodeParent.hasChildK |= 1 << iChild;
+          nodeParent.EnableChild(iChild);
           nodeParent.box = this->GetExtent(kNodeParent);
         } while (kNodeParent != kNodeSmallest);
       }
       else
       {
         autoc itNode = this->_nodes.find(kNodeSmallest);
-        if (this->IsAnyChildExist(itNode->second))
+        if (itNode->second.IsAnyChildExist())
         {
           autoc nDepth = this->GetDepth(kNodeSmallest);
           autoc kNodeChild = kNode << (nDimension * (this->_nDepthMax - nDepth - 1));
@@ -724,7 +732,7 @@ namespace n_ary_tree
 
     bool Update(entity_id_type id, point_type const& ptNew)
     {
-      if (!this->Erase(id))
+      if (!this->EraseId(id))
         return false;
 
       return this->Insert(id, ptNew);
@@ -732,7 +740,7 @@ namespace n_ary_tree
 
     void Update(entity_id_type id, point_type const& ptOld, point_type const& ptNew)
     {
-      if (!this->Erase(id, ptOld))
+      if (!this->EraseId(id, ptOld))
         return false;
 
       return this->Insert(id, ptNew);
@@ -743,7 +751,7 @@ namespace n_ary_tree
     // Find smallest node which contains the box
     tree_id_type FindSmallestNode(point_type const& pt) const
     {
-      autoc aGrid = resolve_grid_id<nDimension, point_type>(vector{ pt }, this->_box.Min, this->_box.Max, this->_nRasterResolutionMax).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->_nRasterResolutionMax).at(0);
       autoc idLocation = Morton(aGrid);
 
       for (auto kSmallestNode = this->GetHash(this->_nDepthMax, idLocation); kSmallestNode; kSmallestNode >>= nDimension)
@@ -760,20 +768,20 @@ namespace n_ary_tree
 
       this->VisitNodes(base::GetHash(0, 0)
         , [&](Node const& pNode)
-      {
-        return extents_overlap_adaptor(range, pNode.box, false);
-      }
+          {
+            return are_boxes_overlaped(range, pNode.box, false);
+          }
         , [&](Node const& pNode)
-      {
-        return extents_overlap_adaptor(range, pNode.box, true);
-      }
+          {
+            return are_boxes_overlaped(range, pNode.box, true);
+          }
         , [&](Node const& pNode, bool fUnconditional)
-      {
-        if (fUnconditional)
-          vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
-        else
-          std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return extent_contains_point_adaptor(range, vpt[id]); });
-      }
+          {
+            if (fUnconditional)
+              vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
+            else
+              std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return does_box_contain_point(range, vpt[id]); });
+          }
       );
 
       return vidFound;
@@ -781,11 +789,14 @@ namespace n_ary_tree
 
   };
 
-  template<dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
-  class n_ary_tree_bounding_box : public n_ary_tree_linear<nDimension, point_type, box_type, geometry_type>
+  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+  class NTreeBoundingBox : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
-    using base = n_ary_tree_linear<nDimension, point_type, box_type, geometry_type>;
+  private:
+    using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using base::_NodePartitioner;
+    using base::_Ad;
+  public:
     using base::entity_id_type;
     using base::tree_id_type;
     using base::Node;
@@ -804,19 +815,11 @@ namespace n_ary_tree
       if (itBegin == itEnd)
         return;
 
-      ns.pNode->hasChildK |= 1 << iChild;
+      ns.pNode->EnableChild(iChild);
       ns.pNode->vid.insert(end(ns.pNode->vid), itBegin, itIntersected);
-      autoc kChild = base::GetHash(ns.nDepth, (ns.kNode << nDimension) | iChild);
 
-      auto& nodeChild = this->_nodes[kChild];
-      auto flagChild = iChild;
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      {
-        autoc fGreater = (flagChild & 0x0001);
-        nodeChild.box.Min[iDimension] = fGreater ? (ns.pNode->box.Max[iDimension] + ns.pNode->box.Min[iDimension]) / 2.0 : ns.pNode->box.Min[iDimension];
-        nodeChild.box.Max[iDimension] = fGreater ? ns.pNode->box.Max[iDimension] : ((ns.pNode->box.Max[iDimension] + ns.pNode->box.Min[iDimension]) / 2.0);
-        flagChild >>= 1;
-      }
+      autoc kChild = (ns.kNode << nDimension) | iChild;
+      auto& nodeChild = this->_createChild(*ns->pNode, iChild, kChild);
 
       autoc nElement = distance(itIntersected, itEnd);
       if (nElement < base::_nElementMax || ns.nDepth == this->_nDepthMax)
@@ -830,10 +833,10 @@ namespace n_ary_tree
 
 
   public:
-    static n_ary_tree_bounding_box Create(span<box_type const> const& vExtent, bucket_id_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_noelement nElementMaxInNode = 11)
+    static NTreeBoundingBox Create(span<box_type const> const& vExtent, bucket_id_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_noelement nElementMaxInNode = 11)
     {
-      auto tree = n_ary_tree_bounding_box{};
-      tree.Init(oextent.value_or(extent_of_extents<nDimension, geometry_type, span<box_type const>, box_type>(vExtent))
+      auto tree = NTreeBoundingBox{};
+      tree.Init(oextent.value_or(box_of_boxes<nDimension, geometry_type, span<box_type const>, box_type>(vExtent))
         , nDepthMax
         , nElementMaxInNode
       );
@@ -932,7 +935,7 @@ namespace n_ary_tree
         if (itNode == itEnd)
           continue;
 
-        if (IsAnyChildExist(itNode.second) && iChild != numeric_limits<bucket_id_type>::max())
+        if (itNode.second.IsAnyChildExist() && iChild != numeric_limits<bucket_id_type>::max())
         {
           auto& nodeChild = _createChild(itNode->second, iChild, (kNode << nDimension) | iChild);
           nodeChild.vid.emplace_back(id);
@@ -959,7 +962,7 @@ namespace n_ary_tree
 
     bool Update(entity_id_type id, box_type const& extNew)
     {
-      if (!this->Erase(id))
+      if (!this->EraseId(id))
         return false;
 
       return this->Insert(id, extNew);
@@ -977,7 +980,7 @@ namespace n_ary_tree
 
 
   public:
-    vector<entity_id_type> PickSearch(point_type const& ptPick, vector<box_type> const& vExtent) const
+    vector<entity_id_type> PickSearch(point_type const& ptPick, span<box_type const> const& vExtent) const
     {
       autoc aGrid = resolve_grid_id({ ptPick }, this->_box.Min, this->_box.Max, this->_nRasterResolutionMax).at(0);
       autoc idLocation = Morton(aGrid);
@@ -993,7 +996,7 @@ namespace n_ary_tree
         if (itNode == itEnd)
           continue;
 
-        std::ranges::copy_if(itNode->second.vid, [&](autoc id) { return extent_contains_point_adaptor(vExtent[id], ptPick); });
+        std::ranges::copy_if(itNode->second.vid, [&](autoc id) { return does_box_contain_point(vExtent[id], ptPick); });
       }
 
       return vidFound;
@@ -1001,7 +1004,7 @@ namespace n_ary_tree
 
     mutable int nTest = 0; //!
   private: // Range search helper
-    void _rangeSearchRec(vector<entity_id_type>& vidFound, tree_id_type kCurrent, Node const& pNode, bucket_id_type nDepth, box_type const& range, vector<box_type> const& vExtent, bool fFullyContained, bool fUnconditional) const
+    void _rangeSearchRec(vector<entity_id_type>& vidFound, tree_id_type kCurrent, Node const& pNode, bucket_id_type nDepth, box_type const& range, span<box_type const> const& vExtent, bool fFullyContained, bool fUnconditional) const
     {
       ++nDepth;
       autoc flagPrefix = kCurrent << nDimension;
@@ -1012,7 +1015,7 @@ namespace n_ary_tree
 
         for (bucket_id_type i = 0; i < base::_nChild; ++i)
         {
-          if (pNode.hasChildK & (1 << i))
+          if (pNode.HasChild(i))
           {
             autoc kChild = flagPrefix | i;
             _rangeSearchRec(vidFound, kChild, this->_nodes.at(kChild), nDepth, range, vExtent, fFullyContained, true);
@@ -1021,19 +1024,19 @@ namespace n_ary_tree
       }
       else
       {
-        std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return extents_overlap_adaptor(range, vExtent[id], fFullyContained); });
+        std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return are_boxes_overlaped(range, vExtent[id], fFullyContained); });
         nTest += pNode.vid.size();
         for (bucket_id_type i = 0; i < base::_nChild; ++i)
         {
-          if (pNode.hasChildK & (1 << i))
+          if (pNode.HasChild(i))
           {
             autoc kChild = flagPrefix | i;
             autoc& pNodeChild = this->_nodes.at(kChild);
             ++nTest;
-            if (extents_overlap_adaptor(range, pNodeChild.box, false))
+            if (are_boxes_overlaped(range, pNodeChild.box, false))
             {
               ++nTest;
-              _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, extents_overlap_adaptor(range, pNodeChild.box, true));
+              _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, are_boxes_overlaped(range, pNodeChild.box, true));
             }
           }
         }
@@ -1042,7 +1045,7 @@ namespace n_ary_tree
 
   public:
     // Range search
-    vector<entity_id_type> RangeSearch(box_type const& range, vector<box_type> const& vExtent, bool fFullyContained = true) const
+    vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vExtent, bool fFullyContained = true) const
     {
       nTest = 0;
       auto vidFound = vector<entity_id_type>();
@@ -1053,40 +1056,84 @@ namespace n_ary_tree
       return vidFound;
     }
 
-    static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(n_ary_tree_bounding_box const& tL, vector<box_type> const& vExtentL, n_ary_tree_bounding_box const& tR, vector<box_type> const& vExtentR)
+    // Collision detection: Returns all overlapping boxes from the source trees.
+    static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(NTreeBoundingBox const& tL, span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR)
     {
-      //!
-      return {};
+      autoce kRoot = tL.GetHash(0, 0);
+      auto vResult = vector<std::pair<entity_id_type, entity_id_type>>{};
+
+      auto q = queue<pair<decltype(tL._nodes)::const_iterator, decltype(tR._nodes)::const_iterator>>{};
+      for (q.emplace(tL._nodes.find(kRoot), tR._nodes.find(kRoot)); !q.empty(); q.pop())
+      {
+        autoc[itNodeL, itNodeR] = q.front();
+
+        autoc& nodeL = itNodeL->second;
+        autoc flagPrefixL = itNodeL->first << nDimension;
+
+        autoc& nodeR = itNodeR->second;
+        autoc flagPrefixR = itNodeR->first << nDimension;
+
+        // Check the current content
+        for (autoc idL : nodeL.vid)
+          for (autoc idR : nodeR.vid)
+            if (_Ad::are_boxes_overlaped(vExtentL[idL], vExtentR[idR], false))
+              vResult.emplace_back(idL, idR);
+
+        // Check the child nodes extents
+        for (bucket_id_type iChildL = 0; iChildL < this->_nChild; ++iChildL)
+        {
+          if (!nodeL.HasChild(iChildL))
+            continue;
+
+          autoc& itNodeLL = tL._nodes.find(flagPrefixL | iChildL);
+          for (bucket_id_type iChildR = 0; iChildR < this->_nChild; ++iChildR)
+          {
+            if (!nodeR.HasChild(iChildR))
+              continue;
+
+            autoc itNodeRR = tR._nodes.find(flagPrefixR | iChildR);
+            if (_Ad::are_boxes_overlaped(itNodeLL->second.box, itNodeRR->second.box, false))
+              q.emplace(itNodeLL, itNodeRR);
+          }
+        }
+      }
+      return vResult;
     }
   };
 
-
-
   // Aliases
+  using Point1D = NTree::Point<1>;
+  using Point2D = NTree::Point<2>;
+  using Point3D = NTree::Point<3>;
 
-  template<typename TReal, dim_type nDimension>
-  using Point = array<TReal, nDimension>;
+  using BoundingBox1D = NTree::BoundingBox<1>;
+  using BoundingBox2D = NTree::BoundingBox<2>;
+  using BoundingBox3D = NTree::BoundingBox<3>;
+
+  // Dualtree for points
+  using DualtreePoint = NTree::NTreePoint<1, Point1D, BoundingBox1D>;
+
+  // Dualtree for bounding boxes
+  using DualtreeBox = NTree::NTreeBoundingBox<1, Point1D, BoundingBox1D>;
+
+  // Quadtree for points
+  using QuadtreePoint = NTree::NTreePoint<2, Point2D, BoundingBox2D>;
+
+  // Quadtree for bounding boxes
+  using QuadtreeBox = NTree::NTreeBoundingBox<2, Point2D, BoundingBox2D>;
+
+  // Octree for points
+  using OctreePoint = NTree::NTreePoint<3, Point3D, BoundingBox3D>;
+
+  // Octree for bounding boxes
+  using OctreeBox = NTree::NTreeBoundingBox<3, Point3D, BoundingBox3D>;
+
+  // Hexatree for points
+  using HexatreePoint = NTree::NTreePoint<4, NTree::Point<4>, NTree::BoundingBox<4>>;
 }
 
 
-using Point1D = n_ary_tree::Point<double, 1>;
-using Point2D = n_ary_tree::Point<double, 2>;
-using Point3D = n_ary_tree::Point<double, 3>;
 
-using BoundingBox1D = n_ary_tree::BoundingBox<1, double>;
-using BoundingBox2D = n_ary_tree::BoundingBox<2, double>;
-using BoundingBox3D = n_ary_tree::BoundingBox<3, double>;
-
-using DualtreePoint = n_ary_tree::n_ary_tree_point<1, Point1D, BoundingBox1D, double>;
-using DualtreeBox = n_ary_tree::n_ary_tree_bounding_box<1, Point1D, BoundingBox1D, double>;
-
-using QuadtreePoint = n_ary_tree::n_ary_tree_point<2, Point2D, BoundingBox2D, double>;
-using QuadtreeBox = n_ary_tree::n_ary_tree_bounding_box<2, Point2D, BoundingBox2D, double>;
-
-using OctreePoint = n_ary_tree::n_ary_tree_point<3, Point3D, BoundingBox3D, double>;
-using OctreeBox = n_ary_tree::n_ary_tree_bounding_box<3, Point3D, BoundingBox3D, double>;
-
-using HexatreePoint = n_ary_tree::n_ary_tree_point<4, n_ary_tree::Point<double, 4>, n_ary_tree::BoundingBox<4, double>, double>;
 
 
 #ifdef undef_autoc
