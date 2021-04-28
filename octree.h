@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2021 Attila Csikós
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #ifndef NTREE_GUARD
 #define NTREE_GUARD
 
@@ -124,7 +148,6 @@ namespace NTree
 
       return true;
     }
-
 
 
     static constexpr bool does_point_touch_box(box_type const& box, point_type const& pt)
@@ -444,7 +467,7 @@ namespace NTree
       return nodeChild;
     }
 
-    bool _IsEveryItemIdAreUnique() const
+    bool _isEveryItemIdUnique() const
     {
       auto ids = vector<entity_id_type>();
       ids.reserve(100);
@@ -463,7 +486,7 @@ namespace NTree
       if (kNode == kNodeSmallest)
       {
         this->_nodes.at(kNode).vid.emplace_back(id);
-        assert(this->_IsEveryItemIdAreUnique()); // Assert means: index is already added. Wrong input!
+        assert(this->_isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
         return true;
       }
 
@@ -500,7 +523,7 @@ namespace NTree
           itNode->second.vid.emplace_back(id);
       }
 
-      assert(this->_IsEveryItemIdAreUnique()); // Assert means: index is already added. Wrong input!
+      assert(this->_isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
       return true;
     }
 
@@ -678,7 +701,7 @@ namespace NTree
         node.second.vid.swap(vid);
       });
 
-      assert(_IsEveryItemIdAreUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
+      assert(_isEveryItemIdUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
     }
 
 
@@ -820,7 +843,7 @@ namespace NTree
 
       autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
       autoc idLocation = Morton(aGrid);
-      auto kNode = this->GetHash(this->_nDepthMax, idLocation);
+      autoc kNode = this->GetHash(this->_nDepthMax, idLocation);
 
       return this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf);
     }
