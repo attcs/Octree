@@ -1,7 +1,9 @@
 # C++ Octree/Quadtree/N-dimensional linear tree
 Lightweight, non-storing implementation of an Octree using Morton Z curve-based location code ordering.<br>
 Usually, geometrical objects and their metadata are already stored in a database, to making faster the creation process, only the id-s are stored. Point and Bounding box based solution was distinguished.<br>
-A major advantage of this solution, that can be easily adapted for custom-defined Point and Bounding box object using AdaptorConcept.
+A major advantage of this solution, that can be easily adapted for custom-defined Point and Bounding box object using AdaptorConcept.<br>
+<br>
+What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Requirements
 * Language standard: C++20 or above
@@ -19,14 +21,17 @@ A major advantage of this solution, that can be easily adapted for custom-define
 * If less element is collected in a node than the max element then the child node won't be created.
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
 * Basic point and bounding box objects are available, but adaptors can be used to attach into an already developed system.
+* The underlying container is a hash-table (`std::unordered_map`).
+* Higher dimensional tree definition is available for more advanced problems.
+
 
 ## Basic examples
 ```C++
-    ...
+    include "octree.h"
     using namespace NTree;
     
     auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
-    auto const octree = OctreePoint(points, 3 /*max depth*/);
+    auto const octree = OctreePoint::Create(points, 3 /*max depth*/);
     
     auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5}}
     auto const ids = octree.RangeSearch(search_box, points); // returns { 1, 2 }
