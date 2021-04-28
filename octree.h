@@ -1,5 +1,5 @@
-#ifndef N_ARY_TREE_GUARD
-#define N_ARY_TREE_GUARD
+#ifndef NTREE_GUARD
+#define NTREE_GUARD
 
 #include <array>
 #include <bitset>
@@ -50,7 +50,6 @@ namespace NTree
   
   using bucket_id_type = uint8_t;
 
-  using max_noelement = uint16_t;
 
 
   template<dim_type nDimension, typename geometry_type = double>
@@ -69,11 +68,11 @@ namespace NTree
   template <class adaptor_type, typename point_type, typename box_type, typename geometry_type = double>
   concept AdaptorBasicsConcept =
     requires (point_type & pt, dim_type iDimension) { {adaptor_type::point_comp(pt, iDimension)}->std::convertible_to<geometry_type&>; }
-    &&requires (point_type const& pt, dim_type iDimension) { {adaptor_type::point_comp_c(pt, iDimension)}->std::convertible_to<geometry_type const&>; }
+    &&requires (point_type const& pt, dim_type iDimension) { {adaptor_type::point_comp_c(pt, iDimension)}->std::convertible_to<geometry_type>; }
     && requires (box_type & box) { { adaptor_type::box_min(box) }->std::convertible_to<point_type &>; }
     && requires (box_type & box) { { adaptor_type::box_max(box) }->std::convertible_to<point_type &>; }
-    && requires (box_type const& box) { { adaptor_type::box_min_c(box) }->std::convertible_to<point_type const&>; }
-    && requires (box_type const& box) { { adaptor_type::box_max_c(box) }->std::convertible_to<point_type const&>; }
+    && requires (box_type const& box) { { adaptor_type::box_min_c(box) }->std::convertible_to<point_type>; }
+    && requires (box_type const& box) { { adaptor_type::box_max_c(box) }->std::convertible_to<point_type>; }
   ;
 
   template <class adaptor_type, typename point_type, typename box_type, typename geometry_type = double>
@@ -126,13 +125,43 @@ namespace NTree
       return true;
     }
 
+
+
+    static constexpr bool does_point_touch_box(box_type const& box, point_type const& pt)
+    {
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        if ((base::point_comp_c(base::box_min_c(box), iDimension) == base::point_comp_c(pt, iDimension)))
+          return false;
+
+      return true;
+    }
+
+    enum EBoxRelation : int8_t { Overlapped = -1, Adjecent = 0, Separated = 1 };
+    static constexpr EBoxRelation box_relation(box_type const& e1, box_type const& e2)
+    {
+      enum EBoxRelationCandidate : uint8_t { OverlappedC = 0x1, AdjecentC = 0x2, SeparatedC = 0x4 };
+      int8_t rel = 0;
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+      {
+        if (base::point_comp_c(base::box_min_c(e1), iDimension) < base::point_comp_c(base::box_max_c(e2), iDimension) && base::point_comp_c(base::box_max_c(e1), iDimension) > base::point_comp_c(base::box_min_c(e2), iDimension))
+          rel |= EBoxRelationCandidate::OverlappedC;
+        else if (base::point_comp_c(base::box_min_c(e1), iDimension) == base::point_comp_c(base::box_max_c(e2), iDimension) || base::point_comp_c(base::box_max_c(e1), iDimension) == base::point_comp_c(base::box_min_c(e2), iDimension))
+          rel |= EBoxRelationCandidate::AdjecentC;
+        else if (base::point_comp_c(base::box_min_c(e1), iDimension) > base::point_comp_c(base::box_max_c(e2), iDimension) || base::point_comp_c(base::box_max_c(e1), iDimension) < base::point_comp_c(base::box_min_c(e2), iDimension))
+          return EBoxRelation::Separated;
+      }
+      return (rel & EBoxRelationCandidate::AdjecentC) == EBoxRelationCandidate::AdjecentC ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
+    }
+
     static constexpr bool are_boxes_overlapped(box_type const& e1, box_type const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false)
     {
+      autoc e1_contains_e2min = does_box_contain_point(e1, base::box_min_c(e2));
+
       return e1_must_contain_e2
         ? does_box_contain_point(e1, base::box_min_c(e2)) && does_box_contain_point(e1, base::box_max_c(e2))
-        : fOverlapPtTouchAllowed 
+        : fOverlapPtTouchAllowed
           ? does_box_contain_point(e1, base::box_min_c(e2)) || does_box_contain_point(e1, base::box_max_c(e2)) || does_box_contain_point(e2, base::box_max_c(e1))
-          : does_box_contain_point_strict(e1, base::box_min_c(e2)) || does_box_contain_point_strict(e1, base::box_max_c(e2)) || are_boxes_overlapped(e1, e2) || are_boxes_overlapped(e2, e1)
+          : box_relation(e1, e2) == EBoxRelation::Overlapped
         ;
     }
 
@@ -332,20 +361,25 @@ namespace NTree
 
   // NTrees
 
+  using entity_id_type = size_t;
+  using tree_id_type = location_id_type; // same as the location_id_type, but depth is signed by a sentinel bit.
+  using max_noelement = uint16_t;
+
   // NTreeLinear: Non-owning base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
   class NTreeLinear
   {
   protected:
     static bucket_id_type constexpr _nChild = pow_ce(2, nDimension);
+    static_assert(nDimension < CHAR_BIT * sizeof(_nChild));
 
     using _Ad = adaptor_type;
     static_assert(AdaptorConcept<_Ad, point_type, box_type, geometry_type>);
 
-  public:
-    using entity_id_type = size_t;
-    using tree_id_type = location_id_type; // same as the location_id_type, but depth is signed by a sentinel bit.
+    // Type system determinated maximal depth.
+    static bucket_id_type constexpr _nDepthMaxTheoretical = (CHAR_BIT * sizeof(tree_id_type) - 1/*sentinal bit*/) / nDimension;
 
+  public:
     struct Node
     {
     private:
@@ -382,7 +416,8 @@ namespace NTree
       vector<entity_id_type>::iterator itEnd;
     };
 
-  protected: // aid functions
+  protected: // Aid functions
+
     static inline vector<entity_id_type> _generatePointId(size_t n)
     {
       auto vidPoint = vector<entity_id_type>(n);
@@ -409,7 +444,69 @@ namespace NTree
       return nodeChild;
     }
 
-  public:
+    bool _IsEveryItemIdAreUnique() const
+    {
+      auto ids = vector<entity_id_type>();
+      ids.reserve(100);
+      std::ranges::for_each(_nodes, [&](auto& node)
+      {
+        ids.insert(end(ids), begin(node.second.vid), end(node.second.vid));
+      });
+
+      std::ranges::sort(ids);
+      autoc itEndUnique = std::unique(begin(ids), end(ids));
+      return itEndUnique == end(ids);
+    }
+
+    bool _insert(tree_id_type kNode, tree_id_type kNodeSmallest, entity_id_type id, bool fInsertToLeaf)
+    {
+      if (kNode == kNodeSmallest)
+      {
+        this->_nodes.at(kNode).vid.emplace_back(id);
+        assert(this->_IsEveryItemIdAreUnique()); // Assert means: index is already added. Wrong input!
+        return true;
+      }
+
+      if (fInsertToLeaf)
+      {
+        auto& nodeNew = this->_nodes[kNode];
+        nodeNew.vid.emplace_back(id);
+        nodeNew.box = this->CalculateExtent(kNode);
+
+        // Create all child between the new (kNode) and the smallest existing one (kNodeSmallest)
+        auto kNodeParent = kNode;
+        do
+        {
+          autoc iChild = GetChildPartOfLocation<nDimension>(kNodeParent);
+          kNodeParent = kNodeParent >>= nDimension;
+          assert(kNodeParent);
+          auto& nodeParent = this->_nodes[kNodeParent];
+          nodeParent.EnableChild(iChild);
+          nodeParent.box = this->CalculateExtent(kNodeParent);
+        } while (kNodeParent != kNodeSmallest);
+      }
+      else
+      {
+        autoc itNode = this->_nodes.find(kNodeSmallest);
+        if (itNode->second.IsAnyChildExist())
+        {
+          autoc nDepth = this->GetDepth(kNodeSmallest);
+          autoc kNodeChild = kNode << (nDimension * (this->_nDepthMax - nDepth - 1));
+          autoc iChild = GetChildPartOfLocation<nDimension>(kNodeChild);
+          auto& nodeChild = this->_createChild(itNode->second, iChild, kNodeChild);
+          nodeChild.vid.emplace_back(id);
+        }
+        else
+          itNode->second.vid.emplace_back(id);
+      }
+
+      assert(this->_IsEveryItemIdAreUnique()); // Assert means: index is already added. Wrong input!
+      return true;
+    }
+
+
+  public: // Static aid functions
+
     static constexpr size_t EstimateNodeNumber(size_t n, bucket_id_type nDepthMax, max_noelement nElementMax)
     {
       assert(nElementMax > 0);
@@ -424,6 +521,11 @@ namespace NTree
     {
       assert(key < (tree_id_type(1) << (level * nDimension)));
       return (1 << (level * nDimension)) | key;
+    }
+
+    static constexpr tree_id_type GetRootKey()
+    { 
+      return GetHash(0, 0);
     }
 
     static constexpr bucket_id_type GetDepth(tree_id_type key)
@@ -444,7 +546,10 @@ namespace NTree
 
     }
 
-    size_t GetSize() const { return _nodes.size(); }
+
+  public: // Getters
+
+    size_t GetNodeSize() const { return _nodes.size(); }
     auto const& GetBox() const { return _box; }
     auto const& Get() const { return _nodes; }
     auto const& Get(tree_id_type key) const { return _nodes.at(key); }
@@ -452,11 +557,14 @@ namespace NTree
     auto GetResolutionMax() const { return _nRasterResolutionMax; }
 
 
+  public: // Main service functions
+
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
     void Init(box_type const& box, bucket_id_type nDepthMax, max_noelement nElementMax = 11)
     {
       assert(this->_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree is wanted to be reset, use the Clear() function before init.
       assert(nDepthMax > 1);
+      assert(nDepthMax <= _nDepthMaxTheoretical);
       assert(nElementMax > 1);
       assert(CHAR_BIT * sizeof(_nRasterResolutionMax) >= _nDepthMax);
 
@@ -470,7 +578,7 @@ namespace NTree
     }
 
 
-    // Visit nodes with special selection and procedure
+    // Visit nodes with special selection and procedure in breadth-first search order
     template<typename fnSelector, typename fnProcedure>
     void VisitNodes(location_id_type kRoot, fnSelector const& selector, fnProcedure const& procedure) const
     {
@@ -520,7 +628,7 @@ namespace NTree
         {
           if (item.pNode.HasChild(iChild))
           {
-            autoc kChild = GetHash(nDepthChild, flagPrefix + iChild);
+            autoc kChild = flagPrefix | iChild;
             autoc& pNodeChild = _nodes.at(kChild);
             if (item.fUnconditional)
               q.push({ kChild, pNodeChild, nDepthChild, true });
@@ -532,30 +640,50 @@ namespace NTree
     }
 
 
+    // Collect all item id, traversing the tree in breadth-first search order
+    vector<entity_id_type> CollectAllIdInBFS() const
+    {
+      auto ids = vector<size_t>();
+      ids.reserve(GetNodeSize() * std::max(2, _nElementMax / 2));
+
+      VisitNodes(GetRootKey()
+        , [](autoc key, autoc& node) { return true; }
+        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+      );
+      return ids;
+    }
+
+
+    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
     bool EraseId(entity_id_type id)
     {
       return std::ranges::any_of(_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, id); });
     }
 
 
+    // Update all element which are in the given hash-table. Elements will be erased if the replacement id is std::numeric_limits<entity_id_type>::max().
     void UpdateIndexes(unordered_map<entity_id_type, entity_id_type> const& vIndexOldNew)
     {
       autoc itEnd = std::end(vIndexOldNew);
       std::ranges::for_each(_nodes, [&](auto& node)
       {
-        std::ranges::for_each(node.vid, [&](auto& id)
+        auto vid = vector<entity_id_type>(node.second.vid.size());
+        std::ranges::transform(node.second.vid, begin(vid), [&](autoc& id)
         {
           autoc it = vIndexOldNew.find(id);
-          if (it != itEnd)
-            id = it->second;
+          return it == itEnd ? id : it->second;
         });
 
-        std::erase_if(node.vid, [](autoc id) { return id == std::numeric_limits<entity_id_type>::max(); });
+        std::erase_if(vid, [](autoc id) { return id == std::numeric_limits<entity_id_type>::max(); });
+        node.second.vid.swap(vid);
       });
+
+      assert(_IsEveryItemIdAreUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
     }
 
 
-    box_type GetExtent(tree_id_type key) const
+    // Calculate extent by box of the tree and the key of the node 
+    box_type CalculateExtent(tree_id_type key) const
     {
       auto e = box_type();
       _Ad::box_min(e) = _Ad::box_min_c(_box);
@@ -583,10 +711,11 @@ namespace NTree
     }
 
 
+    // Remove all elements and ids, except Root
     void Clear()
     {
-      erase_if(_nodes, [](autoc& p) { return p != GetHash(0, 0); });
-      _nodes[GetHash(0, 0)].vid.clear();
+      erase_if(_nodes, [](autoc& p) { return p.first != GetRootKey(); });
+      _nodes.at(GetRootKey()).vid.clear();
     }
 
 
@@ -595,7 +724,7 @@ namespace NTree
   };
 
 
-
+  // NTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
   class NTreePoint : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
@@ -604,8 +733,6 @@ namespace NTree
     using base::_NodePartitioner;
     using base::_Ad;
   public:
-    using base::entity_id_type;
-    using base::tree_id_type;
     using base::Node;
 
   private:
@@ -635,7 +762,7 @@ namespace NTree
     }
 
 
-  public:
+  public: // Create
 
     // Create
     static NTreePoint Create(span<point_type const> const& vpt, bucket_id_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_noelement nElementMaxInNode = 11)
@@ -677,7 +804,9 @@ namespace NTree
       return tree;
     }
 
-  public: // edit functions
+
+  public: // Edit functions
+
 
     // Insert item into a node. If fInsertToLeaf is true: The smallest node will be chosen by the max depth. If fInsertToLeaf is false: The smallest existing level on the branch will be chosen.
     bool Insert(entity_id_type id, point_type const& pt, bool fInsertToLeaf = false)
@@ -689,78 +818,58 @@ namespace NTree
       if (!kNodeSmallest)
         return false;
 
-      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->_nRasterResolutionMax).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
       autoc idLocation = Morton(aGrid);
       auto kNode = this->GetHash(this->_nDepthMax, idLocation);
 
-      if (kNode == kNodeSmallest)
-      {
-        this->_nodes.at(kNode).vid.emplace_back(id);
-        return true;
-      }
-
-      if (fInsertToLeaf)
-      {
-        auto& nodeNew = this->_nodes[kNode];
-        nodeNew.vid.emplace_back(id);
-        nodeNew.box = this->GetExtent(kNode);
-
-        // Create all child between the new (kNode) and the smallest existing one (kNodeSmallest)
-        auto kNodeParent = kNode;
-        do
-        {
-          autoc iChild = GetChildPartOfLocation<nDimension>(kNodeParent);
-          kNodeParent = kNodeParent >>= nDimension;
-          assert(kNodeParent);
-          auto& nodeParent = this->_nodes[kNodeParent];
-          nodeParent.EnableChild(iChild);
-          nodeParent.box = this->GetExtent(kNodeParent);
-        } while (kNodeParent != kNodeSmallest);
-      }
-      else
-      {
-        autoc itNode = this->_nodes.find(kNodeSmallest);
-        if (itNode->second.IsAnyChildExist())
-        {
-          autoc nDepth = this->GetDepth(kNodeSmallest);
-          autoc kNodeChild = kNode << (nDimension * (this->_nDepthMax - nDepth - 1));
-          autoc iChild = GetChildPartOfLocation<nDimension>(kNodeChild);
-          auto& nodeChild = this->_createChild(itNode->second, iChild, kNodeChild);
-          nodeChild.vid.emplace_back(id);
-        }
-        else
-          itNode->second.vid.emplace_back(id);
-      }
-
-      return true;
+      return this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf);
     }
 
+
+    // Erase id, aided with the original point
     bool Erase(entity_id_type id, point_type const& pt)
     {
       autoc kOld = FindSmallestNode(pt);
       if (!kOld)
         return false; // old box is not in the handled space domain
 
-      return this->_nodes.at(kOld).vid.erase(id); // if 0, id was not registered previously.
+      auto& vid = this->_nodes.at(kOld).vid;
+      autoc itRemove = std::remove(begin(vid), end(vid), id);
+      if (itRemove == end(vid))
+        return false; // id was not registered previously.
+
+      vid.erase(itRemove, vid.end());
+      return true;
     }
 
+
+    // Update id by the new point information
     bool Update(entity_id_type id, point_type const& ptNew)
     {
+      if (!_Ad::does_box_contain_point(this->_box, ptNew))
+        return false;
+
       if (!this->EraseId(id))
         return false;
 
       return this->Insert(id, ptNew);
     }
 
+
+    // Update id by the new point information and the erase part is aided by the old point geometry data
     void Update(entity_id_type id, point_type const& ptOld, point_type const& ptNew)
     {
+      if (!_Ad::does_box_contain_point(this->_box, ptNew))
+        return false;
+
       if (!this->EraseId(id, ptOld))
         return false;
 
       return this->Insert(id, ptNew);
     }
 
-  public:
+
+  public: // Search functions
 
     // Find smallest node which contains the box
     tree_id_type FindSmallestNode(point_type const& pt) const
@@ -775,34 +884,40 @@ namespace NTree
       return 0; // Not found
     }
 
+
     // Range search
     vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt) const
     {
-      auto vidFound = vector<entity_id_type>();
+      // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        if (_Ad::point_comp_c(_Ad::box_min_c(range), iDimension) == _Ad::point_comp_c(_Ad::box_max_c(range), iDimension))
+          return {};
 
+      auto vidFound = vector<entity_id_type>();
       this->VisitNodes(base::GetHash(0, 0)
         , [&](Node const& pNode)
           {
-            return are_boxes_overlapped(range, pNode.box, false);
+            return _Ad::are_boxes_overlapped(range, pNode.box, false);
           }
         , [&](Node const& pNode)
           {
-            return are_boxes_overlapped(range, pNode.box, true);
+            return _Ad::are_boxes_overlapped(range, pNode.box, true);
           }
         , [&](Node const& pNode, bool fUnconditional)
           {
             if (fUnconditional)
               vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
             else
-              std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return does_box_contain_point(range, vpt[id]); });
+              std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); });
           }
       );
 
       return vidFound;
     }
-
   };
 
+
+  // NTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
   class NTreeBoundingBox : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
@@ -812,11 +927,10 @@ namespace NTree
     using base::_Ad;
 
   public:
-    using base::entity_id_type;
-    using base::tree_id_type;
     using base::Node;
 
-  private:
+  private: // Aid functions
+
     static inline vector<array<location_id_type, 2>> _getLocationId(vector<array<array<grid_id_type, nDimension>, 2>> const& vidGrid)
     {
       auto vidLocation = vector<array<location_id_type, 2>>(vidGrid.size());
@@ -847,7 +961,42 @@ namespace NTree
     }
 
 
-  public:
+    void _rangeSearchRec(vector<entity_id_type>& vidFound, tree_id_type kCurrent, Node const& pNode, bucket_id_type nDepth, box_type const& range, span<box_type const> const& vExtent, bool fFullyContained, bool fUnconditional) const
+    {
+      ++nDepth;
+      autoc flagPrefix = kCurrent << nDimension;
+
+      if (fUnconditional)
+      {
+        vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
+
+        for (bucket_id_type i = 0; i < base::_nChild; ++i)
+        {
+          if (pNode.HasChild(i))
+          {
+            autoc kChild = flagPrefix | i;
+            _rangeSearchRec(vidFound, kChild, this->_nodes.at(kChild), nDepth, range, vExtent, fFullyContained, true);
+          }
+        }
+      }
+      else
+      {
+        std::ranges::copy_if(pNode.vid, std::back_inserter(vidFound), [&](autoc id) { return _Ad::are_boxes_overlapped(range, vExtent[id], fFullyContained); });
+        for (bucket_id_type i = 0; i < base::_nChild; ++i)
+        {
+          if (pNode.HasChild(i))
+          {
+            autoc kChild = flagPrefix | i;
+            autoc& pNodeChild = this->_nodes.at(kChild);
+            if (_Ad::are_boxes_overlapped(range, pNodeChild.box, false))
+              _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, _Ad::are_boxes_overlapped(range, pNodeChild.box, true));
+          }
+        }
+      }
+    }
+
+  public: // Create
+
     static NTreeBoundingBox Create(span<box_type const> const& vExtent, bucket_id_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_noelement nElementMaxInNode = 11)
     {
       auto tree = NTreeBoundingBox{};
@@ -892,12 +1041,13 @@ namespace NTree
       return tree;
     }
 
-  public:
+
+  public: // Edit functions
 
     // Find smallest node which contains the box
     tree_id_type FindSmallestNode(box_type const& box) const
     {
-      autoc aGrid = resolve_grid_id({ box }, this->_box.Min, this->_box.Max, this->_nRasterResolutionMax).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
       auto idLocationMin = Morton(aGrid[0]);
       auto idLocationMax = Morton(aGrid[1]);
 
@@ -905,82 +1055,64 @@ namespace NTree
       for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; flagDiffOfLocation; flagDiffOfLocation >>= nDimension, --nDepth)
         idLocationMin >>= nDimension;
 
-      for (auto kSmallestNode = GetHash(nDepth, idLocationMin); kSmallestNode; kSmallestNode >>= nDimension)
-        if (this->_nodes.find(kSmallestNode))
+      autoc itEnd = std::end(this->_nodes);
+      for (auto kSmallestNode = this->GetHash(nDepth, idLocationMin); kSmallestNode; kSmallestNode >>= nDimension)
+        if (this->_nodes.find(kSmallestNode) != itEnd)
           return kSmallestNode;
 
       return 0; // Not found
     }
 
 
-    bool Insert(entity_id_type id, box_type const& ext, bool fInsertToLeaf = false)
+    // Insert item into a node. If fInsertToLeaf is true: The smallest node will be chosen by the max depth. If fInsertToLeaf is false: The smallest existing level on the branch will be chosen.
+    bool Insert(entity_id_type id, box_type const& box, bool fInsertToLeaf = false)
     {
-      if (!_Ad::are_boxes_overlapped(this->_box, ext))
+      if (!_Ad::are_boxes_overlapped(this->_box, box))
         return false;
 
-      autoc kNew = FindSmallestNode(ext);
-      if (!kNew)
+      autoc kNodeSmallest = FindSmallestNode(box);
+      if (!kNodeSmallest)
         return false; // new box is not in the handled space domain
 
-      autoc aGrid = resolve_grid_id({ ext }, this->_box.Min, this->_box.Max, this->_nRasterResolutionMax).at(0);
-      auto idLocationMin = Morton(aGrid[0]);
-      auto idLocationMax = Morton(aGrid[1]);
-      autoc idLocation = idLocationMin & idLocationMax;
+      autoc aGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
+      autoc idLocationMin = Morton(aGrid[0]);
+      autoc idLocationMax = Morton(aGrid[1]);
 
-      autoce maskLastBits1 = base::_nChild - 1;
+      auto nDepthCommon = 0;
+      for (auto idLocationDiff = idLocationMin ^ idLocationMax; idLocationDiff; idLocationDiff >>= nDimension)
+        ++nDepthCommon;
 
-      auto iChildMin = GetChildPartOfLocation<nDimension>(idLocationMin);
-      auto iChildMax = GetChildPartOfLocation<nDimension>(idLocationMax);
-
-      auto idLocationTree = idLocation;
-      auto nDepthMaxBox = this->_nDepthMax;
-      for (; nDepthMaxBox > 0 && (maskLastBits1 & idLocationTree) == 0 && iChildMin != iChildMax; --nDepthMaxBox)
-      {
-        idLocationMin >>= nDimension;
-        idLocationMax >>= nDimension;
-
-        iChildMin = GetChildPartOfLocation<nDimension>(idLocationMin);
-        iChildMax = GetChildPartOfLocation<nDimension>(idLocationMax);
-
-        idLocationTree >>= nDimension;
-      }
-
-      auto iChild = numeric_limits<bucket_id_type>::max();
-      autoc itEnd = end(this->_nodes);
-      for (auto iDepth = nDepthMaxBox; iDepth >= 0; --iDepth, iChild = GetChildPartOfLocation<nDimension>(idLocationTree), idLocationTree >>= nDimension)
-      {
-        autoc kNode = GetHash(iDepth, idLocationTree);
-        autoc itNode = this->_nodes.find(kNode);
-        if (itNode == itEnd)
-          continue;
-
-        if (itNode.second.IsAnyChildExist() && iChild != numeric_limits<bucket_id_type>::max())
-        {
-          auto& nodeChild = _createChild(itNode->second, iChild, (kNode << nDimension) | iChild);
-          nodeChild.vid.emplace_back(id);
-        }
-        else
-          itNode.second.vid.emplace_back(id);
-
-        break;
-      }
-      //! fInsertToLeaf
-      return true;
+      autoc nDepth = this->_nDepthMax - nDepthCommon;
+      autoc idLocation = (idLocationMin & idLocationMax) >> nDepthCommon;
+      
+      autoc kNode = this->GetHash(nDepth, idLocation);
+      return this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf);
     }
 
 
+    // Erase id, aided with the original bounding box
     bool Erase(entity_id_type id, box_type const& ext)
     {
       autoc kOld = FindSmallestNode(ext);
       if (!kOld)
         return false; // old box is not in the handled space domain
 
-      return this->_nodes.at(kOld).vid.erase(id); // if 0, id was not registered previously.
+      auto& vid = this->_nodes.at(kOld).vid;
+      autoc itRemove = std::remove(begin(vid), end(vid), id);
+      if (itRemove == end(vid))
+        return false; // id was not registered previously.
+
+      vid.erase(itRemove, vid.end());
+      return true;
     }
 
 
+    // Update id by the new bounding box information
     bool Update(entity_id_type id, box_type const& extNew)
     {
+      if (!_Ad::are_boxes_overlapped(this->_box, extNew))
+        return false;
+
       if (!this->EraseId(id))
         return false;
 
@@ -988,8 +1120,12 @@ namespace NTree
     }
 
 
+    // Update id by the new point information and the erase part is aided by the old bounding box geometry data
     bool Update(entity_id_type id, box_type const& extOld, box_type const& extNew)
     {
+      if (!_Ad::are_boxes_overlapped(this->_box, extNew))
+        return false;
+
       if (!this->Erase(id, extOld))
         return false; // id was not registered previously.
 
@@ -997,69 +1133,38 @@ namespace NTree
     }
 
 
-
-  public:
+  public: // Search functions
+    
+    // Pick search
     vector<entity_id_type> PickSearch(point_type const& ptPick, span<box_type const> const& vExtent) const
     {
-      autoc aGrid = resolve_grid_id({ ptPick }, this->_box.Min, this->_box.Max, this->_nRasterResolutionMax).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ ptPick }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
       autoc idLocation = Morton(aGrid);
-
-      auto kNode = GetHash(this->_nDepthMax, idLocation);
 
       auto vidFound = vector<entity_id_type>();
       vidFound.reserve(100);
       autoc itEnd = std::end(this->_nodes);
-      for (auto iDepth = this->_nDepthMax; iDepth >= 0; --iDepth, kNode >>= nDimension)
+      for (auto kNode = this->GetHash(this->_nDepthMax, idLocation); kNode > 0; kNode >>= nDimension)
       {
         autoc itNode = this->_nodes.find(kNode);
         if (itNode == itEnd)
           continue;
 
-        std::ranges::copy_if(itNode->second.vid, [&](autoc id) { return does_box_contain_point(vExtent[id], ptPick); });
+        std::ranges::copy_if(itNode->second.vid, back_inserter(vidFound), [&](autoc id) { return _Ad::does_box_contain_point(vExtent[id], ptPick); });
       }
 
       return vidFound;
     }
 
-  private: // Range search helper
-    void _rangeSearchRec(vector<entity_id_type>& vidFound, tree_id_type kCurrent, Node const& pNode, bucket_id_type nDepth, box_type const& range, span<box_type const> const& vExtent, bool fFullyContained, bool fUnconditional) const
-    {
-      ++nDepth;
-      autoc flagPrefix = kCurrent << nDimension;
 
-      if (fUnconditional)
-      {
-        vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
-
-        for (bucket_id_type i = 0; i < base::_nChild; ++i)
-        {
-          if (pNode.HasChild(i))
-          {
-            autoc kChild = flagPrefix | i;
-            _rangeSearchRec(vidFound, kChild, this->_nodes.at(kChild), nDepth, range, vExtent, fFullyContained, true);
-          }
-        }
-      }
-      else
-      {
-        std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return are_boxes_overlapped(range, vExtent[id], fFullyContained); });
-        for (bucket_id_type i = 0; i < base::_nChild; ++i)
-        {
-          if (pNode.HasChild(i))
-          {
-            autoc kChild = flagPrefix | i;
-            autoc& pNodeChild = this->_nodes.at(kChild);
-            if (are_boxes_overlapped(range, pNodeChild.box, false))
-              _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, are_boxes_overlapped(range, pNodeChild.box, true));
-          }
-        }
-      }
-    }
-
-  public:
     // Range search
     vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vExtent, bool fFullyContained = true) const
     {
+      // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        if (_Ad::point_comp_c(_Ad::box_min_c(range), iDimension) == _Ad::point_comp_c(_Ad::box_max_c(range), iDimension))
+          return {};
+
       auto vidFound = vector<entity_id_type>();
       vidFound.reserve(100);
       autoce kRoot = base::GetHash(0, 0);
@@ -1067,6 +1172,7 @@ namespace NTree
 
       return vidFound;
     }
+
 
     // Collision detection: Returns all overlapping boxes from the source trees.
     static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(NTreeBoundingBox const& tL, span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR)
@@ -1162,17 +1268,19 @@ namespace NTree
       return vResult;
     }
 
+
+    // Collision detection: Returns all overlapping boxes from the source trees.
     vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR) const
     {
       return CollisionDetection(*this, vExtentL, tR, vExtentR);
     }
   };
 
+
   // Aliases
   using Point1D = NTree::Point<1>;
   using Point2D = NTree::Point<2>;
   using Point3D = NTree::Point<3>;
-
   using BoundingBox1D = NTree::BoundingBox<1>;
   using BoundingBox2D = NTree::BoundingBox<2>;
   using BoundingBox3D = NTree::BoundingBox<3>;
@@ -1200,9 +1308,6 @@ namespace NTree
 }
 
 
-
-
-
 #ifdef undef_autoc
 #undef autoc
 #undef undef_autoc
@@ -1213,4 +1318,4 @@ namespace NTree
 #undef undef_autoce
 #endif
 
-#endif // N_ARY_TREE_GUARD
+#endif // NTREE_GUARD
