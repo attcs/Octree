@@ -188,7 +188,7 @@ namespace NTree
         ;
     }
 
-    static consteval box_type box_inverted_init()
+    static inline box_type box_inverted_init()
     {
       auto ext = box_type{};
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
@@ -202,8 +202,7 @@ namespace NTree
 
     static box_type box_of_points(span<point_type const> const& vPoint)
     {
-      autoce extC = box_inverted_init();
-      auto ext = extC;
+      auto ext = box_inverted_init();
       for (autoc& pt : vPoint)
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
@@ -219,8 +218,7 @@ namespace NTree
 
     static box_type box_of_boxes(span<box_type const> const& vExtent)
     {
-      autoce extC = box_inverted_init();
-      auto ext = extC;
+      auto ext = box_inverted_init();
       for (autoc& e : vExtent)
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
@@ -393,7 +391,7 @@ namespace NTree
   class NTreeLinear
   {
   protected:
-    static bucket_id_type constexpr _nChild = pow_ce(2, nDimension);
+    static bucket_id_type constexpr _nChild = static_cast<bucket_id_type>(pow_ce(2, nDimension));
     static_assert(nDimension < CHAR_BIT * sizeof(_nChild));
 
     using _Ad = adaptor_type;
@@ -593,7 +591,7 @@ namespace NTree
 
       this->_box = box;
       this->_nDepthMax = nDepthMax;
-      this->_nRasterResolutionMax = pow_ce(2, nDepthMax);
+      this->_nRasterResolutionMax = static_cast<bucket_id_type>(pow_ce(2, nDepthMax));
       this->_nElementMax = nElementMax;
 
       auto& nodeRoot = this->_nodes[GetHash(0, 0)];

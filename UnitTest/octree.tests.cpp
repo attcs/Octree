@@ -938,7 +938,7 @@ namespace CustomGeometryType
 
   struct AdaptorBasicsCustom
   {
-    static constexpr float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
+    static inline float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
     {
       switch (iDimension)
       {
