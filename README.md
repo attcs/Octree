@@ -106,7 +106,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
   struct AdaptorBasicsCustom
   {
-    static constexpr float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
+    static inline float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
     {
       switch (iDimension)
       {
@@ -126,8 +126,8 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
       }
     }
 
-    static constexpr Point2DCustom& box_min(BoundingBox2DCustom& box) { return box[0]; }
-    static constexpr Point2DCustom& box_max(BoundingBox2DCustom& box) { return box[1]; }
+    static inline Point2DCustom& box_min(BoundingBox2DCustom& box) { return box[0]; }
+    static inline Point2DCustom& box_max(BoundingBox2DCustom& box) { return box[1]; }
     static constexpr Point2DCustom const& box_min_c(BoundingBox2DCustom const& box) { return box[0]; }
     static constexpr Point2DCustom const& box_max_c(BoundingBox2DCustom const& box) { return box[1]; }
   };
