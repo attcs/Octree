@@ -35,6 +35,7 @@ SOFTWARE.
 #include <algorithm>
 #include <numeric>
 #include <concepts>
+#include <type_traits>
 
 #include <assert.h>
 
@@ -49,8 +50,56 @@ SOFTWARE.
 #define undef_autoce
 #endif
 
+#ifndef HASSERT
+#define HASSERT(isOk) assert(isOk); if (isOk) { exit(1); }
+#define UNDEF_HASSERT
+#endif
+
+
 namespace NTree
 {
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
+#endif
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(disable: 4715)
+#endif
+  // Crash the program if out_of_range exception is raised
+  template<typename var_type, typename index_type, typename container_type>
+  inline auto const& cont_at(container_type const& container, typename std::remove_reference_t<container_type>::key_type const& id)
+  {
+    try { return container.at(id); }
+    catch (std::out_of_range const&) { HASSERT(false); }
+  }
+
+  // Crash the program if out_of_range exception is raised
+  template<typename container_type>
+  inline auto& cont_at(container_type & container, typename std::remove_reference_t<container_type>::key_type const& id)
+  {
+    try { return container.at(id); }
+    catch (std::out_of_range const&) { HASSERT(false); }
+  }
+
+
+#ifdef _MSC_VER
+#pragma warning(default: 4715)
+#endif
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
   constexpr int pow_ce(int a, unsigned char e) { return e == 0 ? 1 : a * pow_ce(a, e - 1); }
 
   namespace
@@ -483,7 +532,7 @@ namespace NTree
     {
       if (kNode == kNodeSmallest)
       {
-        this->_nodes.at(kNode).vid.emplace_back(id);
+        cont_at(this->_nodes, kNode).vid.emplace_back(id);
         assert(this->_isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
         return true;
       }
@@ -573,7 +622,7 @@ namespace NTree
     size_t GetNodeSize() const { return _nodes.size(); }
     auto const& GetBox() const { return _box; }
     auto const& Get() const { return _nodes; }
-    auto const& Get(tree_id_type key) const { return _nodes.at(key); }
+    auto const& Get(tree_id_type key) const { return cont_at(_nodes, key); }
     auto GetDepthMax() const { return _nDepthMax; }
     auto GetResolutionMax() const { return _nRasterResolutionMax; }
 
@@ -607,8 +656,8 @@ namespace NTree
       for (q.push(kRoot); !q.empty(); q.pop())
       {
         autoc& key = q.front();
-        autoc& node = _nodes.at(key);
-        procedure(key, _nodes.at(key));
+        autoc& node = cont_at(_nodes, key);
+        procedure(key, node);
 
         autoc flagPrefix = key << nDimension;
         for (bucket_id_type iChild = 0; iChild < _nChild; ++iChild)
@@ -616,7 +665,7 @@ namespace NTree
           if (node.HasChild(iChild))
           {
             autoc kChild = flagPrefix | iChild;
-            if (selector(kChild, _nodes.at(kChild)))
+            if (selector(kChild, cont_at(_nodes, kChild)))
               q.push(kChild);
           }
         }
@@ -638,7 +687,7 @@ namespace NTree
 
       autoc nDepthRoot = GetDepth(kRoot);
       auto q = queue<_search>();
-      for (q.push({ kRoot, _nodes.at(kRoot), nDepthRoot, false }); !q.empty(); q.pop())
+      for (q.push({ kRoot, cont_at(_nodes, kRoot), nDepthRoot, false }); !q.empty(); q.pop())
       {
         autoc& item = q.front();
         procedure(item.pNode, item.fUnconditional);
@@ -650,7 +699,7 @@ namespace NTree
           if (item.pNode.HasChild(iChild))
           {
             autoc kChild = flagPrefix | iChild;
-            autoc& pNodeChild = _nodes.at(kChild);
+            autoc& pNodeChild = cont_at(_nodes, kChild);
             if (item.fUnconditional)
               q.push({ kChild, pNodeChild, nDepthChild, true });
             else if (selector(pNodeChild))
@@ -736,7 +785,7 @@ namespace NTree
     void Clear()
     {
       erase_if(_nodes, [](autoc& p) { return p.first != GetRootKey(); });
-      _nodes.at(GetRootKey()).vid.clear();
+      cont_at(_nodes, GetRootKey()).vid.clear();
     }
 
 
@@ -795,12 +844,12 @@ namespace NTree
       tree._nodes.reserve(base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
 
       autoce kRoot = base::GetHash(0, 0);
-      auto& nodeRoot = tree._nodes.at(kRoot);
+      auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
       autoc idLocationMax = pow_ce(tree._nRasterResolutionMax, nDimension);
       autoc aidGrid = resolve_grid_id<nDimension, point_type, _Ad>(vpt, _Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc aidLocation = _getLocationId(aidGrid);
-
+      
       auto vidPoint = base::_generatePointId(n);
       auto q = std::queue<_NodePartitioner>();
       auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, bucket_id_type(1), location_id_type(0), std::begin(vidPoint), std::end(vidPoint) };
@@ -839,7 +888,7 @@ namespace NTree
       if (!kNodeSmallest)
         return false;
 
-      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax())[0];
       autoc idLocation = Morton(aGrid);
       autoc kNode = this->GetHash(this->_nDepthMax, idLocation);
 
@@ -854,7 +903,7 @@ namespace NTree
       if (!kOld)
         return false; // old box is not in the handled space domain
 
-      auto& vid = this->_nodes.at(kOld).vid;
+      auto& vid = cont_at(this->_nodes, kOld).vid;
       autoc itRemove = std::remove(begin(vid), end(vid), id);
       if (itRemove == end(vid))
         return false; // id was not registered previously.
@@ -895,7 +944,7 @@ namespace NTree
     // Find smallest node which contains the box
     tree_id_type FindSmallestNode(point_type const& pt) const
     {
-      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->_nRasterResolutionMax).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->_nRasterResolutionMax)[0];
       autoc idLocation = Morton(aGrid);
 
       for (auto kSmallestNode = this->GetHash(this->_nDepthMax, idLocation); kSmallestNode; kSmallestNode >>= nDimension)
@@ -996,7 +1045,7 @@ namespace NTree
           if (pNode.HasChild(i))
           {
             autoc kChild = flagPrefix | i;
-            _rangeSearchRec(vidFound, kChild, this->_nodes.at(kChild), nDepth, range, vExtent, fFullyContained, true);
+            _rangeSearchRec(vidFound, kChild, cont_at(this->_nodes, kChild), nDepth, range, vExtent, fFullyContained, true);
           }
         }
       }
@@ -1008,7 +1057,7 @@ namespace NTree
           if (pNode.HasChild(i))
           {
             autoc kChild = flagPrefix | i;
-            autoc& pNodeChild = this->_nodes.at(kChild);
+            autoc& pNodeChild = cont_at(this->_nodes, kChild);
             if (_Ad::are_boxes_overlapped(range, pNodeChild.box, false))
               _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, _Ad::are_boxes_overlapped(range, pNodeChild.box, true));
           }
@@ -1030,7 +1079,7 @@ namespace NTree
       tree._nodes.reserve(base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
 
       autoce kRoot = base::GetHash(0, 0);
-      auto& nodeRoot = tree._nodes.at(kRoot);
+      auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
       autoc idLocationMax = pow_ce(tree._nRasterResolutionMax, nDimension);
       autoc aidGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vExtent, _Ad::box_min(tree._box), _Ad::box_max(tree._box), tree.GetResolutionMax());
@@ -1068,7 +1117,7 @@ namespace NTree
     // Find smallest node which contains the box
     tree_id_type FindSmallestNode(box_type const& box) const
     {
-      autoc aGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax())[0];
       auto idLocationMin = Morton(aGrid[0]);
       auto idLocationMax = Morton(aGrid[1]);
 
@@ -1095,7 +1144,7 @@ namespace NTree
       if (!kNodeSmallest)
         return false; // new box is not in the handled space domain
 
-      autoc aGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, box_type, point_type, _Ad>(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax())[0];
       autoc idLocationMin = Morton(aGrid[0]);
       autoc idLocationMax = Morton(aGrid[1]);
 
@@ -1118,7 +1167,7 @@ namespace NTree
       if (!kOld)
         return false; // old box is not in the handled space domain
 
-      auto& vid = this->_nodes.at(kOld).vid;
+      auto& vid = cont_at(this->_nodes, kOld).vid;
       autoc itRemove = std::remove(begin(vid), end(vid), id);
       if (itRemove == end(vid))
         return false; // id was not registered previously.
@@ -1159,7 +1208,7 @@ namespace NTree
     // Pick search
     vector<entity_id_type> PickSearch(point_type const& ptPick, span<box_type const> const& vExtent) const
     {
-      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ ptPick }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax()).at(0);
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ ptPick }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax())[0];
       autoc idLocation = Morton(aGrid);
 
       auto vidFound = vector<entity_id_type>();
@@ -1189,7 +1238,7 @@ namespace NTree
       auto vidFound = vector<entity_id_type>();
       vidFound.reserve(100);
       autoce kRoot = base::GetHash(0, 0);
-      _rangeSearchRec(vidFound, kRoot, this->_nodes.at(kRoot), 0, range, vExtent, fFullyContained, false);
+      _rangeSearchRec(vidFound, kRoot, cont_at(this->_nodes, kRoot), 0, range, vExtent, fFullyContained, false);
 
       return vidFound;
     }
@@ -1337,6 +1386,11 @@ namespace NTree
 #ifdef undef_autoce
 #undef autoce
 #undef undef_autoce
+#endif
+
+#ifdef UNDEF_HASSERT
+#undef HASSERT
+#undef UNDEF_HASSERT
 #endif
 
 #endif // NTREE_GUARD
