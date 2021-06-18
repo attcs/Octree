@@ -179,7 +179,18 @@ namespace NTree
     using base = adaptor_basics_type;
     static_assert(AdaptorBasicsConcept<base, point_type, box_type, geometry_type>);
 
+    static constexpr bool are_points_equal(point_type const& ptL, point_type const& ptR, geometry_type rAccuracy)
+    {
+      auto rDist2 = 0.0;
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+      {
+        autoc rDistComp = base::point_comp_c(ptR, iDimension) - base::point_comp_c(ptL, iDimension);
+        rDist2 += rDistComp * rDistComp;
+      }
 
+      return rDist2 <= rAccuracy * rAccuracy;
+    }
+    
     static constexpr bool does_box_contain_point(box_type const& box, point_type const& pt)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
@@ -293,8 +304,10 @@ namespace NTree
   {
     auto aRasterizer = array<double, nDimension>{};
     for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      aRasterizer[iDimension] = static_cast<double>(n_divide) / (adaptor_type::point_comp_c(p1, iDimension) - adaptor_type::point_comp_c(p0, iDimension));
-
+    {
+      autoc rExt = adaptor_type::point_comp_c(p1, iDimension) - adaptor_type::point_comp_c(p0, iDimension);
+      aRasterizer[iDimension] = rExt == 0 ? 1.0 : (static_cast<double>(n_divide) / rExt);
+    }
     return aRasterizer;
   }
 
@@ -315,7 +328,12 @@ namespace NTree
     for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
     {
       autoc id = static_cast<double>(adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension];
-      aid[iDimension] = static_cast<grid_id_type>(id == floor(id) ? id - 1 : id);
+      if (id == 0)
+        aid[iDimension] = 0;
+      else if (id == floor(id))
+        aid[iDimension] = static_cast<grid_id_type>(id - 1);
+      else
+        aid[iDimension] = static_cast<grid_id_type>(id);
     }
     return aid;
   }
@@ -326,7 +344,7 @@ namespace NTree
   {
     autoc aRasterizer = resolve_grid_get_rasterizer<nDimension, point_type, adaptor_type>(p0, p1, n_divide);
 
-    autoc maxSlot = n_divide - 1;
+    uint16_t const maxSlot = n_divide - 1;
 
     autoc n = points.size();
     auto aid = vector<array<grid_id_type, nDimension>>(n);
@@ -348,9 +366,7 @@ namespace NTree
     auto aid = vector<array<array<grid_id_type, nDimension>, 2>>(n);
     for (size_t i = 0; i < n; ++i)
     {
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        aid[i][0][iDimension] = static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(adaptor_type::box_min_c(extents[i]), iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension]);
-
+      aid[i][0] = resolve_grid_id_point_limit<nDimension, point_type, adaptor_type>(adaptor_type::box_min_c(extents[i]), p0, p1, aRasterizer);
       aid[i][1] = resolve_grid_id_point_limit<nDimension, point_type, adaptor_type>(adaptor_type::box_max_c(extents[i]), p0, p1, aRasterizer);
     }
     return aid;
@@ -953,7 +969,18 @@ namespace NTree
 
       return 0; // Not found
     }
+ 
+    bool Contains(point_type const& pt, span<point_type const> const& vpt, geometry_type rAccuracy) const
+    {
+      autoc aGrid = resolve_grid_id<nDimension, point_type, _Ad>(vector{ pt }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->_nRasterResolutionMax)[0];
+      autoc idLocation = Morton(aGrid);
+      autoc kSmallestNode = this->GetHash(this->_nDepthMax, idLocation);
+      if (!this->_nodes.contains(kSmallestNode))
+        return false;
 
+      autoc& node = cont_at(this->_nodes, kSmallestNode);
+      return std::ranges::any_of(node.vid, [&](autoc& id) { return _Ad::are_points_equal(pt, vpt[id], rAccuracy); });
+    }
 
     // Range search
     vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt) const
