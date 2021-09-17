@@ -92,6 +92,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
         auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // { 2, 4 }
     }
 ```
+<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/quadtree_example.PNG " align="center" height="300"></div>
 
 
 ## Adapting Octree/Quadtree to user-defined Point / Bounding box objects
