@@ -77,7 +77,10 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
             BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
         };
 
-        auto quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt /*user-provided bounding box for all*/, 2 /* max element in a node */);
+        auto quadtreebox = QuadtreeBox::Create(boxes, 3
+            , std::nullopt // user-provided bounding box for all
+            , 2            // max element in a node 
+            );
 
         auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
         
@@ -85,7 +88,9 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
         auto ids_inside = quadtreebox.RangeSearch(search_box, boxes); // { 1, 2, 4 }
         
         // Overlaping Boxes with the range
-        auto ids_overlaping = quadtreebox.RangeSearch(search_box, boxes, false /* overlap is enough */); // { 1, 2, 3, 4 }
+        auto ids_overlaping = quadtreebox.RangeSearch(search_box, boxes
+            , false // overlap is enough
+            ); // { 1, 2, 3, 4 }
         
         // Picked boxes
         auto ptPick = Point2D{ 2.5, 2.5 };
