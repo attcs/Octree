@@ -35,96 +35,104 @@ namespace
     return true;
   }
 }
-
-
+namespace Microsoft {
+  namespace VisualStudio {
+    namespace CppUnitTestFramework
+    {
+      template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
+    }
+  }
+}
 namespace GeneralTest
 {
   TEST_CLASS(MortonTest)
   {
+    //static std::wstring ToString(uint16_t const& q) { RETURN_WIDE_STRING(q); }
+
   public:
     TEST_METHOD(M1D_0_0)
     {
-      autoce arr = array<location_id_type, 1>{ 0 };
-      Assert::AreEqual(Morton(arr), location_id_type(0));
+      autoce arr = array<grid_id_type, 1>{ 0 };
+      Assert::AreEqual(DualtreePoint::Morton(arr), DualtreePoint::morton_grid_id_type(0));
     }
 
     TEST_METHOD(M1D_4_4)
     {
-      autoce arr = array<location_id_type, 1>{ 4 };
-      Assert::AreEqual(Morton(arr), location_id_type(4));
+      autoce arr = array<grid_id_type, 1>{ 4 };
+      Assert::AreEqual(DualtreePoint::Morton(arr), DualtreePoint::morton_grid_id_type(4));
     }
 
 
     TEST_METHOD(M2D_00_0)
     {
-      autoce arr = array<location_id_type, 2>{ 0, 0 };
-      Assert::AreEqual(Morton(arr), location_id_type(0));
+      autoce arr = array<grid_id_type, 2>{ 0, 0 };
+      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(0));
     }
 
     TEST_METHOD(M2D_20_4)
     {
-      autoce arr = array<location_id_type, 2>{ 2, 0 };
-      Assert::AreEqual(Morton(arr), location_id_type(4));
+      autoce arr = array<grid_id_type, 2>{ 2, 0 };
+      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(4));
     }
 
     TEST_METHOD(M2D_02_8)
     {
-      autoce arr = array<location_id_type, 2>{ 0, 2 };
-      Assert::AreEqual(Morton(arr), location_id_type(8));
+      autoce arr = array<grid_id_type, 2>{ 0, 2 };
+      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(8));
     }
 
     TEST_METHOD(M2D_22_12)
     {
-      autoce arr = array<location_id_type, 2>{ 2, 2 };
-      Assert::AreEqual(Morton(arr), location_id_type(12));
+      autoce arr = array<grid_id_type, 2>{ 2, 2 };
+      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(12));
     }
 
     TEST_METHOD(M2D_13_11)
     {
-      autoce arr = array<location_id_type, 2>{ 1, 3 };
-      Assert::AreEqual(Morton(arr), location_id_type(11));
+      autoce arr = array<grid_id_type, 2>{ 1, 3 };
+      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(11));
     }
 
     TEST_METHOD(M3D_000_0)
     {
-      autoce arr = array<location_id_type, 3>{ 0, 0, 0 };
-      Assert::AreEqual(Morton(arr), location_id_type(0));
+      autoce arr = array<grid_id_type, 3>{ 0, 0, 0 };
+      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(0));
     }
 
     TEST_METHOD(M3D_100_1)
     {
-      autoce arr = array<location_id_type, 3>{ 1, 0, 0 };
-      Assert::AreEqual(Morton(arr), location_id_type(1));
+      autoce arr = array<grid_id_type, 3>{ 1, 0, 0 };
+      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(1));
     }
 
     TEST_METHOD(M3D_001_4)
     {
-      autoce arr = array<location_id_type, 3>{ 0, 0, 1 };
-      Assert::AreEqual(Morton(arr), location_id_type(4));
+      autoce arr = array<grid_id_type, 3>{ 0, 0, 1 };
+      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(4));
     }
 
     TEST_METHOD(M3D_111_7)
     {
-      autoce arr = array<location_id_type, 3>{ 1, 1, 1 };
-      Assert::AreEqual(Morton(arr), location_id_type(7));
+      autoce arr = array<grid_id_type, 3>{ 1, 1, 1 };
+      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(7));
     }
 
     TEST_METHOD(M4D_1111_15)
     {
-      autoce arr = array<location_id_type, 4>{ 1, 1, 1, 1 };
-      Assert::AreEqual(Morton(arr), location_id_type(15));
+      autoce arr = array<grid_id_type, 4>{ 1, 1, 1, 1 };
+      Assert::AreEqual(HexatreePoint::Morton(arr), HexatreePoint::morton_grid_id_type(15));
     }
 
     TEST_METHOD(M4D_2111_30)
     {
-      autoce arr = array<location_id_type, 4>{ 2, 1, 1, 1 };
-      Assert::AreEqual(Morton(arr), location_id_type(30));
+      autoce arr = array<grid_id_type, 4>{ 2, 1, 1, 1 };
+      Assert::AreEqual(HexatreePoint::Morton(arr), HexatreePoint::morton_grid_id_type(30));
     }
   };
 
-  using NTree::tree_id_type;
   TEST_CLASS(NTreeLinearTest)
   {
+    using morton_node_id_type = DualtreePoint::morton_node_id_type;
     TEST_METHOD(EstimateNodeNumber__0)
     {
       //!
@@ -137,33 +145,33 @@ namespace GeneralTest
 
     TEST_METHOD(GetHash__00_1)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(0,0), tree_id_type(1));
+      Assert::AreEqual(DualtreePoint::GetHash(0,0), DualtreePoint::morton_node_id_type(1));
     }
 
     TEST_METHOD(GetHash__11_3)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(1, 1), tree_id_type(3));
+      Assert::AreEqual(DualtreePoint::GetHash(1, 1), DualtreePoint::morton_node_id_type(3));
     }
     TEST_METHOD(GetHash__22_4)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(2, 2), tree_id_type(6));
+      Assert::AreEqual(DualtreePoint::GetHash(2, 2), DualtreePoint::morton_node_id_type(6));
     }
 
     TEST_METHOD(GetHash__37_15)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(3, 7), tree_id_type(15));
+      Assert::AreEqual(DualtreePoint::GetHash(3, 7), DualtreePoint::morton_node_id_type(15));
     }
 
     TEST_METHOD(GetDepth__37_15__3)
     {
       autoc lc = DualtreePoint::GetDepth(DualtreePoint::GetHash(3, 7));
-      Assert::AreEqual(lc, bucket_id_type(3));
+      Assert::AreEqual(lc, DualtreePoint::depth_type(3));
     }
 
     TEST_METHOD(RemoveSentinelBit__37_15__7)
     {
       autoc lc = DualtreePoint::RemoveSentinelBit(DualtreePoint::GetHash(3, 7));
-      Assert::AreEqual(lc, tree_id_type(7));
+      Assert::AreEqual(lc, morton_node_id_type(7));
     }
 
     TEST_METHOD(Init)
@@ -448,27 +456,33 @@ namespace DualtreePointTest
   {
     TEST_METHOD(FindSmallestNode_At30)
     {
+      using morton_node_id_type = DualtreePoint::morton_node_id_type;
+
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode(vpt.back());
-      Assert::AreEqual<NTree::tree_id_type>(7, kLast);
+      Assert::AreEqual<morton_node_id_type>(7, kLast);
     }
 
     TEST_METHOD(FindSmallestNode_At29)
     {
+      using morton_node_id_type = DualtreePoint::morton_node_id_type;
+
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode({2.9});
-      Assert::AreEqual<NTree::tree_id_type>(7, kLast);
+      Assert::AreEqual<morton_node_id_type>(7, kLast);
     }
 
 
     TEST_METHOD(FindSmallestNode_At15)
     {
+      using morton_node_id_type = DualtreePoint::morton_node_id_type;
+
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode({ 1.5 });
-      Assert::AreEqual<NTree::tree_id_type>(6, kLast);
+      Assert::AreEqual<morton_node_id_type>(6, kLast);
     }
 
     TEST_METHOD(RangeSearch__EqualAtBorder__12)
@@ -926,6 +940,133 @@ namespace OctreeBoxTest
 }
 
 
+namespace BitsetArithmeticTest
+{
+  TEST_CLASS(BitSetTest)
+  {
+    TEST_METHOD(less_0_1__true)
+    {
+      Assert::IsTrue(bitset_arithmetic<10>(0) < bitset_arithmetic<10>(1));
+    }
+
+    TEST_METHOD(less_12_12__false)
+    {
+      Assert::IsFalse(bitset_arithmetic<10>(12) < bitset_arithmetic<10>(12));
+    }
+
+    TEST_METHOD(less_126_254__true)
+    {
+      Assert::IsTrue(bitset_arithmetic<30>(126) < bitset_arithmetic<30>(254));
+    }
+
+    TEST_METHOD(greater_126_254__false)
+    {
+      Assert::IsFalse(bitset_arithmetic<30>(126) > bitset_arithmetic<30>(254));
+    }
+    TEST_METHOD(Plus_0_0__0)
+    {
+      autoc bs = bitset_arithmetic<10>(0) + bitset_arithmetic<10>(0);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(0, n);
+    }
+
+    TEST_METHOD(Plus_0_1__1)
+    {
+      autoc bs = bitset_arithmetic<10>(0) + bitset_arithmetic<10>(1);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(1, n);
+    }
+
+    TEST_METHOD(Plus_1_1__2)
+    {
+      autoc bs = bitset_arithmetic<10>(1) + bitset_arithmetic<10>(1);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(2, n);
+    }
+
+    TEST_METHOD(Plus_16_16__32)
+    {
+      autoc bs = bitset_arithmetic<10>(16) + bitset_arithmetic<10>(16);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(32, n);
+    }
+
+    TEST_METHOD(Plus_17_16__33)
+    {
+      autoc bs = bitset_arithmetic<10>(17) + bitset_arithmetic<10>(16);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(33, n);
+    }
+
+    TEST_METHOD(Minus_17_16__1)
+    {
+      autoc bs = bitset_arithmetic<10>(17) - bitset_arithmetic<10>(16);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(1, n);
+    }
+
+    TEST_METHOD(Mult_17_16__272)
+    {
+      autoc bs = bitset_arithmetic<10>(17) * bitset_arithmetic<10>(16);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(272, n);
+    }
+
+    TEST_METHOD(Mult_127_255__32385)
+    {
+      autoc bs = bitset_arithmetic<18>(127) * bitset_arithmetic<18>(255);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(32385, n);
+    }
+
+
+    TEST_METHOD(Div_17_16__1)
+    {
+      autoc bs = bitset_arithmetic<10>(17) / bitset_arithmetic<10>(16);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(1, n);
+    }
+
+    TEST_METHOD(Div_16_17__0)
+    {
+      autoc bs = bitset_arithmetic<10>(16) / bitset_arithmetic<10>(17);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(0, n);
+    }
+
+    TEST_METHOD(Div_2578_156__16)
+    {
+      autoc bs = bitset_arithmetic<13>(2578) / bitset_arithmetic<13>(156);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(16, n);
+    }
+
+    TEST_METHOD(Div_156_2578__0)
+    {
+      autoc bs = bitset_arithmetic<13>(156) / bitset_arithmetic<13>(2578);
+      autoc n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(0, n);
+    }
+  };
+}
+
+namespace HighestDimOctreePointTest
+{
+  TEST_CLASS(SearchTest)
+  {
+    TEST_METHOD(RangeSearch__Inside__124)
+    {
+      //!
+      autoce nDimension = 27;
+      using PointXD = NTree::Point<nDimension>;
+      autoce vpt = array{ PointXD{ 0.0 }, PointXD{ 1.0 }, PointXD{ 2.0 }, PointXD{ 3.0 } };
+
+      auto nt = NTreePointXD<nDimension>::Create(vpt, 4);
+      
+    }
+  };
+}
+
 namespace CustomGeometryType
 {
   // User-defined geometrical objects
@@ -1018,6 +1159,5 @@ namespace CustomGeometryTypeTest
       Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
       Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).vid == vector<size_t>{ 3, 4 });
     }
-
   };
 }
