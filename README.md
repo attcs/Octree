@@ -24,7 +24,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Basic point and bounding box objects are available, but adaptors can be used to attach into an already developed system.
 * The underlying container is a hash-table (`std::unordered_map`), which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
-* Higher dimensional tree definition is available for more advanced problems.
+* Higher dimensional tree definition is available for more advanced problems (up to ~27).
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
 
 ## Major aliases in NTree
