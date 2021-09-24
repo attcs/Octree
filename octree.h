@@ -538,6 +538,7 @@ namespace NTree
     return R::equal;
   }
 
+
   struct bitset_arithmetic_compare final
   {
     template<size_t N>
@@ -563,6 +564,7 @@ namespace NTree
     static autoce _nChild = pow_ce(2, nDimension);
 
   public:
+    enum UpdateId { ERASE = std::numeric_limits<entity_id_type>::max() };
     static autoce is_linear_tree = nDimension < 15;
     
     // Max value: 2 ^ nDimension
@@ -578,8 +580,10 @@ namespace NTree
     >::type;
     
     using morton_node_id_type = morton_grid_id_type; // same as the morton_grid_id_type, but depth is signed by a sentinel bit.
+    using morton_grid_id_type_cref = std::conditional<is_linear_tree, morton_node_id_type, morton_node_id_type const&>::type;
+    using morton_node_id_type_cref = morton_grid_id_type_cref;
     using max_element_type = uint16_t;
-    using depth_type = uint8_t;
+    using depth_type = unsigned int;
 
 
   protected:
@@ -641,6 +645,10 @@ namespace NTree
   protected: // Aid functions
     static void _reserveContainer(map<morton_node_id_type, Node, bitset_arithmetic_compare>& m, size_t n) {};
     static void _reserveContainer(unordered_map<morton_node_id_type, Node>& m, size_t n) { m.reserve(n); };
+    template<size_t N>
+    static inline size_t _mortonIdToChildId(bitset_arithmetic<N> const& bs) { return bs.to_ullong(); }
+    static constexpr size_t _mortonIdToChildId(size_t morton) { return morton; }
+
 
     static inline vector<entity_id_type> _generatePointId(size_t n)
     {
@@ -649,7 +657,7 @@ namespace NTree
       return vidPoint;
     }
 
-    inline Node& _createChild(Node& nodeParent, child_id_type iChild, morton_node_id_type kChild)
+    inline Node& _createChild(Node& nodeParent, child_id_type iChild, morton_node_id_type_cref kChild)
     {
       nodeParent.EnableChild(iChild);
 
@@ -682,7 +690,7 @@ namespace NTree
       return itEndUnique == end(ids);
     }
 
-    bool _insert(morton_node_id_type kNode, morton_node_id_type kNodeSmallest, entity_id_type id, bool fInsertToLeaf)
+    bool _insert(morton_node_id_type_cref kNode, morton_node_id_type_cref kNodeSmallest, entity_id_type id, bool fInsertToLeaf)
     {
       if (kNode == kNodeSmallest)
       {
@@ -741,7 +749,7 @@ namespace NTree
       return static_cast<size_t>(1.5 * nNodeEstimated);
     }
 
-    static inline morton_node_id_type GetHash(depth_type depth, morton_node_id_type key)
+    static inline morton_node_id_type GetHash(depth_type depth, morton_node_id_type_cref key)
     {
       assert(key < (morton_node_id_type(1) << (depth * nDimension)));
       return (morton_node_id_type(1) << (depth * nDimension)) | key;
@@ -752,7 +760,7 @@ namespace NTree
       return GetHash(0, 0);
     }
 
-    static depth_type GetDepth(morton_node_id_type key)
+    static depth_type GetDepth(morton_node_id_type_cref key)
     {
       // Keep shifting off three bits at a time, increasing depth counter
       for (depth_type d = 0; key; d++, key >>= nDimension)
@@ -763,7 +771,7 @@ namespace NTree
       return 0;
     }
 
-    static inline morton_node_id_type RemoveSentinelBit(morton_node_id_type key, std::optional<morton_grid_id_type> const& onDepth = std::nullopt)
+    static inline morton_node_id_type RemoveSentinelBit(morton_node_id_type_cref key, std::optional<depth_type> const& onDepth = std::nullopt)
     {
       autoc nDepth = onDepth.value_or(GetDepth(key));
       return key - (1 << nDepth);
@@ -772,7 +780,7 @@ namespace NTree
 
   private: // Morton aid functions
 
-    constexpr child_id_type _getChildPartOfLocation(morton_node_id_type key)
+    constexpr child_id_type _getChildPartOfLocation(morton_node_id_type_cref key)
     {
       autoce maskLastBits1 = morton_node_id_type(pow_ce(2, nDimension) - 1);
 
@@ -856,7 +864,7 @@ namespace NTree
     size_t GetNodeSize() const { return _nodes.size(); }
     auto const& GetBox() const { return _box; }
     auto const& Get() const { return _nodes; }
-    auto const& Get(morton_node_id_type key) const { return cont_at(_nodes, key); }
+    auto const& Get(morton_node_id_type_cref key) const { return cont_at(_nodes, key); }
     auto GetDepthMax() const noexcept { return _nDepthMax; }
     auto GetResolutionMax() const noexcept { return _nRasterResolutionMax; }
 
@@ -884,7 +892,7 @@ namespace NTree
 
     // Visit nodes with special selection and procedure in breadth-first search order
     template<typename fnSelector, typename fnProcedure>
-    void VisitNodes(morton_node_id_type kRoot, fnSelector const& selector, fnProcedure const& procedure) const
+    void VisitNodes(morton_node_id_type_cref kRoot, fnSelector const& selector, fnProcedure const& procedure) const
     {
       auto q = queue<morton_node_id_type>();
       for (q.push(kRoot); !q.empty(); q.pop())
@@ -909,13 +917,13 @@ namespace NTree
 
     // Visit nodes with special selection and procedure and if unconditional selection is fulfilled descendants will not be test with selector
     template<typename fnSelector, typename fnSelectorUnconditional, typename fnProcedure>
-    void VisitNodes(morton_node_id_type kRoot, fnSelector const& selector, fnSelectorUnconditional const& selectorUnconditional, fnProcedure const& procedure) const
+    void VisitNodes(morton_node_id_type_cref kRoot, fnSelector const& selector, fnSelectorUnconditional const& selectorUnconditional, fnProcedure const& procedure) const
     {
       struct _search
       {
         morton_node_id_type key;
         Node const& pNode;
-        morton_grid_id_type nDepth;
+        depth_type nDepth;
         bool fUnconditional;
       };
 
@@ -978,7 +986,7 @@ namespace NTree
           return it == itEnd ? id : it->second;
         });
 
-        std::erase_if(vid, [](autoc id) { return id == std::numeric_limits<entity_id_type>::max(); });
+        std::erase_if(vid, [](autoc id) { return id == UpdateId::ERASE; });
         node.second.vid.swap(vid);
       });
 
@@ -987,7 +995,7 @@ namespace NTree
 
 
     // Calculate extent by box of the tree and the key of the node 
-    box_type CalculateExtent(morton_node_id_type key) const
+    box_type CalculateExtent(morton_node_id_type_cref key) const
     {
       auto e = box_type();
       _Ad::box_min(e) = _Ad::box_min_c(_box);
@@ -1001,7 +1009,7 @@ namespace NTree
       autoc rMax = 1.0 / static_cast<double>(nRasterResolution);
 
       auto keyShifted = key;// RemoveSentinelBit(key, nDepth);
-      for (morton_grid_id_type iDepth = 0; iDepth < nDepth; ++iDepth)
+      for (depth_type iDepth = 0; iDepth < nDepth; ++iDepth)
       {
         autoc r = rMax * (1 << iDepth);
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, keyShifted >>= 1)
@@ -1024,7 +1032,7 @@ namespace NTree
 
 
     // Doubles the handled space relative to the root. iRootNew defines the relative location in the new space
-    //!IMPLEMENT void Extend(morton_node_id_type iRootNew = 0) {}
+    //!IMPLEMENT void Extend(morton_node_id_type_cref iRootNew = 0) {}
   };
 
 
@@ -1040,7 +1048,9 @@ namespace NTree
   public:
     using base::depth_type;
     using base::morton_grid_id_type;
+    using base::morton_grid_id_type_cref;
     using base::morton_node_id_type;
+    using base::morton_node_id_type_cref;
     using base::max_element_type;
     using base::child_id_type;
 
@@ -1054,7 +1064,7 @@ namespace NTree
       return vidLocation;
     }
 
-    void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_node_id_type nLocationStep, vector<entity_id_type>::iterator const& itBegin, vector<entity_id_type>::iterator const& itEnd, queue<_NodePartitioner>& q)
+    void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator const& itBegin, vector<entity_id_type>::iterator const& itEnd, queue<_NodePartitioner>& q)
     {
       if (itBegin == itEnd)
         return;
@@ -1082,11 +1092,13 @@ namespace NTree
       auto tree = NTreePoint{};
       tree.Init(oextent.value_or(_Ad::box_of_points(vpt)), nDepthMax, nElementMaxInNode);
       base::_reserveContainer(tree._nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
+      if (vpt.empty())
+        return tree;
 
       autoc kRoot = base::GetHash(0, 0);
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
-      autoc idLocationMax = pow_ce(tree._nRasterResolutionMax, nDimension);
+      autoc idLocationMax = morton_grid_id_type(1) << (nDimension * nDepthMax);
       autoc aidGrid = resolve_grid_id<nDimension, point_type, _Ad>(vpt, _Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc aidLocation = _getLocationId(aidGrid);
       
@@ -1096,19 +1108,41 @@ namespace NTree
       for (q.push(nsRoot); !q.empty(); q.pop())
       {
         auto& ns = q.front();
-        autoc nPart = pow_ce(base::_nChild, ns.nDepth);
-        autoc nLocationStep = morton_grid_id_type(idLocationMax / nPart);
+        autoc nPart = morton_grid_id_type(1) << (nDimension * ns.nDepth);
+        autoc nLocationStep = idLocationMax / nPart;
 
-        auto itEndPrev = ns.itBegin;
-        for (child_id_type iChild = 1; iChild < base::_nChild; ++iChild)
+        autoc nElem = distance(ns.itBegin, ns.itEnd);
+        if (nElem < base::_nChild)
         {
-          autoc idLocationSplit = ns.idLocationBegin + iChild * nLocationStep;
-          auto itSplit = std::partition(itEndPrev, ns.itEnd, [&](autoc idPoint) { return aidLocation[idPoint] < idLocationSplit; });
-          tree._addNode(ns, iChild - 1, nLocationStep, itEndPrev, itSplit, q);
-          itEndPrev = itSplit;
-        }
+          sort(ns.itBegin, ns.itEnd, [&](autoc idPointL, autoc idPointR) { return aidLocation[idPointL] < aidLocation[idPointR]; });
+          auto itEndPrev = ns.itBegin;
+          child_id_type iChild = base::_mortonIdToChildId((aidLocation[*itEndPrev] - ns.idLocationBegin) / nLocationStep);
+          for (auto itSplit = itEndPrev + 1; itSplit != ns.itEnd && iChild < base::_nChild - 1; ++itSplit)
+          {
+            autoc iChildActual = base::_mortonIdToChildId((aidLocation[*itSplit] - ns.idLocationBegin) / nLocationStep);
+            if (iChild == iChildActual)
+              continue;
+            
+            tree._addNode(ns, iChild, nLocationStep, itEndPrev, itSplit, q);
+            itEndPrev = itSplit;
+            iChild = iChildActual;
+          }
 
-        tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, ns.itEnd, q);
+          tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, ns.itEnd, q);
+        }
+        else
+        {
+          auto itEndPrev = ns.itBegin;
+          for (child_id_type iChild = 1; iChild < base::_nChild; ++iChild)
+          {
+            autoc idLocationSplit = ns.idLocationBegin + iChild * nLocationStep;
+            auto itSplit = std::partition(itEndPrev, ns.itEnd, [&](autoc idPoint) { return aidLocation[idPoint] < idLocationSplit; });
+            tree._addNode(ns, iChild - 1, nLocationStep, itEndPrev, itSplit, q);
+            itEndPrev = itSplit;
+          }
+
+          tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, ns.itEnd, q);
+        }
       }
 
       return tree;
@@ -1250,7 +1284,9 @@ namespace NTree
   public:
     using base::depth_type;
     using base::morton_grid_id_type;
+    using base::morton_grid_id_type_cref;
     using base::morton_node_id_type;
+    using base::morton_node_id_type_cref;
     using base::max_element_type;
     using base::child_id_type;
 
@@ -1266,29 +1302,31 @@ namespace NTree
     }
 
 
-    void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type nLocationStep, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itIntersected, vector<entity_id_type>::iterator itEnd, queue<_NodePartitioner>& q)
+    void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itIntersected, vector<entity_id_type>::iterator itEnd, queue<_NodePartitioner>& q)
     {
       if (itBegin == itEnd)
         return;
 
-      ns.pNode->EnableChild(iChild);
       ns.pNode->vid.insert(end(ns.pNode->vid), itBegin, itIntersected);
+      autoc nElement = distance(itIntersected, itEnd);
+      if (nElement == 0)
+        return;
 
-      autoc kChild = morton_grid_id_type((ns.kNode << nDimension) | iChild);
+      ns.pNode->EnableChild(iChild);
+      morton_node_id_type const kChild = (ns.kNode << nDimension) | morton_node_id_type(iChild);
       auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
 
-      autoc nElement = distance(itIntersected, itEnd);
       if (nElement < base::_nElementMax || ns.nDepth == this->_nDepthMax)
         nodeChild.vid.insert(end(nodeChild.vid), itIntersected, itEnd);
       else
       {
         autoc idLocation = morton_grid_id_type(ns.idLocationBegin + iChild * nLocationStep);
-        q.emplace(_NodePartitioner{ kChild, &nodeChild, morton_grid_id_type(ns.nDepth + 1), idLocation, itIntersected, itEnd });
+        q.emplace(_NodePartitioner{ kChild, &nodeChild, ns.nDepth + 1, idLocation, itIntersected, itEnd });
       }
     }
 
 
-    void _rangeSearchRec(vector<entity_id_type>& vidFound, morton_node_id_type kCurrent, Node const& pNode, morton_grid_id_type nDepth, box_type const& range, span<box_type const> const& vExtent, bool fFullyContained, bool fUnconditional) const
+    void _rangeSearchRec(vector<entity_id_type>& vidFound, morton_node_id_type_cref kCurrent, Node const& pNode, depth_type nDepth, box_type const& range, span<box_type const> const& vExtent, bool fFullyContained, bool fUnconditional) const
     {
       ++nDepth;
       morton_node_id_type const flagPrefix = kCurrent << nDimension;
@@ -1335,6 +1373,8 @@ namespace NTree
       autoc n = vExtent.size();
 
       tree._nodes.reserve(base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
+      if (n == 0)
+        return tree;
 
       autoc kRoot = base::GetHash(0, 0);
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
@@ -1345,25 +1385,75 @@ namespace NTree
 
       auto vidPoint = base::_generatePointId(n);
       auto q = std::queue<_NodePartitioner>();
-      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, morton_grid_id_type(1), grid_id_type(0), std::begin(vidPoint), std::end(vidPoint) };
+      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, 1, morton_node_id_type(0), std::begin(vidPoint), std::end(vidPoint) };
       for (q.push(nsRoot); !q.empty(); q.pop())
       {
         auto& ns = q.front();
-        autoc nPart = morton_grid_id_type(pow_ce(base::_nChild, ns.nDepth));
+        autoc nPart = morton_grid_id_type(1) << (ns.nDepth * nDimension);
         autoc nLocationStep = morton_grid_id_type(idLocationMax / nPart);
 
-        auto itEndPrev = ns.itBegin;
-        for (child_id_type iChild = 1; iChild < base::_nChild; ++iChild)
+        autoc nElem = distance(ns.itBegin, ns.itEnd);
+        if (nElem < base::_nChild)
         {
-          autoc idLocationSplit = ns.idLocationBegin + iChild * nLocationStep;
-          auto itSplitIntersected = std::partition(itEndPrev, ns.itEnd, [&](autoc idExt) { return aidLocation[idExt][0] < idLocationSplit && idLocationSplit <= aidLocation[idExt][1]; });
-          auto itSplit = std::partition(itSplitIntersected, ns.itEnd, [&](autoc idExt) { return aidLocation[idExt][0] < idLocationSplit; });
-          tree._addNode(ns, iChild - 1, nLocationStep, itEndPrev, itSplitIntersected, itSplit, q);
-          itEndPrev = itSplit;
-        }
+          auto aidLocationActualResolution = unordered_map<entity_id_type, array<child_id_type, 2>>();
+          for_each(ns.itBegin, ns.itEnd, [&](autoc idExt)
+          {
+            aidLocationActualResolution.emplace(idExt,
+              array
+              { 
+                base::_mortonIdToChildId((aidLocation[idExt][0] - ns.idLocationBegin) / nLocationStep), 
+                base::_mortonIdToChildId((aidLocation[idExt][1] - ns.idLocationBegin) / nLocationStep) 
+              }
+            );
+          });
 
-        // Last item
-        tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, itEndPrev, ns.itEnd, q);
+          auto itSplitIntersected = std::partition(ns.itBegin, ns.itEnd, [&](autoc idExt)
+          { 
+            autoc& aid = cont_at(aidLocationActualResolution, idExt);
+            return aid[0] != aid[1];
+          });
+
+          tree._addNode(ns, 0, nLocationStep, ns.itBegin, itSplitIntersected, itSplitIntersected, q);
+
+          if (itSplitIntersected != ns.itEnd)
+          {
+            sort(itSplitIntersected, ns.itEnd, [&](autoc idPointL, autoc idPointR)
+            { 
+              return cont_at(aidLocationActualResolution, idPointL)[0] < cont_at(aidLocationActualResolution, idPointR)[0];
+            });
+
+            auto itEndPrev = itSplitIntersected;
+            auto iChild = cont_at(aidLocationActualResolution, *itEndPrev)[0];
+            for (auto itSplit = itEndPrev + 1; itSplit != ns.itEnd && iChild < base::_nChild - 1; ++itSplit)
+            {
+              autoc iChildActual = cont_at(aidLocationActualResolution, *itSplit)[0];
+              if (iChild == iChildActual)
+                continue;
+
+              tree._addNode(ns, iChild, nLocationStep, itEndPrev, itEndPrev, itSplit, q);
+              itEndPrev = itSplit;
+              iChild = iChildActual;
+            }
+
+            tree._addNode(ns, iChild, nLocationStep, itEndPrev, itEndPrev, ns.itEnd, q);
+          }
+        }
+        else
+        {
+
+          auto itEndPrev = ns.itBegin;
+          for (child_id_type iChild = 1; iChild < base::_nChild; ++iChild)
+          {
+            autoc idLocationSplit = ns.idLocationBegin + iChild * nLocationStep;
+            auto itSplitIntersected = std::partition(itEndPrev, ns.itEnd, [&](autoc idExt) { return aidLocation[idExt][0] < idLocationSplit && idLocationSplit <= aidLocation[idExt][1]; });
+            auto itSplit = std::partition(itSplitIntersected, ns.itEnd, [&](autoc idExt) { return aidLocation[idExt][0] < idLocationSplit; });
+            tree._addNode(ns, iChild - 1, nLocationStep, itEndPrev, itSplitIntersected, itSplit, q);
+            itEndPrev = itSplit;
+          }
+
+          // Last item
+          tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, itEndPrev, ns.itEnd, q);
+        }
       }
 
       return tree;

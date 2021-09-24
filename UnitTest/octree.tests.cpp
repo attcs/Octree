@@ -281,7 +281,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 4.0 }
       };
       auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
-      tree.UpdateIndexes({ { 2, std::numeric_limits<NTree::entity_id_type>::max() } });
+      tree.UpdateIndexes({ { 2, DualtreeBox::ERASE } });
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
@@ -360,7 +360,7 @@ namespace GeneralTest
           { 3, 6 },
           { 4, 5 },
           { 5, 1 },
-          { 1, std::numeric_limits<NTree::entity_id_type>::max() },
+          { 1, DualtreeBox::ERASE },
         }
       );
      
@@ -1057,7 +1057,7 @@ namespace HighestDimOctreePointTest
     TEST_METHOD(RangeSearch__Inside__124)
     {
       //!
-      autoce nDimension = 27;
+      autoce nDimension = 16;
       using PointXD = NTree::Point<nDimension>;
       autoce vpt = array{ PointXD{ 0.0 }, PointXD{ 1.0 }, PointXD{ 2.0 }, PointXD{ 3.0 } };
 
