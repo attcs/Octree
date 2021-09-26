@@ -1167,7 +1167,7 @@ namespace NTree
         autoc nLocationStep = idLocationMax / nPart;
 
         autoc nElem = distance(ns.itBegin, ns.itEnd);
-        if (nElem < base::_nChild*10)
+        if (nElem < base::_nChild)
         {
           sort(ns.itBegin, ns.itEnd, [&](autoc idPointL, autoc idPointR) { return aidLocation[idPointL] < aidLocation[idPointR]; });
           auto itEndPrev = ns.itBegin;
