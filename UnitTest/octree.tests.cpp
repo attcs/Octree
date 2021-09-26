@@ -40,6 +40,15 @@ namespace Microsoft {
     namespace CppUnitTestFramework
     {
       template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
+      //template<class bitset_type> inline std::wstring ToString(const bitset_type& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+
+      template<> inline std::wstring ToString<bitset<9>>(const bitset<9>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<13>>(const bitset<13>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<17>>(const bitset<17>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<18>>(const bitset<18>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<22>>(const bitset<22>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<26>>(const bitset<26>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+
     }
   }
 }
@@ -756,7 +765,7 @@ namespace DualtreeBoxTest
       Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
       Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3, 4 });
     }
-
+    
     TEST_METHOD(Insert_Leaf_Successful)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
@@ -825,9 +834,204 @@ namespace DualtreeBoxTest
   };
 }
 
+template<dim_type N>
+static constexpr auto getSetNo1()
+{
+  using PointXD = Point<N>;
+
+  return array
+  {
+    // N:1/4
+    PointXD{ 0.0, 0.0 }, // N:1/4
+    PointXD{ 3.0, 3.0 }, // N:1/4
+
+    // N:1/5
+    PointXD{ 5.0, 3.0 }, // N:1/5/22
+    PointXD{ 5.2, 3.0 }, // N:1/5/22
+
+    PointXD{ 7.0, 1.0 }, // N:1/5/21
+
+    // N:1/6
+    PointXD{ 0.0, 5.0 }, // N:1/6/24
+    PointXD{ 1.0, 5.0 }, // N:1/6/24
+
+    PointXD{ 0.0, 7.0 }, // N:1/6/26
+    PointXD{ 1.0, 7.0 }, // N:1/6/26
+
+    PointXD{ 3.0, 7.0 }, // N:1/6/26
+    PointXD{ 3.0, 7.0 }, // N:1/6/26
+
+    PointXD{ 2.2, 4.5 }, // N:1/6/25/100
+    PointXD{ 2.5, 4.5 }, // N:1/6/25/100
+
+    PointXD{ 3.4, 4.5 }, // N:1/6/25/101
+    PointXD{ 3.6, 4.6 }, // N:1/6/25/101
+
+    PointXD{ 2.4, 5.5 }, // N:1/6/25/102
+    PointXD{ 2.5, 5.5 }, // N:1/6/25/102
+
+    PointXD{ 3.5, 5.5 }, // N:1/6/25/103
+    PointXD{ 3.5, 5.5 }, // N:1/6/25/103
+
+    // N:1/7
+    PointXD{ 5.0, 5.0 }, // N:1/7/28
+    PointXD{ 5.0, 5.0 }, // N:1/7/28
+
+    PointXD{ 7.0, 5.0 }, // N:1/7/30
+    PointXD{ 7.0, 5.0 }, // N:1/7/30
+
+    PointXD{ 6.5, 6.5 }, // N:1/7/31/124
+    PointXD{ 6.5, 6.5 }, // N:1/7/31/124
+
+    PointXD{ 7.5, 6.5 }, // N:1/7/31/125
+    PointXD{ 7.5, 6.5 }, // N:1/7/31/125
+
+    PointXD{ 6.5, 7.5 }, // N:1/7/31/126
+    PointXD{ 6.5, 7.5 }, // N:1/7/31/126
+
+    PointXD{ 7.5, 7.5 }, // N:1/7/31/127
+    PointXD{ 7.5, 7.5 }, // N:1/7/31/127
+    PointXD{ 8.0, 8.0 }, // N:1/7/31/127
+  };
+}
+
 
 namespace QuadtreePointTest
 {
+
+  TEST_CLASS(General)
+  {
+    TEST_METHOD(Build_SetNo1)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc quadtreebox = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc nNode = quadtreebox.GetNodeSize();
+      Assert::AreEqual<size_t>(22, nNode);
+    }
+  };
+
+  TEST_CLASS(kNNTest)
+  {
+    TEST_METHOD(N103_k2_RemainInSmallestNode__17_18)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{17, 18}, vnn));
+    }
+
+    TEST_METHOD(N103_k3__14_17_18)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{17, 18, 14}, vnn));
+    }
+
+    TEST_METHOD(N103_k4__14_16_17_18)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 4, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{17, 18, 14, 16}, vnn));
+    }
+
+    TEST_METHOD(N103_k100_OverTheContainingElements__All)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 100, points);
+      Assert::AreEqual(points.size(), vnn.size());
+
+      auto vid = vector<size_t>(points.size());
+      iota(begin(vid), end(vid), 0);
+      Assert::IsTrue(std::ranges::is_permutation(vid, vnn));
+    }
+
+    TEST_METHOD(N4_k1__1)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ 2.0, 2.0 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1}, vnn));
+    }
+
+    TEST_METHOD(N4_k2__1_11_12)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ 2.0, 2.0 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1, 11}, vnn));
+    }
+
+    TEST_METHOD(N4_k3__1_11_12)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ 2.0, 2.0 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1, 11, 12}, vnn));
+    }
+
+    // outside
+
+    TEST_METHOD(OutSide_k1__0)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ -1.0, -1.0 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{0}, vnn));
+    }
+
+    TEST_METHOD(OutSide_k5__0_1_5_6_11)
+    {
+      autoce N = 2;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ -1.0, -1.0 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{0, 1, 5, 6, 11}, vnn));
+    }
+
+
+
+    TEST_METHOD(OutSide_k5_16D__0_1_5_6_11)
+    {
+      autoce N = 16;
+      autoce points = getSetNo1<N>();
+      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+
+      autoce pt = Point<N>{ -1.0, -1.0 };
+      autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{0, 1, 5, 6, 11}, vnn));
+    }
+
+  };
 }
 
 

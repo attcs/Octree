@@ -181,16 +181,45 @@ namespace NTree
     using base = adaptor_basics_type;
     static_assert(AdaptorBasicsConcept<base, point_type, box_type, geometry_type>);
 
+    static constexpr geometry_type size2(point_type const& pt)
+    {
+      auto d2 = geometry_type(0);
+      for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+      {
+        autoc d = base::point_comp_c(pt, iDim);
+        d2 += d * d;
+      }
+      return d2;
+    }
+
+    static constexpr geometry_type size(point_type const& pt)
+    {
+      return sqrt(size2(pt));
+    }
+
+    static constexpr point_type substract(point_type const& ptL, point_type const& ptR)
+    {
+      auto pt = point_type{};
+      for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+        base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) - base::point_comp_c(ptR, iDim);
+
+      return pt;
+
+    }
+
+    static constexpr geometry_type distance(point_type const& ptL, point_type const& ptR)
+    {
+      return size(substract(ptL, ptR));
+    }
+
+    static constexpr geometry_type distance2(point_type const& ptL, point_type const& ptR)
+    {
+      return size2(substract(ptL, ptR));
+    }
+
     static constexpr bool are_points_equal(point_type const& ptL, point_type const& ptR, geometry_type rAccuracy)
     {
-      auto rDist2 = 0.0;
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-      {
-        autoc rDistComp = base::point_comp_c(ptR, iDimension) - base::point_comp_c(ptL, iDimension);
-        rDist2 += rDistComp * rDistComp;
-      }
-
-      return rDist2 <= rAccuracy * rAccuracy;
+      return distance2(ptL, ptR) <= rAccuracy * rAccuracy;
     }
 
     static constexpr bool does_box_contain_point(box_type const& box, point_type const& pt)
@@ -1297,6 +1326,114 @@ namespace NTree
       );
 
       return vidFound;
+    }
+
+
+  private:
+
+    static geometry_type _getBoxWallDistanceMax(point_type const& pt, box_type const& box)
+    {
+      autoc& ptMin = _Ad::box_min_c(box);
+      autoc& ptMax = _Ad::box_max_c(box);
+
+      auto vDist = vector<geometry_type>();
+      vDist.reserve(nDimension);
+      for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+      {
+        autoc rDistActual = vDist.emplace_back(std::min(
+          abs(_Ad::point_comp_c(pt, iDim) - _Ad::point_comp_c(ptMin, iDim)),
+          abs(_Ad::point_comp_c(pt, iDim) - _Ad::point_comp_c(ptMax, iDim))
+        ));
+
+        if (rDistActual == 0)
+          return 0.0;
+      }
+
+      return *std::min_element(begin(vDist), end(vDist));
+    }
+
+
+    struct _ItemDistance
+    {
+      geometry_type distance;
+      auto operator <=> (_ItemDistance const& rhs) const = default;
+    };
+
+    struct _EntityDistance : _ItemDistance { entity_id_type id; };
+    struct _BoxDistance : _ItemDistance { Node const& node; };
+
+    static void _createEntityDistance(Node const& node, point_type const& pt, span<point_type const> const& vpt, multiset<_EntityDistance>& setEntity)
+    {
+      for (autoc id : node.vid)
+        setEntity.insert({ _Ad::distance(pt, vpt[id]), id });
+    }
+
+    static geometry_type _getFarestDistance(multiset<_EntityDistance>& setEntity, size_t k)
+    {
+      if (setEntity.size() < k)
+        return std::numeric_limits<geometry_type>::infinity();
+
+      return next(begin(setEntity), k - 1)->distance;
+    }
+
+    static vector<entity_id_type> _convertEntityDistanceToList(multiset<_EntityDistance>& setEntity, size_t k)
+    {
+      autoc nEntity = std::min(k, setEntity.size());
+      auto vidEntity = vector<entity_id_type>(nEntity);
+      transform(begin(setEntity), next(begin(setEntity), nEntity), begin(vidEntity), [](autoc& ed) { return ed.id; });
+      return vidEntity;
+    }
+
+   public:
+
+    // K Nearest Neighbor
+    vector<entity_id_type> GetNearestNeighbors(point_type const& pt, size_t k, span<point_type const> const& vpt) const
+    {
+      auto setEntity = multiset<_EntityDistance>();
+      autoc kSmallestNode = FindSmallestNode(pt);
+      if (base::IsValidKey(kSmallestNode))
+      {
+        autoc& nodeSmallest = cont_at(this->_nodes, kSmallestNode);
+        _createEntityDistance(nodeSmallest, pt, vpt, setEntity);
+        if (!nodeSmallest.IsAnyChildExist())
+          if (_getFarestDistance(setEntity, k) < _getBoxWallDistanceMax(pt, nodeSmallest.box))
+            return _convertEntityDistanceToList(setEntity, k);
+      }
+
+      auto setNodeDist = multiset<_BoxDistance>();
+      std::ranges::for_each(this->_nodes, [&](autoc& pairKeyNode)
+      {
+        autoc& [key, node] = pairKeyNode;
+        if (node.vid.empty() || key == kSmallestNode)
+          return;
+
+        autoc& ptMin = _Ad::box_min_c(node.box);
+        autoc& ptMax = _Ad::box_max_c(node.box);
+
+        auto aDist = point_type{};
+        for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+        {
+          autoc dMin = _Ad::point_comp_c(ptMin, iDim) - _Ad::point_comp_c(pt, iDim);
+          autoc dMax = _Ad::point_comp_c(ptMax, iDim) - _Ad::point_comp_c(pt, iDim);
+
+          // If pt projection in iDim is within min and max the wall distance should be calculated.
+          _Ad::point_comp(aDist, iDim) = dMin * dMax < 0 ? 0 : std::min(abs(dMin), abs(dMax));
+        }
+        setNodeDist.insert({ _Ad::size(aDist), node });
+      });
+
+      auto rLatestNodeDist = begin(setNodeDist)->distance;
+      for (autoc& nodeDist : setNodeDist)
+      {
+        autoc n = setEntity.size();
+        if (k <= n && rLatestNodeDist < nodeDist.distance)
+          break;
+
+        _createEntityDistance(nodeDist.node, pt, vpt, setEntity);
+        rLatestNodeDist = nodeDist.distance;
+      }
+
+      return _convertEntityDistanceToList(setEntity, k);
     }
   };
 
