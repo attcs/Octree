@@ -13,7 +13,8 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Call `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Call edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
 * Call `CollisionDetection()` member function for two bounding box trees overlap examination.
-* Call `VisitNodes()` to traverse the tree from up to down with user-defined `selector()` and `procedure()`.
+* Call `VisitNodes()` to traverse the tree from up to down (breadth-first search) with user-defined `selector()` and `procedure()`.
+* Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
 
 ## Notes
 * Header only implementation.
@@ -24,7 +25,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Basic point and bounding box objects are available, but adaptors can be used to attach into an already developed system.
 * The underlying container is a hash-table (`std::unordered_map`), which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
-* Higher dimensional tree definition is available for more advanced problems (up to ~27).
+* Higher dimensional tree definition is available for more advanced problems (up to ~23).
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
 
 ## Major aliases in NTree
@@ -64,6 +65,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
         auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5}}
         auto const ids = octree.RangeSearch(search_box, points); // returns { 1, 2 }
+        auto const knn_ids = octree.GetNearestNeighbors(Point3D{1.1,1.1,1.1}, 2 /*k*/, points); // returns { 1, 2 }
     }
     
     // Example #2: Quadtree for bounding boxes
@@ -96,6 +98,8 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
         auto ptPick = Point2D{ 2.5, 2.5 };
         auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // { 2, 4 }
     }
+    
+    // For more examples, see the unit tests.
 ```
 <div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/quadtree_example.PNG " align="center" height="300"></div>
 
