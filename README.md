@@ -64,8 +64,8 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
         auto const octree = OctreePoint::Create(points, 3 /*max depth*/);
 
         auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5}}
-        auto const ids = octree.RangeSearch(search_box, points); // returns { 1, 2 }
-        auto const knn_ids = octree.GetNearestNeighbors(Point3D{1.1,1.1,1.1}, 2 /*k*/, points); // returns { 1, 2 }
+        auto const ids = octree.RangeSearch(search_box, points); // -> { 1, 2 }
+        auto const knn_ids = octree.GetNearestNeighbors(Point3D{1.1,1.1,1.1}, 2 /*k*/, points); // -> { 1, 2 }
     }
     
     // Example #2: Quadtree for bounding boxes
@@ -87,16 +87,16 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
         auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
         
         // Boxes within the range
-        auto ids_inside = quadtreebox.RangeSearch(search_box, boxes); // { 1, 2, 4 }
+        auto ids_inside = quadtreebox.RangeSearch(search_box, boxes); // -> { 1, 2, 4 }
         
         // Overlaping Boxes with the range
         auto ids_overlaping = quadtreebox.RangeSearch(search_box, boxes
             , false // overlap is enough
-            ); // { 1, 2, 3, 4 }
+            ); // -> { 1, 2, 3, 4 }
         
         // Picked boxes
         auto ptPick = Point2D{ 2.5, 2.5 };
-        auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // { 2, 4 }
+        auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // -> { 2, 4 }
     }
     
     // For more examples, see the unit tests.
