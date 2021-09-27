@@ -954,16 +954,18 @@ namespace NTree
     {
       static_assert(nDimension > 3);
 
-      morton_grid_id_type msb = aidGrid[0];
+      auto msb = aidGrid[0];
       for (dim_type iDimension = 1; iDimension < nDimension; ++iDimension)
         msb |= aidGrid[iDimension];
 
-      autoce nullid = morton_grid_id_type(0);
       morton_grid_id_type id = 0;
-      morton_grid_id_type mask = 1;
-      for (dim_type i = 0, shift = 0; msb != nullid; mask <<= 1, msb >>= 1, ++i)
+      grid_id_type mask = 1;
+      for (dim_type i = 0, shift = 0; msb; mask <<= 1, msb >>= 1, ++i)
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, ++shift)
-          id |= (morton_grid_id_type(aidGrid[iDimension]) & mask) << (shift - i);
+          if constexpr (Node::is_bitset)
+            id[shift] = aidGrid[iDimension] & mask;
+          else
+            id |= (aidGrid[iDimension] & mask) << (shift - i);
 
       return id;
     }
