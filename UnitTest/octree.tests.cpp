@@ -898,7 +898,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc quadtreebox = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc quadtreebox = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
       autoc nNode = quadtreebox.GetNodeSize();
       Assert::AreEqual<size_t>(22, nNode);
     }
@@ -910,7 +910,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
@@ -921,7 +921,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
@@ -932,7 +932,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 4, points);
@@ -943,7 +943,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 100, points);
@@ -958,7 +958,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
@@ -969,7 +969,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
@@ -980,7 +980,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
@@ -993,7 +993,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
@@ -1004,7 +1004,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
@@ -1017,7 +1017,7 @@ namespace QuadtreePointTest
     {
       autoce N = 23;
       autoce points = getSetNo1<N>();
-      autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = Point<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
@@ -1258,7 +1258,7 @@ namespace HighestDimOctreePointTest
       using PointXD = NTree::Point<nDimension>;
       autoce vpt = array{ PointXD{ 0.0 }, PointXD{ 1.0 }, PointXD{ 2.0 }, PointXD{ 3.0 } };
 
-      auto nt = NTreePointXD<nDimension>::Create(vpt, 4);
+      auto nt = TreePointXD<nDimension>::Create(vpt, 4);
       
     }
   };

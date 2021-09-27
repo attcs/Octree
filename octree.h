@@ -938,11 +938,12 @@ namespace NTree
       nodeRoot.box = box;
     }
 
+
     using fnProcedure = std::function<void(morton_node_id_type_cref, Node const&)>;
     using fnProcedureUnconditional = std::function<void(morton_node_id_type_cref, Node const&, bool)>;
-
     using fnSelector = std::function<bool(morton_node_id_type_cref, Node const&)>;
     using fnSelectorUnconditional = std::function<bool(morton_node_id_type_cref, Node const&)>;
+
 
     // Visit nodes with special selection and procedure in breadth-first search order
     void VisitNodes(morton_node_id_type_cref kRoot, fnProcedure const& procedure, fnSelector const& selector) const
@@ -967,10 +968,13 @@ namespace NTree
       }
     }
 
+
+    // Visit nodes with special selection and procedure in breadth-first search order
     inline void VisitNodes(morton_node_id_type_cref kRoot, fnProcedure const& procedure) const
     {
       VisitNodes(kRoot, procedure, [](morton_node_id_type_cref key, Node const& node) -> bool { return true; });
     }
+
 
     // Visit nodes with special selection and procedure and if unconditional selection is fulfilled descendants will not be test with selector
     void VisitNodes(morton_node_id_type_cref kRoot, fnProcedureUnconditional const& procedure, fnSelector const& selector, fnSelectorUnconditional const& selectorUnconditional) const
@@ -1336,7 +1340,7 @@ namespace NTree
     }
 
 
-  private:
+  private: // K Nearest Neighbor helpers
 
     static geometry_type _getBoxWallDistanceMax(point_type const& pt, box_type const& box)
     {
@@ -1886,36 +1890,36 @@ namespace NTree
   using BoundingBox2D = NTree::BoundingBox<2>;
   using BoundingBox3D = NTree::BoundingBox<3>;
 
-  template<size_t nDimension> using NTreePointXD = NTree::NTreePoint<nDimension, NTree::Point<nDimension>, NTree::BoundingBox<nDimension>>;
-  template<size_t nDimension> using NTreeBoxXD = NTree::NTreeBoundingBox<nDimension, NTree::Point<nDimension>, NTree::BoundingBox<nDimension>>;
+  template<size_t nDimension> using TreePointXD = NTree::NTreePoint<nDimension, NTree::Point<nDimension>, NTree::BoundingBox<nDimension>>;
+  template<size_t nDimension> using TreeBoxXD = NTree::NTreeBoundingBox<nDimension, NTree::Point<nDimension>, NTree::BoundingBox<nDimension>>;
 
   // Dualtree for points
-  using DualtreePoint = NTreePointXD<1>;
+  using DualtreePoint = TreePointXD<1>;
 
   // Dualtree for bounding boxes
-  using DualtreeBox = NTreeBoxXD<1>;
+  using DualtreeBox = TreeBoxXD<1>;
 
   // Quadtree for points
-  using QuadtreePoint = NTreePointXD<2>;
+  using QuadtreePoint = TreePointXD<2>;
 
   // Quadtree for bounding boxes
-  using QuadtreeBox = NTreeBoxXD<2>;
+  using QuadtreeBox = TreeBoxXD<2>;
 
   // Octree for points
-  using OctreePoint = NTreePointXD<3>;
+  using OctreePoint = TreePointXD<3>;
 
   // Octree for bounding boxes
-  using OctreeBox = NTreeBoxXD<3>;
+  using OctreeBox = TreeBoxXD<3>;
 
   // Hexatree for points
-  using HexatreePoint = NTreePointXD<4>;
+  using HexatreePoint = TreePointXD<4>;
 
   // Hexatree for bounding boxes
-  using HexatreeBox = NTreeBoxXD<4>;
+  using HexatreeBox = TreeBoxXD<4>;
 
   // NTrees for higher dimensions
-  using TreePoint16D = NTreePointXD<16>;
-  using TreeBox16D = NTreeBoxXD<16>;
+  using TreePoint16D = TreePointXD<16>;
+  using TreeBox16D = TreeBoxXD<16>;
 }
 
 
