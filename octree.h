@@ -39,7 +39,7 @@ SOFTWARE.
 #include <numeric>
 #include <concepts>
 #include <type_traits>
-
+#include <functional>
 #include <assert.h>
 
 
@@ -938,10 +938,14 @@ namespace NTree
       nodeRoot.box = box;
     }
 
+    using fnProcedure = std::function<void(morton_node_id_type_cref, Node const&)>;
+    using fnProcedureUnconditional = std::function<void(morton_node_id_type_cref, Node const&, bool)>;
+
+    using fnSelector = std::function<bool(morton_node_id_type_cref, Node const&)>;
+    using fnSelectorUnconditional = std::function<bool(morton_node_id_type_cref, Node const&)>;
 
     // Visit nodes with special selection and procedure in breadth-first search order
-    template<typename fnSelector, typename fnProcedure>
-    void VisitNodes(morton_node_id_type_cref kRoot, fnSelector const& selector, fnProcedure const& procedure) const
+    void VisitNodes(morton_node_id_type_cref kRoot, fnProcedure const& procedure, fnSelector const& selector) const
     {
       auto q = queue<morton_node_id_type>();
       for (q.push(kRoot); !q.empty(); q.pop())
@@ -963,10 +967,13 @@ namespace NTree
       }
     }
 
+    inline void VisitNodes(morton_node_id_type_cref kRoot, fnProcedure const& procedure) const
+    {
+      VisitNodes(kRoot, procedure, [](morton_node_id_type_cref key, Node const& node) -> bool { return true; });
+    }
 
     // Visit nodes with special selection and procedure and if unconditional selection is fulfilled descendants will not be test with selector
-    template<typename fnSelector, typename fnSelectorUnconditional, typename fnProcedure>
-    void VisitNodes(morton_node_id_type_cref kRoot, fnSelector const& selector, fnSelectorUnconditional const& selectorUnconditional, fnProcedure const& procedure) const
+    void VisitNodes(morton_node_id_type_cref kRoot, fnProcedureUnconditional const& procedure, fnSelector const& selector, fnSelectorUnconditional const& selectorUnconditional) const
     {
       struct _search
       {
@@ -981,7 +988,7 @@ namespace NTree
       for (q.push({ kRoot, cont_at(_nodes, kRoot), nDepthRoot, false }); !q.empty(); q.pop())
       {
         autoc& item = q.front();
-        procedure(item.pNode, item.fUnconditional);
+        procedure(item.key, item.pNode, item.fUnconditional);
 
         autoc nDepthChild = depth_type(item.nDepth + 1);
         autoc flagPrefix = morton_node_id_type(item.key << nDimension);
@@ -993,8 +1000,8 @@ namespace NTree
             autoc& pNodeChild = cont_at(_nodes, kChild);
             if (item.fUnconditional)
               q.push({ kChild, pNodeChild, nDepthChild, true });
-            else if (selector(pNodeChild))
-              q.push({ kChild, pNodeChild, nDepthChild, selectorUnconditional(pNodeChild) });
+            else if (selector(kChild, pNodeChild))
+              q.push({ kChild, pNodeChild, nDepthChild, selectorUnconditional(kChild, pNodeChild) });
           }
         }
       }
@@ -1007,10 +1014,10 @@ namespace NTree
       auto ids = vector<entity_id_type>();
       ids.reserve(GetNodeSize() * std::max<size_t>(2, _nElementMax / 2));
 
-      VisitNodes(GetRootKey()
-        , [](morton_node_id_type_cref key, autoc& node) { return true; }
-        , [&ids](morton_node_id_type_cref key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
-      );
+      VisitNodes(GetRootKey(), [&ids](morton_node_id_type_cref key, autoc& node)
+      { 
+        ids.insert(end(ids), begin(node.vid), end(node.vid));
+      });
       return ids;
     }
 
@@ -1308,20 +1315,20 @@ namespace NTree
 
       auto vidFound = vector<entity_id_type>();
       this->VisitNodes(base::GetHash(0, 0)
-        , [&](Node const& pNode)
+        , [&](morton_node_id_type_cref, Node const& pNode, bool fUnconditional)
+        {
+          if (fUnconditional)
+            vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
+          else
+            std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); });
+        }
+        , [&](morton_node_id_type_cref, autoc& pNode)
           {
             return _Ad::are_boxes_overlapped(range, pNode.box, false);
           }
-        , [&](Node const& pNode)
+        , [&](morton_node_id_type_cref, autoc& pNode)
           {
             return _Ad::are_boxes_overlapped(range, pNode.box, true);
-          }
-        , [&](Node const& pNode, bool fUnconditional)
-          {
-            if (fUnconditional)
-              vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
-            else
-              std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); });
           }
       );
 

@@ -201,7 +201,6 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [](autoc key, autoc& node) { return true; }
         , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
@@ -220,8 +219,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [](autoc key, autoc& node) { return true; }
-      , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6,  4, 5,  0, 1, 2, 3 });
@@ -253,8 +251,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [](autoc key, autoc& node) { return true; }
-      , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
@@ -274,8 +271,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [](autoc key, autoc& node) { return true; }
-      , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 7, 3 });
@@ -294,8 +290,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [](autoc key, autoc& node) { return true; }
-      , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 3 });
@@ -320,7 +315,6 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [](autoc key, autoc& node) { return true; }
         , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
@@ -346,8 +340,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [](autoc key, autoc& node) { return true; }
-      , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 1, 0, 2, 3 });
@@ -1022,7 +1015,7 @@ namespace QuadtreePointTest
 
     TEST_METHOD(OutSide_k5_16D__0_1_5_6_11)
     {
-      autoce N = 16;
+      autoce N = 23;
       autoce points = getSetNo1<N>();
       autoc tree = NTreePointXD<N>::Create(points, 3, std::nullopt, 3);
 
