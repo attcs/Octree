@@ -631,34 +631,95 @@ namespace NTree
   public:
     struct Node
     {
+    public:
+      static constexpr bool is_bitset = _nChild > 64;
+
     private:
+
       // Max value: 2^(2^nDimension)
       using child_exist_flag_type = std::conditional<_nChild <= 8
         , uint8_t
-        , typename std::conditional<_nChild <= 64
-          , uint64_t
+        , typename std::conditional<is_bitset
           , bitset_arithmetic<_nChild>
+          , uint64_t
         >::type
       >::type;
 
       child_exist_flag_type _hasChildK = {};
 
+      struct unused_container_type {};
+      using child_container_type = std::conditional<is_bitset, vector<child_id_type>, unused_container_type>::type;
+      child_container_type _children;
+
     public:
       vector<entity_id_type> vid;
       box_type box;
 
-      constexpr void EnableChild(child_id_type iChild) { _hasChildK |= (child_exist_flag_type(1) << iChild); }
-      constexpr bool HasChild(child_id_type iChild) const { return _hasChild(_hasChildK & (child_exist_flag_type(1) << iChild)); }
+      constexpr void EnableChild(child_id_type iChild) 
+      { 
+        if constexpr (is_bitset)
+        {
+          if (!_hasChildK[iChild])
+          {
+            _hasChildK[iChild] = true;
+            _children.push_back(iChild);
+          }
+        }
+        else
+          _hasChildK |= (child_exist_flag_type(1) << iChild);
+      }
+
+      constexpr void DisableChild(child_id_type iChild)
+      {
+        if constexpr (is_bitset)
+        {
+          _hasChildK[iChild] = false;
+          std::erase_if(_children, [](autoc iChildContained) { return iChild = iChildContained; });
+        }
+        else
+          _hasChildK &= ~(child_exist_flag_type(1) << iChild);
+      }
+
+      constexpr bool HasChild(child_id_type iChild) const 
+      {
+        if constexpr (is_bitset)
+          return _hasChildK[iChild];
+        else
+          return _hasChildK & (child_exist_flag_type(1) << iChild);
+      }
+
       inline bool IsAnyChildExist() const { return _isAnyChildExist(_hasChildK); }
 
-    private:
-      template<size_t N>
-      static inline bool _hasChild(bitset_arithmetic<N> const& hasChildK) { return hasChildK.any(); }
-      static constexpr bool _hasChild(size_t hasChildK) { return hasChildK > 0; }
+      vector<child_id_type> GetChildren() const
+      {
+        if constexpr (is_bitset)
+          return _children;
+        else
+          return _getChildren();
+      }
 
+    private:
       template<size_t N> 
       static inline bool _isAnyChildExist(bitset_arithmetic<N> const& hasChildK) { return !hasChildK.none(); }
       static constexpr bool _isAnyChildExist(size_t hasChildK) { return hasChildK > 0; }
+
+      inline vector<child_id_type> _getChildren() const
+      {
+        if (!_hasChildK)
+          return {};
+
+        auto vChild = vector<child_id_type>();
+        vChild.reserve(std::max<child_id_type>(4, _nChild / 8));
+
+        auto mask = child_exist_flag_type{ 1 };
+        for (child_id_type iChild = 0; iChild < _nChild; ++iChild, mask <<= 1)
+          if (_hasChildK & mask)
+            vChild.emplace_back(iChild);
+        
+        return vChild;
+      }
+
+
     };
 
 
@@ -956,14 +1017,11 @@ namespace NTree
         procedure(key, node);
 
         autoc flagPrefix = key << nDimension;
-        for (child_id_type iChild = 0; iChild < _nChild; ++iChild)
+        for (autoc iChild : node.GetChildren())
         {
-          if (node.HasChild(iChild))
-          {
-            autoc kChild = flagPrefix | morton_node_id_type(iChild);
-            if (selector(kChild, cont_at(_nodes, kChild)))
-              q.push(kChild);
-          }
+          autoc kChild = flagPrefix | morton_node_id_type(iChild);
+          if (selector(kChild, cont_at(_nodes, kChild)))
+            q.push(kChild);
         }
       }
     }
@@ -996,17 +1054,14 @@ namespace NTree
 
         autoc nDepthChild = depth_type(item.nDepth + 1);
         autoc flagPrefix = morton_node_id_type(item.key << nDimension);
-        for (child_id_type iChild = 0; iChild < _nChild; ++iChild)
+        for (autoc iChild : item.pNode.GetChildren())
         {
-          if (item.pNode.HasChild(iChild))
-          {
-            autoc kChild = morton_node_id_type(flagPrefix | iChild);
-            autoc& pNodeChild = cont_at(_nodes, kChild);
-            if (item.fUnconditional)
-              q.push({ kChild, pNodeChild, nDepthChild, true });
-            else if (selector(kChild, pNodeChild))
-              q.push({ kChild, pNodeChild, nDepthChild, selectorUnconditional(kChild, pNodeChild) });
-          }
+          autoc kChild = morton_node_id_type(flagPrefix | iChild);
+          autoc& pNodeChild = cont_at(_nodes, kChild);
+          if (item.fUnconditional)
+            q.push({ kChild, pNodeChild, nDepthChild, true });
+          else if (selector(kChild, pNodeChild))
+            q.push({ kChild, pNodeChild, nDepthChild, selectorUnconditional(kChild, pNodeChild) });
         }
       }
     }
@@ -1512,27 +1567,21 @@ namespace NTree
       {
         vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
 
-        for (child_id_type i = 0; i < base::_nChild; ++i)
+        for (autoc iChild : pNode.GetChildren())
         {
-          if (pNode.HasChild(i))
-          {
-            autoc kChild = flagPrefix | morton_node_id_type(i);
-            _rangeSearchRec(vidFound, kChild, cont_at(this->_nodes, kChild), nDepth, range, vExtent, fFullyContained, true);
-          }
+          autoc kChild = flagPrefix | morton_node_id_type(iChild);
+          _rangeSearchRec(vidFound, kChild, cont_at(this->_nodes, kChild), nDepth, range, vExtent, fFullyContained, true);
         }
       }
       else
       {
         std::ranges::copy_if(pNode.vid, std::back_inserter(vidFound), [&](autoc id) { return _Ad::are_boxes_overlapped(range, vExtent[id], fFullyContained); });
-        for (child_id_type i = 0; i < base::_nChild; ++i)
+        for (autoc iChild : pNode.GetChildren())
         {
-          if (pNode.HasChild(i))
-          {
-            autoc kChild = flagPrefix | morton_node_id_type(i);
-            autoc& pNodeChild = cont_at(this->_nodes, kChild);
-            if (_Ad::are_boxes_overlapped(range, pNodeChild.box, false))
-              _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, _Ad::are_boxes_overlapped(range, pNodeChild.box, true));
-          }
+          autoc kChild = flagPrefix | morton_node_id_type(iChild);
+          autoc& pNodeChild = cont_at(this->_nodes, kChild);
+          if (_Ad::are_boxes_overlapped(range, pNodeChild.box, false))
+            _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, _Ad::are_boxes_overlapped(range, pNodeChild.box, true));
         }
       }
     }
