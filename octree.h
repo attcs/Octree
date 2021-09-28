@@ -718,8 +718,6 @@ namespace NTree
         
         return vChild;
       }
-
-
     };
 
 
@@ -1179,7 +1177,10 @@ namespace NTree
 
     using base::Node;
 
-  private:
+  private: // Aid functions
+    static constexpr max_element_type max_element_default = 11;
+
+
     static inline vector<morton_grid_id_type> _getLocationId(vector<array<grid_id_type, nDimension>> const& vidGrid)
     {
       auto vidLocation = vector<morton_grid_id_type>(vidGrid.size());
@@ -1205,10 +1206,19 @@ namespace NTree
       }
     }
 
+
   public: // Create
 
+    // Ctors
+    NTreePoint() = default;
+    NTreePoint(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    {
+      *this = Create(vpt, nDepthMax, oextent, nElementMaxInNode);
+    }
+
+
     // Create
-    static NTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = 11)
+    static NTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       autoc n = vpt.size();
 
@@ -1527,6 +1537,9 @@ namespace NTree
     using base::Node;
 
   private: // Aid functions
+    
+    static constexpr max_element_type max_element_default = 11;
+
 
     static inline vector<array<morton_grid_id_type, 2>> _getLocationId(vector<array<array<grid_id_type, nDimension>, 2>> const& vidGrid)
     {
@@ -1588,9 +1601,19 @@ namespace NTree
       }
     }
 
-  public: // Create
 
-    static NTreeBoundingBox Create(span<box_type const> const& vExtent, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = 11)
+  public: // Create
+    
+    // Ctors
+    NTreeBoundingBox() = default;
+    NTreeBoundingBox(span<box_type const> const& vExtent, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    {
+      *this = Create(vExtent, nDepthMax, oextent, nElementMaxInNode);
+    }
+
+
+    // Create
+    static NTreeBoundingBox Create(span<box_type const> const& vExtent, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       auto tree = NTreeBoundingBox{};
       tree.Init(oextent.value_or(_Ad::box_of_boxes(vExtent))
