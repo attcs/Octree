@@ -1856,93 +1856,63 @@ namespace NTree
     // Collision detection: Returns all overlapping boxes from the source trees.
     static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(NTreeBoundingBox const& tL, span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR)
     {
-      autoc kRoot = tL.GetHash(0, 0);
+      using NodeIterator = decltype(tL._nodes)::const_iterator;
+      struct NodeIteratorAndStatus { NodeIterator it; bool fTraversed; };
+      using ParentIteratorArray = array<NodeIteratorAndStatus, 2>;
+
+      enum : bool { Left, Right };
+
       auto vResult = vector<std::pair<entity_id_type, entity_id_type>>{};
       vResult.reserve(vExtentL.size() / 10);
 
-      using iter_type = decltype(tL._nodes)::const_iterator;
-      using iter_and_ent_type = std::pair<iter_type, vector<entity_id_type>>;
+      autoc kRoot = base::GetRootKey();
+      autoc aTree = array{ &tL, &tR };
 
-      auto q = queue<std::pair<iter_and_ent_type, iter_and_ent_type>>{};
-      for (q.emplace(std::pair{ tL._nodes.find(kRoot), vector<entity_id_type>{} }, std::pair{ tR._nodes.find(kRoot), vector<entity_id_type>{} }); !q.empty(); q.pop())
+      auto q = queue<ParentIteratorArray>{};
+      for (q.push({ NodeIteratorAndStatus{ tL._nodes.find(kRoot), false }, NodeIteratorAndStatus{ tR._nodes.find(kRoot), false } }); !q.empty(); q.pop())
       {
-        autoc& [itDL, itDR] = q.front();
-        autoc& [itNodeL, vidL] = itDL;
-        autoc& [itNodeR, vidR] = itDR;
-
-        autoc& nodeL = itNodeL->second;
-        autoc flagPrefixL = itNodeL->first << nDimension;
-
-        autoc& nodeR = itNodeR->second;
-        autoc flagPrefixR = itNodeR->first << nDimension;
+        autoc& aitNodeParent = q.front();
 
         // Check the current ascendant content 
         {
-          for (autoc idL : vidL)
-            for (autoc idR : nodeR.vid)
-              if (_Ad::are_boxes_overlapped(vExtentL[idL], vExtentR[idR], false))
-                vResult.emplace_back(idL, idR);
-
-          for (autoc idR : vidR)
-            for (autoc idL : nodeL.vid)
-              if (_Ad::are_boxes_overlapped(vExtentL[idL], vExtentR[idR], false))
-                vResult.emplace_back(idL, idR);
-
-          for (autoc idL : nodeL.vid)
-            for (autoc idR : nodeR.vid)
+          for (autoc idL : aitNodeParent[Left].it->second.vid)
+            for (autoc idR : aitNodeParent[Right].it->second.vid)
               if (_Ad::are_boxes_overlapped(vExtentL[idL], vExtentR[idR], false))
                 vResult.emplace_back(idL, idR);
         }
 
-
-        auto vidLChild = vidL;
-
-        auto vidRChild = vidR;
-        vidRChild.insert(vidRChild.end(), nodeR.vid.begin(), nodeR.vid.end());
-
-        // Check the child nodes extents
-        if (nodeL.IsAnyChildExist())
+        // Collect children
+        auto avitChildNode = array<vector<NodeIteratorAndStatus>, 2>{};
+        for (autoc id : { Left, Right })
         {
-          vidLChild.insert(vidLChild.end(), nodeL.vid.begin(), nodeL.vid.end());
-
-          for (child_id_type iChildL = 0; iChildL < base::_nChild; ++iChildL)
+          autoc& [itNode, fTraversed] = aitNodeParent[id];
+          if (fTraversed)
+            continue;
+          
+          autoc flagPrefix = itNode->first << nDimension;
+          autoc vidChild = itNode->second.GetChildren();
+          avitChildNode[id].resize(vidChild.size());
+          std::ranges::transform(vidChild, begin(avitChildNode[id]), [&](autoc iChild) -> NodeIteratorAndStatus
           {
-            if (!nodeL.HasChild(iChildL))
-              continue;
-
-            autoc& itNodeLL = tL._nodes.find(flagPrefixL | morton_node_id_type(iChildL));
-            if (nodeR.IsAnyChildExist())
-            {
-
-              for (child_id_type iChildR = 0; iChildR < base::_nChild; ++iChildR)
-              {
-                if (!nodeR.HasChild(iChildR))
-                  continue;
-
-                autoc itNodeRR = tR._nodes.find(flagPrefixR | morton_node_id_type(iChildR));
-                if (_Ad::are_boxes_overlapped(itNodeLL->second.box, itNodeRR->second.box, false))
-                  q.emplace(std::pair{ itNodeLL, vidLChild }, std::pair{ itNodeRR, vidRChild });
-              }
-            }
-            else
-            {
-              if (_Ad::are_boxes_overlapped(itNodeLL->second.box, itNodeR->second.box, false))
-                q.emplace(std::pair{ itNodeLL, vidLChild }, itDR);
-            }
-          }
+            return { aTree[id]->_nodes.find(flagPrefix | morton_node_id_type(iChild)), false };
+          });
         }
-        else
-        {
-          for (child_id_type iChildR = 0; iChildR < base::_nChild; ++iChildR)
-          {
-            if (!nodeR.HasChild(iChildR))
-              continue;
 
-            autoc itNodeRR = tR._nodes.find(flagPrefixR | morton_node_id_type(iChildR));
-            if (_Ad::are_boxes_overlapped(itNodeL->second.box, itNodeRR->second.box, false))
-              q.emplace(itDL, std::pair{ itNodeRR, vidRChild });
-          }
-        }
+        // Stop condition
+        if (avitChildNode[0].empty() && avitChildNode[1].empty())
+          continue;
+
+        // Add parent if it has any element
+        for (autoc id : { Left, Right })
+          if (!aitNodeParent[id].it->second.vid.empty())
+            avitChildNode[id].push_back({ aitNodeParent[id].it, true });
+
+        // Cartesian product of avitChildNode left and right
+        for (autoc& itNodeChildL : avitChildNode[Left])
+          for (autoc& itNodeChildR : avitChildNode[Right])
+            if (!(itNodeChildL.it == aitNodeParent[Left].it && itNodeChildR.it == aitNodeParent[Right].it))
+              if (_Ad::are_boxes_overlapped(itNodeChildL.it->second.box, itNodeChildR.it->second.box, false))
+                q.emplace(array{ itNodeChildL, itNodeChildR });
       }
       return vResult;
     }

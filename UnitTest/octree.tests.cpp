@@ -707,7 +707,7 @@ namespace DualtreeBoxTest
       };
       autoc treeR = DualtreeBox::Create(vBoxR, 3, std::nullopt, 2);
 
-      autoc ret = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
+      autoc vActual = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
 
       autoce aExpected = array
       {
@@ -726,8 +726,8 @@ namespace DualtreeBoxTest
         std::pair{ 6, 1 },
         std::pair{ 6, 4 }, // ==
       };
-      Assert::AreEqual<size_t>(ret.size(), aExpected.size());
-      Assert::IsTrue(std::ranges::is_permutation(aExpected, ret, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
+      Assert::AreEqual<size_t>(aExpected.size(), vActual.size());
+      Assert::IsTrue(std::ranges::is_permutation(aExpected, vActual, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
     }
 
   };
