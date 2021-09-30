@@ -21,7 +21,7 @@ namespace
   }
 
   template<dim_type nDimension, typename geometry_type = double>
-  static bool AreEqualAlmost(BoundingBox<nDimension, geometry_type> const& l, BoundingBox<nDimension, geometry_type> const& r)
+  static bool AreEqualAlmost(BoundingBoxND<nDimension, geometry_type> const& l, BoundingBoxND<nDimension, geometry_type> const& r)
   {
     for (dim_type iD = 0; iD < nDimension; ++iD)
     {
@@ -830,7 +830,7 @@ namespace DualtreeBoxTest
 template<dim_type N>
 static constexpr auto getSetNo1()
 {
-  using PointXD = Point<N>;
+  using PointXD = PointND<N>;
 
   return array
   {
@@ -898,7 +898,7 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc quadtreebox = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc quadtreebox = TreePointND<N>::Create(points, 3, std::nullopt, 3);
       autoc nNode = quadtreebox.GetNodeSize();
       Assert::AreEqual<size_t>(22, nNode);
     }
@@ -910,9 +910,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{17, 18}, vnn));
     }
@@ -921,9 +921,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{17, 18, 14}, vnn));
     }
@@ -932,9 +932,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 4, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{17, 18, 14, 16}, vnn));
     }
@@ -943,9 +943,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ 3.5, 5.5 };
+      autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 100, points);
       Assert::AreEqual(points.size(), vnn.size());
 
@@ -958,9 +958,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ 2.0, 2.0 };
+      autoce pt = PointND<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1}, vnn));
     }
@@ -969,9 +969,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ 2.0, 2.0 };
+      autoce pt = PointND<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1, 11}, vnn));
     }
@@ -980,9 +980,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ 2.0, 2.0 };
+      autoce pt = PointND<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1, 11, 12}, vnn));
     }
@@ -993,9 +993,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ -1.0, -1.0 };
+      autoce pt = PointND<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{0}, vnn));
     }
@@ -1004,9 +1004,9 @@ namespace QuadtreePointTest
     {
       autoce N = 2;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ -1.0, -1.0 };
+      autoce pt = PointND<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{0, 1, 5, 6, 11}, vnn));
     }
@@ -1017,9 +1017,9 @@ namespace QuadtreePointTest
     {
       autoce N = 23;
       autoce points = getSetNo1<N>();
-      autoc tree = TreePointXD<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
-      autoce pt = Point<N>{ -1.0, -1.0 };
+      autoce pt = PointND<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{0, 1, 5, 6, 11}, vnn));
     }
@@ -1255,10 +1255,10 @@ namespace HighestDimOctreePointTest
     {
       //!
       autoce nDimension = 16;
-      using PointXD = NTree::Point<nDimension>;
+      using PointXD = NTree::PointND<nDimension>;
       autoce vpt = array{ PointXD{ 0.0 }, PointXD{ 1.0 }, PointXD{ 2.0 }, PointXD{ 3.0 } };
 
-      auto nt = TreePointXD<nDimension>::Create(vpt, 4);
+      auto nt = TreePointND<nDimension>::Create(vpt, 4);
       
     }
   };
