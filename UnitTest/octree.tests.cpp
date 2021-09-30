@@ -40,8 +40,6 @@ namespace Microsoft {
     namespace CppUnitTestFramework
     {
       template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
-      //template<class bitset_type> inline std::wstring ToString(const bitset_type& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-
       template<> inline std::wstring ToString<bitset<9>>(const bitset<9>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
       template<> inline std::wstring ToString<bitset<13>>(const bitset<13>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
       template<> inline std::wstring ToString<bitset<17>>(const bitset<17>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
@@ -56,8 +54,6 @@ namespace GeneralTest
 {
   TEST_CLASS(MortonTest)
   {
-    //static std::wstring ToString(uint16_t const& q) { RETURN_WIDE_STRING(q); }
-
   public:
     TEST_METHOD(M1D_0_0)
     {
@@ -137,6 +133,80 @@ namespace GeneralTest
       autoce arr = array<grid_id_type, 4>{ 2, 1, 1, 1 };
       Assert::AreEqual(HexatreePoint::Morton(arr), HexatreePoint::morton_grid_id_type(30));
     }
+  };
+
+  TEST_CLASS(NodeTest)
+  {
+    template<dim_type N>
+    static void Complex_ND_Only1()
+    {
+      using child_id_type_ = TreeBoxND<N>::child_id_type;
+      auto node = TreeBoxND<N>::Node();
+      Assert::IsFalse(node.IsAnyChildExist());
+
+      autoce nChild = 1 << N;
+      for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
+      {
+        node.EnableChild(idChild);
+        Assert::IsTrue(node.HasChild(idChild));
+        Assert::IsTrue(node.IsAnyChildExist());
+
+        autoc vChild = node.GetChildren();
+        Assert::AreEqual<size_t>(1, vChild.size());
+        Assert::AreEqual(idChild, vChild[0]);
+
+        node.DisableChild(idChild);
+        autoc vChild2 = node.GetChildren();
+        Assert::AreEqual<size_t>(0, vChild2.size());
+      }
+    }
+
+
+    TEST_METHOD(Complex_1D_Only1) { Complex_ND_Only1<1>(); }
+    TEST_METHOD(Complex_2D_Only1) { Complex_ND_Only1<2>(); }
+    TEST_METHOD(Complex_3D_Only1) { Complex_ND_Only1<3>(); }
+    TEST_METHOD(Complex_4D_Only1) { Complex_ND_Only1<4>(); }
+
+    TEST_METHOD(Complex_16D_Only1) { Complex_ND_Only1<16>(); }
+    TEST_METHOD(Complex_24D_Only1) { Complex_ND_Only1<24>(); }
+
+
+    template<dim_type N>
+    static void Complex_All_ND()
+    {
+      using child_id_type_ = TreeBoxND<N>::child_id_type;
+      auto node = TreeBoxND<N>::Node();
+
+      autoce nChild = 1 << N;
+      for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
+      {
+        node.EnableChild(idChild);
+        Assert::IsTrue(node.HasChild(idChild));
+        Assert::IsTrue(node.IsAnyChildExist());
+
+        autoc vChild = node.GetChildren();
+        Assert::AreEqual<size_t>(idChild + 1, vChild.size());
+      }
+
+      for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
+      {
+        node.DisableChild(idChild);
+        autoc vChildActual = node.GetChildren();
+        auto vChildExpected = vector<child_id_type_>(nChild - idChild - 1);
+        std::iota(begin(vChildExpected), end(vChildExpected), idChild + 1);
+        Assert::IsTrue(std::ranges::is_permutation(vChildExpected, vChildActual));
+      }
+
+      Assert::IsFalse(node.IsAnyChildExist());
+    }
+
+    TEST_METHOD(Complex_1D_All) { Complex_All_ND<1>(); }
+    TEST_METHOD(Complex_2D_All) { Complex_All_ND<2>(); }
+    TEST_METHOD(Complex_3D_All) { Complex_All_ND<3>(); }
+    TEST_METHOD(Complex_4D_All) { Complex_All_ND<4>(); }
+
+    TEST_METHOD(Complex_16D_All) { Complex_All_ND<16>(); }
+    TEST_METHOD(Complex_24D_All) { Complex_All_ND<24>(); }
   };
 
   TEST_CLASS(NTreeLinearTest)
