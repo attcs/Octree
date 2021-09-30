@@ -664,7 +664,7 @@ namespace NTree
         if constexpr (is_bitset)
         {
           _hasChildK[iChild] = false;
-          std::erase_if(_children, [](autoc iChildContained) { return iChild = iChildContained; });
+          std::erase_if(_children, [iChild](autoc iChildContained) { return iChild == iChildContained; });
         }
         else
           _hasChildK &= ~(child_exist_flag_type(1) << iChild);
