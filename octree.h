@@ -127,16 +127,6 @@ namespace NTree
   using entity_id_type = size_t;
 
 
-  template<dim_type nDimension, typename geometry_type = double>
-  using Point = array<geometry_type, nDimension>;
-
-  template <dim_type nDimension, typename geometry_type = double>
-  struct BoundingBox
-  {
-    Point<nDimension, geometry_type> Min;
-    Point<nDimension, geometry_type> Max;
-  };
-
 
   // Adaptor concepts
 
@@ -1926,44 +1916,55 @@ namespace NTree
   };
 
 
-  // Aliases
-  using Point1D = NTree::Point<1>;
-  using Point2D = NTree::Point<2>;
-  using Point3D = NTree::Point<3>;
-  using BoundingBox1D = NTree::BoundingBox<1>;
-  using BoundingBox2D = NTree::BoundingBox<2>;
-  using BoundingBox3D = NTree::BoundingBox<3>;
+  template<dim_type nDimension, typename geometry_type = double>
+  using PointND = array<geometry_type, nDimension>;
 
-  template<size_t nDimension> using TreePointXD = NTree::NTreePoint<nDimension, NTree::Point<nDimension>, NTree::BoundingBox<nDimension>>;
-  template<size_t nDimension> using TreeBoxXD = NTree::NTreeBoundingBox<nDimension, NTree::Point<nDimension>, NTree::BoundingBox<nDimension>>;
+  template <dim_type nDimension, typename geometry_type = double>
+  struct BoundingBoxND
+  {
+    PointND<nDimension, geometry_type> Min;
+    PointND<nDimension, geometry_type> Max;
+  };
+
+
+  // Aliases
+  using Point1D = NTree::PointND<1>;
+  using Point2D = NTree::PointND<2>;
+  using Point3D = NTree::PointND<3>;
+  using BoundingBox1D = NTree::BoundingBoxND<1>;
+  using BoundingBox2D = NTree::BoundingBoxND<2>;
+  using BoundingBox3D = NTree::BoundingBoxND<3>;
+
+  template<size_t nDimension> using TreePointND = NTree::NTreePoint<nDimension, NTree::PointND<nDimension>, NTree::BoundingBoxND<nDimension>>;
+  template<size_t nDimension> using TreeBoxND = NTree::NTreeBoundingBox<nDimension, NTree::PointND<nDimension>, NTree::BoundingBoxND<nDimension>>;
 
   // Dualtree for points
-  using DualtreePoint = TreePointXD<1>;
+  using DualtreePoint = TreePointND<1>;
 
   // Dualtree for bounding boxes
-  using DualtreeBox = TreeBoxXD<1>;
+  using DualtreeBox = TreeBoxND<1>;
 
   // Quadtree for points
-  using QuadtreePoint = TreePointXD<2>;
+  using QuadtreePoint = TreePointND<2>;
 
   // Quadtree for bounding boxes
-  using QuadtreeBox = TreeBoxXD<2>;
+  using QuadtreeBox = TreeBoxND<2>;
 
   // Octree for points
-  using OctreePoint = TreePointXD<3>;
+  using OctreePoint = TreePointND<3>;
 
   // Octree for bounding boxes
-  using OctreeBox = TreeBoxXD<3>;
+  using OctreeBox = TreeBoxND<3>;
 
   // Hexatree for points
-  using HexatreePoint = TreePointXD<4>;
+  using HexatreePoint = TreePointND<4>;
 
   // Hexatree for bounding boxes
-  using HexatreeBox = TreeBoxXD<4>;
+  using HexatreeBox = TreeBoxND<4>;
 
   // NTrees for higher dimensions
-  using TreePoint16D = TreePointXD<16>;
-  using TreeBox16D = TreeBoxXD<16>;
+  using TreePoint16D = TreePointND<16>;
+  using TreeBox16D = TreeBoxND<16>;
 }
 
 
