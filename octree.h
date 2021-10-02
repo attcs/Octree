@@ -657,7 +657,7 @@ namespace NTree
 
 
   protected: // Grid functions
-    static inline vector<entity_id_type> _generatePointId(size_t n)
+    static constexpr vector<entity_id_type> _generatePointId(size_t n)
     {
       auto vidPoint = vector<entity_id_type>(n);
       std::iota(begin(vidPoint), end(vidPoint), 0);
@@ -1541,34 +1541,27 @@ namespace NTree
     static constexpr max_element_type max_element_default = 11;
 
 
-    static inline vector<array<morton_grid_id_type, 2>> _getLocationId(vector<array<array<grid_id_type, nDimension>, 2>> const& vidGrid)
+    inline void _addElements(_NodePartitioner& ns, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itEnd)
     {
-      auto vidLocation = vector<array<morton_grid_id_type, 2>>(vidGrid.size());
-      std::ranges::transform(vidGrid, begin(vidLocation), [](autoc& aGrid)->array<morton_grid_id_type, 2> { return { base::Morton(aGrid[0]), base::Morton(aGrid[1]) }; });
-      return vidLocation;
+      ns.pNode->vid.insert(end(ns.pNode->vid), itBegin, itEnd);
     }
 
-
-    void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itIntersected, vector<entity_id_type>::iterator itEnd, queue<_NodePartitioner>& q)
+    inline void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itEnd, queue<_NodePartitioner>& q)
     {
       if (itBegin == itEnd)
-        return;
-
-      ns.pNode->vid.insert(end(ns.pNode->vid), itBegin, itIntersected);
-      autoc nElement = distance(itIntersected, itEnd);
-      if (nElement == 0)
         return;
 
       ns.pNode->EnableChild(iChild);
       morton_node_id_type const kChild = (ns.kNode << nDimension) | morton_node_id_type(iChild);
       auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
 
+      autoc nElement = distance(itBegin, itEnd);
       if (nElement < base::_nElementMax || ns.nDepth == this->_nDepthMax)
-        nodeChild.vid.insert(end(nodeChild.vid), itIntersected, itEnd);
+        nodeChild.vid.insert(end(nodeChild.vid), itBegin, itEnd);
       else
       {
         autoc idLocation = morton_grid_id_type(ns.idLocationBegin + iChild * nLocationStep);
-        q.emplace(_NodePartitioner{ kChild, &nodeChild, ns.nDepth + 1, idLocation, itIntersected, itEnd });
+        q.emplace(_NodePartitioner{ kChild, &nodeChild, ns.nDepth + 1, idLocation, itBegin, itEnd });
       }
     }
 
@@ -1613,6 +1606,7 @@ namespace NTree
 
 
     // Create
+    template<typename execution_policy_type = std::execution::unsequenced_policy>
     static NTreeBoundingBox Create(span<box_type const> const& vExtent, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       auto tree = NTreeBoundingBox{};
@@ -1632,8 +1626,16 @@ namespace NTree
 
       autoc idLocationMax = morton_grid_id_type(1) << (tree._nDepthMax * nDimension);
 
-      autoc aidGrid = base::_getGridIdBoxes(vExtent, _Ad::box_min(tree._box), _Ad::box_max(tree._box), tree.GetResolutionMax());
-      autoc aidLocation = _getLocationId(aidGrid);
+      // Generate Morton location ids
+      auto aidLocation = vector<array<morton_grid_id_type, 2>>(n);
+      autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
+      autoc maxSlot = tree._nRasterResolutionMax - 1;
+      transform(execution_policy_type{}, begin(vExtent), end(vExtent), begin(aidLocation), [&](autoc& box)
+      { 
+        autoc aid = base::_getGridIdBox(box, _Ad::box_min_c(tree._box), aRasterizer, maxSlot);
+        return array{ base::Morton(aid[0]), base::Morton(aid[1]) };
+      });
+
 
       auto vidPoint = base::_generatePointId(n);
       auto q = std::queue<_NodePartitioner>();
@@ -1665,8 +1667,7 @@ namespace NTree
             return aid[0] != aid[1];
           });
 
-          tree._addNode(ns, 0, nLocationStep, ns.itBegin, itSplitIntersected, itSplitIntersected, q);
-
+          tree._addElements(ns, ns.itBegin, itSplitIntersected);
           if (itSplitIntersected != ns.itEnd)
           {
             sort(itSplitIntersected, ns.itEnd, [&](autoc idPointL, autoc idPointR)
@@ -1682,29 +1683,29 @@ namespace NTree
               if (iChild == iChildActual)
                 continue;
 
-              tree._addNode(ns, iChild, nLocationStep, itEndPrev, itEndPrev, itSplit, q);
+              tree._addNode(ns, iChild, nLocationStep, itEndPrev, itSplit, q);
               itEndPrev = itSplit;
               iChild = iChildActual;
             }
 
-            tree._addNode(ns, iChild, nLocationStep, itEndPrev, itEndPrev, ns.itEnd, q);
+            tree._addNode(ns, iChild, nLocationStep, itEndPrev, ns.itEnd, q);
           }
         }
         else
         {
-
           auto itEndPrev = ns.itBegin;
           for (child_id_type iChild = 1; iChild < base::_nChild; ++iChild)
           {
             autoc idLocationSplit = ns.idLocationBegin + iChild * nLocationStep;
             auto itSplitIntersected = std::partition(itEndPrev, ns.itEnd, [&](autoc idExt) { return aidLocation[idExt][0] < idLocationSplit && idLocationSplit <= aidLocation[idExt][1]; });
             auto itSplit = std::partition(itSplitIntersected, ns.itEnd, [&](autoc idExt) { return aidLocation[idExt][0] < idLocationSplit; });
-            tree._addNode(ns, iChild - 1, nLocationStep, itEndPrev, itSplitIntersected, itSplit, q);
+            tree._addElements(ns, itEndPrev, itSplitIntersected);
+            tree._addNode(ns, iChild - 1, nLocationStep, itSplitIntersected, itSplit, q);
             itEndPrev = itSplit;
           }
 
           // Last item
-          tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, itEndPrev, ns.itEnd, q);
+          tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, ns.itEnd, q);
         }
       }
 

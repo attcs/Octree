@@ -1406,6 +1406,7 @@ namespace PerformaceTest
     TEST_METHOD(Create_4D_1000000_depth2)  { CreateTest(2, _aPoint4D_1000000); }
   };
 
+
   TEST_CLASS(BoxTest)
   {
     template<dim_type nDim>
@@ -1469,10 +1470,10 @@ namespace PerformaceTest
       return aBox;
     }
 
-    template<dim_type nDim>
+    template<dim_type nDim, class execution_policy_type = std::execution::unsequenced_policy>
     static auto CreateTest(unsigned depth, vector<BoundingBoxND<nDim>> const& aBox)
     {
-      auto nt = TreeBoxND<nDim>::Create(aBox, depth);
+      auto nt = TreeBoxND<nDim>::template Create<execution_policy_type>(aBox, depth);
       return nt;
     }
 
@@ -1489,13 +1490,15 @@ namespace PerformaceTest
       , _aBox3D_10000000(CreateBoxes<3, 10000000>())
       , _aBox4D_1000000(CreateBoxes<4, 1000000>())
     {}
-    TEST_METHOD(Create_2D_1000000_depth3) { CreateTest<2>(3, _aBox2D_1000000); }
+    TEST_METHOD(Create_2D_1000000_depth3) { CreateTest(3, _aBox2D_1000000); }
+    TEST_METHOD(Create_2D_1000000_depth4) { CreateTest(4, _aBox2D_1000000); }
 
-    TEST_METHOD(Create_2D_1000000_depth4) { CreateTest<2>(4, _aBox2D_1000000); }
-    TEST_METHOD(Create_3D_1000000_depth3) { CreateTest<3>(3, _aBox3D_1000000); }
-    TEST_METHOD(Create_3D_1000000_depth4) { CreateTest<3>(4, _aBox3D_1000000); }
-    TEST_METHOD(Create_3D_10000000_depth4) { CreateTest<3>(4, _aBox3D_10000000); }
-    TEST_METHOD(Create_4D_1000000_depth4) { CreateTest<4>(4, _aBox4D_1000000); }
+    TEST_METHOD(Create_3D_1000000_depth3) { CreateTest(3, _aBox3D_1000000); }
+    TEST_METHOD(Create_3D_1000000_depth4) { CreateTest(4, _aBox3D_1000000); }
+    TEST_METHOD(Create_3D_10000000_depth4) { CreateTest(4, _aBox3D_10000000); }
+    TEST_METHOD(Create_3D_10000000_depth4_par_unseq) { CreateTest<3, std::execution::parallel_unsequenced_policy>(4, _aBox3D_10000000); }
+
+    TEST_METHOD(Create_4D_1000000_depth4) { CreateTest(4, _aBox4D_1000000); }
   };
 }
 
