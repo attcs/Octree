@@ -887,7 +887,7 @@ namespace NTree
       return _mortonIdToChildId(key & maskLastBits1);
     }
 
-    static constexpr morton_grid_id_type Part1By2(grid_id_type n)
+    static constexpr morton_grid_id_type _part1By2(grid_id_type n)
     {
       // n = ----------------------9876543210 : Bits initially
       // n = ------98----------------76543210 : After (1)
@@ -902,7 +902,7 @@ namespace NTree
     }
 
     // Separates low 16 bits of input by one bit
-    static constexpr morton_grid_id_type Part1By1(grid_id_type n)
+    static constexpr morton_grid_id_type _part1By1(grid_id_type n)
     {
       // n = ----------------fedcba9876543210 : Bits initially
       // n = --------fedcba98--------76543210 : After (1)
@@ -925,7 +925,7 @@ namespace NTree
 
     static constexpr morton_grid_id_type Morton(array<grid_id_type, 2> const& xy)
     {
-      return (Part1By1(xy[1]) << 1) + Part1By1(xy[0]);
+      return (_part1By1(xy[1]) << 1) + _part1By1(xy[0]);
     }
 
     static constexpr morton_grid_id_type Morton(array<grid_id_type, 3> const& xyz)
@@ -934,7 +934,7 @@ namespace NTree
       // -y--y--y--y--y--y--y--y--y--y- : Part1By2(y) << 1
       // --x--x--x--x--x--x--x--x--x--x : Part1By2(x)
       // zyxzyxzyxzyxzyxzyxzyxzyxzyxzyx : Final result
-      return (Part1By2(xyz[2]) << 2) + (Part1By2(xyz[1]) << 1) + Part1By2(xyz[0]);
+      return (_part1By2(xyz[2]) << 2) + (_part1By2(xyz[1]) << 1) + _part1By2(xyz[0]);
     }
 
     template<dim_type nDimension>
