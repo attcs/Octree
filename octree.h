@@ -760,12 +760,16 @@ namespace NTree
 
       {
         auto flagChild = iChild;
-        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, flagChild >>= 1)
         {
           autoc fGreater = (flagChild & child_id_type{1});
-          _Ad::point_comp(_Ad::box_min(nodeChild.box), iDimension) = fGreater ? (_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2) : _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension);
-          _Ad::point_comp(_Ad::box_max(nodeChild.box), iDimension) = fGreater ? _Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) : ((_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2));
-          flagChild >>= 1;
+          _Ad::point_comp(_Ad::box_min(nodeChild.box), iDimension) = 
+            fGreater * (_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2) + 
+            (!fGreater) * _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension);
+
+          _Ad::point_comp(_Ad::box_max(nodeChild.box), iDimension) = 
+            fGreater * _Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + 
+            (!fGreater) * ((_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2));
         }
       }
       return nodeChild;
