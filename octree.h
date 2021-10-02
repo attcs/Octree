@@ -985,7 +985,7 @@ namespace NTree
       this->_nRasterResolutionMax = static_cast<grid_id_type>(pow_ce(2, nDepthMax));
       this->_nElementMax = nElementMax;
 
-      auto& nodeRoot = this->_nodes[GetHash(0, 0)];
+      auto& nodeRoot = this->_nodes[GetRootKey()];
       nodeRoot.box = box;
     }
 
@@ -1218,7 +1218,7 @@ namespace NTree
       if (vpt.empty())
         return tree;
 
-      autoc kRoot = base::GetHash(0, 0);
+      autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
       autoc idLocationMax = morton_grid_id_type(1) << (nDimension * nDepthMax);
@@ -1375,7 +1375,7 @@ namespace NTree
           return {};
 
       auto vidFound = vector<entity_id_type>();
-      this->VisitNodes(base::GetHash(0, 0)
+      this->VisitNodes(base::GetRootKey()
         , [&](morton_node_id_type_cref, Node const& pNode, bool fUnconditional)
         {
           if (fUnconditional)
@@ -1617,7 +1617,7 @@ namespace NTree
       if (n == 0)
         return tree;
 
-      autoc kRoot = base::GetHash(0, 0);
+      autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
       autoc idLocationMax = morton_grid_id_type(1) << (tree._nDepthMax * nDimension);
@@ -1836,7 +1836,7 @@ namespace NTree
 
       auto vidFound = vector<entity_id_type>();
       vidFound.reserve(100);
-      autoc kRoot = base::GetHash(0, 0);
+      autoc kRoot = base::GetRootKey();
       _rangeSearchRec(vidFound, kRoot, cont_at(this->_nodes, kRoot), 0, range, vExtent, fFullyContained, false);
 
       return vidFound;
