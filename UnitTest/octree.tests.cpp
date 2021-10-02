@@ -168,7 +168,7 @@ namespace GeneralTest
     TEST_METHOD(Complex_4D_Only1) { Complex_ND_Only1<4>(); }
 
     TEST_METHOD(Complex_16D_Only1) { Complex_ND_Only1<16>(); }
-    TEST_METHOD(Complex_24D_Only1) { Complex_ND_Only1<24>(); }
+    //TEST_METHOD(Complex_24D_Only1) { Complex_ND_Only1<24>(); }
 
 
     template<dim_type N>
@@ -206,7 +206,7 @@ namespace GeneralTest
     TEST_METHOD(Complex_4D_All) { Complex_All_ND<4>(); }
 
     TEST_METHOD(Complex_16D_All) { Complex_All_ND<16>(); }
-    TEST_METHOD(Complex_24D_All) { Complex_All_ND<24>(); }
+    //TEST_METHOD(Complex_24D_All) { Complex_All_ND<24>(); }
   };
 
   TEST_CLASS(NTreeLinearTest)
@@ -1331,6 +1331,66 @@ namespace HighestDimOctreePointTest
       auto nt = TreePointND<nDimension>::Create(vpt, 4);
       
     }
+  };
+}
+
+namespace PerformaceTest
+{
+
+  TEST_CLASS(PointTest)
+  {
+    template<dim_type nDim, size_t nNumber>
+    static vector<PointND<nDim>> CreatePoints()
+    {
+      auto aPoint = vector<PointND<nDim>>(nNumber);
+      if (nNumber <= 1)
+        return aPoint;
+
+      size_t iNumber = 1;
+      autoce rMax = 8.0;
+
+      // Corner points
+      {
+        for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim, ++iNumber)
+          aPoint[iNumber][iDim] = rMax;
+
+        if (iNumber == nNumber)
+          return aPoint;
+
+        for (dim_type iDim = 0; iDim < nDim; ++iDim)
+          aPoint[iNumber][iDim] = rMax;
+
+        ++iNumber;
+      }
+
+      // Angle points
+      {
+        autoc nRemain = nNumber - iNumber;
+        autoc rStep = rMax / (nRemain + 2);
+        for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
+          for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
+            aPoint[nNumber - iNumber - 1][iDim] = iRemain * rStep;
+
+      }
+
+      return aPoint;
+    }
+
+    template<dim_type nDim, size_t nNumber>
+    auto CreateTest(unsigned depth)
+    {
+      autoc aPoint = CreatePoints<nDim, nNumber>();
+      auto nt = TreePointND<nDim>::Create(aPoint, depth);
+      return nt;
+    }
+
+    TEST_METHOD(Create_2D_1000000_depth3)  { CreateTest<2, 1000000>(3); }
+    TEST_METHOD(Create_2D_1000000_depth4)  { CreateTest<2, 1000000>(4); }
+    TEST_METHOD(Create_3D_1000000_depth3) { CreateTest<3, 1000000>(3); }
+    TEST_METHOD(Create_3D_1000000_depth4)  { CreateTest<3, 1000000>(4); }
+    TEST_METHOD(Create_3D_10000000_depth4) { CreateTest<3, 10000000>(4); }
+    TEST_METHOD(Create_4D_1000000_depth2)  { CreateTest<4, 1000000>(2); }
+
   };
 }
 
