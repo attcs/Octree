@@ -1364,12 +1364,8 @@ namespace NTree
  
     bool Contains(point_type const& pt, span<point_type const> const& vpt, geometry_type rAccuracy) const
     {
-      if (!_Ad::does_box_contain_point(this->_box, pt))
-        return morton_node_id_type{};
-
-      autoc idLocation = _getLocationId(pt, this->_box, this->_nRasterResolutionMax);
-      autoc kSmallestNode = this->GetHash(this->_nDepthMax, idLocation);
-      if (!this->_nodes.contains(kSmallestNode))
+      autoc kSmallestNode = this->FindSmallestNode(pt);
+      if (!base::IsValidKey(kSmallestNode))
         return false;
 
       autoc& node = cont_at(this->_nodes, kSmallestNode);
