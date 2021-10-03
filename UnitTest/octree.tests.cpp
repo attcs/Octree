@@ -11,6 +11,23 @@ using namespace std;
 using namespace NTree;
 
 
+namespace Microsoft {
+  namespace VisualStudio {
+    namespace CppUnitTestFramework
+    {
+      template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
+      template<> inline std::wstring ToString<bitset<9>>(const bitset<9>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<13>>(const bitset<13>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<17>>(const bitset<17>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<18>>(const bitset<18>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<22>>(const bitset<22>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+      template<> inline std::wstring ToString<bitset<26>>(const bitset<26>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
+
+    }
+  }
+}
+
+
 namespace
 {
   autoce BB1_INV = BoundingBox1D{ numeric_limits<double>::infinity(), -numeric_limits<double>::infinity() };
@@ -34,22 +51,72 @@ namespace
 
     return true;
   }
-}
-namespace Microsoft {
-  namespace VisualStudio {
-    namespace CppUnitTestFramework
-    {
-      template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
-      template<> inline std::wstring ToString<bitset<9>>(const bitset<9>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<13>>(const bitset<13>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<17>>(const bitset<17>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<18>>(const bitset<18>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<22>>(const bitset<22>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<26>>(const bitset<26>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
 
-    }
+
+  template<dim_type N>
+  static constexpr auto getPointSetNo1()
+  {
+    using PointXD = PointND<N>;
+
+    return array
+    {
+      // N:1/4
+      PointXD{ 0.0, 0.0 }, // N:1/4
+      PointXD{ 3.0, 3.0 }, // N:1/4
+
+      // N:1/5
+      PointXD{ 5.0, 3.0 }, // N:1/5/22
+      PointXD{ 5.2, 3.0 }, // N:1/5/22
+
+      PointXD{ 7.0, 1.0 }, // N:1/5/21
+
+      // N:1/6
+      PointXD{ 0.0, 5.0 }, // N:1/6/24
+      PointXD{ 1.0, 5.0 }, // N:1/6/24
+
+      PointXD{ 0.0, 7.0 }, // N:1/6/26
+      PointXD{ 1.0, 7.0 }, // N:1/6/26
+
+      PointXD{ 3.0, 7.0 }, // N:1/6/26
+      PointXD{ 3.0, 7.0 }, // N:1/6/26
+
+      PointXD{ 2.2, 4.5 }, // N:1/6/25/100
+      PointXD{ 2.5, 4.5 }, // N:1/6/25/100
+
+      PointXD{ 3.4, 4.5 }, // N:1/6/25/101
+      PointXD{ 3.6, 4.6 }, // N:1/6/25/101
+
+      PointXD{ 2.4, 5.5 }, // N:1/6/25/102
+      PointXD{ 2.5, 5.5 }, // N:1/6/25/102
+
+      PointXD{ 3.5, 5.5 }, // N:1/6/25/103
+      PointXD{ 3.5, 5.5 }, // N:1/6/25/103
+
+      // N:1/7
+      PointXD{ 5.0, 5.0 }, // N:1/7/28
+      PointXD{ 5.0, 5.0 }, // N:1/7/28
+
+      PointXD{ 7.0, 5.0 }, // N:1/7/30
+      PointXD{ 7.0, 5.0 }, // N:1/7/30
+
+      PointXD{ 6.5, 6.5 }, // N:1/7/31/124
+      PointXD{ 6.5, 6.5 }, // N:1/7/31/124
+
+      PointXD{ 7.5, 6.5 }, // N:1/7/31/125
+      PointXD{ 7.5, 6.5 }, // N:1/7/31/125
+
+      PointXD{ 6.5, 7.5 }, // N:1/7/31/126
+      PointXD{ 6.5, 7.5 }, // N:1/7/31/126
+
+      PointXD{ 7.5, 7.5 }, // N:1/7/31/127
+      PointXD{ 7.5, 7.5 }, // N:1/7/31/127
+      PointXD{ 8.0, 8.0 }, // N:1/7/31/127
+    };
   }
+
 }
+
+
 namespace GeneralTest
 {
   TEST_CLASS(MortonTest)
@@ -137,8 +204,9 @@ namespace GeneralTest
 
   TEST_CLASS(NodeTest)
   {
+  private:
     template<dim_type N>
-    static void Complex_ND_Only1()
+    static void _complex_ND_Only1()
     {
       using child_id_type_ = TreeBoxND<N>::child_id_type;
       auto node = TreeBoxND<N>::Node();
@@ -161,18 +229,19 @@ namespace GeneralTest
       }
     }
 
+  public:
+    TEST_METHOD(Complex_1D_Only1) { _complex_ND_Only1<1>(); }
+    TEST_METHOD(Complex_2D_Only1) { _complex_ND_Only1<2>(); }
+    TEST_METHOD(Complex_3D_Only1) { _complex_ND_Only1<3>(); }
+    TEST_METHOD(Complex_4D_Only1) { _complex_ND_Only1<4>(); }
 
-    TEST_METHOD(Complex_1D_Only1) { Complex_ND_Only1<1>(); }
-    TEST_METHOD(Complex_2D_Only1) { Complex_ND_Only1<2>(); }
-    TEST_METHOD(Complex_3D_Only1) { Complex_ND_Only1<3>(); }
-    TEST_METHOD(Complex_4D_Only1) { Complex_ND_Only1<4>(); }
-
-    TEST_METHOD(Complex_16D_Only1) { Complex_ND_Only1<16>(); }
+    TEST_METHOD(Complex_16D_Only1) { _complex_ND_Only1<16>(); }
     //TEST_METHOD(Complex_24D_Only1) { Complex_ND_Only1<24>(); }
 
 
+  private:
     template<dim_type N>
-    static void Complex_All_ND()
+    static void _complex_All_ND()
     {
       using child_id_type_ = TreeBoxND<N>::child_id_type;
       auto node = TreeBoxND<N>::Node();
@@ -200,12 +269,13 @@ namespace GeneralTest
       Assert::IsFalse(node.IsAnyChildExist());
     }
 
-    TEST_METHOD(Complex_1D_All) { Complex_All_ND<1>(); }
-    TEST_METHOD(Complex_2D_All) { Complex_All_ND<2>(); }
-    TEST_METHOD(Complex_3D_All) { Complex_All_ND<3>(); }
-    TEST_METHOD(Complex_4D_All) { Complex_All_ND<4>(); }
+  public:
+    TEST_METHOD(Complex_1D_All) { _complex_All_ND<1>(); }
+    TEST_METHOD(Complex_2D_All) { _complex_All_ND<2>(); }
+    TEST_METHOD(Complex_3D_All) { _complex_All_ND<3>(); }
+    TEST_METHOD(Complex_4D_All) { _complex_All_ND<4>(); }
 
-    TEST_METHOD(Complex_16D_All) { Complex_All_ND<16>(); }
+    TEST_METHOD(Complex_16D_All) { _complex_All_ND<16>(); }
     //TEST_METHOD(Complex_24D_All) { Complex_All_ND<24>(); }
   };
 
@@ -224,7 +294,7 @@ namespace GeneralTest
 
     TEST_METHOD(GetHash__00_1)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(0,0), DualtreePoint::morton_node_id_type(1));
+      Assert::AreEqual(DualtreePoint::GetHash(0, 0), DualtreePoint::morton_node_id_type(1));
     }
 
     TEST_METHOD(GetHash__11_3)
@@ -263,7 +333,7 @@ namespace GeneralTest
       Assert::AreEqual<size_t>(tree.GetDepthMax(), 3);
       Assert::AreEqual<size_t>(tree.GetResolutionMax(), 8);
     }
-    
+
     TEST_METHOD(VisitNodes__points__0123)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
@@ -292,7 +362,7 @@ namespace GeneralTest
         , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
-      Assert::IsTrue(ids == vector<size_t>{6,  4, 5,  0, 1, 2, 3 });
+      Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
     }
 
 
@@ -427,7 +497,7 @@ namespace GeneralTest
       };
       auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
       tree.UpdateIndexes(
-        { 
+        {
           { 6, 3 },
           { 3, 6 },
           { 4, 5 },
@@ -435,7 +505,7 @@ namespace GeneralTest
           { 1, DualtreeBox::ERASE },
         }
       );
-     
+
       autoc ids = tree.CollectAllIdInBFS();
       // Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
 
@@ -465,6 +535,75 @@ namespace GeneralTest
     {
       //!
     }
+
+    TEST_METHOD(Contains_EmptyTree__False)
+    {
+      autoc tree = DualtreePoint::Create({}, 3, std::nullopt, 2);
+      autoc isPointContained = tree.Contains({}, {}, 1.0);
+      Assert::IsFalse(isPointContained);
+    }
+
+  private:
+    template<dim_type N>
+    bool _isOnePointTreeContains()
+    {
+      using PointXD = PointND<N>;
+      autoce vPoint = std::array<PointXD, 1>{ PointXD{ 1.1 } };
+      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      return tree.Contains(vPoint[0], vPoint, 0.01);
+    }
+
+  public:
+    TEST_METHOD(Contains_OnePointTree_1D__True)
+    {
+      Assert::IsTrue(_isOnePointTreeContains<1>());
+    }
+
+    TEST_METHOD(Contains_OnePointTree_2D__True)
+    {
+      Assert::IsTrue(_isOnePointTreeContains<2>());
+    }
+
+    TEST_METHOD(Contains_OnePointTree_3D__True)
+    {
+      Assert::IsTrue(_isOnePointTreeContains<3>());
+    }
+
+    TEST_METHOD(Contains_OnePointTree_4D__True)
+    {
+      Assert::IsTrue(_isOnePointTreeContains<4>());
+    }
+
+    TEST_METHOD(Contains_OnePointTree_16D__True)
+    {
+      Assert::IsTrue(_isOnePointTreeContains<16>());
+    }
+
+  private:
+    template<dim_type N>
+    bool _isTreeContainsPointSetNo1()
+    {
+      autoce vPoint = getPointSetNo1<N>();
+      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      return tree.Contains(vPoint[4], vPoint, 0.0);
+    }
+
+  public:
+    TEST_METHOD(Contains_PointSetNo1_2D__True)
+    {
+      Assert::IsTrue(_isTreeContainsPointSetNo1<2>());
+    }
+
+    TEST_METHOD(Contains_PointSetNo1_3D__True)
+    {
+      Assert::IsTrue(_isTreeContainsPointSetNo1<3>());
+    }
+
+    TEST_METHOD(Contains_PointSetNo1_16D__True)
+    {
+      Assert::IsTrue(_isTreeContainsPointSetNo1<16>());
+    }
+
   };
 }
 
@@ -897,67 +1036,6 @@ namespace DualtreeBoxTest
   };
 }
 
-template<dim_type N>
-static constexpr auto getSetNo1()
-{
-  using PointXD = PointND<N>;
-
-  return array
-  {
-    // N:1/4
-    PointXD{ 0.0, 0.0 }, // N:1/4
-    PointXD{ 3.0, 3.0 }, // N:1/4
-
-    // N:1/5
-    PointXD{ 5.0, 3.0 }, // N:1/5/22
-    PointXD{ 5.2, 3.0 }, // N:1/5/22
-
-    PointXD{ 7.0, 1.0 }, // N:1/5/21
-
-    // N:1/6
-    PointXD{ 0.0, 5.0 }, // N:1/6/24
-    PointXD{ 1.0, 5.0 }, // N:1/6/24
-
-    PointXD{ 0.0, 7.0 }, // N:1/6/26
-    PointXD{ 1.0, 7.0 }, // N:1/6/26
-
-    PointXD{ 3.0, 7.0 }, // N:1/6/26
-    PointXD{ 3.0, 7.0 }, // N:1/6/26
-
-    PointXD{ 2.2, 4.5 }, // N:1/6/25/100
-    PointXD{ 2.5, 4.5 }, // N:1/6/25/100
-
-    PointXD{ 3.4, 4.5 }, // N:1/6/25/101
-    PointXD{ 3.6, 4.6 }, // N:1/6/25/101
-
-    PointXD{ 2.4, 5.5 }, // N:1/6/25/102
-    PointXD{ 2.5, 5.5 }, // N:1/6/25/102
-
-    PointXD{ 3.5, 5.5 }, // N:1/6/25/103
-    PointXD{ 3.5, 5.5 }, // N:1/6/25/103
-
-    // N:1/7
-    PointXD{ 5.0, 5.0 }, // N:1/7/28
-    PointXD{ 5.0, 5.0 }, // N:1/7/28
-
-    PointXD{ 7.0, 5.0 }, // N:1/7/30
-    PointXD{ 7.0, 5.0 }, // N:1/7/30
-
-    PointXD{ 6.5, 6.5 }, // N:1/7/31/124
-    PointXD{ 6.5, 6.5 }, // N:1/7/31/124
-
-    PointXD{ 7.5, 6.5 }, // N:1/7/31/125
-    PointXD{ 7.5, 6.5 }, // N:1/7/31/125
-
-    PointXD{ 6.5, 7.5 }, // N:1/7/31/126
-    PointXD{ 6.5, 7.5 }, // N:1/7/31/126
-
-    PointXD{ 7.5, 7.5 }, // N:1/7/31/127
-    PointXD{ 7.5, 7.5 }, // N:1/7/31/127
-    PointXD{ 8.0, 8.0 }, // N:1/7/31/127
-  };
-}
-
 
 namespace QuadtreePointTest
 {
@@ -967,7 +1045,7 @@ namespace QuadtreePointTest
     TEST_METHOD(Build_SetNo1)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc quadtreebox = TreePointND<N>::Create(points, 3, std::nullopt, 3);
       autoc nNode = quadtreebox.GetNodeSize();
       Assert::AreEqual<size_t>(22, nNode);
@@ -979,7 +1057,7 @@ namespace QuadtreePointTest
     TEST_METHOD(N103_k2_RemainInSmallestNode__17_18)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
@@ -990,7 +1068,7 @@ namespace QuadtreePointTest
     TEST_METHOD(N103_k3__14_17_18)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
@@ -1001,7 +1079,7 @@ namespace QuadtreePointTest
     TEST_METHOD(N103_k4__14_16_17_18)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
@@ -1012,7 +1090,7 @@ namespace QuadtreePointTest
     TEST_METHOD(N103_k100_OverTheContainingElements__All)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
@@ -1027,7 +1105,7 @@ namespace QuadtreePointTest
     TEST_METHOD(N4_k1__1)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 2.0, 2.0 };
@@ -1038,7 +1116,7 @@ namespace QuadtreePointTest
     TEST_METHOD(N4_k2__1_11_12)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 2.0, 2.0 };
@@ -1049,7 +1127,7 @@ namespace QuadtreePointTest
     TEST_METHOD(N4_k3__1_11_12)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 2.0, 2.0 };
@@ -1062,7 +1140,7 @@ namespace QuadtreePointTest
     TEST_METHOD(OutSide_k1__0)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ -1.0, -1.0 };
@@ -1073,7 +1151,7 @@ namespace QuadtreePointTest
     TEST_METHOD(OutSide_k5__0_1_5_6_11)
     {
       autoce N = 2;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ -1.0, -1.0 };
@@ -1086,7 +1164,7 @@ namespace QuadtreePointTest
     TEST_METHOD(OutSide_k5_16D__0_1_5_6_11)
     {
       autoce N = 23;
-      autoce points = getSetNo1<N>();
+      autoce points = getPointSetNo1<N>();
       autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ -1.0, -1.0 };
@@ -1473,6 +1551,8 @@ namespace PerformaceTest
     template<dim_type nDim, class execution_policy_type = std::execution::unsequenced_policy>
     static auto CreateTest(unsigned depth, vector<BoundingBoxND<nDim>> const& aBox)
     {
+      auto n2t = OctreeBox::Create<execution_policy_type>({}, depth);
+
       auto nt = TreeBoxND<nDim>::template Create<execution_policy_type>(aBox, depth);
       return nt;
     }
