@@ -1,14 +1,4 @@
 #include "pch.h"
-#include "CppUnitTest.h"
-#include "../octree.h"
-
-#define autoc auto const
-#define autoce auto constexpr
-
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-using namespace std;
-using namespace NTree;
 
 
 namespace Microsoft {
@@ -279,9 +269,42 @@ namespace GeneralTest
     //TEST_METHOD(Complex_24D_All) { Complex_All_ND<24>(); }
   };
 
-  TEST_CLASS(NTreeLinearTest)
+
+  TEST_CLASS(BasicFunctionsTest)
   {
     using morton_node_id_type = DualtreePoint::morton_node_id_type;
+
+    TEST_METHOD(Ctor_Point_SameAsCreate__True)
+    {
+      autoce N = 16;
+      autoce vPoint = getPointSetNo1<N>();
+      autoc treeExpected = TreePointND<N>::Create(vPoint, 3);
+      autoc treeActual = TreePointND<N>(vPoint, 3);
+      Assert::AreEqual(treeExpected.GetNodeSize(), treeActual.GetNodeSize());
+      autoc vidE = treeExpected.CollectAllIdInBFS();
+      autoc vidA = treeActual.CollectAllIdInBFS();
+      Assert::IsTrue(vidE == vidA);
+    }
+
+    TEST_METHOD(Ctor_Box_SameAsCreate__True)
+    {
+      autoce N = 16;
+      using BoundingBoxXD = BoundingBoxND<N>;
+      autoce vBox = array
+      {
+        BoundingBoxXD{ 0.0, 4.0 },
+        BoundingBoxXD{ 0.0, 2.0 }, BoundingBoxXD{ 2.0, 4.0 },
+        BoundingBoxXD{ 0.0, 1.0 }, BoundingBoxXD{ 1.0, 2.0 }, BoundingBoxXD{ 2.0, 3.0 }, BoundingBoxXD{ 3.0, 4.0 }
+      };
+
+      autoc treeExpected = TreeBoxND<N>::Create(vBox, 3);
+      autoc treeActual = TreeBoxND<N>(vBox, 3);
+      Assert::AreEqual(treeExpected.GetNodeSize(), treeActual.GetNodeSize());
+      autoc vidE = treeExpected.CollectAllIdInBFS();
+      autoc vidA = treeActual.CollectAllIdInBFS();
+      Assert::IsTrue(vidE == vidA);
+    }
+
     TEST_METHOD(EstimateNodeNumber__0)
     {
       //!
@@ -507,9 +530,8 @@ namespace GeneralTest
       );
 
       autoc ids = tree.CollectAllIdInBFS();
-      // Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
 
-      Assert::IsTrue(ids == vector<size_t>{3, 5, 1, 0, 2, 6 });
+      Assert::IsTrue(ids == vector<size_t>{3, 5, 1, 0, 2, 6 }); // instead of { 6, 4, 5, 0, 1, 2, 3 }
     }
 
     TEST_METHOD(Clear__EmptyRootRemains)
@@ -604,12 +626,31 @@ namespace GeneralTest
       Assert::IsTrue(_isTreeContainsPointSetNo1<16>());
     }
 
+    TEST_METHOD(Contains_PointSetNo1_16D__False)
+    {
+      autoce N = 16;
+      autoce vPoint = getPointSetNo1<N>();
+      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      autoc fContain = tree.Contains(PointND<N>{-1.0, -1.0 }, vPoint, 0.0);
+
+      Assert::IsFalse(fContain);
+    }
+
+    TEST_METHOD(Contains_PointSetNo1_3D__False)
+    {
+      autoce N = 3;
+      autoce vPoint = getPointSetNo1<N>();
+      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      autoc fContain = tree.Contains(PointND<N>{7.0, 9.0 }, vPoint, 0.0);
+
+      Assert::IsFalse(fContain);
+    }
   };
 }
 
-namespace DualtreePointTest
+namespace Tree1DTest
 {
-	TEST_CLASS(CreateTest)
+	TEST_CLASS(Point_CreateTest)
 	{
 	public:
 		
@@ -663,7 +704,7 @@ namespace DualtreePointTest
 	};
 
 
-  TEST_CLASS(SearchTest)
+  TEST_CLASS(Point_SearchTest)
   {
     TEST_METHOD(FindSmallestNode_At30)
     {
@@ -743,7 +784,7 @@ namespace DualtreePointTest
   };
 
 
-  TEST_CLASS(EditTest)
+  TEST_CLASS(Point_EditTest)
   {
     TEST_METHOD(Insert__NonLeaf__Successful)
     {
@@ -858,13 +899,10 @@ namespace DualtreePointTest
     }
 
   };
-}
 
 
-namespace DualtreeBoxTest
-{
 
-  TEST_CLASS(SearchTest)
+  TEST_CLASS(Box_SearchTest)
   {
     TEST_METHOD(FindSmallestNode_)
     {
@@ -941,7 +979,7 @@ namespace DualtreeBoxTest
 
   };
 
-  TEST_CLASS(EditTest)
+  TEST_CLASS(Box_EditTest)
   {
     TEST_METHOD(Insert_IntoRoot_Successful)
     {
@@ -1037,22 +1075,22 @@ namespace DualtreeBoxTest
 }
 
 
-namespace QuadtreePointTest
+namespace Tree2DTest
 {
 
-  TEST_CLASS(General)
+  TEST_CLASS(Point_General)
   {
-    TEST_METHOD(Build_SetNo1)
+    TEST_METHOD(Create_SetNo1)
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc quadtreebox = TreePointND<N>::Create(points, 3, std::nullopt, 3);
-      autoc nNode = quadtreebox.GetNodeSize();
+      autoc nt = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc nNode = nt.GetNodeSize();
       Assert::AreEqual<size_t>(22, nNode);
     }
   };
 
-  TEST_CLASS(kNNTest)
+  TEST_CLASS(Point_kNNTest)
   {
     TEST_METHOD(N103_k2_RemainInSmallestNode__17_18)
     {
@@ -1173,12 +1211,9 @@ namespace QuadtreePointTest
     }
 
   };
-}
 
 
-namespace QuadtreeBoxTest
-{
-  TEST_CLASS(SearchTest)
+  TEST_CLASS(Box_SearchTest)
   {
     TEST_METHOD(RangeSearch__Inside__124)
     {
@@ -1275,404 +1310,6 @@ namespace QuadtreeBoxTest
 }
 
 
-namespace OctreePointTest
+namespace Tree3DTest
 {
-}
-
-
-namespace OctreeBoxTest
-{
-}
-
-
-namespace BitsetArithmeticTest
-{
-  TEST_CLASS(BitSetTest)
-  {
-    TEST_METHOD(less_0_1__true)
-    {
-      Assert::IsTrue(bitset_arithmetic<10>(0) < bitset_arithmetic<10>(1));
-    }
-
-    TEST_METHOD(less_12_12__false)
-    {
-      Assert::IsFalse(bitset_arithmetic<10>(12) < bitset_arithmetic<10>(12));
-    }
-
-    TEST_METHOD(less_126_254__true)
-    {
-      Assert::IsTrue(bitset_arithmetic<30>(126) < bitset_arithmetic<30>(254));
-    }
-
-    TEST_METHOD(greater_126_254__false)
-    {
-      Assert::IsFalse(bitset_arithmetic<30>(126) > bitset_arithmetic<30>(254));
-    }
-    TEST_METHOD(Plus_0_0__0)
-    {
-      autoc bs = bitset_arithmetic<10>(0) + bitset_arithmetic<10>(0);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(0, n);
-    }
-
-    TEST_METHOD(Plus_0_1__1)
-    {
-      autoc bs = bitset_arithmetic<10>(0) + bitset_arithmetic<10>(1);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(1, n);
-    }
-
-    TEST_METHOD(Plus_1_1__2)
-    {
-      autoc bs = bitset_arithmetic<10>(1) + bitset_arithmetic<10>(1);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(2, n);
-    }
-
-    TEST_METHOD(Plus_16_16__32)
-    {
-      autoc bs = bitset_arithmetic<10>(16) + bitset_arithmetic<10>(16);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(32, n);
-    }
-
-    TEST_METHOD(Plus_17_16__33)
-    {
-      autoc bs = bitset_arithmetic<10>(17) + bitset_arithmetic<10>(16);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(33, n);
-    }
-
-    TEST_METHOD(Minus_17_16__1)
-    {
-      autoc bs = bitset_arithmetic<10>(17) - bitset_arithmetic<10>(16);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(1, n);
-    }
-
-    TEST_METHOD(Mult_17_16__272)
-    {
-      autoc bs = bitset_arithmetic<10>(17) * bitset_arithmetic<10>(16);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(272, n);
-    }
-
-    TEST_METHOD(Mult_127_255__32385)
-    {
-      autoc bs = bitset_arithmetic<18>(127) * bitset_arithmetic<18>(255);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(32385, n);
-    }
-
-
-    TEST_METHOD(Div_17_16__1)
-    {
-      autoc bs = bitset_arithmetic<10>(17) / bitset_arithmetic<10>(16);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(1, n);
-    }
-
-    TEST_METHOD(Div_16_17__0)
-    {
-      autoc bs = bitset_arithmetic<10>(16) / bitset_arithmetic<10>(17);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(0, n);
-    }
-
-    TEST_METHOD(Div_2578_156__16)
-    {
-      autoc bs = bitset_arithmetic<13>(2578) / bitset_arithmetic<13>(156);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(16, n);
-    }
-
-    TEST_METHOD(Div_156_2578__0)
-    {
-      autoc bs = bitset_arithmetic<13>(156) / bitset_arithmetic<13>(2578);
-      autoc n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(0, n);
-    }
-  };
-}
-
-namespace HighestDimOctreePointTest
-{
-  TEST_CLASS(SearchTest)
-  {
-    TEST_METHOD(RangeSearch__Inside__124)
-    {
-      //!
-      autoce nDimension = 16;
-      using PointXD = NTree::PointND<nDimension>;
-      autoce vpt = array{ PointXD{ 0.0 }, PointXD{ 1.0 }, PointXD{ 2.0 }, PointXD{ 3.0 } };
-
-      auto nt = TreePointND<nDimension>::Create(vpt, 4);
-      
-    }
-  };
-}
-
-namespace PerformaceTest
-{
-
-  TEST_CLASS(PointTest)
-  {
-    template<dim_type nDim, size_t nNumber>
-    static vector<PointND<nDim>> CreatePoints()
-    {
-      auto aPoint = vector<PointND<nDim>>(nNumber);
-      if (nNumber <= 1)
-        return aPoint;
-
-      size_t iNumber = 1;
-      autoce rMax = 8.0;
-
-      // Corner points
-      {
-        for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim, ++iNumber)
-          aPoint[iNumber][iDim] = rMax;
-
-        if (iNumber == nNumber)
-          return aPoint;
-
-        for (dim_type iDim = 0; iDim < nDim; ++iDim)
-          aPoint[iNumber][iDim] = rMax;
-
-        ++iNumber;
-      }
-
-      // Angle points
-      {
-        autoc nRemain = nNumber - iNumber;
-        autoc rStep = rMax / (nRemain + 2);
-        for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
-          for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
-            aPoint[nNumber - iNumber - 1][iDim] = iRemain * rStep;
-
-      }
-
-      return aPoint;
-    }
-
-    template<dim_type nDim, class execution_policy_type = std::execution::unsequenced_policy>
-    static TreePointND<nDim> CreateTest(unsigned depth, vector<PointND<nDim>> const& aPoint)
-    {
-      auto nt = TreePointND<nDim>::template Create<execution_policy_type>(aPoint, depth);
-      return nt;
-    }
-
-  private:
-    vector<PointND<2>> _aPoint2D_1000000;
-    vector<PointND<3>> _aPoint3D_1000000;
-    vector<PointND<3>> _aPoint3D_10000000;
-    vector<PointND<4>> _aPoint4D_1000000;
-  public:
-    PointTest()
-      : _aPoint2D_1000000(CreatePoints<2, 1000000>())
-      , _aPoint3D_1000000(CreatePoints<3, 1000000>())
-      , _aPoint3D_10000000(CreatePoints<3, 10000000>())
-      , _aPoint4D_1000000(CreatePoints<4, 1000000>())
-    {}
-
-    TEST_METHOD(Create_2D_1000000_depth3)  { CreateTest(3, _aPoint2D_1000000); }
-    TEST_METHOD(Create_2D_1000000_depth4)  { CreateTest(4, _aPoint2D_1000000); }
-    TEST_METHOD(Create_3D_1000000_depth3) { CreateTest(3, _aPoint3D_1000000); }
-    TEST_METHOD(Create_3D_1000000_depth4)  { CreateTest(4, _aPoint3D_1000000); }
-    TEST_METHOD(Create_3D_10000000_depth4_unseq) { CreateTest(4, _aPoint3D_10000000); }
-    TEST_METHOD(Create_3D_10000000_depth4_par_unseq) { CreateTest<3, std::execution::parallel_unsequenced_policy>(4, _aPoint3D_10000000); }
-
-    TEST_METHOD(Create_4D_1000000_depth2)  { CreateTest(2, _aPoint4D_1000000); }
-  };
-
-
-  TEST_CLASS(BoxTest)
-  {
-    template<dim_type nDim>
-    static BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
-    {
-      auto box = BoundingBoxND<nDim>{ pt, pt };
-      for (dim_type iDim = 0; iDim < nDim; ++iDim)
-        box.Max[iDim] += size;
-
-      return box;
-    }
-
-    template<dim_type nDim, size_t nNumber>
-    static vector<BoundingBoxND<nDim>> CreateBoxes()
-    {
-      if (nNumber == 0)
-        return {};
-
-      autoce rMax = 8.0;
-      autoce rUnit = 1.0;
-      auto aBox = vector<BoundingBoxND<nDim>>(nNumber);
-      aBox[0] = CreateBox(PointND<nDim>(), rMax);
-      if (nNumber == 1)
-        return aBox;
-
-      size_t iNumber = 1;
-
-      // Corner points
-      {
-        for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim, ++iNumber)
-        {
-          aBox[iNumber].Min[iDim] = rMax - rUnit;
-          aBox[iNumber] = CreateBox(aBox[iNumber].Min, rUnit);
-        }
-        if (iNumber == nNumber)
-          return aBox;
-
-
-        for (dim_type iDim = 0; iDim < nDim; ++iDim)
-          aBox[iNumber].Min[iDim] = rMax - rUnit;
-
-        aBox[iNumber] = CreateBox(aBox[iNumber].Min, rUnit);
-
-        ++iNumber;
-      }
-
-      // Angle points
-      {
-        autoc nRemain = nNumber - iNumber;
-        autoc rStep = (rMax - rUnit) / (nRemain + 2);
-        for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
-          for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
-          {
-            autoc iNumberBox = nNumber - iNumber - 1;
-            aBox[iNumberBox].Min[iDim] = iRemain * rStep;
-            aBox[iNumberBox] = CreateBox(aBox[iNumberBox].Min, rUnit);
-          }
-
-      }
-
-      return aBox;
-    }
-
-    template<dim_type nDim, class execution_policy_type = std::execution::unsequenced_policy>
-    static auto CreateTest(unsigned depth, vector<BoundingBoxND<nDim>> const& aBox)
-    {
-      auto n2t = OctreeBox::Create<execution_policy_type>({}, depth);
-
-      auto nt = TreeBoxND<nDim>::template Create<execution_policy_type>(aBox, depth);
-      return nt;
-    }
-
-  private:
-    vector<BoundingBoxND<2>> _aBox2D_1000000;
-    vector<BoundingBoxND<3>> _aBox3D_1000000;
-    vector<BoundingBoxND<3>> _aBox3D_10000000;
-    vector<BoundingBoxND<4>> _aBox4D_1000000;
-
-  public:
-    BoxTest() 
-      : _aBox2D_1000000(CreateBoxes<2, 1000000>())
-      , _aBox3D_1000000(CreateBoxes<3, 1000000>())
-      , _aBox3D_10000000(CreateBoxes<3, 10000000>())
-      , _aBox4D_1000000(CreateBoxes<4, 1000000>())
-    {}
-    TEST_METHOD(Create_2D_1000000_depth3) { CreateTest(3, _aBox2D_1000000); }
-    TEST_METHOD(Create_2D_1000000_depth4) { CreateTest(4, _aBox2D_1000000); }
-
-    TEST_METHOD(Create_3D_1000000_depth3) { CreateTest(3, _aBox3D_1000000); }
-    TEST_METHOD(Create_3D_1000000_depth4) { CreateTest(4, _aBox3D_1000000); }
-    TEST_METHOD(Create_3D_10000000_depth4) { CreateTest(4, _aBox3D_10000000); }
-    TEST_METHOD(Create_3D_10000000_depth4_par_unseq) { CreateTest<3, std::execution::parallel_unsequenced_policy>(4, _aBox3D_10000000); }
-
-    TEST_METHOD(Create_4D_1000000_depth4) { CreateTest(4, _aBox4D_1000000); }
-  };
-}
-
-namespace CustomGeometryType
-{
-  // User-defined geometrical objects
-
-  struct Point2DCustom { float x; float y; };
-  using BoundingBox2DCustom = std::array<Point2DCustom, 2>;
-
-
-  // Adaptor
-
-  struct AdaptorBasicsCustom
-  {
-    static inline float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
-    {
-      switch (iDimension)
-      {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        default: assert(false); return pt.x;
-      }
-    }
-
-    static constexpr float point_comp_c(Point2DCustom const& pt, NTree::dim_type iDimension)
-    {
-      switch (iDimension)
-      {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        default: assert(false); return pt.x;
-      }
-    }
-
-    static constexpr Point2DCustom& box_min(BoundingBox2DCustom& box) { return box[0]; }
-    static constexpr Point2DCustom& box_max(BoundingBox2DCustom& box) { return box[1]; }
-    static constexpr Point2DCustom const& box_min_c(BoundingBox2DCustom const& box) { return box[0]; }
-    static constexpr Point2DCustom const& box_max_c(BoundingBox2DCustom const& box) { return box[1]; }
-  };
-
-  using AdaptorCustom = NTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
-
-
-  // Tailored Quadtree objects
-
-  using QuadtreePointCustom = NTree::NTreePoint<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
-  using QuadtreeBoxCustom = NTree::NTreeBoundingBox<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
-
-}
-
-
-
-namespace CustomGeometryTypeTest
-{
-  using namespace CustomGeometryType;
-
-  static bool AreEqualAlmost(BoundingBox2DCustom const& l, BoundingBox2DCustom const& r)
-  {
-    for (autoc iMax : { 0, 1 })
-      for (dim_type iD = 0; iD < 2; ++iD)
-      {
-        if (l[iMax].x == r[iMax].x)
-          return false;
-        if (l[iMax].y == r[iMax].y)
-          return false;
-      }
-    return true;
-  }
-
-
-
-  TEST_CLASS(PointTest)
-  {
-  public:
-    TEST_METHOD(Empty)
-    {
-      autoc tree = QuadtreePointCustom::Create(vector<Point2DCustom>{}, 2);
-      autoc& nodes = tree.Get();
-      Assert::IsTrue(nodes.size() == 1);
-      Assert::IsTrue(nodes.at(1).vid.empty());
-      Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox2DCustom{}));
-    }
-
-    TEST_METHOD(Insert_NonLeaf_Successful)
-    {
-      autoce vpt = array{ Point2DCustom{ 0.0, 0.0 }, Point2DCustom{ 1.0, 1.0 }, Point2DCustom{ 2.0, 2.0 }, Point2DCustom{ 3.0, 3.0 } };
-      auto tree = QuadtreePointCustom::Create(vpt, 3, std::nullopt, 2);
-
-      Assert::IsTrue(tree.Insert(4, Point2DCustom{ 2.5, 2.5 }, false));
-
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
-      Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).vid == vector<size_t>{ 3, 4 });
-    }
-  };
 }

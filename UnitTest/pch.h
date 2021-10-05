@@ -9,4 +9,14 @@
 
 // add headers that you want to pre-compile here
 
+#include "CppUnitTest.h"
+#include "../octree.h"
+
 #endif //PCH_H
+
+#define autoc auto const
+#define autoce auto constexpr
+
+using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+using namespace std;
+using namespace NTree;
