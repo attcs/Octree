@@ -530,12 +530,13 @@ namespace NTree
 
 
   public:
-    struct Node
+
+    class Node
     {
     public:
       static constexpr bool is_bitset = _nChild > 64;
 
-    private:
+    private: // Internal types
 
       // Max value: 2^(2^nDimension)
       using child_exist_flag_type = std::conditional<_nChild <= 8
@@ -550,11 +551,16 @@ namespace NTree
 
       struct unused_container_type {};
       using child_container_type = std::conditional<is_bitset, vector<child_id_type>, unused_container_type>::type;
+
+    private: // Optional members
       child_container_type _children;
 
-    public:
+    public: // Public members
       vector<entity_id_type> vid;
       box_type box;
+
+
+    public:
 
       constexpr void EnableChild(child_id_type iChild) 
       { 
@@ -599,7 +605,9 @@ namespace NTree
           return _getChildren();
       }
 
+
     private:
+
       template<size_t N> 
       static inline bool _isAnyChildExist(bitset_arithmetic<N> const& hasChildK) { return !hasChildK.none(); }
       static constexpr bool _isAnyChildExist(size_t hasChildK) { return hasChildK > 0; }
@@ -621,18 +629,8 @@ namespace NTree
       }
     };
 
+  protected: // Aid struct to partitioning
 
-  protected: // member variables
-    using container_type = std::conditional<is_linear_tree, unordered_map<morton_node_id_type, Node>, map<morton_node_id_type, Node, bitset_arithmetic_compare>>::type;
-    container_type _nodes;
-    box_type _box = {};
-    depth_type _nDepthMax = 0;
-    grid_id_type _nRasterResolutionMax = 0;
-    max_element_type _nElementMax = 11;
-
-    static_assert(sizeof(_nRasterResolutionMax) <= sizeof(grid_id_type));
-
-  protected: // aid struct to partitioning
     struct _NodePartitioner
     {
       morton_node_id_type kNode = 0;
@@ -644,9 +642,24 @@ namespace NTree
     };
 
 
+  protected: // Member variables
+
+    using container_type = std::conditional<is_linear_tree, unordered_map<morton_node_id_type, Node>, map<morton_node_id_type, Node, bitset_arithmetic_compare>>::type;
+    container_type _nodes;
+    box_type _box = {};
+    depth_type _nDepthMax = 0;
+    grid_id_type _nRasterResolutionMax = 0;
+    max_element_type _nElementMax = 11;
+
+    static_assert(sizeof(_nRasterResolutionMax) <= sizeof(grid_id_type));
+
+
   protected: // Aid functions
+
     static void _reserveContainer(map<morton_node_id_type, Node, bitset_arithmetic_compare>& m, size_t n) {};
     static void _reserveContainer(unordered_map<morton_node_id_type, Node>& m, size_t n) { m.reserve(n); };
+
+
     template<size_t N>
     static inline size_t _mortonIdToChildId(bitset_arithmetic<N> const& bs)
     {
@@ -656,13 +669,15 @@ namespace NTree
     static constexpr size_t _mortonIdToChildId(size_t morton) { return morton; }
 
 
-  protected: // Grid functions
     static constexpr vector<entity_id_type> _generatePointId(size_t n)
     {
       auto vidPoint = vector<entity_id_type>(n);
       std::iota(begin(vidPoint), end(vidPoint), 0);
       return vidPoint;
     }
+
+
+  protected: // Grid functions
 
     static constexpr array<double, nDimension> _getGridRasterizer(point_type const& p0, point_type const& p1, grid_id_type n_divide)
     {
@@ -947,11 +962,12 @@ namespace NTree
 
   public: // Getters
 
-    size_t GetNodeSize() const { return _nodes.size(); }
+    size_t inline GetNodeSize() const { return _nodes.size(); }
+    auto const& GetNodes() const { return _nodes; }
     auto const& GetBox() const { return _box; }
     auto const& Get() const { return _nodes; }
     auto const& Get(morton_node_id_type_cref key) const { return cont_at(_nodes, key); }
-    auto GetDepthMax() const noexcept { return _nDepthMax; }
+    auto inline GetDepthMax() const noexcept { return _nDepthMax; }
     auto inline GetResolutionMax() const noexcept { return _nRasterResolutionMax; }
 
 
@@ -1133,6 +1149,7 @@ namespace NTree
   };
 
 
+
   // NTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
   class NTreePoint : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
@@ -1283,7 +1300,6 @@ namespace NTree
 
 
   public: // Edit functions
-
 
     // Insert item into a node. If fInsertToLeaf is true: The smallest node will be chosen by the max depth. If fInsertToLeaf is false: The smallest existing level on the branch will be chosen.
     bool Insert(entity_id_type id, point_type const& pt, bool fInsertToLeaf = false)
@@ -1512,6 +1528,7 @@ namespace NTree
   };
 
 
+
   // NTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
   class NTreeBoundingBox : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
@@ -1729,6 +1746,7 @@ namespace NTree
       return morton_node_id_type{}; // Not found
     }
 
+
     // Find smallest node which contains the box
     morton_node_id_type FindSmallestNode(box_type const& box) const
     {
@@ -1927,6 +1945,7 @@ namespace NTree
 
   template<dim_type nDimension, typename geometry_type = double>
   using PointND = array<geometry_type, nDimension>;
+
 
   template <dim_type nDimension, typename geometry_type = double>
   struct BoundingBoxND
