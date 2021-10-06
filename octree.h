@@ -538,22 +538,22 @@ namespace NTree
 
     private: // Internal types
 
+      struct unused_type {};
+
       // Max value: 2^(2^nDimension)
       using child_exist_flag_type = std::conditional<_nChild <= 8
         , uint8_t
         , typename std::conditional<is_bitset
-          , bitset_arithmetic<_nChild>
+          , unused_type
           , uint64_t
         >::type
       >::type;
 
-      child_exist_flag_type _hasChildK = {};
-
-      struct unused_container_type {};
-      using child_container_type = std::conditional<is_bitset, vector<child_id_type>, unused_container_type>::type;
+      using child_container_type = std::conditional<is_bitset, std::set<child_id_type>, unused_type>::type;
 
     private: // Optional members
       child_container_type _children;
+      child_exist_flag_type _hasChildK = {};
 
     public: // Public members
       vector<entity_id_type> vid;
@@ -565,13 +565,7 @@ namespace NTree
       constexpr void EnableChild(child_id_type iChild) 
       { 
         if constexpr (is_bitset)
-        {
-          if (!_hasChildK[iChild])
-          {
-            _hasChildK[iChild] = true;
-            _children.push_back(iChild);
-          }
-        }
+          _children.insert(iChild);
         else
           _hasChildK |= (child_exist_flag_type(1) << iChild);
       }
@@ -579,10 +573,7 @@ namespace NTree
       constexpr void DisableChild(child_id_type iChild)
       {
         if constexpr (is_bitset)
-        {
-          _hasChildK[iChild] = false;
-          std::erase_if(_children, [iChild](autoc iChildContained) { return iChild == iChildContained; });
-        }
+          _children.erase(iChild);
         else
           _hasChildK &= ~(child_exist_flag_type(1) << iChild);
       }
@@ -590,28 +581,29 @@ namespace NTree
       constexpr bool HasChild(child_id_type iChild) const 
       {
         if constexpr (is_bitset)
-          return _hasChildK[iChild];
+          return _children.contains(iChild);
         else
           return _hasChildK & (child_exist_flag_type(1) << iChild);
       }
 
-      inline bool IsAnyChildExist() const { return _isAnyChildExist(_hasChildK); }
+      inline bool IsAnyChildExist() const
+      {
+        if constexpr (is_bitset)
+          return !_children.empty();
+        else
+          return _hasChildK > 0;
+      }
 
       vector<child_id_type> GetChildren() const
       {
         if constexpr (is_bitset)
-          return _children;
+          return vector<child_id_type>(begin(_children), end(_children));
         else
           return _getChildren();
       }
 
 
     private:
-
-      template<size_t N> 
-      static inline bool _isAnyChildExist(bitset_arithmetic<N> const& hasChildK) { return !hasChildK.none(); }
-      static constexpr bool _isAnyChildExist(size_t hasChildK) { return hasChildK > 0; }
-
       inline vector<child_id_type> _getChildren() const
       {
         if (!_hasChildK)
@@ -1212,7 +1204,6 @@ namespace NTree
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     static NTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
-      autoce isParallelMode = is_same<execution_policy_type, std::execution::parallel_policy>::value || is_same<execution_policy_type, std::execution::parallel_unsequenced_policy>::value;
       autoc n = vpt.size();
 
       auto tree = NTreePoint{};
@@ -1239,9 +1230,7 @@ namespace NTree
 
       // Create ids which will be the base of the ordering
       auto vidPoint = base::_generatePointId(n);
-      if constexpr (isParallelMode)
-        sort(execution_policy_type{}, std::begin(vidPoint), std::end(vidPoint), [&](autoc idPointL, autoc idPointR) { return aidLocation[idPointL] < aidLocation[idPointR]; });
-
+      sort(execution_policy_type{}, std::begin(vidPoint), std::end(vidPoint), [&](autoc idPointL, autoc idPointR) { return aidLocation[idPointL] < aidLocation[idPointR]; });
 
       // Create tree logical structure
 
@@ -1253,45 +1242,16 @@ namespace NTree
         autoc nPart = morton_grid_id_type(1) << (nDimension * ns.nDepth);
         autoc nLocationStep = idLocationMax / nPart;
 
-        autoc nElem = distance(ns.itBegin, ns.itEnd);
-        if (nElem < base::_nChild)
+        auto itEndPrev = ns.itBegin;
+        for (auto itEndActual = itEndPrev; itEndPrev != ns.itEnd; itEndPrev = itEndActual)
         {
-          if constexpr (!isParallelMode)
-            sort(ns.itBegin, ns.itEnd, [&](autoc idPointL, autoc idPointR) { return aidLocation[idPointL] < aidLocation[idPointR]; });
-
-          auto itEndPrev = ns.itBegin;
-          auto iChild = base::_mortonIdToChildId((aidLocation[*itEndPrev] - ns.idLocationBegin) / nLocationStep);
-          for (auto itSplit = itEndPrev + 1; itSplit != ns.itEnd && iChild < base::_nChild - 1; ++itSplit)
+          autoc idChildActual = base::_mortonIdToChildId((aidLocation[*itEndPrev] - ns.idLocationBegin) / nLocationStep);
+          itEndActual = std::partition_point(itEndPrev, ns.itEnd, [&](autoc idPoint)
           {
-            autoc iChildActual = base::_mortonIdToChildId((aidLocation[*itSplit] - ns.idLocationBegin) / nLocationStep);
-            if (iChild == iChildActual)
-              continue;
-            
-            tree._addNode(ns, iChild, nLocationStep, itEndPrev, itSplit, q);
-            itEndPrev = itSplit;
-            iChild = iChildActual;
-          }
+            return idChildActual == base::_mortonIdToChildId((aidLocation[idPoint] - ns.idLocationBegin) / nLocationStep);;
+          });
 
-          tree._addNode(ns, iChild, nLocationStep, itEndPrev, ns.itEnd, q);
-        }
-        else
-        {
-          auto itEndPrev = ns.itBegin;
-          for (child_id_type iChild = 1; iChild < base::_nChild; ++iChild)
-          {
-            autoc idLocationSplit = ns.idLocationBegin + iChild * nLocationStep;
-
-            decltype(itEndPrev) itSplit;
-            if constexpr (isParallelMode)
-              itSplit = std::partition_point(itEndPrev, ns.itEnd, [&](autoc idPoint) { return aidLocation[idPoint] < idLocationSplit; });
-            else 
-              itSplit = std::partition(itEndPrev, ns.itEnd, [&](autoc idPoint) { return aidLocation[idPoint] < idLocationSplit; });
-
-            tree._addNode(ns, iChild - 1, nLocationStep, itEndPrev, itSplit, q);
-            itEndPrev = itSplit;
-          }
-
-          tree._addNode(ns, base::_nChild - 1, nLocationStep, itEndPrev, ns.itEnd, q);
+          tree._addNode(ns, idChildActual, nLocationStep, itEndPrev, itEndActual, q);
         }
       }
 

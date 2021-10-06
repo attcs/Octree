@@ -131,6 +131,7 @@ namespace PerformaceTest
     autoc aPoint4D_1M = CreatePoints<4, N1M>();
 
     autoc aPoint16D_1M = CreatePoints<16, N1M>();
+    autoc aPoint63D_1M = CreatePoints<63, N1M>();
 
     autoc TreePoint2D = TreePointND<2>::template Create<std::execution::parallel_unsequenced_policy>(aPoint2D_100M, 4);
     autoc TreePoint3D = TreePointND<3>::template Create<std::execution::parallel_unsequenced_policy>(aPoint3D_100M, 4);
@@ -169,7 +170,8 @@ namespace PerformaceTest
     TEST_METHOD(Create_3D_10M_depth4_par_unseq) { CreateTest<3, std::execution::parallel_unsequenced_policy>(4, PreCalculated::aPoint3D_10M); }
 
     TEST_METHOD(Create_4D_1M_depth2) { CreateTest(2, PreCalculated::aPoint4D_1M); }
-    //TEST_METHOD(Create_16D_1M_depth2) { CreateTest(2, PreCalculated::aPoint16D_1M); }
+    TEST_METHOD(Create_16D_1M_depth3) { CreateTest<16, std::execution::parallel_unsequenced_policy>(3, PreCalculated::aPoint16D_1M); }
+    TEST_METHOD(Create_63D_1M_depth3) { CreateTest<63, std::execution::parallel_unsequenced_policy>(3, PreCalculated::aPoint63D_1M); }
 
     TEST_METHOD(RangeSearch_2D_100M)
     {
