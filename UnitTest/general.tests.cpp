@@ -20,11 +20,11 @@ namespace Microsoft {
 
 namespace
 {
-  autoce BB1_INV = BoundingBox1D{ numeric_limits<double>::infinity(), -numeric_limits<double>::infinity() };
+  autoce BB1_INV = BoundingBox1D{ std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity() };
 
   static bool AreEqualAlmost(double l, double r)
   {
-    return l == r || abs(l - r) < numeric_limits<double>::min() * 10; // l and r could be inf.
+    return l == r || abs(l - r) < std::numeric_limits<double>::min() * 10; // l and r could be inf.
   }
 
   template<dim_type nDimension, typename geometry_type = double>
@@ -545,11 +545,12 @@ namespace GeneralTest
       auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
 
       autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(nodes.size(), 7);
+      Assert::AreEqual<size_t>(7, nodes.size());
+
       tree.Clear();
-      Assert::AreEqual<size_t>(nodes.size(), 1);
+      Assert::AreEqual<size_t>(1, nodes.size());
       autoc node = nodes.at(tree.GetHash(0, 0));
-      Assert::AreEqual<size_t>(node.vid.empty(), 1);
+      Assert::AreEqual<size_t>(1, node.vid.empty());
     }
 
 
@@ -1303,7 +1304,7 @@ namespace Tree2DTest
         std::pair{ 2, 4 },
         std::pair{ 3, 4 }, // Level 1
       };
-      Assert::AreEqual<size_t>(idpairs.size(), aExpected.size());
+      Assert::AreEqual<size_t>(aExpected.size(), idpairs.size());
       Assert::IsTrue(std::ranges::is_permutation(aExpected, idpairs, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
     }
   };
