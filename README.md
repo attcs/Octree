@@ -25,7 +25,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * The underlying container is a hash-table (`std::unordered_map`), which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
 * It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
-* Higher dimensional tree definition is available for more advanced problems (up to ~23).
+* Higher dimensional (max. 63) tree definition is available for more advanced problems.
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
 
 ## Major aliases in NTree
