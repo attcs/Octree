@@ -29,6 +29,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
 * Higher dimensional (max. 63) tree definition is available for more advanced problems.
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
+* Tested compilers: MSVC 2019, Clang 12.0.0
 
 ## Major aliases in NTree
 ```C++
