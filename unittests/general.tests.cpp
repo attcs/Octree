@@ -233,25 +233,25 @@ namespace GeneralTest
     template<dim_type N>
     static void _complex_All_ND()
     {
-      using child_id_type_ = TreeBoxND<N>::child_id_type;
+      using child_id_type = TreeBoxND<N>::child_id_type;
       auto node = TreeBoxND<N>::Node();
 
-      autoce nChild = 1 << N;
-      for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
+      child_id_type constexpr nChild = 1 << N;
+      for (child_id_type idChild = 0; idChild < nChild; ++idChild)
       {
         node.EnableChild(idChild);
         Assert::IsTrue(node.HasChild(idChild));
         Assert::IsTrue(node.IsAnyChildExist());
 
         autoc vChild = node.GetChildren();
-        Assert::AreEqual<size_t>(idChild + 1, vChild.size());
+        Assert::AreEqual<size_t>(static_cast<size_t>(idChild) + 1, vChild.size());
       }
 
-      for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
+      for (child_id_type idChild = 0; idChild < nChild; ++idChild)
       {
         node.DisableChild(idChild);
         autoc vChildActual = node.GetChildren();
-        auto vChildExpected = vector<child_id_type_>(nChild - idChild - 1);
+        auto vChildExpected = vector<child_id_type>(static_cast<size_t>(nChild - idChild) - 1);
         std::iota(begin(vChildExpected), end(vChildExpected), idChild + 1);
         Assert::IsTrue(std::ranges::is_permutation(vChildExpected, vChildActual));
       }
@@ -265,7 +265,7 @@ namespace GeneralTest
     TEST_METHOD(Complex_3D_All) { _complex_All_ND<3>(); }
     TEST_METHOD(Complex_4D_All) { _complex_All_ND<4>(); }
 
-    TEST_METHOD(Complex_16D_All) { _complex_All_ND<16>(); }
+    TEST_METHOD(Complex_8D_All) { _complex_All_ND<8>(); }
     //TEST_METHOD(Complex_24D_All) { Complex_All_ND<24>(); }
   };
 
@@ -352,9 +352,9 @@ namespace GeneralTest
       autoc bb = BoundingBox1D{ -1, +1 };
       tree.Init(bb, 3, 10);
       Assert::IsTrue(AreEqualAlmost(bb, tree.GetBox()));
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 1);
-      Assert::AreEqual<size_t>(tree.GetDepthMax(), 3);
-      Assert::AreEqual<size_t>(tree.GetResolutionMax(), 8);
+      Assert::AreEqual<size_t>(1, tree.GetNodeSize());
+      Assert::AreEqual<DualtreePoint::depth_type>(3, tree.GetDepthMax());
+      Assert::AreEqual<grid_id_type>(8, tree.GetResolutionMax());
     }
 
     TEST_METHOD(VisitNodes__points__0123)

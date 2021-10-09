@@ -1,6 +1,8 @@
 #include "pch.h"
 
 
+#ifdef _M_X64
+
 namespace PerformaceTest
 {
 #ifdef _DEBUG
@@ -357,3 +359,5 @@ namespace PerformaceTest
     }
   };
 }
+
+#endif
