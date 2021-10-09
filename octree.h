@@ -41,6 +41,7 @@ SOFTWARE.
 #include <type_traits>
 #include <functional>
 #include <execution>
+#include <stdexcept>
 
 #include <assert.h>
 
@@ -261,13 +262,13 @@ namespace NTree
 
     static constexpr bool are_boxes_overlapped(box_type const& e1, box_type const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false)
     {
-      autoc e1_contains_e2min = does_box_contain_point(e1, base::box_min_c(e2)); //! ->ATT neve used
+      autoc e1_contains_e2min = does_box_contain_point(e1, base::box_min_c(e2));
 
       return e1_must_contain_e2
-        ? does_box_contain_point(e1, base::box_min_c(e2)) && does_box_contain_point(e1, base::box_max_c(e2))
+        ? e1_contains_e2min && does_box_contain_point(e1, base::box_max_c(e2))
         : fOverlapPtTouchAllowed
-        ? does_box_contain_point(e1, base::box_min_c(e2)) || does_box_contain_point(e1, base::box_max_c(e2)) || does_box_contain_point(e2, base::box_max_c(e1))
-        : box_relation(e1, e2) == EBoxRelation::Overlapped
+          ? e1_contains_e2min || does_box_contain_point(e1, base::box_max_c(e2)) || does_box_contain_point(e2, base::box_max_c(e1))
+          : box_relation(e1, e2) == EBoxRelation::Overlapped
         ;
     }
 
@@ -505,7 +506,7 @@ namespace NTree
     using child_id_type = uint64_t;
 
     // Max value: 2 ^ nDepth ^ nDimension * 2 (signal bit)
-    using morton_grid_id_type = std::conditional<nDimension < 4
+    using morton_grid_id_type = typename std::conditional<nDimension < 4
       , uint16_t
       , typename std::conditional<is_linear_tree
         , uint64_t
@@ -514,7 +515,7 @@ namespace NTree
     >::type;
     
     using morton_node_id_type = morton_grid_id_type; // same as the morton_grid_id_type, but depth is signed by a sentinel bit.
-    using morton_grid_id_type_cref = std::conditional<is_linear_tree, morton_node_id_type, morton_node_id_type const&>::type;
+    using morton_grid_id_type_cref = typename std::conditional<is_linear_tree, morton_node_id_type, morton_node_id_type const&>::type;
     using morton_node_id_type_cref = morton_grid_id_type_cref;
     using max_element_type = uint32_t;
     using depth_type = uint32_t;
@@ -541,7 +542,7 @@ namespace NTree
       struct unused_type {};
 
       // Max value: 2^(2^nDimension)
-      using child_exist_flag_type = std::conditional<_nChild <= 8
+      using child_exist_flag_type = typename std::conditional<_nChild <= 8
         , uint8_t
         , typename std::conditional<is_bitset
           , unused_type
@@ -549,7 +550,7 @@ namespace NTree
         >::type
       >::type;
 
-      using child_container_type = std::conditional<is_bitset, std::set<child_id_type>, unused_type>::type;
+      using child_container_type = typename std::conditional<is_bitset, std::set<child_id_type>, unused_type>::type;
 
     private: // Optional members
       child_container_type _children;
@@ -636,7 +637,7 @@ namespace NTree
 
   protected: // Member variables
 
-    using container_type = std::conditional<is_linear_tree, unordered_map<morton_node_id_type, Node>, map<morton_node_id_type, Node, bitset_arithmetic_compare>>::type;
+    using container_type = typename std::conditional<is_linear_tree, unordered_map<morton_node_id_type, Node>, map<morton_node_id_type, Node, bitset_arithmetic_compare>>::type;
     container_type _nodes;
     box_type _box = {};
     depth_type _nDepthMax = 0;
@@ -661,7 +662,7 @@ namespace NTree
     static constexpr child_id_type _mortonIdToChildId(uint64_t morton) { return morton; }
 
 
-    static constexpr vector<entity_id_type> _generatePointId(size_t n)
+    static inline vector<entity_id_type> _generatePointId(size_t n)
     {
       auto vidPoint = vector<entity_id_type>(n);
       std::iota(begin(vidPoint), end(vidPoint), 0);
@@ -930,45 +931,31 @@ namespace NTree
     }
 
   public:
-
-    static constexpr morton_grid_id_type Morton(array<grid_id_type, 1> const& x)
+    static inline morton_grid_id_type Morton(array<grid_id_type, nDimension> const& aidGrid)
     {
-      return morton_grid_id_type(x[0]);
-    }
+      if constexpr (nDimension == 1)
+        return morton_grid_id_type(aidGrid[0]);
+      else if (nDimension == 2)
+        return (_part1By1(aidGrid[1]) << 1) + _part1By1(aidGrid[0]);
+      else if (nDimension == 3)
+        return (_part1By2(aidGrid[2]) << 2) + (_part1By2(aidGrid[1]) << 1) + _part1By2(aidGrid[0]);
+      else
+      {
+        auto msb = aidGrid[0];
+        for (dim_type iDimension = 1; iDimension < nDimension; ++iDimension)
+          msb |= aidGrid[iDimension];
 
-    static constexpr morton_grid_id_type Morton(array<grid_id_type, 2> const& xy)
-    {
-      return (_part1By1(xy[1]) << 1) + _part1By1(xy[0]);
-    }
+        morton_grid_id_type id = 0;
+        grid_id_type mask = 1;
+        for (dim_type i = 0, shift = 0; msb; mask <<= 1, msb >>= 1, ++i)
+          for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, ++shift)
+            if constexpr (Node::is_bitset)
+              id[shift] = aidGrid[iDimension] & mask;
+            else
+              id |= (aidGrid[iDimension] & mask) << (shift - i);
 
-    static constexpr morton_grid_id_type Morton(array<grid_id_type, 3> const& xyz)
-    {
-      // z--z--z--z--z--z--z--z--z--z-- : Part1By2(z) << 2
-      // -y--y--y--y--y--y--y--y--y--y- : Part1By2(y) << 1
-      // --x--x--x--x--x--x--x--x--x--x : Part1By2(x)
-      // zyxzyxzyxzyxzyxzyxzyxzyxzyxzyx : Final result
-      return (_part1By2(xyz[2]) << 2) + (_part1By2(xyz[1]) << 1) + _part1By2(xyz[0]);
-    }
-
-    template<dim_type nDimension>
-    static morton_grid_id_type Morton(array<grid_id_type, nDimension> const& aidGrid)
-    {
-      static_assert(nDimension > 3);
-
-      auto msb = aidGrid[0];
-      for (dim_type iDimension = 1; iDimension < nDimension; ++iDimension)
-        msb |= aidGrid[iDimension];
-
-      morton_grid_id_type id = 0;
-      grid_id_type mask = 1;
-      for (dim_type i = 0, shift = 0; msb; mask <<= 1, msb >>= 1, ++i)
-        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, ++shift)
-          if constexpr (Node::is_bitset)
-            id[shift] = aidGrid[iDimension] & mask;
-          else
-            id |= (aidGrid[iDimension] & mask) << (shift - i);
-
-      return id;
+        return id;
+      }
     }
 
 
@@ -1166,21 +1153,21 @@ namespace NTree
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
   class NTreePoint : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
-  private:
+  protected:
     using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
-    using base::_NodePartitioner;
-    using base::_Ad;
+    using _NodePartitioner = typename base::_NodePartitioner;
+    using _Ad = typename base::_Ad;
 
   public:
-    using base::depth_type;
-    using base::morton_grid_id_type;
-    using base::morton_grid_id_type_cref;
-    using base::morton_node_id_type;
-    using base::morton_node_id_type_cref;
-    using base::max_element_type;
-    using base::child_id_type;
+    using depth_type = typename base::depth_type;
+    using morton_grid_id_type = typename base::morton_grid_id_type;
+    using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
+    using morton_node_id_type = typename base::morton_node_id_type;
+    using morton_node_id_type_cref = typename base::morton_node_id_type_cref;
+    using max_element_type = typename base::max_element_type;
+    using child_id_type = typename base::child_id_type;
 
-    using base::Node;
+    using Node = typename base::Node;
 
   private: // Aid functions
     static constexpr max_element_type max_element_default = 11;
@@ -1215,8 +1202,6 @@ namespace NTree
 
       autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
-
-      autoc idLocationMax = morton_grid_id_type(1) << (nDimension * nDepthMax);
       
 
       // Generate Morton location ids
@@ -1416,7 +1401,7 @@ namespace NTree
     static void _createEntityDistance(Node const& node, point_type const& pt, span<point_type const> const& vpt, multiset<_EntityDistance>& setEntity)
     {
       for (autoc id : node.vid)
-        setEntity.insert({ _Ad::distance(pt, vpt[id]), id });
+        setEntity.insert({ { _Ad::distance(pt, vpt[id]) }, id });
     }
 
     static geometry_type _getFarestDistance(multiset<_EntityDistance>& setEntity, size_t k)
@@ -1470,7 +1455,7 @@ namespace NTree
           // If pt projection in iDim is within min and max the wall distance should be calculated.
           _Ad::point_comp(aDist, iDim) = dMin * dMax < 0 ? 0 : std::min(abs(dMin), abs(dMax));
         }
-        setNodeDist.insert({ _Ad::size(aDist), node });
+        setNodeDist.insert({ { _Ad::size(aDist)}, node });
       });
 
       auto rLatestNodeDist = begin(setNodeDist)->distance;
@@ -1496,19 +1481,19 @@ namespace NTree
   {
   private:
     using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
-    using base::_NodePartitioner;
-    using base::_Ad;
+    using _NodePartitioner = typename base::_NodePartitioner;
+    using _Ad = typename base::_Ad;
 
   public:
-    using base::depth_type;
-    using base::morton_grid_id_type;
-    using base::morton_grid_id_type_cref;
-    using base::morton_node_id_type;
-    using base::morton_node_id_type_cref;
-    using base::max_element_type;
-    using base::child_id_type;
+    using depth_type = typename base::depth_type;
+    using morton_grid_id_type = typename base::morton_grid_id_type;
+    using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
+    using morton_node_id_type = typename base::morton_node_id_type;
+    using morton_node_id_type_cref = typename base::morton_node_id_type_cref;
+    using max_element_type = typename base::max_element_type;
+    using child_id_type = typename base::child_id_type;
 
-    using base::Node;
+    using Node = typename base::Node;
 
   private: // Aid functions
     
@@ -1579,8 +1564,6 @@ namespace NTree
       autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
-      autoc idLocationMax = morton_grid_id_type(1) << (tree._nDepthMax * nDimension);
-
       // Generate Morton location ids
 
       struct Location
@@ -1643,7 +1626,6 @@ namespace NTree
       for (q.push(nsRoot); !q.empty(); q.pop())
       {
         auto& ns = q.front();
-        autoc shift = (tree._nDepthMax - ns.nDepth) * nDimension;
 
         autoc depth0 = aidLocation[*ns.itBegin].depth;
         auto itEndPrev = ns.itBegin;
@@ -1820,7 +1802,7 @@ namespace NTree
     // Collision detection: Returns all overlapping boxes from the source trees.
     static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(NTreeBoundingBox const& tL, span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR)
     {
-      using NodeIterator = decltype(tL._nodes)::const_iterator;
+      using NodeIterator = typename base::container_type::const_iterator;
       struct NodeIteratorAndStatus { NodeIterator it; bool fTraversed; };
       using ParentIteratorArray = array<NodeIteratorAndStatus, 2>;
 

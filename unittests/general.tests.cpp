@@ -1,18 +1,24 @@
 #include "pch.h"
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-braces"
+#endif
+
 
 namespace Microsoft {
   namespace VisualStudio {
     namespace CppUnitTestFramework
     {
       template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
+      /*
       template<> inline std::wstring ToString<bitset<9>>(const bitset<9>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
       template<> inline std::wstring ToString<bitset<13>>(const bitset<13>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
       template<> inline std::wstring ToString<bitset<17>>(const bitset<17>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
       template<> inline std::wstring ToString<bitset<18>>(const bitset<18>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
       template<> inline std::wstring ToString<bitset<22>>(const bitset<22>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
       template<> inline std::wstring ToString<bitset<26>>(const bitset<26>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-
+      */
     }
   }
 }
@@ -114,7 +120,7 @@ namespace GeneralTest
   public:
     TEST_METHOD(M1D_0_0)
     {
-      autoce arr = array<grid_id_type, 1>{ 0 };
+      autoce arr = array<grid_id_type, 1> { 0 };
       Assert::AreEqual(DualtreePoint::Morton(arr), DualtreePoint::morton_grid_id_type(0));
     }
 
@@ -198,8 +204,8 @@ namespace GeneralTest
     template<dim_type N>
     static void _complex_ND_Only1()
     {
-      using child_id_type_ = TreeBoxND<N>::child_id_type;
-      auto node = TreeBoxND<N>::Node();
+      using child_id_type_ = typename TreeBoxND<N>::child_id_type;
+      auto node = typename TreeBoxND<N>::Node();
       Assert::IsFalse(node.IsAnyChildExist());
 
       autoce nChild = 1 << N;
@@ -233,8 +239,8 @@ namespace GeneralTest
     template<dim_type N>
     static void _complex_All_ND()
     {
-      using child_id_type = TreeBoxND<N>::child_id_type;
-      auto node = TreeBoxND<N>::Node();
+      using child_id_type = typename TreeBoxND<N>::child_id_type;
+      auto node = typename TreeBoxND<N>::Node();
 
       child_id_type constexpr nChild = 1 << N;
       for (child_id_type idChild = 0; idChild < nChild; ++idChild)

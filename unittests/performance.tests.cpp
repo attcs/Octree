@@ -14,7 +14,7 @@ namespace PerformaceTest
   autoce rMax = 8.0;
 
 
-  template<dim_type nDim>
+  template<size_t nDim>
   static BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
   {
     auto box = BoundingBoxND<nDim>{ pt, pt };
@@ -97,8 +97,6 @@ namespace PerformaceTest
 
     srand(0);
     {
-      autoc nRemain = nNumber - iNumber;
-      autoc rStep = rMax / (nRemain + 2);
       for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
         for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
           aPoint[nNumber - iNumber - 1][iDim] = (rand() % 100) * (rMax / 100.0);
@@ -197,8 +195,6 @@ namespace PerformaceTest
     srand(0);
 
     {
-      autoc nRemain = nNumber - iNumber;
-      autoc rStep = (rMax - rUnit) / (nRemain + 2);
       for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
       {
         autoc iNumberBox = nNumber - iNumber - 1;
