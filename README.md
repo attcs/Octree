@@ -1,4 +1,6 @@
 # Octree/Quadtree/N-dimensional linear tree
+[![MSBuild and Unittests](https://github.com/attcs/Octree/actions/workflows/msbuild.yml/badge.svg)](https://github.com/attcs/Octree/actions/workflows/msbuild.yml)
+<br>
 Lightweight, parallelizable, non-storing/non-owning C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering. A major advantage of this solution, that can be easily adapted for custom-defined Point and Bounding box object using AdaptorConcept.<br>
 <br>
 Why is it non-owning? Usually, the geometrical objects and their metadata are already stored in a database, to making the creation process efficient and avoiding the responsibility of the complex data management, only the id-s are stored.<br>
