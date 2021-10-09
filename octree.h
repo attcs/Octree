@@ -105,7 +105,7 @@ namespace NTree
 #pragma GCC diagnostic pop
 #endif
 
-  constexpr uint64_t pow_ce(uint64_t a, unsigned char e) { return e == 0 ? 1 : a * pow_ce(a, e - 1); }
+  constexpr uint64_t pow_ce(uint64_t a, uint8_t e) { return e == 0 ? 1 : a * pow_ce(a, e - 1); }
   namespace
   {
     using std::array;
@@ -610,7 +610,7 @@ namespace NTree
           return {};
 
         auto vChild = vector<child_id_type>();
-        vChild.reserve(std::max<child_id_type>(4, _nChild / 8));
+        vChild.reserve(std::max<size_t>(4, _nChild / 8));
 
         auto mask = child_exist_flag_type{ 1 };
         for (child_id_type iChild = 0; iChild < _nChild; ++iChild, mask <<= 1)
@@ -653,12 +653,12 @@ namespace NTree
 
 
     template<size_t N>
-    static inline size_t _mortonIdToChildId(bitset_arithmetic<N> const& bs)
+    static inline child_id_type _mortonIdToChildId(bitset_arithmetic<N> const& bs)
     {
       assert(bs <= bitset_arithmetic<N>(std::numeric_limits<size_t>::max()));
       return bs.to_ullong();
     }
-    static constexpr size_t _mortonIdToChildId(size_t morton) { return morton; }
+    static constexpr child_id_type _mortonIdToChildId(uint64_t morton) { return morton; }
 
 
     static constexpr vector<entity_id_type> _generatePointId(size_t n)
@@ -763,6 +763,26 @@ namespace NTree
       }
       return nodeChild;
     }
+
+
+    inline void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator const& itBegin, vector<entity_id_type>::iterator const& itEnd, queue<_NodePartitioner>& q)
+    {
+      if (itBegin == itEnd)
+        return;
+
+      morton_grid_id_type const kChild = (ns.kNode << nDimension) | morton_grid_id_type(iChild);
+      auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
+
+      autoc nElement = static_cast<max_element_type>(distance(itBegin, itEnd));
+      if (nElement < _nElementMax || ns.nDepth == this->_nDepthMax)
+        nodeChild.vid.insert(end(nodeChild.vid), itBegin, itEnd);
+      else
+      {
+        morton_grid_id_type const idLocation = ns.idLocationBegin + morton_grid_id_type(iChild) * nLocationStep;
+        q.emplace(_NodePartitioner{ kChild, &nodeChild, depth_type(ns.nDepth + 1), idLocation, itBegin, itEnd });
+      }
+    }
+
 
     bool _isEveryItemIdUnique() const
     {
@@ -1171,25 +1191,6 @@ namespace NTree
       return base::Morton(base::_getGridIdPoint(pt, _Ad::box_min_c(box), aRasterizer, nRasterResolutionMax - 1));
     }
 
-    void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator const& itBegin, vector<entity_id_type>::iterator const& itEnd, queue<_NodePartitioner>& q)
-    {
-      if (itBegin == itEnd)
-        return;
-
-      morton_grid_id_type const kChild = (ns.kNode << nDimension) | morton_grid_id_type(iChild);
-      auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
-
-      autoc nElement = distance(itBegin, itEnd);
-      if (nElement < base::_nElementMax || ns.nDepth == this->_nDepthMax)
-        nodeChild.vid.insert(end(nodeChild.vid), itBegin, itEnd);
-      else
-      {
-        autoc idLocation = morton_grid_id_type(ns.idLocationBegin + iChild * nLocationStep);
-        q.emplace(_NodePartitioner{ kChild, &nodeChild, depth_type(ns.nDepth + 1), idLocation, itBegin, itEnd });
-      }
-    }
-
-
   public: // Create
 
     // Ctors
@@ -1517,25 +1518,6 @@ namespace NTree
     inline void _addElements(_NodePartitioner& ns, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itEnd)
     {
       ns.pNode->vid.insert(end(ns.pNode->vid), itBegin, itEnd);
-    }
-
-    inline void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itEnd, queue<_NodePartitioner>& q)
-    {
-      if (itBegin == itEnd)
-        return;
-
-      ns.pNode->EnableChild(iChild);
-      morton_node_id_type const kChild = (ns.kNode << nDimension) | morton_node_id_type(iChild);
-      auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
-
-      autoc nElement = distance(itBegin, itEnd);
-      if (nElement < base::_nElementMax || ns.nDepth == this->_nDepthMax)
-        nodeChild.vid.insert(end(nodeChild.vid), itBegin, itEnd);
-      else
-      {
-        autoc idLocation = morton_grid_id_type(ns.idLocationBegin + iChild * nLocationStep);
-        q.emplace(_NodePartitioner{ kChild, &nodeChild, ns.nDepth + 1, idLocation, itBegin, itEnd });
-      }
     }
 
 
