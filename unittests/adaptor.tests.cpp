@@ -13,13 +13,13 @@ namespace CustomGeometryType
 
   struct AdaptorBasicsCustom
   {
-    static inline float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
+    static constexpr float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
     {
       switch (iDimension)
       {
         case 0: return pt.x;
         case 1: return pt.y;
-        default: assert(false); return pt.x;
+        default: return pt.x;
       }
     }
 
@@ -92,6 +92,14 @@ namespace AdaptorTest
       autoc& nodes = tree.Get();
       Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
       Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).vid == vector<size_t>{ 3, 4 });
+    }
+
+    TEST_METHOD(Contains__1__True)
+    {
+      autoce vpt = array{ Point2DCustom{ 0.0, 0.0 }, Point2DCustom{ 1.0, 1.0 }, Point2DCustom{ 2.0, 2.0 }, Point2DCustom{ 3.0, 3.0 } };
+      auto tree = QuadtreePointCustom::Create(vpt, 3, std::nullopt, 2);
+
+      Assert::IsTrue(tree.Contains(vpt[1], vpt, 0));
     }
   };
 }

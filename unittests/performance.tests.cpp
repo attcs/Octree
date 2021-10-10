@@ -17,9 +17,11 @@ namespace PerformaceTest
   template<size_t nDim>
   static BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
   {
+    using Ad = AdaptorGeneral<nDim, PointND<nDim>, BoundingBoxND<nDim>>;
     auto box = BoundingBoxND<nDim>{ pt, pt };
-    for (dim_type iDim = 0; iDim < nDim; ++iDim)
-      box.Max[iDim] += size;
+    auto& ptMax = Ad::box_max(box);
+    for (size_t iDim = 0; iDim < nDim; ++iDim)
+      Ad::point_comp(ptMax, static_cast<dim_type>(iDim)) += size;
 
     return box;
   }

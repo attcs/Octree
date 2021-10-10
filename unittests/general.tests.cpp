@@ -11,14 +11,6 @@ namespace Microsoft {
     namespace CppUnitTestFramework
     {
       template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
-      /*
-      template<> inline std::wstring ToString<bitset<9>>(const bitset<9>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<13>>(const bitset<13>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<17>>(const bitset<17>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<18>>(const bitset<18>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<22>>(const bitset<22>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      template<> inline std::wstring ToString<bitset<26>>(const bitset<26>& t) { RETURN_WIDE_STRING(t.to_ullong()); }
-      */
     }
   }
 }
@@ -734,6 +726,255 @@ namespace GeneralTest
 
       Assert::IsTrue(_isMoveOfTwoTreeProper(treePre, treeAfter, vMove));
     }
+
+
+    TEST_METHOD(RayIntersectedFirst__XRay__None)
+    {
+      autoce rayBase = Point2D{ 0.0, -1.0 };
+      autoce rayHeading = Point2D{ 1.0, 0.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::IsFalse(oid.has_value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst__YRay__None)
+    {
+      autoce rayBase = Point2D{ 5.0, 0.0 };
+      autoce rayHeading = Point2D{ 0.0, 1.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::IsFalse(oid.has_value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst__YRay2__None)
+    {
+      autoce rayBase = Point2D{ 4.2, 4.4 };
+      autoce rayHeading = Point2D{ 1.0, 1.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::IsFalse(oid.has_value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst_InsideTheTree_Neg_None)
+    {
+      autoce rayBase = Point2D{ 1.5, 2.6 };
+      autoce rayHeading = Point2D{ -1.0, -1.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::IsFalse(oid.has_value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst_OutsideTheTree_Neg_None)
+    {
+      autoce rayBase = Point2D{ 7.0, 2.0 };
+      autoce rayHeading = Point2D{ -1.0, -1.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::IsFalse(oid.has_value());
+    }
+
+    TEST_METHOD(RayIntersectedFirst__XRay__0)
+    {
+      autoce rayBase = Point2D{ 0.0, 0.5 };
+      autoce rayHeading = Point2D{ 1.0, 0.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::AreEqual<entity_id_type>(0, oid.value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst__XRay__1)
+    {
+      autoce rayBase = Point2D{ 0.0, 2.0 };
+      autoce rayHeading = Point2D{ 1.0, 0.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::AreEqual<entity_id_type>(1, oid.value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst__XRayInsideTheTreePos__1)
+    {
+      autoce rayBase = Point2D{ 1.5, 1.0 };
+      autoce rayHeading = Point2D{ 1.0, 0.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::AreEqual<entity_id_type>(1, oid.value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst__XRayInsideTheTreeNeg__1)
+    {
+      autoce rayBase = Point2D{ 1.5, 1.0 };
+      autoce rayHeading = Point2D{ -1.0, 0.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::AreEqual<entity_id_type>(1, oid.value());
+    }
+
+
+    TEST_METHOD(RayIntersectedFirst__XRayInsideTheTreeNeg__3)
+    {
+      autoce rayBase = Point2D{ 3.5, 3.5 };
+      autoce rayHeading = Point2D{ -0.5, -1.0 };
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      };
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      Assert::AreEqual<entity_id_type>(3, oid.value());
+    }
+
+
+    TEST_METHOD(RayIntersectedAll_2D_General_234)
+    {
+      autoce rayBase = Point2D{ 2.6, 2.6 };
+      autoce rayHeading = Point2D{ 1.0, 1.0 };
+
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 2.0, 0.0 }, { 3.0, 1.0 } },
+        BoundingBox2D{ { 3.0, 1.0 }, { 4.0, 2.0 } },
+        BoundingBox2D{ { 3.0, 2.0 }, { 4.0, 3.0 } },
+        BoundingBox2D{ { 2.0, 3.0 }, { 4.0, 4.0 } },
+        BoundingBox2D{ { 2.5, 2.5 }, { 3.5, 3.5 } },
+      };
+
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 2, 3, 4 }, vid));
+    }
+
+    TEST_METHOD(RayIntersectedAll_2D_General_34)
+    {
+      autoce rayBase = Point2D{ 2.6, 2.8 };
+      autoce rayHeading = Point2D{ 1.0, 1.0 };
+
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 2.0, 0.0 }, { 3.0, 1.0 } },
+        BoundingBox2D{ { 3.0, 1.0 }, { 4.0, 2.0 } },
+        BoundingBox2D{ { 3.0, 2.0 }, { 4.0, 3.0 } },
+        BoundingBox2D{ { 2.0, 3.0 }, { 4.0, 4.0 } },
+        BoundingBox2D{ { 2.5, 2.5 }, { 3.5, 3.5 } },
+      };
+
+      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
+    }
+
+    TEST_METHOD(RayIntersectedAll_3D_General_34)
+    {
+      autoce rayBase = Point3D{ 2.6, 2.8, 1.0 };
+      autoce rayHeading = Point3D{ 1.0, 1.0, 1.0 };
+
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 2.0, 0.0, 1.0 }, { 3.0, 1.0, 2.0 } },
+        BoundingBox3D{ { 3.0, 1.0, 1.0 }, { 4.0, 2.0, 2.0 } },
+        BoundingBox3D{ { 3.0, 2.0, 1.0 }, { 4.0, 3.0, 2.0 } },
+        BoundingBox3D{ { 2.0, 3.0, 1.5 }, { 4.0, 4.0, 2.0 } },
+        BoundingBox3D{ { 2.5, 2.5, 1.5 }, { 3.5, 3.5, 2.0 } },
+      };
+
+      autoc qt = OctreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
+    }
+
+    TEST_METHOD(RayIntersectedAll_5D_General_34)
+    {
+      autoce N = 5;
+      autoce rayBase = PointND<N>{ 2.6, 2.8, 1.0, 0.0, 0.0 };
+      autoce rayHeading = PointND<N>{ 1.0, 1.0, 1.0, 1.0, 1.0 };
+
+      autoce boxes = array
+      {
+        BoundingBoxND<N>{ { 2.0, 0.0, 1.0, 0.0, 0.0 }, { 3.0, 1.0, 2.0, 2.0, 2.0 } },
+        BoundingBoxND<N>{ { 3.0, 1.0, 1.0, 0.0, 0.0 }, { 4.0, 2.0, 2.0, 2.0, 2.0 } },
+        BoundingBoxND<N>{ { 3.0, 2.0, 1.0, 0.0, 0.0 }, { 4.0, 3.0, 2.0, 2.0, 2.0 } },
+        BoundingBoxND<N>{ { 2.0, 3.0, 1.5, 0.0, 0.0 }, { 4.0, 4.0, 2.0, 2.0, 2.0 } },
+        BoundingBoxND<N>{ { 2.5, 2.5, 1.5, 0.0, 0.0 }, { 3.5, 3.5, 2.0, 2.0, 2.0 } },
+      };
+
+      autoc qt = TreeBoxND<N>::Create(boxes, 3, std::nullopt, 2);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
+    }
+
+
   };
 }
 
