@@ -652,6 +652,88 @@ namespace GeneralTest
 
       Assert::IsFalse(fContain);
     }
+
+
+    TEST_METHOD(Move__Empty__NotCrash)
+    {
+      auto tree = DualtreePoint();
+      tree.Move({});
+    }
+
+
+  private:
+    template<typename tree_type, size_t N>
+    bool _isMoveOfTwoTreeProper(tree_type const& tPre, tree_type const& tAfter, PointND<N> const& vMoveExpected)
+    {
+      using Ad = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>>;
+      autoc rAcc = std::numeric_limits<double>::min();
+
+      autoc nodesPre = tPre.GetNodes();
+      autoc nodesAfter = tAfter.GetNodes();
+
+      autoc nNode = nodesPre.size();
+      auto vMatch = vector<bool>(nNode);
+      std::transform(std::begin(nodesPre), std::end(nodesPre), std::begin(nodesAfter), begin(vMatch), [&](autoc& pairPre, autoc& pairAfter)
+      {
+        // same order, same box sizes
+
+        if (pairPre.first != pairAfter.first)
+          return false;
+
+        autoc& nodePre = pairPre.second;
+        autoc& nodeAfter = pairAfter.second;
+        autoc bMin = Ad::are_points_equal(Ad::substract(Ad::box_min_c(nodeAfter.box), Ad::box_min_c(nodePre.box)), vMoveExpected, rAcc);
+        autoc bMax = Ad::are_points_equal(Ad::substract(Ad::box_max_c(nodeAfter.box), Ad::box_max_c(nodePre.box)), vMoveExpected, rAcc);
+        return bMin && bMax;
+      });
+
+      return std::ranges::all_of(vMatch, [](autoc bMatch) { return bMatch; });
+    }
+
+
+  public:
+    TEST_METHOD(MoveP__P0__Same)
+    {
+      autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
+      autoc treePre = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+
+      auto treeAfter = treePre;
+      autoce vMove = Point1D{ 0.0 };
+      treeAfter.Move(vMove);
+
+      Assert::IsTrue(_isMoveOfTwoTreeProper(treePre, treeAfter, vMove));
+    }
+
+
+    TEST_METHOD(MoveP__P1__Moved)
+    {
+      autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
+      autoc treePre = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+
+      auto treeAfter = treePre;
+      autoce vMove = Point1D{ 1.0 };
+      treeAfter.Move(vMove);
+
+      Assert::IsTrue(_isMoveOfTwoTreeProper(treePre, treeAfter, vMove));
+    }
+
+
+    TEST_METHOD(MoveB__M20__Moved)
+    {
+      autoce vBox = array
+      {
+        BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 },
+        BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
+        BoundingBox1D{ 0.0, 4.0 }
+      };
+      auto treePre = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+
+      auto treeAfter = treePre;
+      autoce vMove = Point1D{ -20.0 };
+      treeAfter.Move(vMove);
+
+      Assert::IsTrue(_isMoveOfTwoTreeProper(treePre, treeAfter, vMove));
+    }
   };
 }
 
@@ -904,7 +986,6 @@ namespace Tree1DTest
 
       Assert::IsTrue(idsPre == idsPost);
     }
-
   };
 
 
