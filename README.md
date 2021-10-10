@@ -16,6 +16,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Call `CollisionDetection()` member function for two bounding box trees overlap examination.
 * Call `VisitNodes()` to traverse the tree from up to down (breadth-first search) with user-defined `selector()` and `procedure()`.
 * Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
+* Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes by a ray
 
 ## Notes
 * Header only implementation.
