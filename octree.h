@@ -275,10 +275,14 @@ namespace NTree
     static inline box_type box_inverted_init()
     {
       auto ext = box_type{};
+      auto& ptMin = base::box_min(ext);
+      auto& ptMax = base::box_max(ext);
+
+      autoc inf = std::numeric_limits<geometry_type>::infinity();
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
-        base::point_comp(base::box_min(ext), iDimension) = +std::numeric_limits<geometry_type>::infinity();
-        base::point_comp(base::box_max(ext), iDimension) = -std::numeric_limits<geometry_type>::infinity();
+        base::point_comp(ptMin, iDimension) = +inf;
+        base::point_comp(ptMax, iDimension) = -inf;
       }
 
       return ext;
@@ -323,6 +327,45 @@ namespace NTree
         base::point_comp(base::box_min(box), iDimension) += base::point_comp_c(vMove, iDimension);
         base::point_comp(base::box_max(box), iDimension) += base::point_comp_c(vMove, iDimension);
       }
+    }
+
+    static std::optional<double> is_ray_hit(box_type const& box, point_type const& rayBase, point_type const& rayHeading)
+    {
+      if (does_box_contain_point(box, rayBase))
+        return 0.0;
+
+      autoc& ptBoxMin = base::box_min_c(box);
+      autoc& ptBoxMax = base::box_max_c(box);
+
+      autoce inf = std::numeric_limits<double>::infinity();
+      // ptHit = rayBase + rayHeading * r
+      auto aRMinMax = array<array<double, nDimension>, 2>();
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+      {
+        autoc hComp = base::point_comp_c(rayHeading, iDimension);
+        if (hComp == 0)
+        {
+          if (base::point_comp_c(ptBoxMax, iDimension) < base::point_comp_c(rayBase, iDimension))
+            return std::nullopt;
+
+          if (base::point_comp_c(ptBoxMin, iDimension) > base::point_comp_c(rayBase, iDimension))
+            return std::nullopt;
+
+          aRMinMax[0][iDimension] = -inf;
+          aRMinMax[1][iDimension] = +inf;
+          continue;
+        }
+
+        aRMinMax[0][iDimension] = (base::point_comp_c(hComp > 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBase, iDimension)) / hComp;
+        aRMinMax[1][iDimension] = (base::point_comp_c(hComp < 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBase, iDimension)) / hComp;
+      }
+
+      autoc rMin = *std::ranges::max_element(aRMinMax[0]);
+      autoc rMax = *std::ranges::min_element(aRMinMax[1]);
+      if (rMin > rMax || rMax < 0.0)
+        return std::nullopt;
+
+      return rMin < 0 ? rMax : rMin;
     }
   };
 
@@ -632,7 +675,7 @@ namespace NTree
       }
     };
 
-  protected: // Aid struct to partitioning
+  protected: // Aid struct to partitioning and distance ordering
 
     struct _NodePartitioner
     {
@@ -643,6 +686,16 @@ namespace NTree
       vector<entity_id_type>::iterator itBegin;
       vector<entity_id_type>::iterator itEnd;
     };
+
+
+    struct _ItemDistance
+    {
+      geometry_type distance;
+      auto operator <=> (_ItemDistance const& rhs) const = default;
+    };
+
+    struct _EntityDistance : _ItemDistance { entity_id_type id; };
+    struct _BoxDistance : _ItemDistance { morton_node_id_type kNode; Node const& node; };
 
 
   protected: // Member variables
@@ -1175,6 +1228,8 @@ namespace NTree
   protected:
     using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using _NodePartitioner = typename base::_NodePartitioner;
+    using _EntityDistance = typename base::_EntityDistance;
+    using _BoxDistance = typename base::_BoxDistance;
     using _Ad = typename base::_Ad;
 
   public:
@@ -1408,15 +1463,6 @@ namespace NTree
     }
 
 
-    struct _ItemDistance
-    {
-      geometry_type distance;
-      auto operator <=> (_ItemDistance const& rhs) const = default;
-    };
-
-    struct _EntityDistance : _ItemDistance { entity_id_type id; };
-    struct _BoxDistance : _ItemDistance { Node const& node; };
-
     static void _createEntityDistance(Node const& node, point_type const& pt, span<point_type const> const& vpt, multiset<_EntityDistance>& setEntity)
     {
       for (autoc id : node.vid)
@@ -1474,7 +1520,7 @@ namespace NTree
           // If pt projection in iDim is within min and max the wall distance should be calculated.
           _Ad::point_comp(aDist, iDim) = dMin * dMax < 0 ? 0 : std::min(abs(dMin), abs(dMax));
         }
-        setNodeDist.insert({ { _Ad::size(aDist)}, node });
+        setNodeDist.insert({ { _Ad::size(aDist)}, key, node });
       });
 
       auto rLatestNodeDist = begin(setNodeDist)->distance;
@@ -1501,6 +1547,8 @@ namespace NTree
   private:
     using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using _NodePartitioner = typename base::_NodePartitioner;
+    using _EntityDistance = typename base::_EntityDistance;
+    using _BoxDistance = typename base::_BoxDistance;
     using _Ad = typename base::_Ad;
 
   public:
@@ -1887,6 +1935,96 @@ namespace NTree
     vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR) const
     {
       return CollisionDetection(*this, vExtentL, tR, vExtentR);
+    }
+
+
+  private:
+   
+    void _rayIntersectedAll(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vExtent, point_type const& rayBase, point_type const& rayHeading, vector<entity_id_type>& vidOut) const
+    {
+      autoc oIsHit = _Ad::is_ray_hit(node.box, rayBase, rayHeading);
+      if (!oIsHit)
+        return;
+
+      std::copy_if(std::begin(node.vid), std::end(node.vid), std::back_inserter(vidOut), [&](autoc id)
+      {
+        return _Ad::is_ray_hit(vExtent[id], rayBase, rayHeading).has_value();
+      });
+
+      autoc flagPrefix = kNode << nDimension;
+      for (autoc idChild : node.GetChildren())
+      {
+        autoc kChild = flagPrefix | morton_node_id_type(idChild);
+        _rayIntersectedAll(kChild, cont_at(this->_nodes, kChild), vExtent, rayBase, rayHeading, vidOut);
+      }
+    }
+
+
+    void _rayIntersectedFirst(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vExtent, point_type const& rayBase, point_type const& rayHeading, multiset<_EntityDistance>& vidOut) const
+    {
+      autoc rLastDistance = vidOut.empty() ? std::numeric_limits<double>::infinity() : static_cast<double>(vidOut.rbegin()->distance);
+      for (autoc id : node.vid)
+      {
+        autoc oDist = _Ad::is_ray_hit(vExtent[id], rayBase, rayHeading);
+        if (!oDist)
+          continue;
+
+        if (*oDist > rLastDistance)
+          continue;
+
+        vidOut.insert({ { *oDist }, id });
+      }
+
+      autoc flagPrefix = kNode << nDimension;
+      auto msNode = multiset<_BoxDistance>();
+      for (autoc idChild : node.GetChildren())
+      {
+        morton_node_id_type const kChild = flagPrefix | morton_node_id_type(idChild);
+        autoc& nodeChild = cont_at(this->_nodes, kChild);
+        autoc oDist = _Ad::is_ray_hit(nodeChild.box, rayBase, rayHeading);
+        if (!oDist)
+          continue;
+
+        if (*oDist > rLastDistance)
+          continue;
+
+        msNode.insert({ { static_cast<geometry_type>(oDist.value()) }, kChild, nodeChild });
+      }
+      
+      for (autoc& nodeData : msNode)
+        _rayIntersectedFirst(nodeData.kNode, nodeData.node, vExtent, rayBase, rayHeading, vidOut);
+      
+    }
+
+
+  public:
+
+    vector<entity_id_type> RayIntersectedAll(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vExtent) const
+    {
+      autoc kRoot = base::GetRootKey();
+
+      auto vid = vector<entity_id_type>();
+      vid.reserve(20);
+      _rayIntersectedAll(kRoot, cont_at(this->_nodes, kRoot), vExtent, rayBase, rayHeading, vid);
+      return vid;
+    }
+    
+    
+    std::optional<entity_id_type> RayIntersectedFirst(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vExtent) const
+    {
+      autoc kRoot = base::GetRootKey();
+
+      autoc& node = cont_at(this->_nodes, kRoot);
+      autoc oDist = _Ad::is_ray_hit(node.box, rayBase, rayHeading);
+      if (!oDist)
+        return std::nullopt;
+
+      auto vid = multiset<_EntityDistance>();
+      _rayIntersectedFirst(kRoot, node, vExtent, rayBase, rayHeading, vid);
+      if (vid.empty())
+        return std::nullopt;
+    
+      return std::begin(vid)->id;
     }
   };
 
