@@ -315,7 +315,17 @@ namespace NTree
 
       return ext;
     }
+
+    static void move_box(box_type& box, point_type const& vMove)
+    {
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+      {
+        base::point_comp(base::box_min(box), iDimension) += base::point_comp_c(vMove, iDimension);
+        base::point_comp(base::box_max(box), iDimension) += base::point_comp_c(vMove, iDimension);
+      }
+    }
   };
+
 
   template<dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
   using AdaptorGeneral = AdaptorGeneralBase<nDimension, point_type, box_type, AdaptorGeneralBasics<nDimension, point_type, box_type, geometry_type>, geometry_type>;
@@ -1142,6 +1152,15 @@ namespace NTree
       cont_at(_nodes, GetRootKey()).vid.clear();
     }
 
+
+    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    void Move(point_type const& vMove)
+    {
+      std::for_each(execution_policy_type{}, std::begin(_nodes), std::end(_nodes), [&vMove](auto& pairKeyNode)
+      {
+        _Ad::move_box(pairKeyNode.second.box, vMove);
+      });
+    }
 
     // Doubles the handled space relative to the root. iRootNew defines the relative location in the new space
     //!IMPLEMENT void Extend(morton_node_id_type_cref iRootNew = 0) {}
