@@ -55,7 +55,7 @@ namespace AdaptorTest
 {
   using namespace CustomGeometryType;
 
-  static bool AreEqualAlmost(BoundingBox2DCustom const& l, BoundingBox2DCustom const& r)
+  static bool AreEqualAlmost(BoundingBox2DCustom const& l, BoundingBox2DCustom const& r) noexcept
   {
     for (autoc iMax : { 0, 1 })
       for (dim_type iD = 0; iD < 2; ++iD)
@@ -76,7 +76,7 @@ namespace AdaptorTest
     TEST_METHOD(Empty)
     {
       autoc tree = QuadtreePointCustom::Create(vector<Point2DCustom>{}, 2);
-      autoc& nodes = tree.Get();
+      autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).vid.empty());
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox2DCustom{}));
@@ -89,8 +89,8 @@ namespace AdaptorTest
 
       Assert::IsTrue(tree.Insert(4, Point2DCustom{ 2.5, 2.5 }, false));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(7, nodes.size());
       Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).vid == vector<size_t>{ 3, 4 });
     }
 

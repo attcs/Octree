@@ -1052,10 +1052,8 @@ namespace NTree
 
   public: // Getters
 
-    size_t inline GetNodeSize() const { return _nodes.size(); }
-    auto const& GetNodes() const { return _nodes; }
-    auto const& GetBox() const { return _box; }
-    auto const& Get() const { return _nodes; }
+    auto const& GetNodes() const noexcept { return _nodes; }
+    auto const& GetBox() const noexcept { return _box; }
     auto const& Get(morton_node_id_type_cref key) const { return cont_at(_nodes, key); }
     auto inline GetDepthMax() const noexcept { return _nDepthMax; }
     auto inline GetResolutionMax() const noexcept { return _nRasterResolutionMax; }

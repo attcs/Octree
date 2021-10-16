@@ -15,7 +15,7 @@ namespace PerformaceTest
 
 
   template<size_t nDim>
-  static BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
+  static constexpr BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
   {
     using Ad = AdaptorGeneral<nDim, PointND<nDim>, BoundingBoxND<nDim>>;
     auto box = BoundingBoxND<nDim>{ pt, pt };

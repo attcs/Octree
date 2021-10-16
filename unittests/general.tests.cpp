@@ -20,7 +20,7 @@ namespace
 {
   autoce BB1_INV = BoundingBox1D{ std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity() };
 
-  static bool AreEqualAlmost(double l, double r)
+  static bool AreEqualAlmost(double l, double r) noexcept
   {
     return l == r || abs(l - r) < std::numeric_limits<double>::min() * 10; // l and r could be inf.
   }
@@ -113,80 +113,80 @@ namespace GeneralTest
     TEST_METHOD(M1D_0_0)
     {
       autoce arr = array<grid_id_type, 1> { 0 };
-      Assert::AreEqual(DualtreePoint::Morton(arr), DualtreePoint::morton_grid_id_type(0));
+      Assert::AreEqual(DualtreePoint::morton_grid_id_type{ 0 }, DualtreePoint::Morton(arr));
     }
 
     TEST_METHOD(M1D_4_4)
     {
       autoce arr = array<grid_id_type, 1>{ 4 };
-      Assert::AreEqual(DualtreePoint::Morton(arr), DualtreePoint::morton_grid_id_type(4));
+      Assert::AreEqual(DualtreePoint::morton_grid_id_type{ 4 }, DualtreePoint::Morton(arr));
     }
 
 
     TEST_METHOD(M2D_00_0)
     {
       autoce arr = array<grid_id_type, 2>{ 0, 0 };
-      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(0));
+      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 0 }, QuadtreePoint::Morton(arr));
     }
 
     TEST_METHOD(M2D_20_4)
     {
       autoce arr = array<grid_id_type, 2>{ 2, 0 };
-      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(4));
+      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 4 }, QuadtreePoint::Morton(arr));
     }
 
     TEST_METHOD(M2D_02_8)
     {
       autoce arr = array<grid_id_type, 2>{ 0, 2 };
-      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(8));
+      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 8 }, QuadtreePoint::Morton(arr));
     }
 
     TEST_METHOD(M2D_22_12)
     {
       autoce arr = array<grid_id_type, 2>{ 2, 2 };
-      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(12));
+      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 12 }, QuadtreePoint::Morton(arr));
     }
 
     TEST_METHOD(M2D_13_11)
     {
       autoce arr = array<grid_id_type, 2>{ 1, 3 };
-      Assert::AreEqual(QuadtreePoint::Morton(arr), QuadtreePoint::morton_grid_id_type(11));
+      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 11 }, QuadtreePoint::Morton(arr));
     }
 
     TEST_METHOD(M3D_000_0)
     {
       autoce arr = array<grid_id_type, 3>{ 0, 0, 0 };
-      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(0));
+      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 0 }, OctreePoint::Morton(arr));
     }
 
     TEST_METHOD(M3D_100_1)
     {
       autoce arr = array<grid_id_type, 3>{ 1, 0, 0 };
-      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(1));
+      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 1 }, OctreePoint::Morton(arr));
     }
 
     TEST_METHOD(M3D_001_4)
     {
       autoce arr = array<grid_id_type, 3>{ 0, 0, 1 };
-      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(4));
+      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 4 }, OctreePoint::Morton(arr));
     }
 
     TEST_METHOD(M3D_111_7)
     {
       autoce arr = array<grid_id_type, 3>{ 1, 1, 1 };
-      Assert::AreEqual(OctreePoint::Morton(arr), OctreePoint::morton_grid_id_type(7));
+      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 7 }, OctreePoint::Morton(arr));
     }
 
     TEST_METHOD(M4D_1111_15)
     {
       autoce arr = array<grid_id_type, 4>{ 1, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::Morton(arr), HexatreePoint::morton_grid_id_type(15));
+      Assert::AreEqual(HexatreePoint::morton_grid_id_type{ 15 }, HexatreePoint::Morton(arr));
     }
 
     TEST_METHOD(M4D_2111_30)
     {
       autoce arr = array<grid_id_type, 4>{ 2, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::Morton(arr), HexatreePoint::morton_grid_id_type(30));
+      Assert::AreEqual(HexatreePoint::morton_grid_id_type{ 30 }, HexatreePoint::Morton(arr));
     }
   };
 
@@ -278,7 +278,11 @@ namespace GeneralTest
       autoce vPoint = getPointSetNo1<N>();
       autoc treeExpected = TreePointND<N>::Create(vPoint, 3);
       autoc treeActual = TreePointND<N>(vPoint, 3);
-      Assert::AreEqual(treeExpected.GetNodeSize(), treeActual.GetNodeSize());
+
+      autoc& nodesE = treeExpected.GetNodes();
+      autoc& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
       autoc vidE = treeExpected.CollectAllIdInBFS();
       autoc vidA = treeActual.CollectAllIdInBFS();
       Assert::IsTrue(vidE == vidA);
@@ -297,7 +301,11 @@ namespace GeneralTest
 
       autoc treeExpected = TreeBoxND<N>::Create(vBox, 3);
       autoc treeActual = TreeBoxND<N>(vBox, 3);
-      Assert::AreEqual(treeExpected.GetNodeSize(), treeActual.GetNodeSize());
+
+      autoc& nodesE = treeExpected.GetNodes();
+      autoc& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
       autoc vidE = treeExpected.CollectAllIdInBFS();
       autoc vidA = treeActual.CollectAllIdInBFS();
       Assert::IsTrue(vidE == vidA);
@@ -315,33 +323,33 @@ namespace GeneralTest
 
     TEST_METHOD(GetHash__00_1)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(0, 0), DualtreePoint::morton_node_id_type(1));
+      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 1 }, DualtreePoint::GetHash(0, 0));
     }
 
     TEST_METHOD(GetHash__11_3)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(1, 1), DualtreePoint::morton_node_id_type(3));
+      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 3 }, DualtreePoint::GetHash(1, 1));
     }
     TEST_METHOD(GetHash__22_4)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(2, 2), DualtreePoint::morton_node_id_type(6));
+      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 6 }, DualtreePoint::GetHash(2, 2));
     }
 
     TEST_METHOD(GetHash__37_15)
     {
-      Assert::AreEqual(DualtreePoint::GetHash(3, 7), DualtreePoint::morton_node_id_type(15));
+      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 15 }, DualtreePoint::GetHash(3, 7));
     }
 
     TEST_METHOD(GetDepth__37_15__3)
     {
       autoc lc = DualtreePoint::GetDepth(DualtreePoint::GetHash(3, 7));
-      Assert::AreEqual(lc, DualtreePoint::depth_type(3));
+      Assert::AreEqual(DualtreePoint::depth_type{ 3 }, lc);
     }
 
     TEST_METHOD(RemoveSentinelBit__37_15__7)
     {
       autoc lc = DualtreePoint::RemoveSentinelBit(DualtreePoint::GetHash(3, 7));
-      Assert::AreEqual(lc, morton_node_id_type(7));
+      Assert::AreEqual(morton_node_id_type{ 7 }, lc);
     }
 
     TEST_METHOD(Init)
@@ -350,7 +358,9 @@ namespace GeneralTest
       autoc bb = BoundingBox1D{ -1, +1 };
       tree.Init(bb, 3, 10);
       Assert::IsTrue(AreEqualAlmost(bb, tree.GetBox()));
-      Assert::AreEqual<size_t>(1, tree.GetNodeSize());
+
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(1, nodes.size());
       Assert::AreEqual<DualtreePoint::depth_type>(3, tree.GetDepthMax());
       Assert::AreEqual<grid_id_type>(8, tree.GetResolutionMax());
     }
@@ -542,7 +552,7 @@ namespace GeneralTest
       };
       auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
 
-      autoc& nodes = tree.Get();
+      autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
 
       tree.Clear();
@@ -658,7 +668,7 @@ namespace GeneralTest
     bool _isMoveOfTwoTreeProper(tree_type const& tPre, tree_type const& tAfter, PointND<N> const& vMoveExpected)
     {
       using Ad = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>>;
-      autoc rAcc = std::numeric_limits<double>::min();
+      autoce rAcc = std::numeric_limits<double>::min();
 
       autoc nodesPre = tPre.GetNodes();
       autoc nodesAfter = tAfter.GetNodes();
@@ -987,7 +997,7 @@ namespace Tree1DTest
 		TEST_METHOD(Empty)
 		{
 			autoc tree = DualtreePoint::Create({}, 2);
-			autoc& nodes = tree.Get();
+			autoc& nodes = tree.GetNodes();
 			Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).vid.empty());
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BB1_INV));
@@ -997,7 +1007,7 @@ namespace Tree1DTest
     TEST_METHOD(NoPt1)
     {
       autoc tree = DualtreePoint::Create(vector<Point1D>{ { 1.0 } }, 2);
-      autoc& nodes = tree.Get();
+      autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 2);
       Assert::IsTrue(nodes.at(1).vid.empty());
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox1D{ Point1D{1.0}, Point1D{1.0} }));
@@ -1007,7 +1017,7 @@ namespace Tree1DTest
     TEST_METHOD(NoPt2)
     {
       autoc tree = DualtreePoint::Create({}, 2);
-      autoc& nodes = tree.Get();
+      autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).vid.empty());
     }
@@ -1017,7 +1027,7 @@ namespace Tree1DTest
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
 
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      Assert::AreEqual<size_t>(tree.GetNodes().size(), 7);
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox1D{ Point1D{0.0}, Point1D{3.0} }));
     }
 
@@ -1027,7 +1037,7 @@ namespace Tree1DTest
       auto tree = DualtreePoint{};
       tree.Init(BoundingBox1D{ { -1.0 }, { +1.0 } }, 2);
       
-      autoc& nodes = tree.Get();
+      autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).vid.empty());
     }
@@ -1123,8 +1133,8 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Insert(4, Point1D{ 2.5 }, false));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(7, nodes.size());
       Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3, 4 });
     }
 
@@ -1135,8 +1145,8 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Insert(4, Point1D{ 2.5 }, true));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 8);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(nodes.size(), 8);
       Assert::IsTrue(nodes.at(14).vid == vector<size_t>{ 4 });
     }
 
@@ -1146,8 +1156,8 @@ namespace Tree1DTest
       auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
       Assert::IsFalse(tree.Insert(4, Point1D{ 4.0 }, true));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(nodes.size(), 7);
       Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3 });
     }
 
@@ -1317,8 +1327,8 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 0, 4 }, false));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(nodes.size(), 7);
       Assert::IsTrue(nodes.at(tree.GetRootKey()).vid == vector<size_t>{ 4 });
     }
 
@@ -1330,8 +1340,8 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, false));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(nodes.size(), 7);
       Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3, 4 });
     }
     
@@ -1342,8 +1352,8 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, true));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 8);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(nodes.size(), 8);
       Assert::IsTrue(nodes.at(15).vid == vector<size_t>{ 4 });
     }
 
@@ -1355,8 +1365,8 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 1.0, 3.0 }, true));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(nodes.size(), 7);
       Assert::IsTrue(nodes.at(1).vid == vector<size_t>{ 4 });
     }
 
@@ -1368,8 +1378,8 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 0.0, 2.0 }, true));
 
-      autoc& nodes = tree.Get();
-      Assert::AreEqual<size_t>(tree.GetNodeSize(), 7);
+      autoc& nodes = tree.GetNodes();
+      Assert::AreEqual<size_t>(nodes.size(), 7);
       Assert::IsTrue(nodes.at(2).vid == vector<size_t>{ 4 });
     }
 
@@ -1414,8 +1424,8 @@ namespace Tree2DTest
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
       autoc nt = TreePointND<N>::Create(points, 3, std::nullopt, 3);
-      autoc nNode = nt.GetNodeSize();
-      Assert::AreEqual<size_t>(22, nNode);
+      autoc& nodes = nt.GetNodes();
+      Assert::AreEqual<size_t>(22, nodes.size());
     }
   };
 
