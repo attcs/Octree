@@ -1012,10 +1012,10 @@ namespace NTree
         grid_id_type mask = 1;
         for (dim_type i = 0, shift = 0; msb; mask <<= 1, msb >>= 1, ++i)
           for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, ++shift)
-            if constexpr (Node::is_bitset)
-              id[shift] = aidGrid[iDimension] & mask;
-            else
+            if constexpr (is_linear_tree)
               id |= (aidGrid[iDimension] & mask) << (shift - i);
+            else
+              id[shift] = aidGrid[iDimension] & mask;
 
         return id;
       }
