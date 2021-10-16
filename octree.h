@@ -176,7 +176,7 @@ namespace NTree
 
     static constexpr geometry_type size2(point_type const& pt)
     {
-      auto d2 = geometry_type(0);
+      auto d2 = geometry_type{ 0 };
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
       {
         autoc d = base::point_comp_c(pt, iDim);
@@ -295,7 +295,7 @@ namespace NTree
       auto& ptMin = base::box_min(ext);
       auto& ptMax = base::box_max(ext);
 
-      autoc inf = std::numeric_limits<geometry_type>::infinity();
+      autoce inf = std::numeric_limits<geometry_type>::infinity();
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         base::point_comp(ptMin, iDimension) = +inf;
@@ -394,7 +394,7 @@ namespace NTree
   template<size_t N> using bitset_arithmetic = bitset<N>;
 
   template<size_t N>
-  bitset_arithmetic<N> operator+ (bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
+  bitset_arithmetic<N> operator+ (bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs)
   {
     bool carry = false;
     auto ans = bitset_arithmetic<N>();
@@ -416,7 +416,7 @@ namespace NTree
   }
 
   template<size_t N>
-  bitset_arithmetic<N> operator- (bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
+  bitset_arithmetic<N> operator- (bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs)
   {
     assert(lhs >= rhs);
 
@@ -627,8 +627,8 @@ namespace NTree
       child_exist_flag_type _hasChildK = {};
 
     public: // Public members
-      vector<entity_id_type> vid;
-      box_type box;
+      vector<entity_id_type> vid = {};
+      box_type box = {};
 
 
     public:
@@ -638,7 +638,7 @@ namespace NTree
         if constexpr (is_bitset)
           _children.insert(iChild);
         else
-          _hasChildK |= (child_exist_flag_type(1) << iChild);
+          _hasChildK |= (child_exist_flag_type{ 1 } << iChild);
       }
 
       constexpr void DisableChild(child_id_type iChild)
@@ -646,7 +646,7 @@ namespace NTree
         if constexpr (is_bitset)
           _children.erase(iChild);
         else
-          _hasChildK &= ~(child_exist_flag_type(1) << iChild);
+          _hasChildK &= ~(child_exist_flag_type{ 1 } << iChild);
       }
 
       constexpr bool HasChild(child_id_type iChild) const 
@@ -654,10 +654,10 @@ namespace NTree
         if constexpr (is_bitset)
           return _children.contains(iChild);
         else
-          return _hasChildK & (child_exist_flag_type(1) << iChild);
+          return _hasChildK & (child_exist_flag_type{ 1 } << iChild);
       }
 
-      inline bool IsAnyChildExist() const
+      inline bool IsAnyChildExist() const noexcept
       {
         if constexpr (is_bitset)
           return !_children.empty();
@@ -729,10 +729,6 @@ namespace NTree
 
   protected: // Aid functions
 
-    static void _reserveContainer(map<morton_node_id_type, Node, bitset_arithmetic_compare>& m, size_t n) {};
-    static void _reserveContainer(unordered_map<morton_node_id_type, Node>& m, size_t n) { m.reserve(n); };
-
-
     template<size_t N>
     static inline child_id_type _mortonIdToChildId(bitset_arithmetic<N> const& bs)
     {
@@ -755,6 +751,7 @@ namespace NTree
     static constexpr array<double, nDimension> _getGridRasterizer(point_type const& p0, point_type const& p1, grid_id_type n_divide)
     {
       auto aRasterizer = array<double, nDimension>{};
+      
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         autoc rExt = adaptor_type::point_comp_c(p1, iDimension) - adaptor_type::point_comp_c(p0, iDimension);
@@ -834,12 +831,12 @@ namespace NTree
         {
           autoc fGreater = (flagChild & child_id_type{1});
           _Ad::point_comp(_Ad::box_min(nodeChild.box), iDimension) = 
-            fGreater * (_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2) + 
+            fGreater * (_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type{ 2 } +
             (!fGreater) * _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension);
 
           _Ad::point_comp(_Ad::box_max(nodeChild.box), iDimension) = 
             fGreater * _Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + 
-            (!fGreater) * ((_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type(2));
+            (!fGreater) * ((_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type{ 2 });
         }
       }
       return nodeChild;
@@ -860,7 +857,7 @@ namespace NTree
       else
       {
         morton_grid_id_type const idLocation = ns.idLocationBegin + morton_grid_id_type(iChild) * nLocationStep;
-        q.emplace(_NodePartitioner{ kChild, &nodeChild, depth_type(ns.nDepth + 1), idLocation, itBegin, itEnd });
+        q.emplace(_NodePartitioner{ kChild, &nodeChild, depth_type{ns.nDepth + 1}, idLocation, itBegin, itEnd });
       }
     }
 
@@ -925,26 +922,40 @@ namespace NTree
       return true;
     }
 
+    static void _reserveContainer(map<morton_node_id_type, Node, bitset_arithmetic_compare>& m, size_t n) {};
+    static void _reserveContainer(unordered_map<morton_node_id_type, Node>& m, size_t n) { m.reserve(n); };
 
   public: // Static aid functions
 
-    static constexpr size_t EstimateNodeNumber(size_t n, depth_type nDepthMax, max_element_type nElementMax)
+    static constexpr size_t EstimateNodeNumber(size_t nElement, depth_type nDepthMax, max_element_type nElementMax)
     {
       assert(nElementMax > 0);
       assert(nDepthMax > 0);
 
-      autoc nDepthEstimated = std::min(nDepthMax, static_cast<depth_type>(ceil((log2(static_cast<float>(n) / static_cast<float>(nElementMax)) + 1) / static_cast<float>(nDimension))));
-      autoc nNodeEstimated = (pow_ce(_nChild, nDepthEstimated + 1) - 1) / (_nChild - 1);
-      return static_cast<size_t>(1.5 * nNodeEstimated);
+      if ((nDepthMax + 1) * nDimension < 64)
+      {
+        size_t const nMaxChild = size_t{ 1 } << (nDepthMax * nDimension);
+        autoc nElementInNode = nElement / nMaxChild;
+        if (nElementInNode > nElementMax / 2)
+          return nMaxChild;
+      }
+
+      autoc nElementInNodeAvg = static_cast<float>(nElement) / static_cast<float>(nElementMax);
+      autoc nDepthEstimated = std::min(nDepthMax, static_cast<depth_type>(ceil((log2(nElementInNodeAvg) + 1) / static_cast<float>(nDimension))));
+      if (nDepthEstimated * nDimension < 64)
+        return static_cast<size_t>(1.5 * (1 << nDepthEstimated * nDimension));
+
+      return static_cast<size_t>(1.5 * nElementInNodeAvg);
     }
 
-    static inline morton_node_id_type GetHash(depth_type depth, morton_node_id_type_cref key)
+
+    static inline morton_node_id_type GetHash(depth_type depth, morton_node_id_type_cref key) noexcept
     {
       assert(key < (morton_node_id_type(1) << (depth * nDimension)));
-      return (morton_node_id_type(1) << (depth * nDimension)) | key;
+      return (morton_node_id_type{ 1 } << (depth * nDimension)) | key;
     }
 
-    static inline morton_node_id_type GetRootKey()
+    static inline morton_node_id_type GetRootKey() noexcept
     { 
       return GetHash(0, 0);
     }
@@ -952,7 +963,7 @@ namespace NTree
     static constexpr bool IsValidKey(uint64_t key) { return key; }
 
     template<size_t N>
-    static inline bool IsValidKey(bitset_arithmetic<N> const& key) { return !key.none(); }
+    static inline bool IsValidKey(bitset_arithmetic<N> const& key) noexcept { return !key.none(); }
 
     static depth_type GetDepth(morton_node_id_type key)
     {
@@ -976,7 +987,7 @@ namespace NTree
 
     static inline child_id_type _getChildPartOfLocation(morton_node_id_type_cref key)
     {
-      autoc maskLastBits1 = (morton_node_id_type(1) << nDimension) - 1;
+      autoce maskLastBits1 = (morton_node_id_type{ 1 } << nDimension) - 1;
 
       return _mortonIdToChildId(key & maskLastBits1);
     }
@@ -1123,11 +1134,11 @@ namespace NTree
         autoc& item = q.front();
         procedure(item.key, item.pNode, item.fUnconditional);
 
-        autoc nDepthChild = depth_type(item.nDepth + 1);
-        autoc flagPrefix = morton_node_id_type(item.key << nDimension);
+        autoc nDepthChild = depth_type{ item.nDepth + 1 };
+        morton_node_id_type const flagPrefix = item.key << nDimension;
         for (autoc iChild : item.pNode.GetChildren())
         {
-          autoc kChild = morton_node_id_type(flagPrefix | iChild);
+          morton_node_id_type const kChild = flagPrefix | morton_node_id_type(iChild);
           autoc& pNodeChild = cont_at(_nodes, kChild);
           if (item.fUnconditional)
             q.push({ kChild, pNodeChild, nDepthChild, true });
@@ -1142,7 +1153,7 @@ namespace NTree
     vector<entity_id_type> CollectAllIdInBFS() const
     {
       auto ids = vector<entity_id_type>();
-      ids.reserve(GetNodeSize() * std::max<size_t>(2, _nElementMax / 2));
+      ids.reserve(_nodes.size() * std::max<size_t>(2, _nElementMax / 2));
 
       VisitNodes(GetRootKey(), [&ids](morton_node_id_type_cref key, autoc& node)
       { 
@@ -1199,7 +1210,7 @@ namespace NTree
       autoc nRasterResolution = pow_ce(2, nDepth);
       autoc rMax = 1.0 / static_cast<double>(nRasterResolution);
 
-      autoce one = morton_grid_id_type(1);
+      autoce one = morton_grid_id_type{ 1 };
       auto keyShifted = keyNode;// RemoveSentinelBit(key, nDepth);
       for (depth_type iDepth = 0; iDepth < nDepth; ++iDepth)
       {
@@ -1299,7 +1310,7 @@ namespace NTree
       auto aidLocation = vector<morton_grid_id_type>(n);
       autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc maxSlot = tree._nRasterResolutionMax - 1;
-      std::transform(execution_policy_type{}, begin(vpt), end(vpt), begin(aidLocation), [&](autoc& pt)
+      std::transform(execution_policy_type{}, std::begin(vpt), std::end(vpt), begin(aidLocation), [&](autoc& pt)
       {
         return base::Morton(base::_getGridIdPoint(pt, _Ad::box_min_c(tree._box), aRasterizer, maxSlot));
       });
@@ -1310,14 +1321,13 @@ namespace NTree
       std::sort(execution_policy_type{}, std::begin(vidPoint), std::end(vidPoint), [&](autoc idPointL, autoc idPointR) { return aidLocation[idPointL] < aidLocation[idPointR]; });
 
       // Create tree logical structure
-
       auto q = std::queue<_NodePartitioner>();
-      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, depth_type(1), morton_node_id_type(0), std::begin(vidPoint), std::end(vidPoint) };
+      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, depth_type{1}, morton_node_id_type{0}, std::begin(vidPoint), std::end(vidPoint) };
       for (q.push(nsRoot); !q.empty(); q.pop())
       {
         auto& ns = q.front();
         autoc shift = (tree._nDepthMax - ns.nDepth) * nDimension;
-        autoc nLocationStep = morton_grid_id_type(1) << shift;
+        autoc nLocationStep = morton_grid_id_type{ 1 } << shift;
 
         auto itEndPrev = ns.itBegin;
         for (auto itEndActual = itEndPrev; itEndPrev != ns.itEnd; itEndPrev = itEndActual)
@@ -1334,6 +1344,7 @@ namespace NTree
 
       return tree;
     }
+
 
 
   public: // Edit functions
@@ -1705,8 +1716,8 @@ namespace NTree
 
 
       auto q = std::queue<_NodePartitioner>();
-      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, 1, morton_node_id_type(0), std::begin(vidPoint), std::end(vidPoint) };
-      autoc nLocationStep = morton_grid_id_type(1) << nDimension;
+      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, 1, morton_node_id_type{0}, std::begin(vidPoint), std::end(vidPoint) };
+      autoc nLocationStep = morton_grid_id_type{ 1 } << nDimension;
       for (q.push(nsRoot); !q.empty(); q.pop())
       {
         auto& ns = q.front();
