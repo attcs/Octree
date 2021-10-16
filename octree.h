@@ -190,6 +190,15 @@ namespace NTree
       return sqrt(size2(pt));
     }
 
+    static constexpr point_type add(point_type const& ptL, point_type const& ptR)
+    {
+      auto pt = point_type{};
+      for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+        base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) + base::point_comp_c(ptR, iDim);
+
+      return pt;
+    }
+
     static constexpr point_type substract(point_type const& ptL, point_type const& ptR)
     {
       auto pt = point_type{};
@@ -197,7 +206,15 @@ namespace NTree
         base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) - base::point_comp_c(ptR, iDim);
 
       return pt;
+    }
 
+    static constexpr point_type div(point_type const& ptL, geometry_type const& rScalarR)
+    {
+      auto pt = point_type{};
+      for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+        base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) / rScalarR;
+
+      return pt;
     }
 
     static constexpr geometry_type distance(point_type const& ptL, point_type const& ptR)
