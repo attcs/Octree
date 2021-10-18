@@ -165,3 +165,20 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
   using QuadtreePointCustom = NTree::NTreePoint<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
   using QuadtreeBoxCustom = NTree::NTreeBoundingBox<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
 ```
+
+## Benchmarks
+Octree creation for 3 point sets using different placing strategy, and Cylindrical point set generation time:<br>
+<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/octree_point_perf_3sets.png" align="center"></div>
+<br><br>
+Octree creation for 3 box sets using different placing strategy, and Cylindrical box set generation time:<br><br>
+<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/octree_box_perf_3sets.png" align="center"></div>
+<br><br>
+Point rangesearch, cyilndrical placing, number of ranges are 10% of number of points:<br><br>
+<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/range_search.png" align="center"></div>
+<br><br>
+Current Z order implementation compared to a typical ortho tree in 3D and 8D:<br><br>
+<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/zorder_vs_typical.png" align="center"></div>
+<br>
+<br>
+*CPU: Intel Core i5-6500 @ 3.20GHz, CPU benchmark: 5640
+
