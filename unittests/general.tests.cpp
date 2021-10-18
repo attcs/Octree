@@ -1008,8 +1008,8 @@ namespace Tree1DTest
     {
       autoc tree = DualtreePoint::Create(vector<Point1D>{ { 1.0 } }, 2);
       autoc& nodes = tree.GetNodes();
-      Assert::IsTrue(nodes.size() == 2);
-      Assert::IsTrue(nodes.at(1).vid.empty());
+      Assert::IsTrue(nodes.size() == 1);
+      Assert::IsFalse(nodes.at(1).vid.empty());
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox1D{ Point1D{1.0}, Point1D{1.0} }));
     }
 

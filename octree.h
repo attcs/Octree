@@ -843,25 +843,6 @@ namespace NTree
     }
 
 
-    inline void _addNode(_NodePartitioner& ns, child_id_type iChild, morton_grid_id_type_cref nLocationStep, vector<entity_id_type>::iterator const& itBegin, vector<entity_id_type>::iterator const& itEnd, queue<_NodePartitioner>& q)
-    {
-      if (itBegin == itEnd)
-        return;
-
-      morton_grid_id_type const kChild = (ns.kNode << nDimension) | morton_grid_id_type(iChild);
-      auto& nodeChild = this->_createChild(*ns.pNode, iChild, kChild);
-
-      autoc nElement = static_cast<max_element_type>(distance(itBegin, itEnd));
-      if (nElement < _nElementMax || ns.nDepth == this->_nDepthMax)
-        nodeChild.vid.insert(end(nodeChild.vid), itBegin, itEnd);
-      else
-      {
-        morton_grid_id_type const idLocation = ns.idLocationBegin + morton_grid_id_type(iChild) * nLocationStep;
-        q.emplace(_NodePartitioner{ kChild, &nodeChild, depth_type{ns.nDepth + 1}, idLocation, itBegin, itEnd });
-      }
-    }
-
-
     bool _isEveryItemIdUnique() const
     {
       auto ids = vector<entity_id_type>();
@@ -1278,6 +1259,42 @@ namespace NTree
       return base::Morton(base::_getGridIdPoint(pt, _Ad::box_min_c(box), aRasterizer, nRasterResolutionMax - 1));
     }
 
+
+    using _LocationIterator = typename vector<std::pair<entity_id_type, morton_grid_id_type>>::const_iterator;
+    void _addNodes(Node& nodeParent, morton_node_id_type_cref kParent, _LocationIterator& itEndPrev, _LocationIterator const& itEnd, morton_grid_id_type_cref idLocationBegin, depth_type nDepthRemain)
+    {
+      autoc nElement = std::distance(itEndPrev, itEnd);
+      if (nElement < this->_nElementMax || nDepthRemain == 0)
+      {
+        nodeParent.vid.resize(nElement);
+        std::transform(itEndPrev, itEnd, std::begin(nodeParent.vid), [](autoc& item) { return item.first; });
+        itEndPrev = itEnd;
+        return;
+      }
+
+      --nDepthRemain;
+      autoc shift = nDepthRemain * nDimension;
+      autoc nLocationStep = morton_grid_id_type{ 1 } << shift;
+      autoc flagParent = kParent << nDimension;
+
+      while (itEndPrev != itEnd)
+      {
+        autoc idChildActual = base::_mortonIdToChildId((itEndPrev->second - idLocationBegin) >> shift);
+        autoc itEndActual = std::partition_point(itEndPrev, itEnd, [&](autoc& idPoint)
+        {
+          return idChildActual == base::_mortonIdToChildId((idPoint.second - idLocationBegin) >> shift);
+        });
+
+        autoc mChildActual = morton_grid_id_type(idChildActual);
+        morton_grid_id_type const kChild = flagParent | mChildActual;
+        morton_grid_id_type const idLocationBeginChild = idLocationBegin + mChildActual * nLocationStep;
+
+        auto& nodeChild = this->_createChild(nodeParent, idChildActual, kChild);
+        this->_addNodes(nodeChild, kChild, itEndPrev, itEndActual, idLocationBeginChild, nDepthRemain);
+      }
+    }
+
+
   public: // Create
 
     // Ctors
@@ -1286,7 +1303,6 @@ namespace NTree
     {
       *this = Create(vpt, nDepthMax, oextent, nElementMaxInNode);
     }
-
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
@@ -1305,41 +1321,19 @@ namespace NTree
       
 
       // Generate Morton location ids
-      auto aidLocation = vector<morton_grid_id_type>(n);
+      auto aidLocation = vector<std::pair<entity_id_type, morton_grid_id_type>>(n);
       autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc maxSlot = tree._nRasterResolutionMax - 1;
-      std::transform(execution_policy_type{}, std::begin(vpt), std::end(vpt), begin(aidLocation), [&](autoc& pt)
+
+      auto vidPoint = base::_generatePointId(n);
+      std::transform(execution_policy_type{}, std::begin(vpt), std::end(vpt), std::begin(vidPoint), std::begin(aidLocation), [&](autoc& pt, autoc id) -> std::pair<entity_id_type, morton_grid_id_type>
       {
-        return base::Morton(base::_getGridIdPoint(pt, _Ad::box_min_c(tree._box), aRasterizer, maxSlot));
+        return { id, base::Morton(base::_getGridIdPoint(pt, _Ad::box_min_c(tree._box), aRasterizer, maxSlot)) };
       });
 
-
-      // Create ids which will be the base of the ordering
-      auto vidPoint = base::_generatePointId(n);
-      std::sort(execution_policy_type{}, std::begin(vidPoint), std::end(vidPoint), [&](autoc idPointL, autoc idPointR) { return aidLocation[idPointL] < aidLocation[idPointR]; });
-
-      // Create tree logical structure
-      auto q = std::queue<_NodePartitioner>();
-      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, depth_type{1}, morton_node_id_type{0}, std::begin(vidPoint), std::end(vidPoint) };
-      for (q.push(nsRoot); !q.empty(); q.pop())
-      {
-        auto& ns = q.front();
-        autoc shift = (tree._nDepthMax - ns.nDepth) * nDimension;
-        autoc nLocationStep = morton_grid_id_type{ 1 } << shift;
-
-        auto itEndPrev = ns.itBegin;
-        for (auto itEndActual = itEndPrev; itEndPrev != ns.itEnd; itEndPrev = itEndActual)
-        {
-          autoc idChildActual = base::_mortonIdToChildId((aidLocation[*itEndPrev] - ns.idLocationBegin) >> shift);
-          itEndActual = std::partition_point(itEndPrev, ns.itEnd, [&](autoc idPoint)
-          {
-            return idChildActual == base::_mortonIdToChildId((aidLocation[idPoint] - ns.idLocationBegin) >> shift);
-          });
-
-          tree._addNode(ns, idChildActual, nLocationStep, itEndPrev, itEndActual, q);
-        }
-      }
-
+      std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
+      auto itBegin = std::begin(aidLocation);
+      tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aidLocation), morton_node_id_type{ 0 }, nDepthMax);
       return tree;
     }
 
@@ -1627,6 +1621,61 @@ namespace NTree
       }
     }
 
+    struct _Location
+    {
+      entity_id_type id;
+      morton_grid_id_type idMin;
+      depth_type depth;
+    };
+
+    using _LocationIterator = typename vector<_Location>::const_iterator;
+    void _addNodes(Node& nodeParent, morton_node_id_type_cref kParent, _LocationIterator& itEndPrev, _LocationIterator const& itEnd, morton_grid_id_type_cref idLocationBegin, depth_type nDepthRemain)
+    {
+      autoc nElement = std::distance(itEndPrev, itEnd);
+      if (nElement < this->_nElementMax || nDepthRemain == 0)
+      {
+        nodeParent.vid.resize(nElement);
+        std::transform(itEndPrev, itEnd, begin(nodeParent.vid), [](autoc& item) { return item.id; });
+        itEndPrev = itEnd;
+        return;
+      }
+
+      auto depthCheck = this->_nDepthMax - nDepthRemain + 1;
+      if (itEndPrev->depth == depthCheck)
+      {
+        autoc itBegin = itEndPrev;
+        itEndPrev = std::partition_point(itBegin, itEnd, [&](autoc& idLocation) { return idLocation.depth == itBegin->depth; });
+
+        autoc nElementCur = std::distance(itBegin, itEndPrev);
+        nodeParent.vid.resize(nElementCur);
+        std::transform(itBegin, itEndPrev, begin(nodeParent.vid), [](autoc& item) { return item.id; });
+      }
+
+      ++depthCheck;
+      --nDepthRemain;
+
+      autoc shift = nDepthRemain * nDimension;
+      autoc nLocationStep = morton_grid_id_type{ 1 } << nDimension;
+      autoc flagParent = kParent << nDimension;
+
+      while (itEndPrev != itEnd)
+      {
+        autoc idChildActual = base::_mortonIdToChildId((itEndPrev->idMin >> ((itEndPrev->depth - depthCheck) * nDimension)) - idLocationBegin);
+        autoc itEndActual = std::partition_point(itEndPrev, itEnd, [&](autoc& loc)
+        {
+          autoc idChild = base::_mortonIdToChildId((loc.idMin >> ((loc.depth - depthCheck) * nDimension)) - idLocationBegin);
+          return idChildActual == idChild;
+        });
+
+        autoc mChildActual = morton_grid_id_type(idChildActual);
+        morton_grid_id_type const kChild = flagParent | mChildActual;
+        morton_grid_id_type const idLocationBeginChild = idLocationBegin + mChildActual * nLocationStep;
+
+        auto& nodeChild = this->_createChild(nodeParent, idChildActual, kChild);
+        this->_addNodes(nodeChild, kChild, itEndPrev, itEndActual, idLocationBeginChild, nDepthRemain);
+      }
+    }
+
 
   public: // Create
     
@@ -1640,15 +1689,15 @@ namespace NTree
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static NTreeBoundingBox Create(span<box_type const> const& vExtent, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static NTreeBoundingBox Create(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       auto tree = NTreeBoundingBox{};
-      tree.Init(oextent.value_or(_Ad::box_of_boxes(vExtent))
+      tree.Init(oextent.value_or(_Ad::box_of_boxes(vBox))
         , nDepthMax
         , nElementMaxInNode
       );
      
-      autoc n = vExtent.size();
+      autoc n = vBox.size();
 
       base::_reserveContainer(tree._nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
       if (n == 0)
@@ -1656,94 +1705,58 @@ namespace NTree
 
       autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
-
-      // Generate Morton location ids
-
-      struct Location
-      {
-        morton_grid_id_type idMin;
-        depth_type depth;
-      };
-      auto aidLocation = vector<Location>(n);
       
       autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc maxSlot = tree._nRasterResolutionMax - 1;
-      std::transform(execution_policy_type{}, std::begin(vExtent), std::end(vExtent), std::begin(aidLocation), [&](autoc& box)->Location
+      autoc vidPoint = base::_generatePointId(n);
+
+      auto aidLocation = vector<_Location>(n);
+      std::transform(execution_policy_type{}, std::begin(vBox), std::end(vBox), std::begin(vidPoint), std::begin(aidLocation), [&](autoc& box, autoc id)->_Location
       { 
         autoc aid = base::_getGridIdBox(box, _Ad::box_min_c(tree._box), aRasterizer, maxSlot);
         auto idMin = base::Morton(aid[0]);
         auto idMax = base::Morton(aid[1]);
         if (idMin == idMax)
-          return { idMin, nDepthMax };
+          return { id, idMin, nDepthMax };
 
         for (depth_type depth = nDepthMax; depth > 1; --depth)
         {
           idMin >>= nDimension;
           idMax >>= nDimension;
           if (idMin == idMax)
-            return { idMin, depth };
+            return { id, idMin, depth };
         }
         idMin >>= nDimension;
-        return { idMin, 1 };
+        return { id, idMin, 1 };
       });
 
-      auto vidPoint = base::_generatePointId(n);
-      std::sort(execution_policy_type{}, std::begin(vidPoint), std::end(vidPoint), [&](autoc idL, autoc idR)
+      std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idLocationL, autoc& idLocationR)
       {
-        if (aidLocation[idL].depth == aidLocation[idR].depth)
-          return aidLocation[idL].idMin < aidLocation[idR].idMin;
-        else if (aidLocation[idL].depth < aidLocation[idR].depth)
+        if (idLocationL.depth == idLocationR.depth)
+          return idLocationL.idMin < idLocationR.idMin;
+        else if (idLocationL.depth < idLocationR.depth)
         {
-          autoc shift = (aidLocation[idR].depth - aidLocation[idL].depth) * nDimension;
-          autoc aidRS = aidLocation[idR].idMin >> shift;
-          if (aidLocation[idL].idMin == aidRS)
+          autoc shift = (idLocationR.depth - idLocationL.depth) * nDimension;
+          autoc aidRS = idLocationR.idMin >> shift;
+          if (idLocationL.idMin == aidRS)
             return true;
 
-          return aidLocation[idL].idMin < aidRS;
+          return idLocationL.idMin < aidRS;
         }
         else
         {
-          autoc shift = (aidLocation[idL].depth - aidLocation[idR].depth) * nDimension;
-          autoc aidLS = aidLocation[idL].idMin >> shift;
-          if (aidLocation[idR].idMin == aidLS)
+          autoc shift = (idLocationL.depth - idLocationR.depth) * nDimension;
+          autoc aidLS = idLocationL.idMin >> shift;
+          if (idLocationR.idMin == aidLS)
             return false;
 
-          return aidLS < aidLocation[idR].idMin;
+          return aidLS < idLocationR.idMin;
         }
       });
 
 
-      auto q = std::queue<_NodePartitioner>();
-      auto nsRoot = _NodePartitioner{ kRoot, &nodeRoot, 1, morton_node_id_type{0}, std::begin(vidPoint), std::end(vidPoint) };
-      autoc nLocationStep = morton_grid_id_type{ 1 } << nDimension;
-      for (q.push(nsRoot); !q.empty(); q.pop())
-      {
-        auto& ns = q.front();
-
-        autoc depth0 = aidLocation[*ns.itBegin].depth;
-        auto itEndPrev = ns.itBegin;
-        if (depth0 == ns.nDepth)
-        {
-          itEndPrev = std::partition_point(ns.itBegin, ns.itEnd, [&](autoc idPoint) { return aidLocation[idPoint].depth == depth0; });
-          tree._addElements(ns, ns.itBegin, itEndPrev);
-        }
-
-        autoc depthCheck = ns.nDepth + 1;
-        for (auto itEndActual = itEndPrev; itEndPrev != ns.itEnd; itEndPrev = itEndActual)
-        {
-          autoc& locActual = aidLocation[*itEndPrev];
-          autoc idChildActual = base::_mortonIdToChildId((locActual.idMin >> ((locActual.depth - depthCheck) * nDimension)) - ns.idLocationBegin);
-          itEndActual = std::partition_point(itEndPrev, ns.itEnd, [&](autoc idPoint)
-          {
-            autoc& loc = aidLocation[idPoint];
-            autoc idChild = base::_mortonIdToChildId((loc.idMin >> ((loc.depth - depthCheck) * nDimension)) - ns.idLocationBegin);
-            return idChildActual == idChild;
-          });
-
-          tree._addNode(ns, idChildActual, nLocationStep, itEndPrev, itEndActual, q);
-        }
-      }
-
+      auto itBegin = std::begin(aidLocation);
+      tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aidLocation), morton_node_id_type{ 0 }, nDepthMax);
       return tree;
     }
 
