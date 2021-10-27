@@ -42,16 +42,16 @@ namespace
 
   using time_unit = milliseconds;
 
+  using Adaptor = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>>;
   autoce degree_to_rad(double degree) { return degree / 180 * std::numbers::pi; }
 
 
   template<size_t nDim>
   static constexpr PointND<nDim> CreateBoxMax(PointND<nDim> const& pt, double size)
   {
-    using Ad = AdaptorGeneral<nDim, PointND<nDim>, BoundingBoxND<nDim>>;
     auto ptMax = pt;
     for (size_t iDim = 0; iDim < nDim; ++iDim)
-      Ad::point_comp(ptMax, static_cast<dim_type>(iDim)) += size;
+      Adaptor::point_comp(ptMax, static_cast<dim_type>(iDim)) += size;
 
     return ptMax;
   }
@@ -78,18 +78,17 @@ namespace
 
     size_t iNumber = 1;
 
+    auto ptMax = PointND<nDim>{};
+    for (dim_type iDim = 0; iDim < nDim; ++iDim)
+      ptMax[iDim] = rMax;
+
     // Corner points
     {
+      aPoint[1] = ptMax;
+      ++iNumber;
+
       for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim, ++iNumber)
         aPoint[iNumber][iDim] = rMax;
-
-      if (iNumber == nNumber)
-        return aPoint;
-
-      for (dim_type iDim = 0; iDim < nDim; ++iDim)
-        aPoint[iNumber][iDim] = rMax;
-
-      ++iNumber;
     }
 
     autoc nNumberPre = iNumber;
@@ -107,6 +106,10 @@ namespace
     std::mt19937 g(rd());
     std::shuffle(next(begin(aPoint), nNumberPre), end(aPoint), g);
 
+    autoc box = Adaptor::box_of_points(aPoint);
+    assert(Adaptor::are_points_equal(box.Max, ptMax, 0.0001));
+    assert(Adaptor::are_points_equal(box.Min, PointND<nDim>{}, 0.0001));
+
     return aPoint;
   }
 
@@ -119,18 +122,18 @@ namespace
 
     size_t iNumber = 1;
 
+    auto ptMax = PointND<nDim>{};
+    for (dim_type iDim = 0; iDim < nDim; ++iDim)
+      ptMax[iDim] = rMax;
+
+
     // Corner points
     {
+      aPoint[1] = ptMax;
+      ++iNumber;
+
       for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim, ++iNumber)
         aPoint[iNumber][iDim] = rMax;
-
-      if (iNumber == nNumber)
-        return aPoint;
-
-      for (dim_type iDim = 0; iDim < nDim; ++iDim)
-        aPoint[iNumber][iDim] = rMax;
-
-      ++iNumber;
     }
 
     srand(0);
@@ -140,6 +143,10 @@ namespace
           aPoint[iNumber][iDim] = (rand() % 100) * (rMax / 100.0);
 
     }
+
+    autoc box = Adaptor::box_of_points(aPoint);
+    assert(Adaptor::are_points_equal(box.Max, ptMax, 0.0001));
+    assert(Adaptor::are_points_equal(box.Min, PointND<nDim>{}, 0.0001));
 
     return aPoint;
   }
@@ -153,18 +160,17 @@ namespace
 
     size_t iNumber = 1;
 
+    auto ptMax = PointND<nDim>{};
+    for (dim_type iDim = 0; iDim < nDim; ++iDim)
+      ptMax[iDim] = rMax;
+
     // Corner points
     {
+      aPoint[1] = ptMax;
+      ++iNumber;
+
       for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim, ++iNumber)
         aPoint[iNumber][iDim] = rMax;
-
-      if (iNumber == nNumber)
-        return aPoint;
-
-      for (dim_type iDim = 0; iDim < nDim; ++iDim)
-        aPoint[iNumber][iDim] = rMax;
-
-      ++iNumber;
     }
 
     srand(0);
@@ -180,6 +186,10 @@ namespace
           aPoint[iNumber][iDim] = (rand() % 100) * rMax / 100.0;
       }
     }
+
+    autoc box = Adaptor::box_of_points(aPoint);
+    assert(Adaptor::are_points_equal(box.Max, ptMax, 0.0001));
+    assert(Adaptor::are_points_equal(box.Min, PointND<nDim>{}, 0.0001));
 
     return aPoint;
   }
@@ -381,48 +391,54 @@ namespace
 
 
   template<size_t nDim>
-  static size_t TreePointCreate(unsigned depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
+  static size_t TreePointCreate(size_t depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
   {
+    auto box = BoundingBoxND<nDim>{};
+    box.Max.fill(rMax);
+
     auto nt = fPar
-      ? TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aPoint, depth)
-      : TreePointND<nDim>::Create(aPoint, depth)
+      ? TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aPoint, depth, box)
+      : TreePointND<nDim>::Create(aPoint, depth, box)
       ;
 
     return nt.GetNodes().size();
   }
 
   template<size_t nDim>
-  static size_t TreePointNaiveCreate(unsigned depth, std::span<PointND<nDim> const> const& aPoint)
+  static size_t TreePointNaiveCreate(size_t depth, std::span<PointND<nDim> const> const& aPoint, bool)
   {
-    auto nt = OrthoTreePointDynamicND<nDim>::Create(aPoint, depth, 11);
+    auto box = BoundingBoxND<nDim>{};
+    box.Max.fill(rMax);
+
+    auto nt = OrthoTreePointDynamicND<nDim>::Create(aPoint, depth, box, 11);
     return nt.GetNodeSize();
   }
 
 
   template<size_t nDim>
-  static size_t TreeBoxCreate(unsigned depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
+  static size_t TreeBoxCreate(size_t depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
   {
+    auto box = BoundingBoxND<nDim>{};
+    box.Max.fill(rMax);
+
     auto nt = fPar
-      ? TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aBox, depth)
-      : TreeBoxND<nDim>::Create(aBox, depth)
+      ? TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aBox, depth, box)
+      : TreeBoxND<nDim>::Create(aBox, depth, box)
       ;
 
     return nt.GetNodes().size();
   }
 
-
-
- 
-  tuple<microseconds, size_t> Measure(int nRepeat, function<size_t(void)> const& fn)
+  template<size_t nDim>
+  static size_t TreeBoxDynCreate(size_t depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool)
   {
-    autoc t0 = high_resolution_clock::now();
-    auto v = vector<size_t>(nRepeat);
-    for (int i = 0; i < nRepeat; ++i)
-      v[i] = fn();
+    auto box = BoundingBoxND<nDim>{};
+    box.Max.fill(rMax);
 
-    autoc t1 = high_resolution_clock::now();
-    return { duration_cast<microseconds>((t1 - t0) / nRepeat), v[0] };
+    auto nt = OrthoTreeBoxDynamicND<nDim>::Create(aBox, depth, box, 11);
+    return nt.GetNodeSize();
   }
+  
 
   void display_time(microseconds const& time)
   {
@@ -437,14 +453,18 @@ namespace
     return static_cast<double>(time.count()) / 1000.0;
   }
 
-
+  template<typename entity_type>
   struct MeasurementTask
   {
     string szDisplay;
     int nDataSize;
-    function<size_t()> func;
     int nRepeat = 10;
+    size_t nDepth = 5;
     bool fParallel = false;
+    span<entity_type const> sEntity;
+    function<size_t(size_t, span<entity_type const>, bool)> func;
+
+    size_t Run() const { return func(nDepth, sEntity, fParallel); }
   };
 
 
@@ -483,50 +503,62 @@ namespace
   autoce aSizeLog = array{ 10, 50, 100, 1000, 2500, 5000, 7500, 10000, 100000, N1M, 10 * N1M, 100 * N1M };
   autoce nSizeLog = aSizeLog.size();
   autoce aRepeatLog = array{ 100000, 100000, 10000, 2000, 1000, 500, 500, 100, 100, 10, 10, 5 };
-  static_assert(nSizeLog == aRepeatLog.size());
+  //static_assert(nSizeLog == aRepeatLog.size());
+
 
   template<size_t N>
-  vector<MeasurementTask> GeneratePointTasks(int nDepth, string const& szName, span<PointND<N> const> const& sPoint)
+  vector<MeasurementTask<PointND<N>>> GeneratePointTasks(size_t nDepth, string const& szName, span<PointND<N> const> const& sPoint)
   {
-    auto vTask = vector<MeasurementTask>();
+    auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (autoc fPar : { false, true })
       for (size_t iSize = 0; iSize < nSizeLog; ++iSize)
-        vTask.push_back(MeasurementTask{ szName, aSizeLog[iSize], [nDepth, iSize, fPar, &sPoint] { return TreePointCreate(nDepth, sPoint.subspan(0, aSizeLog[iSize]), fPar); }, aRepeatLog[iSize], fPar });
+        vTask.push_back(MeasurementTask<PointND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, fPar, sPoint.subspan(0, aSizeLog[iSize]), TreePointCreate<N> });
 
     return vTask;
   }
 
   template<size_t N>
-  vector<MeasurementTask> GeneratePointTasks_NonLog(int nDepth, string const& szName, span<PointND<N> const> const& sPoint)
+  vector<MeasurementTask<PointND<N>>> GeneratePointTasks_NonLog(size_t nDepth, string const& szName, span<PointND<N> const> const& sPoint)
   {
-    auto vTask = vector<MeasurementTask>();
+    auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
-      vTask.push_back(MeasurementTask{ szName, aSizeNonLog[iSize], [nDepth, iSize, &sPoint] { return TreePointCreate(nDepth, sPoint.subspan(0, aSizeNonLog[iSize]), false); }, aRepeatNonLog[iSize], false });
+      vTask.push_back(MeasurementTask<PointND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepth, false, sPoint.subspan(0, aSizeNonLog[iSize]), TreePointCreate<N> });
 
     return vTask;
   }
 
 
   template<size_t N>
-  vector<MeasurementTask> GeneratePointDynTasks_NonLog(int nDepth, string const& szName, span<PointND<N> const> const& sPoint)
+  vector<MeasurementTask<PointND<N>>> GeneratePointDynTasks_NonLog(size_t nDepth, string const& szName, span<PointND<N> const> const& sPoint)
   {
-    auto vTask = vector<MeasurementTask>();
+    auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (size_t iSize = 0; iSize < nSizeLog; ++iSize)
-      vTask.push_back(MeasurementTask{ szName, aSizeLog[iSize], [nDepth, iSize, &sPoint] { return TreePointNaiveCreate(nDepth, sPoint.subspan(0, aSizeLog[iSize])); }, aRepeatLog[iSize], false });
+      vTask.push_back(MeasurementTask<PointND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, false, sPoint.subspan(0, aSizeLog[iSize]), TreePointNaiveCreate<N> });
 
     return vTask;
   }
 
   template<size_t N>
-  vector<MeasurementTask> SearchTreePointTasks(int nDepth, string const& szName, span<PointND<N> const> const& sPoint, span<BoundingBoxND<N> const> const& vSearchBox, double rPercentage)
+  vector<MeasurementTask<BoundingBoxND<N>>> GenerateBoxDynTasks_NonLog(size_t nDepth, string const& szName, span<BoundingBoxND<N> const> const& sBox)
   {
-    auto vTask = vector<MeasurementTask>();
+    auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
+    for (size_t iSize = 0; iSize < nSizeLog; ++iSize)
+      vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, false, sBox.subspan(0, aSizeLog[iSize]), TreeBoxDynCreate<N> });
+
+    return vTask;
+  }
+
+
+  template<size_t N>
+  vector<MeasurementTask<PointND<N>>> SearchTreePointTasks(size_t nDepth, string const& szName, span<PointND<N> const> const& sPoint, span<BoundingBoxND<N> const> const& vSearchBox, double rPercentage)
+  {
+    auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (autoc fPar : { false, true })
       for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
-        vTask.push_back(MeasurementTask{ szName, aSizeNonLog[iSize], [nDepth, iSize, fPar, rPercentage, &sPoint, &vSearchBox]
+        vTask.push_back(MeasurementTask<PointND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepth, fPar, sPoint.subspan(0, aSizeNonLog[iSize]), [&vSearchBox, rPercentage](size_t nDepth, span<PointND<N> const> const& aPoint, bool fPar)
         {
-          autoc aPoint = sPoint.subspan(0, aSizeNonLog[iSize]);
-          autoc aSearchBox = vSearchBox.subspan(0, static_cast<size_t>(aSizeNonLog[iSize] * rPercentage / 100.0));
+          autoc n = aPoint.size();
+          autoc aSearchBox = vSearchBox.subspan(0, static_cast<size_t>(n * rPercentage / 100.0));
 
           autoc nt = fPar
             ? TreePointND<N>::template Create<std::execution::parallel_unsequenced_policy>(aPoint, nDepth)
@@ -536,33 +568,37 @@ namespace
           size_t nFound = 0;
           for (autoc& boxSearch : aSearchBox)
           {
-            autoc vElem = nt.RangeSearch(boxSearch, aPoint);
+            autoc vElem = nt.RangeSearch(boxSearch, aPoint, true);
             nFound += vElem.size();
           }
 
           return nFound;
-        }, aRepeatNonLog[iSize], fPar });
+        } });
 
     return vTask;
   }
 
   template<size_t N>
-  vector<MeasurementTask> SearchBruteForcePointTasks(int nDepth, string const& szName, span<PointND<N> const> const& sPoint, span<BoundingBoxND<N> const> const& vSearchBox, double rPercentage)
+  vector<MeasurementTask<PointND<N>>> SearchBruteForcePointTasks(size_t nDepth, string const& szName, span<PointND<N> const> const& sPoint, span<BoundingBoxND<N> const> const& vSearchBox, double rPercentage)
   {
-    auto vTask = vector<MeasurementTask>();
+    auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
-      vTask.push_back(MeasurementTask{ szName, aSizeNonLog[iSize], [nDepth, iSize, rPercentage, &sPoint, &vSearchBox]
-      {
-        autoc aPoint = sPoint.subspan(0, aSizeNonLog[iSize]);
-        autoc aSearchBox = vSearchBox.subspan(0, static_cast<size_t>(aSizeNonLog[iSize] * rPercentage / 100.0));
-        autoc vvElem = RangeSearchNaive(aSearchBox, aPoint);
+      vTask.push_back(MeasurementTask<PointND<N>>
+        { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepth, false, sPoint.subspan(0, aSizeNonLog[iSize])
+        , [&vSearchBox, rPercentage](size_t nDepth, span<PointND<N> const> const& aPoint, bool fPar)
+          {
+            autoc n = aPoint.size();
+            autoc aSearchBox = vSearchBox.subspan(0, static_cast<size_t>(n * rPercentage / 100.0));
+            autoc vvElem = RangeSearchNaive(aSearchBox, aPoint);
 
-        size_t nFound = 0;
-        for (autoc& vElem : vvElem)
-          nFound += vElem.size();
+            size_t nFound = 0;
+            for (autoc& vElem : vvElem)
+              nFound += vElem.size();
 
-        return nFound;
-      }, aRepeatNonLog[iSize], false });
+            return nFound;
+          }
+        }
+      );
 
     return vTask;
   }
@@ -570,24 +606,37 @@ namespace
 
 
   template<size_t N>
-  vector<MeasurementTask> GenerateBoxTasks(int nDepth, string szName, span<BoundingBoxND<N> const> const& sBox)
+  vector<MeasurementTask<BoundingBoxND<N>>> GenerateBoxTasks(size_t nDepth, string szName, span<BoundingBoxND<N> const> const& sBox)
   {
-    auto vTask = vector<MeasurementTask>();
+    auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (autoc fPar : { false, true })
       for (int iSize = 0; iSize < nSizeLog; ++iSize)
-        vTask.push_back(MeasurementTask{ szName, aSizeLog[iSize],[nDepth, iSize, fPar, &sBox] { return TreeBoxCreate(nDepth, sBox.subspan(0, aSizeLog[iSize]), fPar); }, aRepeatLog[iSize], fPar });
+        vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, fPar, sBox.subspan(0, aSizeLog[iSize]), TreeBoxCreate<N> });
 
     return vTask;
   }
 
 
-  void RunTasks(vector<MeasurementTask> const& vTask, ofstream& report)
+  tuple<microseconds, size_t> Measure(int nRepeat, function<size_t(void)> const& fn)
+  {
+    autoc t0 = high_resolution_clock::now();
+    auto v = vector<size_t>(nRepeat);
+    for (int i = 0; i < nRepeat; ++i)
+      v[i] = fn();
+
+    autoc t1 = high_resolution_clock::now();
+    return { duration_cast<microseconds>((t1 - t0) / nRepeat), v[0] };
+  }
+
+
+  template<typename entity_type>
+  void RunTasks(vector<MeasurementTask<entity_type>> const& vTask, ofstream& report)
   {
     for (autoc& task : vTask)
     {
       autoc szPar = (task.fParallel ? string("par") : string("unseq"));
       std::cout << "Create tree for: " << task.szDisplay << " " << task.nDataSize << " " << szPar << " Repeat: " << task.nRepeat << "...";
-      autoc [tDur, nNode] = Measure(task.nRepeat, task.func);
+      autoc[tDur, nNode] = Measure(task.nRepeat, [&task]{ return task.Run(); });
 
       std::cout << " Finished. ";
       display_time(tDur);
@@ -614,6 +663,7 @@ int main()
   report.open("report.csv");
 
   autoce nDepth = 5;
+  
   {
     autoc szName = string("Diagonally placed points");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
@@ -655,20 +705,29 @@ int main()
     autoc vTask = GenerateBoxTasks<N>(nDepth, szName, aPointDiag_100M);
     RunTasks(vTask, report);
   }
-
+  
+  
   // Morton vs Dynamic
   {
     autoc szName = string("Cylindrical semi-random placed points Morton vs Dynamic");
-    autoc aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Random<N, 100*N1M>(); }, szName, 100, report);
-    autoc vTaskMorton = GeneratePointTasks<N>(nDepth, "Morton", aPoint);
-    autoc vTaskNaive = GeneratePointDynTasks_NonLog<N>(nDepth, "Dynamic", aPoint);
+    autoc aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Random<N, 10*N1M>(); }, szName, 10, report);
+    autoc aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Random<N, 10 * N1M>(); }, szName, 10, report);
+
+    autoc vTaskMortonP = GeneratePointTasks<N>(nDepth, "Morton point", aPoint);
+    autoc vTaskDynP = GeneratePointDynTasks_NonLog<N>(nDepth, "Dynamic point", aPoint);
     
-    RunTasks(vTaskMorton, report);
-    RunTasks(vTaskNaive, report);
+    autoc vTaskMortonB = GenerateBoxTasks<N>(nDepth, "Morton box", aBox);
+    autoc vTaskDynB = GenerateBoxDynTasks_NonLog<N>(nDepth, "Dynamic box", aBox);
+
+    RunTasks(vTaskMortonP, report);
+    RunTasks(vTaskDynP, report);
+    RunTasks(vTaskMortonB, report);
+    RunTasks(vTaskDynB, report);
+
   }
-
+  
   // Search
-
+  
   // Range search: Brute force vs Octree
   {
     autoc szName = string("Search: Cylindrical semi-random placed point NoPt/NoBox:10%");
@@ -677,7 +736,7 @@ int main()
     autoc aSearchBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_CylindricalSemiRandom<N, static_cast<size_t>(N1M * M)>(); }, szName, M, report);
     autoce rPercentage = 10.0;
     autoc vTaskBruteForce = SearchBruteForcePointTasks<N>(nDepth, "Point range-search naive", aPoint, aSearchBox, rPercentage);
-    autoc vTaskTree = SearchTreePointTasks<N>(nDepth, "Point range-search by octree", aPoint, aSearchBox, rPercentage);
+    autoc vTaskTree = SearchTreePointTasks<N>(6, "Point range-search by octree", aPoint, aSearchBox, rPercentage);
 
     RunTasks(vTaskBruteForce, report);
     RunTasks(vTaskTree, report);

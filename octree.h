@@ -121,7 +121,7 @@ namespace NTree
 
 
   // Grid id
-  using grid_id_type = uint64_t;
+  using grid_id_type = uint32_t;
 
   // Type of the dimension
   using dim_type = uint8_t;
@@ -577,7 +577,7 @@ namespace NTree
 
     // Max value: 2 ^ nDepth ^ nDimension * 2 (signal bit)
     using morton_grid_id_type = typename std::conditional<nDimension < 4
-      , uint16_t
+      , uint32_t
       , typename std::conditional<is_linear_tree
         , uint64_t
         , bitset_arithmetic<nDimension * 4 + 1>
@@ -694,17 +694,6 @@ namespace NTree
 
   protected: // Aid struct to partitioning and distance ordering
 
-    struct _NodePartitioner
-    {
-      morton_node_id_type kNode = 0;
-      Node* pNode = nullptr;
-      depth_type nDepth;
-      morton_node_id_type idLocationBegin;
-      vector<entity_id_type>::iterator itBegin;
-      vector<entity_id_type>::iterator itEnd;
-    };
-
-
     struct _ItemDistance
     {
       geometry_type distance;
@@ -722,10 +711,10 @@ namespace NTree
     box_type _box = {};
     depth_type _nDepthMax = 0;
     grid_id_type _nRasterResolutionMax = 0;
+    grid_id_type _idSlotMax = 0;
     max_element_type _nElementMax = 11;
 
-    static_assert(sizeof(_nRasterResolutionMax) <= sizeof(grid_id_type));
-
+    array<double, nDimension> _aRasterizer;
 
   protected: // Aid functions
 
@@ -761,60 +750,44 @@ namespace NTree
     }
 
 
-    static constexpr array<grid_id_type, nDimension> _getGridIdPoint(point_type const& pe, point_type const& p0, array<double, nDimension> const& aRasterizer, grid_id_type maxSlot)
+    constexpr array<grid_id_type, nDimension> _getGridIdPoint(point_type const& pe) const
     {
       auto aid = array<grid_id_type, nDimension>{};
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        aid[iDimension] = std::min<grid_id_type>(maxSlot, static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension]));
+        aid[iDimension] = std::min<grid_id_type>(this->_idSlotMax, static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(adaptor_type::box_min_c(this->_box), iDimension)) * this->_aRasterizer[iDimension]));
 
       return aid;
     }
 
 
-    static constexpr array<array<grid_id_type, nDimension>, 2> _getGridIdBox(box_type const& extent, point_type const& p0, array<double, nDimension> const& aRasterizer, grid_id_type maxSlot)
+    constexpr array<array<grid_id_type, nDimension>, 2> _getGridIdBox(box_type const& box) const
     {
-      autoc aMinMax = array<point_type const*, 2>{ &adaptor_type::box_min_c(extent), & adaptor_type::box_max_c(extent) };
+      autoc& p0 = _Ad::box_min_c(_box);
 
       auto aid = array<array<grid_id_type, nDimension>, 2>{};
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
-        auto aEdge = array<bool, 2>{};
-        for (int i = 0; i < 2; ++i)
-        {
-          autoc& pe = *aMinMax[i];
-          autoc id = static_cast<double>(adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * aRasterizer[iDimension];
-          if (id < 1)
-            aid[i][iDimension] = 0;
-          else if (id > maxSlot)
-            aid[i][iDimension] = maxSlot;
-          else if (id == floor(id))
-          {
-            aid[i][iDimension] = static_cast<grid_id_type>(id - 1);
-            aEdge[i] = true;
-          }
-          else
-            aid[i][iDimension] = static_cast<grid_id_type>(id);
-        }
+        autoc ridMin = static_cast<double>(adaptor_type::point_comp_c(adaptor_type::box_min_c(box), iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * _aRasterizer[iDimension];
+        autoc ridMax = static_cast<double>(adaptor_type::point_comp_c(adaptor_type::box_max_c(box), iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * _aRasterizer[iDimension];
 
-        // If the first value is on edge, the lower id was chosen, but maybe the bigger grid would be the appropriate.
-        if (aEdge[0] && aid[0][iDimension] < maxSlot && aid[0][iDimension] < aid[1][iDimension])
-          ++aid[0][iDimension];
+        if (ridMin < 1.0)
+          aid[0][iDimension] = 0;
+        else if (ridMin > _idSlotMax)
+          aid[0][iDimension] = _idSlotMax;
+        else
+          aid[0][iDimension] = static_cast<grid_id_type>(ridMin);
+
+
+        if (ridMax < 1.0)
+          aid[1][iDimension] = 0;
+        else if (ridMax >= _idSlotMax)
+          aid[1][iDimension] = _idSlotMax;
+        else if (ridMin != ridMax && floor(ridMax) == ridMax)
+          aid[1][iDimension] = static_cast<grid_id_type>(ridMax) - 1;
+        else
+          aid[1][iDimension] = static_cast<grid_id_type>(ridMax);
+
       }
-      return aid;
-    }
-
-
-    static inline vector<array<array<grid_id_type, nDimension>, 2>> _getGridIdBoxes(span<box_type const> const& extents, point_type const& p0, point_type const& p1, grid_id_type n_divide)
-    {
-      autoc aRasterizer = _getGridRasterizer(p0, p1, n_divide);
-
-      autoc maxSlot = n_divide - 1;
-
-      autoc n = extents.size();
-      auto aid = vector<array<array<grid_id_type, nDimension>, 2>>(n);
-      for (size_t i = 0; i < n; ++i)
-        aid[i] = _getGridIdBox(extents[i], p0, aRasterizer, maxSlot);
-
       return aid;
     }
 
@@ -826,21 +799,28 @@ namespace NTree
       auto& nodeChild = _nodes[kChild];
 
       {
-        auto flagChild = iChild;
-        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, flagChild >>= 1)
+#pragma loop(ivdep)
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
-          autoc fGreater = (flagChild & child_id_type{1});
-          _Ad::point_comp(_Ad::box_min(nodeChild.box), iDimension) = 
+          autoc fGreater = ((child_id_type{ 1 } << iDimension) & iChild) > 0;
+          _Ad::point_comp(_Ad::box_min(nodeChild.box), iDimension) =
             fGreater * (_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type{ 2 } +
             (!fGreater) * _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension);
 
-          _Ad::point_comp(_Ad::box_max(nodeChild.box), iDimension) = 
-            fGreater * _Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + 
+          _Ad::point_comp(_Ad::box_max(nodeChild.box), iDimension) =
+            fGreater * _Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) +
             (!fGreater) * ((_Ad::point_comp_c(_Ad::box_max_c(nodeParent.box), iDimension) + _Ad::point_comp_c(_Ad::box_min_c(nodeParent.box), iDimension)) / geometry_type{ 2 });
         }
       }
       return nodeChild;
     }
+
+
+    constexpr morton_grid_id_type _getLocationId(point_type const& pt) const
+    {
+      return MortonEncode(this->_getGridIdPoint(pt));
+    }
+
 
 
     bool _isEveryItemIdUnique() const
@@ -913,6 +893,7 @@ namespace NTree
       assert(nElementMax > 0);
       assert(nDepthMax > 0);
 
+      autoce rMult = 1.5;
       if ((nDepthMax + 1) * nDimension < 64)
       {
         size_t const nMaxChild = size_t{ 1 } << (nDepthMax * nDimension);
@@ -924,9 +905,9 @@ namespace NTree
       autoc nElementInNodeAvg = static_cast<float>(nElement) / static_cast<float>(nElementMax);
       autoc nDepthEstimated = std::min(nDepthMax, static_cast<depth_type>(ceil((log2(nElementInNodeAvg) + 1) / static_cast<float>(nDimension))));
       if (nDepthEstimated * nDimension < 64)
-        return static_cast<size_t>(1.5 * (1 << nDepthEstimated * nDimension));
+        return static_cast<size_t>(rMult * (1 << nDepthEstimated * nDimension));
 
-      return static_cast<size_t>(1.5 * nElementInNodeAvg);
+      return static_cast<size_t>(rMult * nElementInNodeAvg);
     }
 
 
@@ -936,9 +917,9 @@ namespace NTree
       return (morton_node_id_type{ 1 } << (depth * nDimension)) | key;
     }
 
-    static inline morton_node_id_type GetRootKey() noexcept
+    static constexpr morton_node_id_type GetRootKey() noexcept
     { 
-      return GetHash(0, 0);
+      return morton_node_id_type{ 1 };
     }
 
     static constexpr bool IsValidKey(uint64_t key) { return key; }
@@ -959,7 +940,7 @@ namespace NTree
 
     static inline morton_node_id_type RemoveSentinelBit(morton_node_id_type_cref key, std::optional<depth_type> const& onDepth = std::nullopt)
     {
-      autoc nDepth = onDepth.value_or(GetDepth(key));
+      autoc nDepth = onDepth.has_value() ? *onDepth : GetDepth(key);
       return key - (1 << nDepth);
     }
 
@@ -1003,7 +984,7 @@ namespace NTree
     }
 
   public:
-    static inline morton_grid_id_type Morton(array<grid_id_type, nDimension> const& aidGrid)
+    static inline morton_grid_id_type MortonEncode(array<grid_id_type, nDimension> const& aidGrid)
     {
       if constexpr (nDimension == 1)
         return morton_grid_id_type(aidGrid[0]);
@@ -1030,10 +1011,34 @@ namespace NTree
       }
     }
 
+    static array<grid_id_type, nDimension> MortonDecode(morton_node_id_type_cref kNode, depth_type nDepthMax)
+    {
+      auto aidGrid = array<grid_id_type, nDimension>{};
+      if constexpr (nDimension == 1)
+        return { RemoveSentinelBit(kNode) };
+      else
+      {
+        autoc nDepth = GetDepth(kNode);
+
+        auto mask = morton_grid_id_type{ 1 };
+        for (dim_type iDepth = nDepthMax - nDepth, shift = 0; iDepth < nDepthMax; ++iDepth)
+          for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, ++shift)
+            if constexpr (is_linear_tree)
+            {
+              aidGrid[iDimension] |= (kNode & mask) >> (shift - iDepth);
+              mask <<= 1;
+            }
+            else
+              aidGrid[iDimension] |= grid_id_type{ kNode[shift] } << iDepth;
+      }
+      return aidGrid;
+    }
+
 
   public: // Getters
 
     auto const& GetNodes() const noexcept { return _nodes; }
+    constexpr auto const& GetNode(morton_node_id_type_cref key) const { return cont_at(_nodes, key); }
     auto const& GetBox() const noexcept { return _box; }
     auto const& Get(morton_node_id_type_cref key) const { return cont_at(_nodes, key); }
     auto inline GetDepthMax() const noexcept { return _nDepthMax; }
@@ -1043,7 +1048,7 @@ namespace NTree
   public: // Main service functions
 
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    void Init(box_type const& box, depth_type nDepthMax, max_element_type nElementMax = 11)
+    void constexpr Init(box_type const& box, depth_type nDepthMax, max_element_type nElementMax = 11)
     {
       assert(this->_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree is wanted to be reset, use the Clear() function before init.
       assert(nDepthMax > 1);
@@ -1054,10 +1059,12 @@ namespace NTree
       this->_box = box;
       this->_nDepthMax = nDepthMax;
       this->_nRasterResolutionMax = static_cast<grid_id_type>(pow_ce(2, nDepthMax));
+      this->_idSlotMax = this->_nRasterResolutionMax - 1;
       this->_nElementMax = nElementMax;
 
       auto& nodeRoot = this->_nodes[GetRootKey()];
       nodeRoot.box = box;
+      this->_aRasterizer = this->_getGridRasterizer(_Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->_nRasterResolutionMax);
     }
 
 
@@ -1220,7 +1227,120 @@ namespace NTree
       {
         _Ad::move_box(pairKeyNode.second.box, vMove);
       });
+      _Ad::move_box(this->_box, vMove);
     }
+
+
+    morton_node_id_type FindSmallestNodeKey(morton_node_id_type keySearch) const
+    {
+      for (; IsValidKey(keySearch); keySearch >>= nDimension)
+        if (this->_nodes.contains(keySearch))
+          return keySearch;
+
+      return morton_node_id_type{}; // Not found
+    }
+
+  protected:
+
+    void _collectAllItem(Node const& nodeParent, morton_node_id_type_cref keyParent, vector<entity_id_type>& vItem) const
+    {
+      vItem.insert(vItem.end(), nodeParent.vid.begin(), nodeParent.vid.end());
+
+      autoc flagParent = keyParent << nDimension;
+      for (autoc idChild : nodeParent.GetChildren())
+      {
+        morton_node_id_type const keyChild = flagParent | morton_node_id_type(idChild);
+        _collectAllItem(this->GetNode(keyChild), keyChild, vItem);
+      }
+    }
+
+
+    void _rangeSearch(box_type const& range, Node const& nodeParent, morton_node_id_type_cref keyParent, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& vItem) const
+    {
+      std::copy_if(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(vItem), fnPred);
+
+      autoc flagParent = keyParent << nDimension;
+      for (autoc idChild : nodeParent.GetChildren())
+      {
+        autoc keyChild = flagParent | morton_node_id_type(idChild);
+        autoc& nodeChild = this->GetNode(keyChild);
+
+        autoc e1_contains_e2min = _Ad::does_box_contain_point(range, _Ad::box_min_c(nodeChild.box));
+
+        if (e1_contains_e2min)
+        {
+          if (_Ad::does_box_contain_point(range, _Ad::box_max_c(nodeChild.box)))
+          {
+            this->_collectAllItem(nodeChild, keyChild, vItem);
+            continue;
+          }
+        }
+        else if (_Ad::box_relation(range, nodeChild.box) != _Ad::Overlapped)
+          continue;
+
+        this->_rangeSearch(range, nodeChild, keyChild, fnPred, vItem);
+      }
+    }
+
+
+    bool _rangeSearchRoot(box_type const& range, size_t nEntity, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& vidFound, bool fLeafNodeContainsElementOnly = false) const
+    {
+      // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        if (_Ad::point_comp_c(_Ad::box_min_c(range), iDimension) >= _Ad::point_comp_c(_Ad::box_max_c(range), iDimension))
+          return false;
+
+      autoc aid = this->_getGridIdBox(range);
+      auto idLocationMin = MortonEncode(aid[0]);
+      auto idLocationMax = MortonEncode(aid[1]);
+
+      auto nDepth = this->_nDepthMax;
+      for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
+        idLocationMin >>= nDimension;
+
+      autoc keyRange = morton_node_id_type{ 1 } << nDepth | idLocationMin;
+      auto keyNodeSmallest = this->FindSmallestNodeKey(keyRange);
+      if (!keyNodeSmallest)
+        return false;
+
+      // Reserve
+      {
+        geometry_type rVolumeRange = 1;
+        geometry_type rVolumeBox = 1;
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        {
+          rVolumeRange *= _Ad::point_comp_c(_Ad::box_max_c(range), iDimension) - _Ad::point_comp_c(_Ad::box_min_c(range), iDimension);
+          rVolumeBox *= _Ad::point_comp_c(_Ad::box_max_c(this->_box), iDimension) - _Ad::point_comp_c(_Ad::box_min_c(this->_box), iDimension);
+        }
+        autoc nItemFound = static_cast<size_t>((rVolumeRange * nEntity) / rVolumeBox);
+
+        vidFound.reserve(nItemFound);
+      }
+
+      autoc& node = this->GetNode(keyNodeSmallest);
+      this->_rangeSearch(range, node, keyNodeSmallest, fnPred, vidFound);
+
+      if (!fLeafNodeContainsElementOnly)
+      {
+        for (; IsValidKey(keyNodeSmallest); keyNodeSmallest >>= nDimension)
+        {
+          autoc& node = this->GetNode(keyNodeSmallest);
+          std::copy_if(std::begin(node.vid), std::end(node.vid), std::back_inserter(vidFound), fnPred);
+        }
+      }
+
+      return true;
+    }
+
+
+  public:
+
+    void CollectAllItem(morton_grid_id_type_cref keyParent, vector<entity_id_type>& vItem) const
+    {
+      autoc& node = cont_at(this->_nodes, keyParent);
+      _collectAllItem(node, keyParent, vItem);
+    }
+
 
     // Doubles the handled space relative to the root. iRootNew defines the relative location in the new space
     //!IMPLEMENT void Extend(morton_node_id_type_cref iRootNew = 0) {}
@@ -1234,7 +1354,6 @@ namespace NTree
   {
   protected:
     using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
-    using _NodePartitioner = typename base::_NodePartitioner;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
     using _Ad = typename base::_Ad;
@@ -1251,13 +1370,7 @@ namespace NTree
     using Node = typename base::Node;
 
   private: // Aid functions
-    static constexpr max_element_type max_element_default = 11;
-
-    static inline morton_grid_id_type _getLocationId(point_type const& pt, box_type const& box, grid_id_type nRasterResolutionMax)
-    {
-      autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(box), _Ad::box_max_c(box), nRasterResolutionMax);
-      return base::Morton(base::_getGridIdPoint(pt, _Ad::box_min_c(box), aRasterizer, nRasterResolutionMax - 1));
-    }
+    static constexpr max_element_type max_element_default = 21;
 
 
     using _LocationIterator = typename vector<std::pair<entity_id_type, morton_grid_id_type>>::const_iterator;
@@ -1306,12 +1419,13 @@ namespace NTree
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static NTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static NTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
+      autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : _Ad::box_of_points(vpt);
       autoc n = vpt.size();
 
       auto tree = NTreePoint{};
-      tree.Init(oextent.value_or(_Ad::box_of_points(vpt)), nDepthMax, nElementMaxInNode);
+      tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
       base::_reserveContainer(tree._nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
       if (vpt.empty())
         return tree;
@@ -1321,14 +1435,13 @@ namespace NTree
       
 
       // Generate Morton location ids
-      auto aidLocation = vector<std::pair<entity_id_type, morton_grid_id_type>>(n);
-      autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc maxSlot = tree._nRasterResolutionMax - 1;
 
-      auto vidPoint = base::_generatePointId(n);
+      autoc vidPoint = base::_generatePointId(n);
+      auto aidLocation = vector<std::pair<entity_id_type, morton_grid_id_type>>(n);
       std::transform(execution_policy_type{}, std::begin(vpt), std::end(vpt), std::begin(vidPoint), std::begin(aidLocation), [&](autoc& pt, autoc id) -> std::pair<entity_id_type, morton_grid_id_type>
       {
-        return { id, base::Morton(base::_getGridIdPoint(pt, _Ad::box_min_c(tree._box), aRasterizer, maxSlot)) };
+        return { id, tree._getLocationId(pt) };
       });
 
       std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
@@ -1351,7 +1464,7 @@ namespace NTree
       if (!base::IsValidKey(kNodeSmallest))
         return false;
 
-      autoc idLocation = _getLocationId(pt, this->_box, this->GetResolutionMax());
+      autoc idLocation = this->_getLocationId(pt);
       autoc kNode = this->GetHash(this->_nDepthMax, idLocation);
 
       return this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf);
@@ -1409,13 +1522,8 @@ namespace NTree
       if (!_Ad::does_box_contain_point(this->_box, pt))
         return morton_node_id_type{};
 
-      autoc idLocation = _getLocationId(pt, this->_box, this->_nRasterResolutionMax);
-
-      for (auto kSmallestNode = this->GetHash(this->_nDepthMax, idLocation); base::IsValidKey(kSmallestNode); kSmallestNode >>= nDimension)
-        if (this->_nodes.contains(kSmallestNode))
-          return kSmallestNode;
-
-      return morton_node_id_type{}; // Not found
+      autoc idLocation = this->_getLocationId(pt);
+      return this->FindSmallestNodeKey(this->GetHash(this->_nDepthMax, idLocation));
     }
  
     bool Contains(point_type const& pt, span<point_type const> const& vpt, geometry_type rAccuracy) const
@@ -1428,32 +1536,15 @@ namespace NTree
       return std::ranges::any_of(node.vid, [&](autoc& id) { return _Ad::are_points_equal(pt, vpt[id], rAccuracy); });
     }
 
-    // Range search
-    vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt) const
-    {
-      // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        if (_Ad::point_comp_c(_Ad::box_min_c(range), iDimension) == _Ad::point_comp_c(_Ad::box_max_c(range), iDimension))
-          return {};
 
+    // Range search
+    vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt, bool fLeafNodeContainsElementOnly = false) const
+    {
       auto vidFound = vector<entity_id_type>();
-      this->VisitNodes(base::GetRootKey()
-        , [&](morton_node_id_type_cref, Node const& pNode, bool fUnconditional)
-        {
-          if (fUnconditional)
-            vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
-          else
-            std::ranges::copy_if(pNode.vid, back_inserter(vidFound), [&](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); });
-        }
-        , [&](morton_node_id_type_cref, autoc& pNode)
-          {
-            return _Ad::are_boxes_overlapped(range, pNode.box, false);
-          }
-        , [&](morton_node_id_type_cref, autoc& pNode)
-          {
-            return _Ad::are_boxes_overlapped(range, pNode.box, true);
-          }
-      );
+
+      autoc nEntity = vpt.size();
+      if (!this->_rangeSearchRoot(range, nEntity, [&](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); }, vidFound, fLeafNodeContainsElementOnly))
+        return {};
 
       return vidFound;
     }
@@ -1566,7 +1657,6 @@ namespace NTree
   {
   private:
     using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
-    using _NodePartitioner = typename base::_NodePartitioner;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
     using _Ad = typename base::_Ad;
@@ -1583,43 +1673,9 @@ namespace NTree
     using Node = typename base::Node;
 
   private: // Aid functions
-    
-    static constexpr max_element_type max_element_default = 11;
 
+    static constexpr max_element_type max_element_default = 21;
 
-    inline void _addElements(_NodePartitioner& ns, vector<entity_id_type>::iterator itBegin, vector<entity_id_type>::iterator itEnd)
-    {
-      ns.pNode->vid.insert(end(ns.pNode->vid), itBegin, itEnd);
-    }
-
-
-    void _rangeSearchRec(vector<entity_id_type>& vidFound, morton_node_id_type_cref kCurrent, Node const& pNode, depth_type nDepth, box_type const& range, span<box_type const> const& vExtent, bool fFullyContained, bool fUnconditional) const
-    {
-      ++nDepth;
-      morton_node_id_type const flagPrefix = kCurrent << nDimension;
-
-      if (fUnconditional)
-      {
-        vidFound.insert(end(vidFound), begin(pNode.vid), end(pNode.vid));
-
-        for (autoc iChild : pNode.GetChildren())
-        {
-          autoc kChild = flagPrefix | morton_node_id_type(iChild);
-          _rangeSearchRec(vidFound, kChild, cont_at(this->_nodes, kChild), nDepth, range, vExtent, fFullyContained, true);
-        }
-      }
-      else
-      {
-        std::ranges::copy_if(pNode.vid, std::back_inserter(vidFound), [&](autoc id) { return _Ad::are_boxes_overlapped(range, vExtent[id], fFullyContained); });
-        for (autoc iChild : pNode.GetChildren())
-        {
-          autoc kChild = flagPrefix | morton_node_id_type(iChild);
-          autoc& pNodeChild = cont_at(this->_nodes, kChild);
-          if (_Ad::are_boxes_overlapped(range, pNodeChild.box, false))
-            _rangeSearchRec(vidFound, kChild, pNodeChild, nDepth, range, vExtent, fFullyContained, _Ad::are_boxes_overlapped(range, pNodeChild.box, true));
-        }
-      }
-    }
 
     struct _Location
     {
@@ -1678,7 +1734,7 @@ namespace NTree
 
 
   public: // Create
-    
+
     // Ctors
     NTreeBoundingBox() = default;
     NTreeBoundingBox(span<box_type const> const& vExtent, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
@@ -1689,13 +1745,11 @@ namespace NTree
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static NTreeBoundingBox Create(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static NTreeBoundingBox Create(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
+      autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : _Ad::box_of_boxes(vBox);
       auto tree = NTreeBoundingBox{};
-      tree.Init(oextent.value_or(_Ad::box_of_boxes(vBox))
-        , nDepthMax
-        , nElementMaxInNode
-      );
+      tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
      
       autoc n = vBox.size();
 
@@ -1706,28 +1760,22 @@ namespace NTree
       autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
       
-      autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(tree._box), _Ad::box_max_c(tree._box), tree._nRasterResolutionMax);
       autoc maxSlot = tree._nRasterResolutionMax - 1;
       autoc vidPoint = base::_generatePointId(n);
-
       auto aidLocation = vector<_Location>(n);
       std::transform(execution_policy_type{}, std::begin(vBox), std::end(vBox), std::begin(vidPoint), std::begin(aidLocation), [&](autoc& box, autoc id)->_Location
       { 
-        autoc aid = base::_getGridIdBox(box, _Ad::box_min_c(tree._box), aRasterizer, maxSlot);
-        auto idMin = base::Morton(aid[0]);
-        auto idMax = base::Morton(aid[1]);
-        if (idMin == idMax)
-          return { id, idMin, nDepthMax };
+        autoc aid = tree._getGridIdBox(box);
+        auto idLocationMin = base::MortonEncode(aid[0]);
+        auto idLocationMax = base::MortonEncode(aid[1]);
+        if (idLocationMin == idLocationMax)
+          return { id, idLocationMin, nDepthMax };
 
-        for (depth_type depth = nDepthMax; depth > 1; --depth)
-        {
-          idMin >>= nDimension;
-          idMax >>= nDimension;
-          if (idMin == idMax)
-            return { id, idMin, depth };
-        }
-        idMin >>= nDimension;
-        return { id, idMin, 1 };
+        auto nDepth = tree._nDepthMax;
+        for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; base::IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
+          idLocationMin >>= nDimension;
+
+        return { id, idLocationMin, nDepth + 1 };
       });
 
       std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idLocationL, autoc& idLocationR)
@@ -1766,8 +1814,8 @@ namespace NTree
     // Find smallest node which contains the box by grid id description
     morton_node_id_type FindSmallestNode(array<array<grid_id_type, nDimension>, 2> const& aidGrid) const
     {
-      auto idLocationMin = base::Morton(aidGrid[0]);
-      auto idLocationMax = base::Morton(aidGrid[1]);
+      auto idLocationMin = base::MortonEncode(aidGrid[0]);
+      auto idLocationMax = base::MortonEncode(aidGrid[1]);
 
       auto nDepth = this->_nDepthMax;
       for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; base::IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
@@ -1788,7 +1836,7 @@ namespace NTree
       if (!_Ad::are_boxes_overlapped(this->_box, box))
         return morton_node_id_type{};
 
-      autoc aidGrid = base::_getGridIdBoxes(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax())[0];
+      autoc aidGrid = this->_getGridIdBox(box);
       return FindSmallestNode(aidGrid);
     }
 
@@ -1803,9 +1851,9 @@ namespace NTree
       if (!base::IsValidKey(kNodeSmallest))
         return false; // new box is not in the handled space domain
 
-      autoc aGrid = base::_getGridIdBoxes(vector{ box }, _Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax())[0];
-      autoc idLocationMin = base::Morton(aGrid[0]);
-      autoc idLocationMax = base::Morton(aGrid[1]);
+      autoc aGrid = this->_getGridIdBox(box);
+      autoc idLocationMin = base::MortonEncode(aGrid[0]);
+      autoc idLocationMax = base::MortonEncode(aGrid[1]);
 
       auto nDepthCommon = 0;
       for (auto idLocationDiff = idLocationMin ^ idLocationMax; base::IsValidKey(idLocationDiff); idLocationDiff >>= nDimension)
@@ -1867,10 +1915,7 @@ namespace NTree
     // Pick search
     vector<entity_id_type> PickSearch(point_type const& ptPick, span<box_type const> const& vExtent) const
     {
-      autoc aRasterizer = base::_getGridRasterizer(_Ad::box_min_c(this->_box), _Ad::box_max_c(this->_box), this->GetResolutionMax());
-
-      autoc aGrid = base::_getGridIdPoint(ptPick, _Ad::box_min_c(this->_box), aRasterizer, this->GetResolutionMax());
-      autoc idLocation = base::Morton(aGrid);
+      autoc idLocation = this->_getLocationId(ptPick);
 
       auto vidFound = vector<entity_id_type>();
       vidFound.reserve(100);
@@ -1888,18 +1933,16 @@ namespace NTree
     }
 
 
+
+    
     // Range search
     vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vExtent, bool fFullyContained = true) const
     {
-      // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
-      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        if (_Ad::point_comp_c(_Ad::box_min_c(range), iDimension) == _Ad::point_comp_c(_Ad::box_max_c(range), iDimension))
-          return {};
-
       auto vidFound = vector<entity_id_type>();
-      vidFound.reserve(100);
-      autoc kRoot = base::GetRootKey();
-      _rangeSearchRec(vidFound, kRoot, cont_at(this->_nodes, kRoot), 0, range, vExtent, fFullyContained, false);
+
+      autoc nEntity = vExtent.size();
+      if (!this->_rangeSearchRoot(range, nEntity, [&](autoc id) { return _Ad::are_boxes_overlapped(range, vExtent[id], fFullyContained); }, vidFound, true))
+        return {};
 
       return vidFound;
     }

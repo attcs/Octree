@@ -247,9 +247,10 @@ namespace PerformaceTest
     autoc aBox4D_1M = CreateBoxes<4, N1M>();
     autoc aBox63D_1M = CreateBoxes<63, N1M>();
 
-
-    autoc TreeBox2D_10M = QuadtreeBox::Create<std::execution::parallel_unsequenced_policy>(aBox2D_10M, 4);
-    autoc TreeBox3D_10M = OctreeBox::Create<std::execution::parallel_unsequenced_policy>(aBox3D_10M, 4);
+    autoc box2D = BoundingBox2D{ Point2D{}, Point2D{ rMax, rMax} };
+    autoc box3D = BoundingBox3D{ Point3D{}, Point3D{ rMax, rMax, rMax} };
+    autoc TreeBox2D_10M = QuadtreeBox::Create<std::execution::parallel_unsequenced_policy>(aBox2D_10M, 4, box2D);
+    autoc TreeBox3D_10M = OctreeBox::Create<std::execution::parallel_unsequenced_policy>(aBox3D_10M, 4, box3D);
   }
 
 
@@ -260,9 +261,11 @@ namespace PerformaceTest
     template<dim_type nDim>
     static TreePointND<nDim> CreateTest(unsigned depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
     {
+      autoc box = CreateSearcBox<nDim>(0.0, rMax);
+
       auto nt = fPar
-        ? TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aPoint, depth)
-        : TreePointND<nDim>::Create(aPoint, depth)
+        ? TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aPoint, depth, box)
+        : TreePointND<nDim>::Create(aPoint, depth, box)
         ;
 
       return nt;
@@ -310,9 +313,11 @@ namespace PerformaceTest
     template<dim_type nDim>
     static auto CreateTest(unsigned depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
     {
+      autoc box = CreateSearcBox<nDim>(0.0, rMax);
+
       auto nt = fPar
-        ? TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aBox, depth)
-        : TreeBoxND<nDim>::Create(aBox, depth)
+        ? TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aBox, depth, box)
+        : TreeBoxND<nDim>::Create(aBox, depth, box)
         ;
 
       return nt;
