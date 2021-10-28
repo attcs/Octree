@@ -822,7 +822,6 @@ namespace NTree
     }
 
 
-
     bool _isEveryItemIdUnique() const
     {
       auto ids = vector<entity_id_type>();
@@ -836,6 +835,7 @@ namespace NTree
       autoc itEndUnique = std::unique(begin(ids), end(ids));
       return itEndUnique == end(ids);
     }
+
 
     bool _insert(morton_node_id_type_cref kNode, morton_node_id_type_cref kNodeSmallest, entity_id_type id, bool fInsertToLeaf)
     {
@@ -1143,7 +1143,7 @@ namespace NTree
 
       VisitNodes(GetRootKey(), [&ids](morton_node_id_type_cref key, autoc& node)
       { 
-        ids.insert(end(ids), begin(node.vid), end(node.vid));
+        ids.insert(std::end(ids), std::begin(node.vid), std::end(node.vid));
       });
       return ids;
     }
@@ -1215,7 +1215,7 @@ namespace NTree
     // Remove all elements and ids, except Root
     void Clear()
     {
-      erase_if(_nodes, [](autoc& p) { return p.first != GetRootKey(); });
+      std::erase_if(_nodes, [](autoc& p) { return p.first != GetRootKey(); });
       cont_at(_nodes, GetRootKey()).vid.clear();
     }
 
@@ -1242,7 +1242,7 @@ namespace NTree
 
   protected:
 
-    void _collectAllItem(Node const& nodeParent, morton_node_id_type_cref keyParent, vector<entity_id_type>& vItem) const
+    void _collectAllIdInDFS(Node const& nodeParent, morton_node_id_type_cref keyParent, vector<entity_id_type>& vItem) const
     {
       vItem.insert(vItem.end(), nodeParent.vid.begin(), nodeParent.vid.end());
 
@@ -1250,7 +1250,7 @@ namespace NTree
       for (autoc idChild : nodeParent.GetChildren())
       {
         morton_node_id_type const keyChild = flagParent | morton_node_id_type(idChild);
-        _collectAllItem(this->GetNode(keyChild), keyChild, vItem);
+        _collectAllIdInDFS(this->GetNode(keyChild), keyChild, vItem);
       }
     }
 
@@ -1271,7 +1271,7 @@ namespace NTree
         {
           if (_Ad::does_box_contain_point(range, _Ad::box_max_c(nodeChild.box)))
           {
-            this->_collectAllItem(nodeChild, keyChild, vItem);
+            this->_collectAllIdInDFS(nodeChild, keyChild, vItem);
             continue;
           }
         }
@@ -1335,10 +1335,10 @@ namespace NTree
 
   public:
 
-    void CollectAllItem(morton_grid_id_type_cref keyParent, vector<entity_id_type>& vItem) const
+    void CollectAllIdInDFS(morton_grid_id_type_cref keyParent, vector<entity_id_type>& vItem) const
     {
       autoc& node = cont_at(this->_nodes, keyParent);
-      _collectAllItem(node, keyParent, vItem);
+      _collectAllIdInDFS(node, keyParent, vItem);
     }
 
 
@@ -1412,9 +1412,9 @@ namespace NTree
 
     // Ctors
     NTreePoint() = default;
-    NTreePoint(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    NTreePoint(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
-      *this = Create(vpt, nDepthMax, oextent, nElementMaxInNode);
+      *this = Create(vpt, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
     // Create
@@ -1585,14 +1585,14 @@ namespace NTree
       if (setEntity.size() < k)
         return std::numeric_limits<geometry_type>::infinity();
 
-      return next(begin(setEntity), k - 1)->distance;
+      return std::next(std::begin(setEntity), k - 1)->distance;
     }
 
     static vector<entity_id_type> _convertEntityDistanceToList(multiset<_EntityDistance>& setEntity, size_t k)
     {
       autoc nEntity = std::min(k, setEntity.size());
       auto vidEntity = vector<entity_id_type>(nEntity);
-      transform(begin(setEntity), next(begin(setEntity), nEntity), begin(vidEntity), [](autoc& ed) { return ed.id; });
+      std::transform(std::begin(setEntity), std::next(std::begin(setEntity), nEntity), std::begin(vidEntity), [](autoc& ed) { return ed.id; });
       return vidEntity;
     }
 
@@ -1737,9 +1737,9 @@ namespace NTree
 
     // Ctors
     NTreeBoundingBox() = default;
-    NTreeBoundingBox(span<box_type const> const& vExtent, depth_type nDepthMax, std::optional<box_type> const& oextent = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    NTreeBoundingBox(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
-      *this = Create(vExtent, nDepthMax, oextent, nElementMaxInNode);
+      *this = Create(vBox, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
 
@@ -1868,9 +1868,9 @@ namespace NTree
 
 
     // Erase id, aided with the original bounding box
-    bool Erase(entity_id_type id, box_type const& ext)
+    bool Erase(entity_id_type id, box_type const& box)
     {
-      autoc kOld = FindSmallestNode(ext);
+      autoc kOld = FindSmallestNode(box);
       if (!kOld)
         return false; // old box is not in the handled space domain
 
@@ -1885,35 +1885,35 @@ namespace NTree
 
 
     // Update id by the new bounding box information
-    bool Update(entity_id_type id, box_type const& extNew)
+    bool Update(entity_id_type id, box_type const& boxNew)
     {
-      if (!_Ad::are_boxes_overlapped(this->_box, extNew))
+      if (!_Ad::are_boxes_overlapped(this->_box, boxNew))
         return false;
 
       if (!this->EraseId(id))
         return false;
 
-      return this->Insert(id, extNew);
+      return this->Insert(id, boxNew);
     }
 
 
     // Update id by the new point information and the erase part is aided by the old bounding box geometry data
-    bool Update(entity_id_type id, box_type const& extOld, box_type const& extNew)
+    bool Update(entity_id_type id, box_type const& boxOld, box_type const& boxNew)
     {
-      if (!_Ad::are_boxes_overlapped(this->_box, extNew))
+      if (!_Ad::are_boxes_overlapped(this->_box, boxNew))
         return false;
 
-      if (!this->Erase(id, extOld))
+      if (!this->Erase(id, boxOld))
         return false; // id was not registered previously.
 
-      return this->Insert(id, extNew);
+      return this->Insert(id, boxNew);
     }
 
 
   public: // Search functions
     
     // Pick search
-    vector<entity_id_type> PickSearch(point_type const& ptPick, span<box_type const> const& vExtent) const
+    vector<entity_id_type> PickSearch(point_type const& ptPick, span<box_type const> const& vBox) const
     {
       autoc idLocation = this->_getLocationId(ptPick);
 
@@ -1926,22 +1926,20 @@ namespace NTree
         if (itNode == itEnd)
           continue;
 
-        std::ranges::copy_if(itNode->second.vid, back_inserter(vidFound), [&](autoc id) { return _Ad::does_box_contain_point(vExtent[id], ptPick); });
+        std::ranges::copy_if(itNode->second.vid, back_inserter(vidFound), [&](autoc id) { return _Ad::does_box_contain_point(vBox[id], ptPick); });
       }
 
       return vidFound;
     }
 
-
-
     
     // Range search
-    vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vExtent, bool fFullyContained = true) const
+    vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vBox, bool fFullyContained = true) const
     {
       auto vidFound = vector<entity_id_type>();
 
-      autoc nEntity = vExtent.size();
-      if (!this->_rangeSearchRoot(range, nEntity, [&](autoc id) { return _Ad::are_boxes_overlapped(range, vExtent[id], fFullyContained); }, vidFound, true))
+      autoc nEntity = vBox.size();
+      if (!this->_rangeSearchRoot(range, nEntity, [&](autoc id) { return _Ad::are_boxes_overlapped(range, vBox[id], fFullyContained); }, vidFound, true))
         return {};
 
       return vidFound;
@@ -1949,7 +1947,7 @@ namespace NTree
 
 
     // Collision detection: Returns all overlapping boxes from the source trees.
-    static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(NTreeBoundingBox const& tL, span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR)
+    static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(NTreeBoundingBox const& treeL, span<box_type const> const& vBoxL, NTreeBoundingBox const& treeR, span<box_type const> const& vBoxR)
     {
       using NodeIterator = typename base::container_type::const_iterator;
       struct NodeIteratorAndStatus { NodeIterator it; bool fTraversed; };
@@ -1958,13 +1956,13 @@ namespace NTree
       enum : bool { Left, Right };
 
       auto vResult = vector<std::pair<entity_id_type, entity_id_type>>{};
-      vResult.reserve(vExtentL.size() / 10);
+      vResult.reserve(vBoxL.size() / 10);
 
       autoc kRoot = base::GetRootKey();
-      autoc aTree = array{ &tL, &tR };
+      autoc aTree = array{ &treeL, &treeR };
 
       auto q = queue<ParentIteratorArray>{};
-      for (q.push({ NodeIteratorAndStatus{ tL._nodes.find(kRoot), false }, NodeIteratorAndStatus{ tR._nodes.find(kRoot), false } }); !q.empty(); q.pop())
+      for (q.push({ NodeIteratorAndStatus{ treeL._nodes.find(kRoot), false }, NodeIteratorAndStatus{ treeR._nodes.find(kRoot), false } }); !q.empty(); q.pop())
       {
         autoc& aitNodeParent = q.front();
 
@@ -1972,7 +1970,7 @@ namespace NTree
         {
           for (autoc idL : aitNodeParent[Left].it->second.vid)
             for (autoc idR : aitNodeParent[Right].it->second.vid)
-              if (_Ad::are_boxes_overlapped(vExtentL[idL], vExtentR[idR], false))
+              if (_Ad::are_boxes_overlapped(vBoxL[idL], vBoxR[idR], false))
                 vResult.emplace_back(idL, idR);
         }
 
@@ -2014,9 +2012,9 @@ namespace NTree
 
 
     // Collision detection: Returns all overlapping boxes from the source trees.
-    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vExtentL, NTreeBoundingBox const& tR, span<box_type const> const& vExtentR) const
+    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vBox, NTreeBoundingBox const& treeOther, span<box_type const> const& vBoxOther) const
     {
-      return CollisionDetection(*this, vExtentL, tR, vExtentR);
+      return CollisionDetection(*this, vBox, treeOther, vBoxOther);
     }
 
 
@@ -2044,12 +2042,12 @@ namespace NTree
     }
 
 
-    void _rayIntersectedFirst(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vExtent, point_type const& rayBase, point_type const& rayHeading, multiset<_EntityDistance>& vidOut) const
+    void _rayIntersectedFirst(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, point_type const& rayBase, point_type const& rayHeading, multiset<_EntityDistance>& vidOut) const
     {
       autoc rLastDistance = vidOut.empty() ? std::numeric_limits<double>::infinity() : static_cast<double>(vidOut.rbegin()->distance);
       for (autoc id : node.vid)
       {
-        autoc oDist = _Ad::is_ray_hit(vExtent[id], rayBase, rayHeading);
+        autoc oDist = _Ad::is_ray_hit(vBox[id], rayBase, rayHeading);
         if (!oDist)
           continue;
 
@@ -2076,7 +2074,7 @@ namespace NTree
       }
       
       for (autoc& nodeData : msNode)
-        _rayIntersectedFirst(nodeData.kNode, nodeData.node, vExtent, rayBase, rayHeading, vidOut);
+        _rayIntersectedFirst(nodeData.kNode, nodeData.node, vBox, rayBase, rayHeading, vidOut);
       
     }
 
@@ -2099,8 +2097,9 @@ namespace NTree
       return vid;
     }
     
-    
-    std::optional<entity_id_type> RayIntersectedFirst(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vExtent) const
+
+    // Get first box which is intersected by the ray
+    std::optional<entity_id_type> RayIntersectedFirst(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vBox) const
     {
       autoc kRoot = base::GetRootKey();
 
@@ -2110,7 +2109,7 @@ namespace NTree
         return std::nullopt;
 
       auto vid = multiset<_EntityDistance>();
-      _rayIntersectedFirst(kRoot, node, vExtent, rayBase, rayHeading, vid);
+      _rayIntersectedFirst(kRoot, node, vBox, rayBase, rayHeading, vid);
       if (vid.empty())
         return std::nullopt;
     
