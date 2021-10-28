@@ -502,8 +502,9 @@ namespace
 
   autoce aSizeLog = array{ 10, 50, 100, 1000, 2500, 5000, 7500, 10000, 100000, N1M, 10 * N1M, 100 * N1M };
   autoce nSizeLog = aSizeLog.size();
+
   autoce aRepeatLog = array{ 100000, 100000, 10000, 2000, 1000, 500, 500, 100, 100, 10, 10, 5 };
-  //static_assert(nSizeLog == aRepeatLog.size());
+  static_assert(nSizeLog == aRepeatLog.size());
 
 
   template<size_t N>
@@ -663,7 +664,6 @@ int main()
   report.open("report.csv");
 
   autoce nDepth = 5;
-  
   {
     autoc szName = string("Diagonally placed points");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
@@ -706,12 +706,11 @@ int main()
     RunTasks(vTask, report);
   }
   
-  
   // Morton vs Dynamic
   {
     autoc szName = string("Cylindrical semi-random placed points Morton vs Dynamic");
-    autoc aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Random<N, 10*N1M>(); }, szName, 10, report);
-    autoc aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Random<N, 10 * N1M>(); }, szName, 10, report);
+    autoc aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Random<N, 100*N1M>(); }, szName, 100, report);
+    autoc aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Random<N, 100 * N1M>(); }, szName, 100, report);
 
     autoc vTaskMortonP = GeneratePointTasks<N>(nDepth, "Morton point", aPoint);
     autoc vTaskDynP = GeneratePointDynTasks_NonLog<N>(nDepth, "Dynamic point", aPoint);
