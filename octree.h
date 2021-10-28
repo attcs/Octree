@@ -1435,8 +1435,6 @@ namespace NTree
       
 
       // Generate Morton location ids
-      autoc maxSlot = tree._nRasterResolutionMax - 1;
-
       autoc vidPoint = base::_generatePointId(n);
       auto aidLocation = vector<std::pair<entity_id_type, morton_grid_id_type>>(n);
       std::transform(execution_policy_type{}, std::begin(vpt), std::end(vpt), std::begin(vidPoint), std::begin(aidLocation), [&](autoc& pt, autoc id) -> std::pair<entity_id_type, morton_grid_id_type>
@@ -1710,7 +1708,6 @@ namespace NTree
       ++depthCheck;
       --nDepthRemain;
 
-      autoc shift = nDepthRemain * nDimension;
       autoc nLocationStep = morton_grid_id_type{ 1 } << nDimension;
       autoc flagParent = kParent << nDimension;
 
@@ -1760,7 +1757,6 @@ namespace NTree
       autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
       
-      autoc maxSlot = tree._nRasterResolutionMax - 1;
       autoc vidPoint = base::_generatePointId(n);
       auto aidLocation = vector<_Location>(n);
       std::transform(execution_policy_type{}, std::begin(vBox), std::end(vBox), std::begin(vidPoint), std::begin(aidLocation), [&](autoc& box, autoc id)->_Location
