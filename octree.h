@@ -2022,22 +2022,24 @@ namespace NTree
 
   private:
    
-    void _rayIntersectedAll(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vExtent, point_type const& rayBase, point_type const& rayHeading, vector<entity_id_type>& vidOut) const
+    void _rayIntersectedAll(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, point_type const& rayBase, point_type const& rayHeading, vector<_EntityDistance>& vdidOut) const
     {
       autoc oIsHit = _Ad::is_ray_hit(node.box, rayBase, rayHeading);
       if (!oIsHit)
         return;
 
-      std::copy_if(std::begin(node.vid), std::end(node.vid), std::back_inserter(vidOut), [&](autoc id)
+      for (autoc id : node.vid)
       {
-        return _Ad::is_ray_hit(vExtent[id], rayBase, rayHeading).has_value();
-      });
+        autoc oDist = _Ad::is_ray_hit(vBox[id], rayBase, rayHeading);
+        if (oDist)
+          vdidOut.push_back({ *oDist, id });
+      }
 
       autoc flagPrefix = kNode << nDimension;
       for (autoc idChild : node.GetChildren())
       {
         autoc kChild = flagPrefix | morton_node_id_type(idChild);
-        _rayIntersectedAll(kChild, cont_at(this->_nodes, kChild), vExtent, rayBase, rayHeading, vidOut);
+        _rayIntersectedAll(kChild, cont_at(this->_nodes, kChild), vBox, rayBase, rayHeading, vdidOut);
       }
     }
 
@@ -2081,13 +2083,19 @@ namespace NTree
 
   public:
 
-    vector<entity_id_type> RayIntersectedAll(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vExtent) const
+    // Get all box which is intersected by the ray in order
+    vector<entity_id_type> RayIntersectedAll(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vBox) const
     {
       autoc kRoot = base::GetRootKey();
 
-      auto vid = vector<entity_id_type>();
-      vid.reserve(20);
-      _rayIntersectedAll(kRoot, cont_at(this->_nodes, kRoot), vExtent, rayBase, rayHeading, vid);
+      auto vdid = vector<_EntityDistance>();
+      vdid.reserve(20);
+      _rayIntersectedAll(kRoot, cont_at(this->_nodes, kRoot), vBox, rayBase, rayHeading, vdid);
+
+      std::sort(std::begin(vdid), std::end(vdid));
+
+      auto vid = vector<entity_id_type>(vdid.size());
+      std::transform(std::begin(vdid), std::end(vdid), std::begin(vid), [](autoc& did) { return did.id; });
       return vid;
     }
     

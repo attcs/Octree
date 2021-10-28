@@ -909,7 +909,7 @@ namespace GeneralTest
 
     TEST_METHOD(RayIntersectedAll_2D_General_234)
     {
-      autoce rayBase = Point2D{ 2.6, 2.6 };
+      autoce rayBase = Point2D{ 2.7, 2.6 };
       autoce rayHeading = Point2D{ 1.0, 1.0 };
 
       autoce boxes = array
@@ -923,7 +923,7 @@ namespace GeneralTest
 
       autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
       autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
-      Assert::IsTrue(std::ranges::is_permutation(vector{ 2, 3, 4 }, vid));
+      Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == vid);
     }
 
     TEST_METHOD(RayIntersectedAll_2D_General_34)
