@@ -1632,15 +1632,18 @@ namespace NTree
         setNodeDist.insert({ { _Ad::size(aDist)}, key, node });
       });
 
-      auto rLatestNodeDist = begin(setNodeDist)->distance;
-      for (autoc& nodeDist : setNodeDist)
+      if (!setNodeDist.empty())
       {
-        autoc n = setEntity.size();
-        if (k <= n && rLatestNodeDist < nodeDist.distance)
-          break;
+        auto rLatestNodeDist = std::begin(setNodeDist)->distance;
+        for (autoc& nodeDist : setNodeDist)
+        {
+          autoc n = setEntity.size();
+          if (k <= n && rLatestNodeDist < nodeDist.distance)
+            break;
 
-        _createEntityDistance(nodeDist.node, pt, vpt, setEntity);
-        rLatestNodeDist = nodeDist.distance;
+          _createEntityDistance(nodeDist.node, pt, vpt, setEntity);
+          rLatestNodeDist = nodeDist.distance;
+        }
       }
 
       return _convertEntityDistanceToList(setEntity, k);
