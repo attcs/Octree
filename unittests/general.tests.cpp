@@ -5,6 +5,7 @@
 #pragma clang diagnostic ignored "-Wmissing-braces"
 #endif
 
+using namespace OrthoTree;
 
 namespace Microsoft {
   namespace VisualStudio {
@@ -684,8 +685,8 @@ namespace GeneralTest
 
         autoc& nodePre = pairPre.second;
         autoc& nodeAfter = pairAfter.second;
-        autoc bMin = Ad::are_points_equal(Ad::substract(Ad::box_min_c(nodeAfter.box), Ad::box_min_c(nodePre.box)), vMoveExpected, rAcc);
-        autoc bMax = Ad::are_points_equal(Ad::substract(Ad::box_max_c(nodeAfter.box), Ad::box_max_c(nodePre.box)), vMoveExpected, rAcc);
+        autoc bMin = Ad::are_points_equal(Ad::subtract(Ad::box_min_c(nodeAfter.box), Ad::box_min_c(nodePre.box)), vMoveExpected, rAcc);
+        autoc bMax = Ad::are_points_equal(Ad::subtract(Ad::box_max_c(nodeAfter.box), Ad::box_max_c(nodePre.box)), vMoveExpected, rAcc);
         return bMin && bMax;
       });
 
@@ -1175,7 +1176,7 @@ namespace Tree1DTest
       
       Assert::IsTrue(tree.Update(3, { 1.1 }));
       autoc ids = tree.CollectAllIdInBFS();
-      Assert::IsTrue(ids == vector<NTree::entity_id_type>{ 0, 1, 3, 2 });
+      Assert::IsTrue(ids == vector<OrthoTree::entity_id_type>{ 0, 1, 3, 2 });
     }
 
     TEST_METHOD(Update2p__Rewrite2__Successful)
@@ -1186,7 +1187,7 @@ namespace Tree1DTest
 
       Assert::IsTrue(tree.Update(2, { 1.1 }));
       autoc ids = tree.CollectAllIdInBFS();
-      Assert::IsTrue(ids == vector<NTree::entity_id_type>{ 0, 1, 2, 3 });
+      Assert::IsTrue(ids == vector<OrthoTree::entity_id_type>{ 0, 1, 2, 3 });
     }
 
 

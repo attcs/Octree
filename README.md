@@ -1,13 +1,36 @@
 # Octree/Quadtree/N-dimensional linear tree
 [![MSBuild and Unittests](https://github.com/attcs/Octree/actions/workflows/msbuild.yml/badge.svg)](https://github.com/attcs/Octree/actions/workflows/msbuild.yml)
 <br>
-Lightweight, parallelizable, non-storing/non-owning C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering. A major advantage of this solution, that can be easily adapted for custom-defined Point and Bounding box object using AdaptorConcept.<br>
+Lightweight, parallelizable, non-storing/non-owning C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
 <br>
-Why is it non-owning? Usually, the geometrical objects and their metadata are already stored in a database, to making the creation process efficient and avoiding the responsibility of the complex data management, only the id-s are stored.<br>
+Why is it non-owning? Usually, the geometric objects and their metadata are already stored in a database, making the creation process efficient and avoiding the responsibility of the complex data management, this solution stores only id-s.<br>
+<br>
 What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
+
+## Features
+* `Create()` supports `std::execution` policies (so it can be parallelized)
+* Any contiguous container could be used for `Create()`
+* Easy to adapt to an already existing geometric system
+* Edit function to Insert/Update/Erase entities
+* Range search
+* Pick search
+* Nearest neighbor search
+* Ray-traced search
+* Collision detection
+* Nodes can be accessed in O(1) time
+* Search is accelerated by Morton Z curve based location code
+
+## Limitations
+* Maximum number of dimension is 63.
+* Maximum depth of octree solutions is 10.
 
 ## Requirements
 * Language standard: C++20 or above
+
+## Time complexity
+* Creation: O(n * log{2}(n))
+* Range search: O(log{2^N}(n)) (where N is the number of the dimension)
+* Access any node: O(1)
 
 ## Usage
 * Call the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree
@@ -16,23 +39,23 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Call `CollisionDetection()` member function for two bounding box trees overlap examination.
 * Call `VisitNodes()` to traverse the tree from up to down (breadth-first search) with user-defined `selector()` and `procedure()`.
 * Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
-* Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes by a ray
+* Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray
+* Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system.
 
 ## Notes
 * Header only implementation.
-* Point and Bounding box based solution was distinguished.
-* Bounding box based solution stores item id in the parent node if it is not fit into any child node.
+* Point and Bounding box-based solution was distinguished.
+* Bounding box-based solution stores item id in the parent node if it is not fit into any child node.
 * Edit functions are available but not recommended to majorly build the tree.
 * If less element is collected in a node than the max element then the child node won't be created.
-* Basic point and bounding box objects are available, but adaptors can be used to attach into an already developed system.
-* The underlying container is a hash-table (`std::unordered_map`), which only stores the id-s and the bounding box of the child nodes.
+* Basic point and bounding box objects are available.
+* The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
 * It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
-* Higher dimensional (max. 63) tree definition is available for more advanced problems.
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
 * Tested compilers: MSVC 2019, Clang 12.0.0
 
-## Major aliases in NTree
+## Major aliases in OrthoTree
 ```C++
   // Default geometrical base elements
   using Point2D = NTree::PointND<2>;
@@ -41,7 +64,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
   using BoundingBox3D = NTree::BoundingBoxND<3>;
 
   // Quadtree for points (2D)
-    using QuadtreePoint = TreePointND<2>;
+  using QuadtreePoint = TreePointND<2>;
 
   // Quadtree for bounding boxes (2D)
   using QuadtreeBox = TreeBoxND<2>;
@@ -63,16 +86,16 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 ## Basic examples
 ```C++
     #include "octree.h"
-    using namespace NTree;
+    using namespace OrthoTree;
     
     // Example #1: Octree for points
     {
         auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
         auto const octree = OctreePoint::Create(points, 3 /*max depth*/);
 
-        auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5}}
+        auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
         auto ids = octree.RangeSearch(search_box, points); // -> { 1, 2 }
-        auto knn_ids = octree.GetNearestNeighbors(Point3D{1.1,1.1,1.1}, 2 /*k*/, points); // -> { 1, 2 }
+        auto knn_ids = octree.GetNearestNeighbors(Point3D{ 1.1,1.1,1.1 }, 2 /*k*/, points); // -> { 1, 2 }
     }
     
     // Example #2: Quadtree for bounding boxes
@@ -108,7 +131,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
     
     // Example #3: Parallel creation of octree for bounding boxes
     {
-        auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0 }, { 1.0, 1.0 }, { 1.0, 1.0 } } /* and more... */ };
+        auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
         auto octreebox = OctreeBox::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
         // or
         // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);

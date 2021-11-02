@@ -62,7 +62,7 @@ SOFTWARE.
 #endif
 
 
-namespace NTree
+namespace OrthoTree
 {
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -199,7 +199,7 @@ namespace NTree
       return pt;
     }
 
-    static constexpr point_type substract(point_type const& ptL, point_type const& ptR)
+    static constexpr point_type subtract(point_type const& ptL, point_type const& ptR)
     {
       auto pt = point_type{};
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
@@ -219,12 +219,12 @@ namespace NTree
 
     static constexpr geometry_type distance(point_type const& ptL, point_type const& ptR)
     {
-      return size(substract(ptL, ptR));
+      return size(subtract(ptL, ptR));
     }
 
     static constexpr geometry_type distance2(point_type const& ptL, point_type const& ptR)
     {
-      return size2(substract(ptL, ptR));
+      return size2(subtract(ptL, ptR));
     }
 
     static constexpr bool are_points_equal(point_type const& ptL, point_type const& ptR, geometry_type rAccuracy)
@@ -560,7 +560,7 @@ namespace NTree
 
   // NTreeLinear: Non-owning base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
-  class NTreeLinear
+  class OrthoTreeBase
   {
     static_assert(0 < nDimension && nDimension < 64);
 
@@ -1349,12 +1349,12 @@ namespace NTree
 
 
 
-  // NTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
+  // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
-  class NTreePoint : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
+  class OrthoTreePoint : public OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
   protected:
-    using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
+    using base = OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
     using _Ad = typename base::_Ad;
@@ -1412,20 +1412,20 @@ namespace NTree
   public: // Create
 
     // Ctors
-    NTreePoint() = default;
-    NTreePoint(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    OrthoTreePoint() = default;
+    OrthoTreePoint(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       *this = Create(vpt, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static NTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static OrthoTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : _Ad::box_of_points(vpt);
       autoc n = vpt.size();
 
-      auto tree = NTreePoint{};
+      auto tree = OrthoTreePoint{};
       tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
       base::_reserveContainer(tree._nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
       if (vpt.empty())
@@ -1653,12 +1653,12 @@ namespace NTree
 
 
 
-  // NTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
+  // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
-  class NTreeBoundingBox : public NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>
+  class OrthoTreeBoundingBox : public OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
   private:
-    using base = NTreeLinear<nDimension, point_type, box_type, adaptor_type, geometry_type>;
+    using base = OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
     using _Ad = typename base::_Ad;
@@ -1737,8 +1737,8 @@ namespace NTree
   public: // Create
 
     // Ctors
-    NTreeBoundingBox() = default;
-    NTreeBoundingBox(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    OrthoTreeBoundingBox() = default;
+    OrthoTreeBoundingBox(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       *this = Create(vBox, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
@@ -1746,10 +1746,10 @@ namespace NTree
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static NTreeBoundingBox Create(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static OrthoTreeBoundingBox Create(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : _Ad::box_of_boxes(vBox);
-      auto tree = NTreeBoundingBox{};
+      auto tree = OrthoTreeBoundingBox{};
       tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
      
       autoc n = vBox.size();
@@ -1947,7 +1947,7 @@ namespace NTree
 
 
     // Collision detection: Returns all overlapping boxes from the source trees.
-    static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(NTreeBoundingBox const& treeL, span<box_type const> const& vBoxL, NTreeBoundingBox const& treeR, span<box_type const> const& vBoxR)
+    static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(OrthoTreeBoundingBox const& treeL, span<box_type const> const& vBoxL, OrthoTreeBoundingBox const& treeR, span<box_type const> const& vBoxR)
     {
       using NodeIterator = typename base::container_type::const_iterator;
       struct NodeIteratorAndStatus { NodeIterator it; bool fTraversed; };
@@ -2012,7 +2012,7 @@ namespace NTree
 
 
     // Collision detection: Returns all overlapping boxes from the source trees.
-    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vBox, NTreeBoundingBox const& treeOther, span<box_type const> const& vBoxOther) const
+    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vBox, OrthoTreeBoundingBox const& treeOther, span<box_type const> const& vBoxOther) const
     {
       return CollisionDetection(*this, vBox, treeOther, vBoxOther);
     }
@@ -2131,15 +2131,15 @@ namespace NTree
 
 
   // Aliases
-  using Point1D = NTree::PointND<1>;
-  using Point2D = NTree::PointND<2>;
-  using Point3D = NTree::PointND<3>;
-  using BoundingBox1D = NTree::BoundingBoxND<1>;
-  using BoundingBox2D = NTree::BoundingBoxND<2>;
-  using BoundingBox3D = NTree::BoundingBoxND<3>;
+  using Point1D = OrthoTree::PointND<1>;
+  using Point2D = OrthoTree::PointND<2>;
+  using Point3D = OrthoTree::PointND<3>;
+  using BoundingBox1D = OrthoTree::BoundingBoxND<1>;
+  using BoundingBox2D = OrthoTree::BoundingBoxND<2>;
+  using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
 
-  template<size_t nDimension> using TreePointND = NTree::NTreePoint<nDimension, NTree::PointND<nDimension>, NTree::BoundingBoxND<nDimension>>;
-  template<size_t nDimension> using TreeBoxND = NTree::NTreeBoundingBox<nDimension, NTree::PointND<nDimension>, NTree::BoundingBoxND<nDimension>>;
+  template<size_t nDimension> using TreePointND = OrthoTree::OrthoTreePoint<nDimension, OrthoTree::PointND<nDimension>, OrthoTree::BoundingBoxND<nDimension>>;
+  template<size_t nDimension> using TreeBoxND = OrthoTree::OrthoTreeBoundingBox<nDimension, OrthoTree::PointND<nDimension>, OrthoTree::BoundingBoxND<nDimension>>;
 
   // Dualtree for points
   using DualtreePoint = TreePointND<1>;

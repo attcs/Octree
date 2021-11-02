@@ -18,4 +18,3 @@
 #define autoce auto constexpr
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-using namespace NTree;

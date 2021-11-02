@@ -1,5 +1,6 @@
 #include "pch.h"
 
+using namespace OrthoTree;
 
 namespace BitsetArithmeticTest
 {
