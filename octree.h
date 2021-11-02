@@ -1322,6 +1322,7 @@ namespace NTree
 
       if (!fLeafNodeContainsElementOnly)
       {
+        keyNodeSmallest >>= nDimension;
         for (; IsValidKey(keyNodeSmallest); keyNodeSmallest >>= nDimension)
         {
           autoc& node = this->GetNode(keyNodeSmallest);
