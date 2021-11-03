@@ -28,7 +28,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Language standard: C++20 or above
 
 ## Time complexity
-* Creation: O(n * log{2}(n))
+* Creation: O(n)
 * Range search: O(log{2^N}(n)) (where N is the number of the dimension)
 * Access any node: O(1)
 
