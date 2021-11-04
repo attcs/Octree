@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef NTREE_GUARD
-#define NTREE_GUARD
+#ifndef ORTHOTREE_GUARD
+#define ORTHOTREE_GUARD
 
 #include <array>
 #include <bitset>
@@ -794,6 +794,7 @@ namespace OrthoTree
 
     inline Node& _createChild(Node& nodeParent, child_id_type iChild, morton_node_id_type_cref kChild)
     {
+      assert(iChild < this->_nChild);
       nodeParent.EnableChild(iChild);
 
       auto& nodeChild = _nodes[kChild];
@@ -1053,12 +1054,13 @@ namespace OrthoTree
       assert(this->_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree is wanted to be reset, use the Clear() function before init.
       assert(nDepthMax > 1);
       assert(nDepthMax <= _nDepthMaxTheoretical);
+      assert(nDepthMax < std::numeric_limits<uint8_t>::max());
       assert(nElementMax > 1);
       assert(CHAR_BIT * sizeof(grid_id_type) >= _nDepthMax);
 
       this->_box = box;
       this->_nDepthMax = nDepthMax;
-      this->_nRasterResolutionMax = static_cast<grid_id_type>(pow_ce(2, nDepthMax));
+      this->_nRasterResolutionMax = static_cast<grid_id_type>(pow_ce(2, static_cast<uint8_t>(nDepthMax)));
       this->_idSlotMax = this->_nRasterResolutionMax - 1;
       this->_nElementMax = nElementMax;
 
@@ -1298,7 +1300,7 @@ namespace OrthoTree
       for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
         idLocationMin >>= nDimension;
 
-      autoc keyRange = morton_node_id_type{ 1 } << nDepth | idLocationMin;
+      autoc keyRange = morton_node_id_type{ 1 } << (nDepth * nDimension) | idLocationMin;
       auto keyNodeSmallest = this->FindSmallestNodeKey(keyRange);
       if (!keyNodeSmallest)
         return false;
@@ -1542,7 +1544,7 @@ namespace OrthoTree
       auto vidFound = vector<entity_id_type>();
 
       autoc nEntity = vpt.size();
-      if (!this->_rangeSearchRoot(range, nEntity, [&](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); }, vidFound, fLeafNodeContainsElementOnly))
+      if (!this->_rangeSearchRoot(range, nEntity, [&range, &vpt](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); }, vidFound, fLeafNodeContainsElementOnly))
         return {};
 
       return vidFound;
@@ -1685,7 +1687,14 @@ namespace OrthoTree
       morton_grid_id_type idMin;
       depth_type depth;
     };
-
+    
+    static constexpr child_id_type _getIdChildAtDepth(_Location const& loc, depth_type depthCheck, morton_node_id_type_cref idLocationCurDepth)
+    {
+      assert(depthCheck <= loc.depth);
+      autoc idGridCurDepth = loc.idMin >> ((loc.depth - depthCheck) * nDimension);
+      return base::_mortonIdToChildId(idGridCurDepth - idLocationCurDepth);
+    }
+    
     using _LocationIterator = typename vector<_Location>::const_iterator;
     void _addNodes(Node& nodeParent, morton_node_id_type_cref kParent, _LocationIterator& itEndPrev, _LocationIterator const& itEnd, morton_grid_id_type_cref idLocationBegin, depth_type nDepthRemain)
     {
@@ -1698,7 +1707,7 @@ namespace OrthoTree
         return;
       }
 
-      auto depthCheck = this->_nDepthMax - nDepthRemain + 1;
+      auto depthCheck = this->_nDepthMax - nDepthRemain;
       if (itEndPrev->depth == depthCheck)
       {
         autoc itBegin = itEndPrev;
@@ -1712,15 +1721,17 @@ namespace OrthoTree
       ++depthCheck;
       --nDepthRemain;
 
-      autoc nLocationStep = morton_grid_id_type{ 1 } << nDimension;
+      autoc shift = nDepthRemain * nDimension;
+      autoc nLocationStep = morton_grid_id_type{ 1 } << shift;
       autoc flagParent = kParent << nDimension;
+      autoc idLocationCurDepth = idLocationBegin >> shift;
 
       while (itEndPrev != itEnd)
       {
-        autoc idChildActual = base::_mortonIdToChildId((itEndPrev->idMin >> ((itEndPrev->depth - depthCheck) * nDimension)) - idLocationBegin);
+        autoc idChildActual = _getIdChildAtDepth(*itEndPrev, depthCheck, idLocationCurDepth);
         autoc itEndActual = std::partition_point(itEndPrev, itEnd, [&](autoc& loc)
         {
-          autoc idChild = base::_mortonIdToChildId((loc.idMin >> ((loc.depth - depthCheck) * nDimension)) - idLocationBegin);
+          autoc idChild = _getIdChildAtDepth(loc, depthCheck, idLocationCurDepth);
           return idChildActual == idChild;
         });
 
@@ -1775,7 +1786,7 @@ namespace OrthoTree
         for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; base::IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
           idLocationMin >>= nDimension;
 
-        return { id, idLocationMin, nDepth + 1 };
+        return { id, idLocationMin, nDepth };
       });
 
       std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idLocationL, autoc& idLocationR)
@@ -1939,7 +1950,7 @@ namespace OrthoTree
       auto vidFound = vector<entity_id_type>();
 
       autoc nEntity = vBox.size();
-      if (!this->_rangeSearchRoot(range, nEntity, [&](autoc id) { return _Ad::are_boxes_overlapped(range, vBox[id], fFullyContained); }, vidFound, true))
+      if (!this->_rangeSearchRoot(range, nEntity, [&range, &vBox, fFullyContained](autoc id) { return _Ad::are_boxes_overlapped(range, vBox[id], fFullyContained); }, vidFound, false))
         return {};
 
       return vidFound;
@@ -2186,4 +2197,4 @@ namespace OrthoTree
 #undef UNDEF_HASSERT
 #endif
 
-#endif // NTREE_GUARD
+#endif // ORTHOTREE_GUARD

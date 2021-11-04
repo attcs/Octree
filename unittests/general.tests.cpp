@@ -1552,6 +1552,92 @@ namespace Tree2DTest
 
   };
 
+  TEST_CLASS(Box_General)
+  {
+    TEST_METHOD(Create_d3__Node7)
+    {
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+        BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
+      };
+
+      autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc nodes = quadtreebox.GetNodes();
+      Assert::AreEqual<size_t>(7, nodes.size());
+      
+      Assert::IsTrue(nodes.contains(1));
+      Assert::IsTrue(nodes.at(1).vid == vector<entity_id_type>{ 4 });
+
+      Assert::IsTrue(nodes.contains(4));
+      Assert::IsTrue(nodes.at(4).vid.empty());
+
+      Assert::IsTrue(nodes.contains(7));
+      Assert::IsTrue(nodes.at(7).vid.empty());
+
+      Assert::IsTrue(nodes.contains(16));
+      Assert::IsTrue(nodes.at(16).vid == vector<entity_id_type>{ 0 });
+
+      Assert::IsTrue(nodes.contains(19));
+      Assert::IsTrue(nodes.at(19).vid == vector<entity_id_type>{ 1 });
+
+      Assert::IsTrue(nodes.contains(28));
+      Assert::IsTrue(nodes.at(28).vid == vector<entity_id_type>{ 2 });
+
+      Assert::IsTrue(nodes.contains(31));
+      Assert::IsTrue(nodes.at(31).vid == vector<entity_id_type>{ 3 });
+    }
+
+
+    TEST_METHOD(Create_d3__Node8)
+    {
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+        BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } },
+        BoundingBox2D{ { 1.5, 1.5 }, { 2.0, 2.0 } },
+      };
+
+      autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc nodes = quadtreebox.GetNodes();
+      Assert::AreEqual<size_t>(8, nodes.size());
+
+      Assert::IsTrue(nodes.contains(1));
+      Assert::IsTrue(nodes.at(1).vid == vector<entity_id_type>{ 4 });
+
+      Assert::IsTrue(nodes.contains(4));
+      Assert::IsTrue(nodes.at(4).vid.empty());
+
+      Assert::IsTrue(nodes.contains(7));
+      Assert::IsTrue(nodes.at(7).vid.empty());
+
+      Assert::IsTrue(nodes.contains(16));
+      Assert::IsTrue(nodes.at(16).vid == vector<entity_id_type>{ 0 });
+
+      Assert::IsTrue(nodes.contains(19));
+      Assert::IsTrue(nodes.at(19).vid == vector<entity_id_type>{ 1 });
+
+      Assert::IsTrue(nodes.contains(28));
+      Assert::IsTrue(nodes.at(28).vid == vector<entity_id_type>{ 2 });
+
+      Assert::IsTrue(nodes.contains(31));
+      Assert::IsTrue(nodes.at(31).vid == vector<entity_id_type>{ 3 });
+
+      Assert::IsTrue(nodes.contains(31));
+      Assert::IsTrue(nodes.at(31).vid == vector<entity_id_type>{ 3 });
+
+      Assert::IsTrue(nodes.contains(79));
+      Assert::IsTrue(nodes.at(79).vid == vector<entity_id_type>{ 5 });
+
+    }
+
+  };
 
   TEST_CLASS(Box_SearchTest)
   {
