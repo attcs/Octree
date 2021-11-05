@@ -8,20 +8,21 @@ Why is it non-owning? Usually, the geometric objects and their metadata are alre
 What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Features
-* `Create()` supports `std::execution` policies (so it can be parallelized)
-* Any contiguous container could be used for `Create()`
-* Easy to adapt to an already existing geometric system
-* Edit function to Insert/Update/Erase entities
-* Range search
-* Pick search
-* Nearest neighbor search
-* Ray-traced search
+* Adaptable to any existing geometric system
+* Arbitrary number of dimensions for other scientific usages
+* Support of `std::execution` policies (so it is parallelizable)
+* Edit functions to Insert/Update/Erase entities
+* Wide range of search functions
+  * Range search
+  * Pick search
+  * K - Nearest neighbor search
+  * Ray-traced search
 * Collision detection
 * Nodes can be accessed in O(1) time
 * Search is accelerated by Morton Z curve based location code
 
 ## Limitations
-* Maximum number of dimension is 63.
+* Maximum number of dimensions is 63.
 * Maximum depth of octree solutions is 10.
 
 ## Requirements
@@ -33,14 +34,15 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Access any node: O(1)
 
 ## Usage
-* Call the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree
+* Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
+* Call the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
 * Call `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Call edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
 * Call `CollisionDetection()` member function for two bounding box trees overlap examination.
 * Call `VisitNodes()` to traverse the tree from up to down (breadth-first search) with user-defined `selector()` and `procedure()`.
 * Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
-* Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray
-* Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system.
+* Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
+
 
 ## Notes
 * Header only implementation.
@@ -48,10 +50,8 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Bounding box-based solution stores item id in the parent node if it is not fit into any child node.
 * Edit functions are available but not recommended to majorly build the tree.
 * If less element is collected in a node than the max element then the child node won't be created.
-* Basic point and bounding box objects are available.
 * The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
-* It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
 * Tested compilers: MSVC 2019, Clang 12.0.0
 
