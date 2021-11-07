@@ -20,7 +20,7 @@
 using namespace std::chrono;
 using namespace std;
 
-using namespace NTree;
+using namespace OrthoTree;
 
 
 namespace
@@ -353,10 +353,10 @@ namespace
   }
 
   template <typename box_type>
-  vector<vector<NTree::entity_id_type>> RangeSearchNaive(span<box_type> const& vSearchBox, span<box_type> const& vBox)
+  vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type> const& vSearchBox, span<box_type> const& vBox)
   {
     autoc n = vBox.size();
-    auto vElementFound = vector<vector<NTree::entity_id_type>>();
+    auto vElementFound = vector<vector<OrthoTree::entity_id_type>>();
     vElementFound.reserve(n);
     for (autoc& boxSearch : vSearchBox)
     {
@@ -372,10 +372,10 @@ namespace
 
 
   template <typename point_type, typename box_type>
-  vector<vector<NTree::entity_id_type>> RangeSearchNaive(span<box_type> const& vSearchBox, span<point_type> const& vPoint)
+  vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type> const& vSearchBox, span<point_type> const& vPoint)
   {
     autoc n = vPoint.size();
-    auto vElementFound = vector<vector<NTree::entity_id_type>>();
+    auto vElementFound = vector<vector<OrthoTree::entity_id_type>>();
     vElementFound.reserve(n);
     for (autoc& boxSearch : vSearchBox)
     {

@@ -9,7 +9,7 @@
 using namespace std;
 
 
-template<size_t nDimension, typename point_type, typename box_type, typename adaptor_type = NTree::AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+template<size_t nDimension, typename point_type, typename box_type, typename adaptor_type = OrthoTree::AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
 class OrthoTreePointDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << nDimension;
@@ -93,7 +93,7 @@ public:
 
 
 
-template<size_t nDimension, typename point_type, typename box_type, typename adaptor_type = NTree::AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+template<size_t nDimension, typename point_type, typename box_type, typename adaptor_type = OrthoTree::AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
 class OrthoTreeBoxDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << nDimension;
@@ -196,9 +196,9 @@ public:
 
 
 template<size_t N>
-using OrthoTreePointDynamicND = OrthoTreePointDynamicGeneral<N, NTree::PointND<N>, NTree::BoundingBoxND<N>>;
+using OrthoTreePointDynamicND = OrthoTreePointDynamicGeneral<N, OrthoTree::PointND<N>, OrthoTree::BoundingBoxND<N>>;
 using OctreePointDynamic = OrthoTreePointDynamicND<3>;
 
 template<size_t N>
-using OrthoTreeBoxDynamicND = OrthoTreeBoxDynamicGeneral<N, NTree::PointND<N>, NTree::BoundingBoxND<N>>;
+using OrthoTreeBoxDynamicND = OrthoTreeBoxDynamicGeneral<N, OrthoTree::PointND<N>, OrthoTree::BoundingBoxND<N>>;
 using OctreeBoxDynamic = OrthoTreeBoxDynamicND<3>;
