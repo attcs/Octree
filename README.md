@@ -58,10 +58,10 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 ## Major aliases in OrthoTree
 ```C++
   // Default geometrical base elements
-  using Point2D = NTree::PointND<2>;
-  using Point3D = NTree::PointND<3>;
-  using BoundingBox2D = NTree::BoundingBoxND<2>;
-  using BoundingBox3D = NTree::BoundingBoxND<3>;
+  using Point2D = OrthoTree::PointND<2>;
+  using Point3D = OrthoTree::PointND<3>;
+  using BoundingBox2D = OrthoTree::BoundingBoxND<2>;
+  using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
 
   // Quadtree for points (2D)
   using QuadtreePoint = TreePointND<2>;
@@ -154,7 +154,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
   struct AdaptorBasicsCustom
   {
-    static inline float& point_comp(Point2DCustom& pt, NTree::dim_type iDimension)
+    static inline float& point_comp(Point2DCustom& pt, OrthoTree::dim_type iDimension)
     {
       switch (iDimension)
       {
@@ -164,7 +164,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
       }
     }
 
-    static constexpr float point_comp_c(Point2DCustom const& pt, NTree::dim_type iDimension)
+    static constexpr float point_comp_c(Point2DCustom const& pt, OrthoTree::dim_type iDimension)
     {
       switch (iDimension)
       {
@@ -180,13 +180,13 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
     static constexpr Point2DCustom const& box_max_c(BoundingBox2DCustom const& box) { return box[1]; }
   };
 
-  using AdaptorCustom = NTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
+  using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
 
 
   // Tailored Quadtree objects
 
-  using QuadtreePointCustom = NTree::NTreePoint<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
-  using QuadtreeBoxCustom = NTree::NTreeBoundingBox<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
+  using QuadtreePointCustom = OrthoTree::OrthoTreePoint<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
+  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
 ```
 
 ## Benchmarks
