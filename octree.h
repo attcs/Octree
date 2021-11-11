@@ -1314,8 +1314,8 @@ namespace OrthoTree
           rVolumeRange *= _Ad::point_comp_c(_Ad::box_max_c(range), iDimension) - _Ad::point_comp_c(_Ad::box_min_c(range), iDimension);
           rVolumeBox *= _Ad::point_comp_c(_Ad::box_max_c(this->_box), iDimension) - _Ad::point_comp_c(_Ad::box_min_c(this->_box), iDimension);
         }
-        autoc nItemFound = static_cast<size_t>((rVolumeRange * nEntity) / rVolumeBox);
 
+        autoc nItemFound = rVolumeBox == 0 ? 10 : static_cast<size_t>((rVolumeRange * nEntity) / rVolumeBox);
         vidFound.reserve(nItemFound);
       }
 
