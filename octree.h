@@ -893,7 +893,10 @@ namespace OrthoTree
     {
       assert(nElementMax > 0);
       assert(nDepthMax > 0);
-
+      
+      if (nElement < 10)
+        return 10;
+      
       autoce rMult = 1.5;
       if ((nDepthMax + 1) * nDimension < 64)
       {
