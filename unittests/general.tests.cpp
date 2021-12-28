@@ -1721,16 +1721,16 @@ namespace Tree2DTest
       autoc qtL = QuadtreeBox::Create(boxesL, 3, std::nullopt, 2);
       autoc qtR = QuadtreeBox::Create(boxesR, 3, std::nullopt, 2);
 
-      autoc idpairs = QuadtreeBox::CollisionDetection(qtL, boxesL, qtR, boxesR); // { {3, 3}, {2, 4}, {3, 4} }
+      autoc aActualPair = QuadtreeBox::CollisionDetection(qtL, boxesL, qtR, boxesR); // { {3, 3}, {2, 4}, {3, 4} }
 
-      autoce aExpected = array
+      autoce aExpectedPair = array
       {
         std::pair{ 3, 3 }, // Level 0
         std::pair{ 2, 4 },
         std::pair{ 3, 4 }, // Level 1
       };
-      Assert::AreEqual<size_t>(aExpected.size(), idpairs.size());
-      Assert::IsTrue(std::ranges::is_permutation(aExpected, idpairs, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
+      Assert::AreEqual<size_t>(aExpectedPair.size(), aActualPair.size());
+      Assert::IsTrue(std::ranges::is_permutation(aExpectedPair, aActualPair, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
     }
   };
 }

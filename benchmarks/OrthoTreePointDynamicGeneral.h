@@ -173,7 +173,7 @@ private:
 
 
 public:
-  static OrthoTreeBoxDynamicGeneral Create(span<box_type const> const& vBox, size_t nDepthMax, std::optional<box_type> const& obox, size_t nElementMax)
+  static OrthoTreeBoxDynamicGeneral Create(span<box_type const> const& vBox, size_t nDepthMax, std::optional<box_type> const& obox = std::nullopt, size_t nElementMax = 20)
   {
     autoc box = obox.has_value() ? *obox : _Ad::box_of_boxes(vBox);
 
