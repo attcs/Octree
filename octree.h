@@ -602,91 +602,26 @@ namespace OrthoTree
 
     class Node
     {
-    public:
-      static constexpr bool is_set_container = _nChild > 64;
-
-    private: // Internal types
-
-      struct unused_type {};
-
-      // Max value: 2^(2^nDimension)
-      using child_exist_flag_type = typename std::conditional<_nChild <= 8
-        , uint8_t
-        , typename std::conditional<is_set_container
-          , unused_type
-          , uint64_t
-        >::type
-      >::type;
-
-      using child_container_type = typename std::conditional<is_set_container, std::set<child_id_type>, unused_type>::type;
-
-    private: // Optional members
-      child_container_type _children;
-      child_exist_flag_type _hasChildK = {};
+    private:
+      vector<morton_node_id_type> _children;
 
     public: // Public members
       vector<entity_id_type> vid = {};
       box_type box = {};
 
     public:
-
-      constexpr void EnableChild(child_id_type iChild) 
-      { 
-        if constexpr (is_set_container)
-          _children.insert(iChild);
-        else
-          _hasChildK |= (child_exist_flag_type{ 1 } << iChild);
-      }
-
-      constexpr void DisableChild(child_id_type iChild)
+      constexpr void AddChild(morton_node_id_type_cref kChild) { _children.emplace_back(kChild); }
+      constexpr void AddChildInOrder(morton_node_id_type_cref kChild)
       {
-        if constexpr (is_set_container)
-          _children.erase(iChild);
-        else
-          _hasChildK &= ~(child_exist_flag_type{ 1 } << iChild);
+        autoc it = std::upper_bound(_children.begin(), _children.end(), kChild);
+        if (*it == kChild)
+          return;
+
+        _children.insert(it, kChild);
       }
 
-      constexpr bool HasChild(child_id_type iChild) const 
-      {
-        if constexpr (is_set_container)
-          return _children.contains(iChild);
-        else
-          return _hasChildK & (child_exist_flag_type{ 1 } << iChild);
-      }
-
-      inline bool IsAnyChildExist() const noexcept
-      {
-        if constexpr (is_set_container)
-          return !_children.empty();
-        else
-          return _hasChildK > 0;
-      }
-
-      vector<child_id_type> GetChildren() const
-      {
-        if constexpr (is_set_container)
-          return vector<child_id_type>(std::begin(_children), std::end(_children));
-        else
-          return _getChildren();
-      }
-
-
-    private:
-      inline vector<child_id_type> _getChildren() const
-      {
-        if (!_hasChildK)
-          return {};
-
-        auto vChild = vector<child_id_type>();
-        vChild.reserve(std::max<size_t>(4, _nChild / 8));
-
-        auto mask = child_exist_flag_type{ 1 };
-        for (child_id_type iChild = 0; iChild < _nChild; ++iChild, mask <<= 1)
-          if (_hasChildK & mask)
-            vChild.emplace_back(iChild);
-        
-        return vChild;
-      }
+      constexpr bool IsAnyChildExist() const noexcept { return !_children.empty(); }
+      constexpr vector<morton_node_id_type> const& GetChildren() const noexcept { return _children; }
     };
 
 
@@ -797,7 +732,7 @@ namespace OrthoTree
     inline Node& _createChild(Node& nodeParent, child_id_type iChild, morton_node_id_type_cref kChild)
     {
       assert(iChild < this->_nChild);
-      nodeParent.EnableChild(iChild);
+      nodeParent.AddChild(kChild);
 
       auto& nodeChild = _nodes[kChild];
 
@@ -859,11 +794,10 @@ namespace OrthoTree
         auto kNodeParent = kNode;
         do
         {
-          autoc iChild = _getChildPartOfLocation(kNodeParent);
           kNodeParent = kNodeParent >>= nDimension;
           assert(IsValidKey(kNodeParent));
           auto& nodeParent = this->_nodes[kNodeParent];
-          nodeParent.EnableChild(iChild);
+          nodeParent.AddChildInOrder(kNodeParent);
           nodeParent.box = this->CalculateExtent(kNodeParent);
         } while (kNodeParent != kNodeSmallest);
       }
@@ -1095,10 +1029,8 @@ namespace OrthoTree
         autoc& node = cont_at(_nodes, key);
         procedure(key, node);
 
-        autoc flagPrefix = key << nDimension;
-        for (autoc iChild : node.GetChildren())
+        for (morton_node_id_type_cref kChild : node.GetChildren())
         {
-          autoc kChild = flagPrefix | morton_node_id_type(iChild);
           if (selector(kChild, cont_at(_nodes, kChild)))
             q.push(kChild);
         }
@@ -1132,10 +1064,8 @@ namespace OrthoTree
         procedure(item.key, item.pNode, item.fUnconditional);
 
         autoc nDepthChild = depth_type{ item.nDepth + 1 };
-        morton_node_id_type const flagPrefix = item.key << nDimension;
-        for (autoc iChild : item.pNode.GetChildren())
+        for (morton_node_id_type kChild : item.pNode.GetChildren())
         {
-          morton_node_id_type const kChild = flagPrefix | morton_node_id_type(iChild);
           autoc& pNodeChild = cont_at(_nodes, kChild);
           if (item.fUnconditional)
             q.push({ kChild, pNodeChild, nDepthChild, true });
@@ -1272,35 +1202,29 @@ namespace OrthoTree
     }
 
 
-    void _collectAllIdInDFS(Node const& nodeParent, morton_node_id_type_cref keyParent, vector<entity_id_type>& sidFound) const
+    void _collectAllIdInDFS(Node const& nodeParent, vector<entity_id_type>& sidFound) const
     {
       std::copy(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(sidFound));
 
-      autoc flagParent = keyParent << nDimension;
-      for (autoc idChild : nodeParent.GetChildren())
-      {
-        morton_node_id_type const keyChild = flagParent | morton_node_id_type(idChild);
-        _collectAllIdInDFS(this->GetNode(keyChild), keyChild, sidFound);
-      }
+      for (morton_node_id_type_cref kChild : nodeParent.GetChildren())
+        _collectAllIdInDFS(this->GetNode(kChild), sidFound);
     }
 
 
-    void _rangeSearch(box_type const& range, double rVolumeRange, double rVolumeParent, Node const& nodeParent, morton_node_id_type_cref keyParent, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& sidFound) const
+    void _rangeSearch(box_type const& range, double rVolumeRange, double rVolumeParent, Node const& nodeParent, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& sidFound) const
     {
       nCollisionDetection += nodeParent.vid.size();
       std::copy_if(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(sidFound), fnPred);
 
       autoc rVolumeNode = rVolumeParent / this->_nChild;
-      autoc flagParent = keyParent << nDimension;
-      for (autoc idChild : nodeParent.GetChildren())
+      for (morton_node_id_type_cref keyChild : nodeParent.GetChildren())
       {
-        autoc keyChild = flagParent | morton_node_id_type(idChild);
         autoc& nodeChild = this->GetNode(keyChild);
 
         auto bOverlap = true;
         for (dim_type iDim = 0; iDim < nDimension && bOverlap; ++iDim)
         {
-          if (idChild & (1 << iDim))
+          if (keyChild & (1 << iDim))
             bOverlap &= _Ad::point_comp_c(_Ad::box_min_c(nodeChild.box), iDim) < _Ad::point_comp_c(_Ad::box_max_c(range), iDim);
           else
             bOverlap &= _Ad::point_comp_c(_Ad::box_max_c(nodeChild.box), iDim) > _Ad::point_comp_c(_Ad::box_min_c(range), iDim);
@@ -1311,10 +1235,10 @@ namespace OrthoTree
         if (rVolumeRange >= rVolumeNode && _Ad::are_boxes_overlapped(range, nodeChild.box))
         {
           ++nCollisionDetection;
-          this->_collectAllIdInDFS(nodeChild, keyChild, sidFound);
+          this->_collectAllIdInDFS(nodeChild, sidFound);
         }
         else
-          this->_rangeSearch(range, rVolumeRange, rVolumeNode, nodeChild, keyChild, fnPred, sidFound);
+          this->_rangeSearch(range, rVolumeRange, rVolumeNode, nodeChild, fnPred, sidFound);
       }
     }
 
@@ -1357,7 +1281,7 @@ namespace OrthoTree
       autoc nidFoundEstimation = this->_rVolume == 0 ? 10 : static_cast<size_t>((rVolumeRange * nEntity) / this->_rVolume);
       sidFound.reserve(nidFoundEstimation);
       autoc& node = this->GetNode(keyNodeSmallest);
-      this->_rangeSearch(range, rVolumeRange, rVolumeNode, node, keyNodeSmallest, fnPred, sidFound);
+      this->_rangeSearch(range, rVolumeRange, rVolumeNode, node, fnPred, sidFound);
 
       if (!fLeafNodeContainsElementOnly)
       {
@@ -1384,7 +1308,7 @@ namespace OrthoTree
     void CollectAllIdInDFS(morton_grid_id_type_cref keyParent, vector<entity_id_type>& vItem) const
     {
       autoc& node = cont_at(this->_nodes, keyParent);
-      _collectAllIdInDFS(node, keyParent, vItem);
+      _collectAllIdInDFS(node, vItem);
     }
 
 
@@ -2118,9 +2042,9 @@ namespace OrthoTree
           autoc flagPrefix = itNode->first << nDimension;
           autoc vidChild = itNode->second.GetChildren();
           avitChildNode[id].resize(vidChild.size());
-          std::ranges::transform(vidChild, begin(avitChildNode[id]), [&](autoc iChild) -> NodeIteratorAndStatus
+          std::ranges::transform(vidChild, begin(avitChildNode[id]), [&](morton_node_id_type_cref kChild) -> NodeIteratorAndStatus
           {
-            return { aTree[id]->_nodes.find(flagPrefix | morton_node_id_type(iChild)), false };
+            return { aTree[id]->_nodes.find(kChild), false };
           });
         }
 
@@ -2212,9 +2136,8 @@ namespace OrthoTree
       }
 
       autoc flagPrefix = kNode << nDimension;
-      for (autoc idChild : node.GetChildren())
+      for (autoc kChild : node.GetChildren())
       {
-        autoc kChild = flagPrefix | morton_node_id_type(idChild);
         _rayIntersectedAll(kChild, cont_at(this->_nodes, kChild), vBox, rayBase, rayHeading, vdidOut);
       }
     }
@@ -2237,9 +2160,8 @@ namespace OrthoTree
 
       autoc flagPrefix = kNode << nDimension;
       auto msNode = multiset<_BoxDistance>();
-      for (autoc idChild : node.GetChildren())
+      for (autoc kChild : node.GetChildren())
       {
-        morton_node_id_type const kChild = flagPrefix | morton_node_id_type(idChild);
         autoc& nodeChild = cont_at(this->_nodes, kChild);
         autoc oDist = _Ad::is_ray_hit(nodeChild.box, rayBase, rayHeading);
         if (!oDist)
