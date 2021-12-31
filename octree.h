@@ -613,11 +613,44 @@ namespace OrthoTree
       constexpr void AddChild(morton_node_id_type_cref kChild) { _children.emplace_back(kChild); }
       constexpr void AddChildInOrder(morton_node_id_type_cref kChild)
       {
-        autoc it = std::upper_bound(_children.begin(), _children.end(), kChild);
-        if (*it == kChild)
+        auto it = std::end(_children);
+        if constexpr (is_linear_tree)
+          it = std::lower_bound(_children.begin(), _children.end(), kChild);
+        else
+          it = std::lower_bound(_children.begin(), _children.end(), kChild, bitset_arithmetic_compare{});
+
+        if (it != _children.end() && *it == kChild)
           return;
 
         _children.insert(it, kChild);
+      }
+
+      constexpr bool HasChild(morton_node_id_type_cref kChild) const 
+      {
+        if constexpr (is_linear_tree)
+          return std::ranges::binary_search(_children, kChild);
+        else
+          return std::ranges::binary_search(_children, kChild, bitset_arithmetic_compare{});
+      }
+
+      constexpr bool IsChildNodeEnabled(child_id_type idChild)
+      { 
+        autoc midChild = morton_node_id_type(idChild);
+        return std::find_if(std::begin(_children), std::end(_children), [midChild](autoc& kChild) { return kChild & midChild == midChild; });
+      }
+
+      constexpr void DisableChild(morton_node_id_type_cref kChild)
+      {
+        auto it = std::end(_children);
+        if constexpr (is_linear_tree)
+          it = std::lower_bound(_children.begin(), _children.end(), kChild);
+        else
+          it = std::lower_bound(_children.begin(), _children.end(), kChild, bitset_arithmetic_compare{});
+
+        if (it == std::end(_children))
+          return;
+
+        _children.erase(it);
       }
 
       constexpr bool IsAnyChildExist() const noexcept { return !_children.empty(); }
