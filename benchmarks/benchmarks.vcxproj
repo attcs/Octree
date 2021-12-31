@@ -150,6 +150,7 @@
     <ClCompile Include="benchmarks.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\octree.h" />
     <ClInclude Include="OrthoTreePointDynamicGeneral.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

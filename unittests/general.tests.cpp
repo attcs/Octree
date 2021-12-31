@@ -12,6 +12,8 @@ namespace Microsoft {
     namespace CppUnitTestFramework
     {
       template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
+      template<> inline std::wstring ToString<bitset<65>>(const bitset<65>& t) { RETURN_WIDE_STRING(t); }
+
     }
   }
 }
@@ -198,21 +200,23 @@ namespace GeneralTest
     static void _complex_ND_Only1()
     {
       using child_id_type_ = typename TreeBoxND<N>::child_id_type;
+      using morton_node_id_type = typename TreeBoxND<N>::morton_node_id_type;
       auto node = typename TreeBoxND<N>::Node();
       Assert::IsFalse(node.IsAnyChildExist());
 
       autoce nChild = 1 << N;
       for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
       {
-        node.EnableChild(idChild);
-        Assert::IsTrue(node.HasChild(idChild));
+        autoc kChild = morton_node_id_type(idChild);
+        node.AddChild(kChild);
+        Assert::IsTrue(node.HasChild(kChild));
         Assert::IsTrue(node.IsAnyChildExist());
 
         autoc vChild = node.GetChildren();
         Assert::AreEqual<size_t>(1, vChild.size());
-        Assert::AreEqual(idChild, vChild[0]);
+        Assert::AreEqual(kChild, vChild[0]);
 
-        node.DisableChild(idChild);
+        node.DisableChild(kChild);
         autoc vChild2 = node.GetChildren();
         Assert::AreEqual<size_t>(0, vChild2.size());
       }
@@ -233,13 +237,15 @@ namespace GeneralTest
     static void _complex_All_ND()
     {
       using child_id_type = typename TreeBoxND<N>::child_id_type;
+      using morton_node_id_type = typename TreeBoxND<N>::morton_node_id_type;
       auto node = typename TreeBoxND<N>::Node();
 
       child_id_type constexpr nChild = 1 << N;
       for (child_id_type idChild = 0; idChild < nChild; ++idChild)
       {
-        node.EnableChild(idChild);
-        Assert::IsTrue(node.HasChild(idChild));
+        autoc kChild = morton_node_id_type(idChild);
+        node.AddChild(kChild);
+        Assert::IsTrue(node.HasChild(kChild));
         Assert::IsTrue(node.IsAnyChildExist());
 
         autoc vChild = node.GetChildren();
@@ -248,7 +254,9 @@ namespace GeneralTest
 
       for (child_id_type idChild = 0; idChild < nChild; ++idChild)
       {
-        node.DisableChild(idChild);
+        autoc kChild = morton_node_id_type(idChild);
+
+        node.DisableChild(kChild);
         autoc vChildActual = node.GetChildren();
         auto vChildExpected = vector<child_id_type>(static_cast<size_t>(nChild - idChild) - 1);
         std::iota(begin(vChildExpected), end(vChildExpected), idChild + 1);
@@ -1721,16 +1729,16 @@ namespace Tree2DTest
       autoc qtL = QuadtreeBox::Create(boxesL, 3, std::nullopt, 2);
       autoc qtR = QuadtreeBox::Create(boxesR, 3, std::nullopt, 2);
 
-      autoc idpairs = QuadtreeBox::CollisionDetection(qtL, boxesL, qtR, boxesR); // { {3, 3}, {2, 4}, {3, 4} }
+      autoc aActualPair = QuadtreeBox::CollisionDetection(qtL, boxesL, qtR, boxesR); // { {3, 3}, {2, 4}, {3, 4} }
 
-      autoce aExpected = array
+      autoce aExpectedPair = array
       {
         std::pair{ 3, 3 }, // Level 0
         std::pair{ 2, 4 },
         std::pair{ 3, 4 }, // Level 1
       };
-      Assert::AreEqual<size_t>(aExpected.size(), idpairs.size());
-      Assert::IsTrue(std::ranges::is_permutation(aExpected, idpairs, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
+      Assert::AreEqual<size_t>(aExpectedPair.size(), aActualPair.size());
+      Assert::IsTrue(std::ranges::is_permutation(aExpectedPair, aActualPair, [](autoc& p1, autoc& p2) { return p1.first == p2.first && p1.second == p2.second; }));
     }
   };
 }
