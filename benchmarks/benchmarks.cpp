@@ -371,6 +371,36 @@ namespace
     return vElementFound;
   }
 
+  template <typename point_type, typename box_type, typename execution_policy_type = std::execution::unsequenced_policy>
+  vector<std::pair<entity_id_type, entity_id_type>> SelfConflicthNaive(span<box_type const> const& vBox)
+  {
+    autoc nEntity = vBox.size();
+
+    auto vidCheck = vector<entity_id_type>(nEntity);
+    std::iota(std::begin(vidCheck), std::end(vidCheck), 0);
+
+    auto vvidCollision = vector<vector<entity_id_type>>(vidCheck.size());
+    std::transform(execution_policy_type{}, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](autoc idCheck) -> vector<entity_id_type>
+    {
+      auto sidFound = vector<entity_id_type>();
+      for (size_t i = idCheck + 1; i < nEntity; ++i)
+        if (AdaptorGeneral<N, point_type, box_type>::are_boxes_overlapped(vBox[idCheck], vBox[i], false))
+          sidFound.emplace_back(i);
+
+      return sidFound;
+    });
+
+    auto vPair = vector<std::pair<entity_id_type, entity_id_type>>{};
+    if (nEntity > 10)
+      vPair.reserve(nEntity / 10);
+
+    for (autoc idCheck : vidCheck)
+      for (autoc idCollide : vvidCollision[idCheck])
+        vPair.emplace_back(idCheck, idCollide);
+
+    return vPair;
+  }
+
 
   template <typename point_type, typename box_type>
   vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<point_type const> const& vPoint)
@@ -496,12 +526,12 @@ namespace
   }
 
 
-  //autoce aSizeNonLog = array{ 100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 8000, 10000 };
-  autoce aSizeNonLog = array{ 10000 };
+  autoce aSizeNonLog = array{ 100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 8000, 10000 };
+  //autoce aSizeNonLog = array{ 10000 };
 
   autoce nSizeNonLog = aSizeNonLog.size();
-  //autoce aRepeatNonLog = array{ 100 * NR, 10 * NR, 10 * NR, 10 * NR, 10 * NR, 10 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR };
-  autoce aRepeatNonLog = array{ 1 * NR };
+  autoce aRepeatNonLog = array{ 100 * NR, 10 * NR, 10 * NR, 10 * NR, 10 * NR, 10 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR };
+  //autoce aRepeatNonLog = array{ 1 * NR };
 
   static_assert(nSizeNonLog == aRepeatNonLog.size());
 
@@ -571,32 +601,38 @@ namespace
             nDepthActual = 3;
           else if (aSizeNonLog[iSize] <= 1000)
             nDepthActual = 4;
-          else if (aSizeNonLog[iSize] <= 5000)
+          else if (aSizeNonLog[iSize] <= 10000)
             nDepthActual = 5;
-          else
+          else 
             nDepthActual = 6;
         }
         vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepthActual, fPar, aBox_.subspan(0, aSizeNonLog[iSize]), [](size_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
         {
-          autoc nt = fPar
-            ? TreeBoxND<N>::template Create<std::execution::parallel_unsequenced_policy>(aBox, nDepth, boxMax, 5)
-            : TreeBoxND<N>::Create(aBox, nDepth, boxMax, 5)
-            ;
-          //autoc nt2 = OrthoTreeBoxDynamicND<N>::Create(aBox, nDepth, boxMax);
-
-          size_t nFound = 0;
-          size_t nCollisionDetection = 0;
-          autoc n = aBox.size();
-          for (size_t i = 0; i < n; ++i)
+          if (fPar)
           {
-            autoc vElem = nt.RangeSearch(aBox[i], aBox, false);
-            nFound += vElem.size();
-            assert(vElem.size());
-            nCollisionDetection += nt.nCollisionDetection;
+            autoc nt = TreeBoxND<N>::template Create<std::execution::parallel_unsequenced_policy>(aBox, nDepth, boxMax);
+            autoc vPair = nt.template CollisionDetection<std::execution::parallel_unsequenced_policy>(aBox);
+            return vPair.size();
           }
-          nCollisionDetection /= aBox.size();
-          return nFound;
-        } });
+          else
+          {
+            autoc nt = TreeBoxND<N>::Create(aBox, nDepth, boxMax);
+            autoc vPair = nt.CollisionDetection(aBox);
+            return vPair.size();
+            /*
+            size_t nFound = 0;
+            autoc n = aBox.size();
+            for (size_t i = 0; i < n; ++i)
+            {
+              autoc vElem = nt.RangeSearch(aBox[i], aBox, false);
+              nFound += vElem.size();
+              assert(vElem.size());
+            }
+            return nFound;
+            */
+          }          
+        } 
+        });
       }
     return vTask;
   }
@@ -624,6 +660,31 @@ namespace
     return vTask;
   }
 
+  template<size_t N>
+  vector<MeasurementTask<BoundingBoxND<N>>> SelfConflictBruteForceBoxTasks(string const& szName, span<BoundingBoxND<N> const> const& aBox_)
+  {
+    auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
+    for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
+      vTask.push_back(MeasurementTask<BoundingBoxND<N>>
+    { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], 0, false, aBox_.subspan(0, aSizeNonLog[iSize])
+        , [](size_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
+    {
+      if (!fPar)
+      {
+        autoc vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>>(aBox);
+        return vvElem.size();
+      }
+      else
+      {
+        autoc vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, std::execution::parallel_unsequenced_policy>(aBox);
+        return vvElem.size();
+      }
+    }
+    }
+    );
+
+    return vTask;
+  }
 
 
   template<size_t N>
@@ -685,7 +746,6 @@ int main()
   report.open("report.csv");
 
   autoce nDepth = 5;
-  /*
   {
     autoc szName = string("Diagonally placed points");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
@@ -746,7 +806,6 @@ int main()
     RunTasks(vTaskDynB, report);
 
   }
-  */
   // Search
   
   // Range search: Brute force vs Octree
@@ -755,10 +814,10 @@ int main()
     //autoc aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_CylindricalSemiRandom<N, N1M>(); }, szName, N1M, report);
     autoc aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_CylindricalSemiRandom<N, static_cast<size_t>(aSizeNonLog.back())>(); }, szName, aSizeNonLog.back(), report);
     autoce rPercentage = 100.0;
-    autoc vTaskBruteForce = SearchBruteForceBoxTasks<N>(nDepth, "Box self conflict by brute force", aBox);
-    autoc vTaskTree = SearchTreeBoxTasks<N>(3, "Box self conflict by octree", aBox);
+    autoc vTaskBruteForce = SelfConflictBruteForceBoxTasks<N>("Box self conflict by brute force", aBox);
+    autoc vTaskTree = SearchTreeBoxTasks<N>(-1, "Box self conflict by octree", aBox);
 
-    //RunTasks(vTaskBruteForce, report);
+    RunTasks(vTaskBruteForce, report);
     RunTasks(vTaskTree, report);
   }
 

@@ -1124,7 +1124,7 @@ namespace OrthoTree
 
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
-    bool EraseId(entity_id_type id)
+    constexpr virtual bool EraseId(entity_id_type id)
     {
       return std::ranges::any_of(_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, id); });
     }
@@ -1214,8 +1214,6 @@ namespace OrthoTree
       return morton_node_id_type{}; // Not found
     }
 
-    //!DEBUG
-    mutable size_t nCollisionDetection = 0;
 
   protected:
 
@@ -1246,7 +1244,6 @@ namespace OrthoTree
 
     void _rangeSearch(box_type const& range, double rVolumeRange, double rVolumeParent, Node const& nodeParent, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& sidFound) const
     {
-      nCollisionDetection += nodeParent.vid.size();
       std::copy_if(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(sidFound), fnPred);
 
       autoc rVolumeNode = rVolumeParent / this->_nChild;
@@ -1266,27 +1263,22 @@ namespace OrthoTree
           continue;
 
         if (rVolumeRange >= rVolumeNode && _Ad::are_boxes_overlapped(range, nodeChild.box))
-        {
-          ++nCollisionDetection;
           this->_collectAllIdInDFS(nodeChild, sidFound);
-        }
         else
           this->_rangeSearch(range, rVolumeRange, rVolumeNode, nodeChild, fnPred, sidFound);
       }
     }
 
 
-    bool _rangeSearchRoot(box_type const& range, size_t nEntity, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& sidFound, bool fLeafNodeContainsElementOnly = false, bool fParentUnconditionallyAdded = false) const
+    bool _rangeSearchRoot(box_type const& range, size_t nEntity, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& sidFound, bool fLeafNodeContainsElementOnly = false) const
     {
-      nCollisionDetection = 1;
-      /*
       if (_Ad::are_boxes_overlapped(range, this->_box))
       {
         sidFound.resize(nEntity);
         std::iota(std::begin(sidFound), std::end(sidFound), 0);
         return nEntity;
       }
-      */
+      
       // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         if (_Ad::point_comp_c(_Ad::box_min_c(range), iDimension) >= _Ad::point_comp_c(_Ad::box_max_c(range), iDimension))
@@ -1322,13 +1314,7 @@ namespace OrthoTree
         for (; IsValidKey(keyNodeSmallest); keyNodeSmallest >>= nDimension)
         {
           autoc& node = this->GetNode(keyNodeSmallest);
-          if (fParentUnconditionallyAdded)
-            std::copy(std::begin(node.vid), std::end(node.vid), std::back_inserter(sidFound));
-          else
-          {
-            nCollisionDetection += node.vid.size();
-            std::copy_if(std::begin(node.vid), std::end(node.vid), std::back_inserter(sidFound), fnPred);
-          }
+          std::copy_if(std::begin(node.vid), std::end(node.vid), std::back_inserter(sidFound), fnPred);
         }
       }
 
@@ -1657,8 +1643,9 @@ namespace OrthoTree
 
 
 
-  // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
-  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+  // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order. 
+  // nSplitStrategyAdditionalDepth: if (nSplitStrategyAdditionalDepth > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
+  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double, uint32_t nSplitStrategyAdditionalDepth = 2>
   class OrthoTreeBoundingBox : public OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
   private:
@@ -1681,8 +1668,6 @@ namespace OrthoTree
   private: // Aid functions
 
     static constexpr max_element_type max_element_default = 21;
-
-    static autoce fSplitStrategy = true; // Those items which are not fit in the child nodes will be stored all children instead of the parent.
     struct _Location
     {
       entity_id_type id;
@@ -1714,7 +1699,7 @@ namespace OrthoTree
       }
     };
 
-    using _LocationContainer = vector<_Location>;// std::conditional<fSplitStrategy, multiset<_Location>, vector<_Location>>::type;
+    using _LocationContainer = vector<_Location>;
     using _LocationIterator = typename _LocationContainer::const_iterator;
 
     static constexpr child_id_type _getIdChildAtDepth(_Location const& loc, depth_type depthCheck, morton_node_id_type_cref idLocationCurDepth)
@@ -1776,9 +1761,9 @@ namespace OrthoTree
     }
 
 
-    void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, depth_type nDepthAdditional, vector<_Location> & vLocation)
+    constexpr void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, vector<_Location> & vLocation) const
     {
-      auto nDepth = vLocation[0].depth + nDepthAdditional;
+      auto nDepth = vLocation[0].depth + nSplitStrategyAdditionalDepth;
       if (nDepth > this->_nDepthMax)
         nDepth = this->_nDepthMax;
 
@@ -1786,6 +1771,7 @@ namespace OrthoTree
       autoc nStepGrid = pow_ce(2, nDepthRemain);
 
       auto aMinGridList = array<vector<grid_id_type>, nDimension>{};
+      auto nBoxByGrid = 1.0;
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
       {
         autoc nGridSplitFirst = (aidBoxGrid[0][iDim] / nStepGrid) + 1;
@@ -1795,8 +1781,13 @@ namespace OrthoTree
         aMinGridList[iDim][0] = aidBoxGrid[0][iDim];
         size_t i = 1;
         for (auto nGridSplit = nGridSplitFirst; nGridSplit <= nGridSplitLast; ++nGridSplit, ++i)
-          aMinGridList[iDim][i] = nGridSplit * nStepGrid;
+          aMinGridList[iDim][i] = static_cast<grid_id_type>(nGridSplit * nStepGrid);
+
+        nBoxByGrid *= nMinGridList;
       }
+
+      if (nBoxByGrid >= this->_nChild)
+        return;
 
       auto vaidMinGrid = vector<array<grid_id_type, nDimension>>{};
       auto aidGrid = array<grid_id_type, nDimension>{};
@@ -1815,6 +1806,31 @@ namespace OrthoTree
       }
     }
 
+    constexpr void _setLocation(box_type const& box, vector<_Location>& vLocation) const
+    {
+      autoc aidBoxGrid = this->_getGridIdBox(box);
+
+      auto& loc = vLocation[0];
+      loc.depth = this->_nDepthMax;
+
+      loc.idMin = base::MortonEncode(aidBoxGrid[0]);
+      autoc idMax = base::MortonEncode(aidBoxGrid[1]);
+      if (loc.idMin == idMax)
+        return;
+
+      autoc idMin = loc.idMin;
+      for (auto flagDiffOfLocation = loc.idMin ^ idMax; base::IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --loc.depth)
+        loc.idMin >>= nDimension;
+
+      if constexpr (nSplitStrategyAdditionalDepth > 0)
+      {
+        autoc nDepthRemain = this->_nDepthMax - loc.depth;
+        if (base::IsValidKey((idMax - idMin) >> (nDepthRemain * nDimension - 1)))
+          return; // all nodes are touched, it is leaved.
+
+        this->_split(aidBoxGrid, vLocation);
+      }
+    }
 
   public: // Create
 
@@ -1824,6 +1840,7 @@ namespace OrthoTree
     {
       *this = Create(vBox, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
+
 
 
     // Create
@@ -1850,31 +1867,8 @@ namespace OrthoTree
       autoce nSplit = 2;
       std::for_each(execution_policy_type{}, std::begin(vid), std::end(vid), [&tree, &vBox, &avLocation](autoc id)
       {
-        autoc aidBoxGrid = tree._getGridIdBox(vBox[id]);
-
-        auto& loc = avLocation[id][0];
-        loc.id = id;
-        loc.depth = tree._nDepthMax;
-
-        loc.idMin = base::MortonEncode(aidBoxGrid[0]);
-        autoc idMax = base::MortonEncode(aidBoxGrid[1]);
-        if (loc.idMin == idMax)
-          return;
-
-        autoc idMin = loc.idMin;
-        for (auto flagDiffOfLocation = loc.idMin ^ idMax; base::IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --loc.depth)
-          loc.idMin >>= nDimension;
-
-        if constexpr (fSplitStrategy)
-        {
-          autoce nDepthAdditional = 2;
-
-          autoc nDepthRemain = tree._nDepthMax - loc.depth;
-          if (base::IsValidKey((idMax - idMin) >> (nDepthRemain * nDimension - 1)))
-            return; // all nodes are touched, it is leaved.
-
-          tree._split(aidBoxGrid, nDepthAdditional, avLocation[id]);
-        }
+        avLocation[id][0].id = id;
+        tree._setLocation(vBox[id], avLocation[id]);
       });
 
       aLocation.reserve(n * 4);
@@ -1884,10 +1878,6 @@ namespace OrthoTree
       std::sort(execution_policy_type{}, std::begin(aLocation), std::end(aLocation));
       auto itBegin = std::begin(aLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aLocation), morton_node_id_type{ 0 }, nDepthMax);
-
-
-      //if constexpr (tree.is_linear_tree)
-      //  tree._nodes.rehash(100);
       return tree;
     }
 
@@ -1934,22 +1924,49 @@ namespace OrthoTree
       if (!base::IsValidKey(kNodeSmallest))
         return false; // new box is not in the handled space domain
 
-      autoc aGrid = this->_getGridIdBox(box);
-      autoc idLocationMin = base::MortonEncode(aGrid[0]);
-      autoc idLocationMax = base::MortonEncode(aGrid[1]);
+      auto vLocation = vector<_Location>(1);
+      vLocation[0].id = id;
+      _setLocation(box, vLocation);
 
-      auto nDepthCommon = 0;
-      for (auto idLocationDiff = idLocationMin ^ idLocationMax; base::IsValidKey(idLocationDiff); idLocationDiff >>= nDimension)
-        ++nDepthCommon;
+      for (autoc& loc : vLocation)
+      {
+        autoc kNode = this->GetHash(loc.depth, loc.idMin);
+        if (!this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf))
+          return false;
+      }
 
-      autoc nDepth = this->_nDepthMax - nDepthCommon;
-      autoc idLocation = (idLocationMin & idLocationMax) >> nDepthCommon;
-      
-      autoc kNode = this->GetHash(nDepth, idLocation);
-      return this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf);
+      return true;
+    }
+
+  
+  private: 
+    bool _erase(morton_node_id_type_cref kNode, entity_id_type id)
+    {
+      auto& vid = cont_at(this->_nodes, kNode).vid;
+      autoc itRemove = std::remove(begin(vid), end(vid), id);
+      if (itRemove == end(vid))
+        return false; // id was not registered previously.
+
+      vid.erase(itRemove, vid.end());
+      return true;
     }
 
 
+    template<depth_type nDepthRemainSet>
+    bool _eraseRec(morton_node_id_type_cref kNode, entity_id_type id)
+    {
+      auto ret = this->_erase(kNode, id);
+      if constexpr (nDepthRemainSet > 0)
+      {
+        autoc& node = cont_at(this->_nodes, kNode);
+        for (morton_node_id_type_cref kChild : node.GetChildren())
+          ret |= _eraseRec<nDepthRemainSet - 1>(kChild, id);
+      }
+      return ret;
+    }
+
+
+  public:
     // Erase id, aided with the original bounding box
     bool Erase(entity_id_type id, box_type const& box)
     {
@@ -1957,13 +1974,24 @@ namespace OrthoTree
       if (!kOld)
         return false; // old box is not in the handled space domain
 
-      auto& vid = cont_at(this->_nodes, kOld).vid;
-      autoc itRemove = std::remove(begin(vid), end(vid), id);
-      if (itRemove == end(vid))
-        return false; // id was not registered previously.
+      return _eraseRec<nSplitStrategyAdditionalDepth>(kOld, id);
+    }
 
-      vid.erase(itRemove, vid.end());
-      return true;
+
+    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
+    constexpr bool EraseId(entity_id_type id) override
+    {
+      if constexpr (nSplitStrategyAdditionalDepth == 0)
+        return std::ranges::any_of(this->_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, id); });
+      else
+      {
+        bool bErased = false;
+#pragma warning( suppress : 4805 )
+        std::ranges::for_each(this->_nodes, [&](auto& pairNode) { bErased |= erase(pairNode.second.vid, id); });
+#pragma warning( default : 4805 )
+
+        return bErased;
+      }
     }
 
 
@@ -2022,10 +2050,10 @@ namespace OrthoTree
       auto sidFound = vector<entity_id_type>();
 
       autoc nEntity = vBox.size();
-      if (!this->_rangeSearchRoot(range, nEntity, [&range, &vBox, fFullyContained](autoc id) { return _Ad::are_boxes_overlapped(range, vBox[id], fFullyContained); }, sidFound, false, false))
+      if (!this->_rangeSearchRoot(range, nEntity, [&range, &vBox, fFullyContained](autoc id) { return _Ad::are_boxes_overlapped(range, vBox[id], fFullyContained); }, sidFound, false))
         return {};
 
-      if constexpr (fSplitStrategy)
+      if constexpr (nSplitStrategyAdditionalDepth > 0)
       {
         std::ranges::sort(sidFound);
         autoc itEnd = std::unique(begin(sidFound), end(sidFound));
@@ -2098,7 +2126,7 @@ namespace OrthoTree
                 q.emplace(array{ itNodeChildL, itNodeChildR });
       }
 
-      if constexpr (fSplitStrategy)
+      if constexpr (nSplitStrategyAdditionalDepth > 0)
       {
         std::ranges::sort(vResult);
         vResult.erase(std::unique(std::begin(vResult), std::end(vResult)), end(vResult));
@@ -2114,7 +2142,7 @@ namespace OrthoTree
       return CollisionDetection(*this, vBox, treeOther, vBoxOther);
     }
 
-    // Collision detection between the stored elements or by the ovidCheck
+    // Collision detection between the stored elements
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vBox) const
     {
@@ -2129,10 +2157,10 @@ namespace OrthoTree
         auto sidFound = vector<entity_id_type>();
 
         autoc nEntity = vBox.size();
-        if (!this->_rangeSearchRoot(vBox[idCheck], nEntity, [idCheck, &vBox](autoc id) { return idCheck < id&& _Ad::are_boxes_overlapped(vBox[idCheck], vBox[id], false); }, sidFound, false, false))
+        if (!this->_rangeSearchRoot(vBox[idCheck], nEntity, [idCheck, &vBox](autoc id) { return idCheck < id && _Ad::are_boxes_overlapped(vBox[idCheck], vBox[id], false); }, sidFound, false))
           return {};
 
-        if constexpr (fSplitStrategy)
+        if constexpr (nSplitStrategyAdditionalDepth > 0)
         {
           std::ranges::sort(sidFound);
           autoc itEnd = std::unique(std::begin(sidFound), std::end(sidFound));
@@ -2226,7 +2254,7 @@ namespace OrthoTree
       autoc itBegin = std::begin(vdid);
       auto itEnd = std::end(vdid);
       std::sort(itBegin, itEnd);
-      if constexpr (fSplitStrategy)
+      if constexpr (nSplitStrategyAdditionalDepth > 0)
         itEnd = std::unique(itBegin, itEnd, [](autoc& lhs, autoc& rhs) { return lhs.id == rhs.id; });
 
       auto vid = vector<entity_id_type>(std::distance(itBegin, itEnd));
