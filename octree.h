@@ -557,7 +557,7 @@ namespace OrthoTree
 
 
   // NTreeLinear: Non-owning base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
-  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+  template<dim_type nDimension, typename point_type_, typename box_type_, typename adaptor_type = AdaptorGeneral<nDimension, point_type_, box_type_, double>, typename geometry_type = double>
   class OrthoTreeBase
   {
     static_assert(0 < nDimension && nDimension < 64);
@@ -587,16 +587,16 @@ namespace OrthoTree
     using morton_node_id_type_cref = morton_grid_id_type_cref;
     using max_element_type = uint32_t;
     using depth_type = uint32_t;
+    using point_type = point_type_;
+    using box_type = box_type_;
 
+    using _Ad = adaptor_type;
+    static_assert(AdaptorConcept<_Ad, point_type, box_type, geometry_type>);
 
   protected:
 
     // Type system determined maximal depth.
     static autoce _nDepthMaxTheoretical = depth_type((CHAR_BIT * sizeof(morton_node_id_type) - 1/*sentinal bit*/) / nDimension);
-
-    using _Ad = adaptor_type;
-    static_assert(AdaptorConcept<_Ad, point_type, box_type, geometry_type>);
-
 
   public:
 
@@ -1126,13 +1126,6 @@ namespace OrthoTree
     }
 
 
-    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
-    constexpr virtual bool EraseId(entity_id_type id)
-    {
-      return std::ranges::any_of(_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, id); });
-    }
-
-
     // Update all element which are in the given hash-table. Elements will be erased if the replacement id is std::numeric_limits<entity_id_type>::max().
     void UpdateIndexes(unordered_map<entity_id_type, entity_id_type> const& vIndexOldNew)
     {
@@ -1384,9 +1377,9 @@ namespace OrthoTree
     using base = OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
-    using _Ad = typename base::_Ad;
 
   public:
+    using _Ad = typename base::_Ad;
     using depth_type = typename base::depth_type;
     using morton_grid_id_type = typename base::morton_grid_id_type;
     using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
@@ -1397,9 +1390,9 @@ namespace OrthoTree
 
     using Node = typename base::Node;
 
-  private: // Aid functions
     static constexpr max_element_type max_element_default = 21;
 
+  protected: // Aid functions
 
     using _LocationIterator = typename vector<std::pair<entity_id_type, morton_grid_id_type>>::const_iterator;
     void _addNodes(Node& nodeParent, morton_node_id_type_cref kParent, _LocationIterator& itEndPrev, _LocationIterator const& itEnd, morton_grid_id_type_cref idLocationBegin, depth_type nDepthRemain)
@@ -1473,8 +1466,7 @@ namespace OrthoTree
       std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
       auto itBegin = std::begin(aidLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aidLocation), morton_node_id_type{ 0 }, nDepthMax);
-      //if constexpr (tree.is_linear_tree)
-      //  tree._nodes.rehash(1);
+
       return tree;
     }
 
@@ -1498,34 +1490,66 @@ namespace OrthoTree
       return this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf);
     }
 
+    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
+    template<bool fReduceIds = true>
+    constexpr bool EraseId(entity_id_type idErase)
+    {
+      autoc fErased = std::ranges::any_of(this->_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, idErase); });
+      if (!fErased)
+        return false;
+
+      if constexpr (fReduceIds)
+      {
+        std::ranges::for_each(this->_nodes, [idErase](auto& pairNode)
+        {
+          for (auto& id : pairNode.second.vid)
+            if (idErase > id)
+              --id;
+        });
+      }
+
+      return true;
+    }
 
     // Erase id, aided with the original point
-    bool Erase(entity_id_type id, point_type const& pt)
+    template<bool fReduceIds = true>
+    bool Erase(entity_id_type idErase, point_type const& pt)
     {
       autoc kOld = FindSmallestNode(pt);
       if (!kOld)
         return false; // old box is not in the handled space domain
 
       auto& vid = cont_at(this->_nodes, kOld).vid;
-      autoc itRemove = std::remove(std::begin(vid), std::end(vid), id);
+      autoc itRemove = std::remove(std::begin(vid), std::end(vid), idErase);
       if (itRemove == end(vid))
         return false; // id was not registered previously.
 
       vid.erase(itRemove, vid.end());
+
+      if constexpr (fReduceIds)
+      {
+        std::ranges::for_each(this->_nodes, [idErase](auto& pairNode)
+        {
+          for (auto& id : pairNode.second.vid)
+            if (idErase > id)
+              --id;
+        });
+      }
+
       return true;
     }
 
 
     // Update id by the new point information
-    bool Update(entity_id_type id, point_type const& ptNew)
+    bool Update(entity_id_type id, point_type const& ptNew, bool fInsertToLeaf = false)
     {
       if (!_Ad::does_box_contain_point(this->_box, ptNew))
         return false;
 
-      if (!this->EraseId(id))
+      if (!this->EraseId<false>(id))
         return false;
 
-      return this->Insert(id, ptNew);
+      return this->Insert(id, ptNew, fInsertToLeaf);
     }
 
 
@@ -1535,7 +1559,7 @@ namespace OrthoTree
       if (!_Ad::does_box_contain_point(this->_box, ptNew))
         return false;
 
-      if (!this->EraseId(id, ptOld))
+      if (!this->Erase<false>(id, ptOld))
         return false;
 
       return this->Insert(id, ptNew);
@@ -1688,13 +1712,13 @@ namespace OrthoTree
   template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double, uint32_t nSplitStrategyAdditionalDepth = 2>
   class OrthoTreeBoundingBox : public OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>
   {
-  private:
+  protected:
     using base = OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
-    using _Ad = typename base::_Ad;
 
   public:
+    using _Ad = typename base::_Ad;
     using depth_type = typename base::depth_type;
     using morton_grid_id_type = typename base::morton_grid_id_type;
     using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
@@ -1705,9 +1729,10 @@ namespace OrthoTree
 
     using Node = typename base::Node;
 
+    static constexpr max_element_type max_element_default = 21;
+
   private: // Aid functions
 
-    static constexpr max_element_type max_element_default = 21;
     struct _Location
     {
       entity_id_type id;
@@ -1882,7 +1907,6 @@ namespace OrthoTree
     }
 
 
-
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     static OrthoTreeBoundingBox Create(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
@@ -1901,16 +1925,14 @@ namespace OrthoTree
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
       autoc vid = base::_generatePointId(n);
-      auto aLocation = vector<_Location>();
       auto avLocation = vector<vector<_Location>>(n, { _Location{} });
-
-      autoce nSplit = 2;
       std::for_each(execution_policy_type{}, std::begin(vid), std::end(vid), [&tree, &vBox, &avLocation](autoc id)
       {
         avLocation[id][0].id = id;
         tree._setLocation(vBox[id], avLocation[id]);
       });
 
+      auto aLocation = vector<_Location>();
       aLocation.reserve(n * 4);
       for (autoc& vLocation : avLocation)
         std::copy(std::begin(vLocation), std::end(vLocation), std::back_inserter(aLocation));
@@ -2008,48 +2030,74 @@ namespace OrthoTree
 
   public:
     // Erase id, aided with the original bounding box
-    bool Erase(entity_id_type id, box_type const& box)
+    template<bool fReduceIds = true>
+    bool Erase(entity_id_type idErase, box_type const& box)
     {
       autoc kOld = FindSmallestNode(box);
       if (!kOld)
         return false; // old box is not in the handled space domain
 
-      return _eraseRec<nSplitStrategyAdditionalDepth>(kOld, id);
+      if (_eraseRec<nSplitStrategyAdditionalDepth>(kOld, idErase))
+      {
+        if constexpr (fReduceIds)
+          std::ranges::for_each(this->_nodes, [&](auto& pairNode)
+          { 
+            for (auto& id : pairNode.second.vid)
+              if (idErase > id)
+                --id;
+          });
+
+        return true;
+      }
+      else
+        return false;
     }
 
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
-    constexpr bool EraseId(entity_id_type id) override
+    template<bool fReduceIds = true>
+    constexpr bool EraseId(entity_id_type idErase)
     {
+      bool bErased = false;
       if constexpr (nSplitStrategyAdditionalDepth == 0)
-        return std::ranges::any_of(this->_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, id); });
+        bErased = std::ranges::any_of(this->_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, idErase); });
       else
       {
-        bool bErased = false;
 #pragma warning( suppress : 4805 )
-        std::ranges::for_each(this->_nodes, [&](auto& pairNode) { bErased |= erase(pairNode.second.vid, id); });
+        std::ranges::for_each(this->_nodes, [&](auto& pairNode) { bErased |= erase(pairNode.second.vid, idErase); });
 #pragma warning( default : 4805 )
-
-        return bErased;
       }
+
+      if (!bErased)
+        return false;
+
+      if constexpr (fReduceIds)
+        std::ranges::for_each(this->_nodes, [&](auto& pairNode)
+        {
+          for (auto& id : pairNode.second.vid)
+            if (idErase > id)
+              --id;
+        });
+
+      return true;
     }
 
 
     // Update id by the new bounding box information
-    bool Update(entity_id_type id, box_type const& boxNew)
+    bool Update(entity_id_type id, box_type const& boxNew, bool fInsertToLeaf = false)
     {
       if (!_Ad::are_boxes_overlapped(this->_box, boxNew))
         return false;
 
-      if (!this->EraseId(id))
+      if (!this->EraseId<false>(id))
         return false;
 
-      return this->Insert(id, boxNew);
+      return this->Insert(id, boxNew, fInsertToLeaf);
     }
 
 
     // Update id by the new point information and the erase part is aided by the old bounding box geometry data
-    bool Update(entity_id_type id, box_type const& boxOld, box_type const& boxNew)
+    bool Update(entity_id_type id, box_type const& boxOld, box_type const& boxNew, bool fInsertToLeaf = false)
     {
       if (!_Ad::are_boxes_overlapped(this->_box, boxNew))
         return false;
@@ -2058,7 +2106,7 @@ namespace OrthoTree
         if (FindSmallestNode(boxOld) == FindSmallestNode(boxNew))
           return true;
  
-      if (!this->Erase(id, boxOld))
+      if (!this->Erase<false>(id, boxOld))
         return false; // id was not registered previously.
 
       return this->Insert(id, boxNew);
