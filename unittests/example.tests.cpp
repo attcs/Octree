@@ -43,9 +43,7 @@ namespace Example
       auto ids_inside = quadtreebox.RangeSearch(search_box, boxes); // -> { 1, 2, 4 }
 
       // Overlapping Boxes with the range
-      auto ids_overlaping = quadtreebox.RangeSearch(search_box, boxes
-        , false // overlap is enough
-      ); // -> { 1, 2, 3, 4 }
+      auto ids_overlaping = quadtreebox.RangeSearch<false /*overlap is enough*/>(search_box, boxes); // -> { 1, 2, 3, 4 }
 
       // Picked boxes
       auto ptPick = Point2D{ 2.5, 2.5 };

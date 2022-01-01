@@ -1682,7 +1682,7 @@ namespace Tree2DTest
       autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
 
       autoc search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
-      autoc ids = quadtreebox.RangeSearch(search_box, boxes, false); // { 1, 2, 3, 4 }
+      autoc ids = quadtreebox.RangeSearch<false>(search_box, boxes); // { 1, 2, 3, 4 }
 
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1, 2, 3, 4}, ids));
     }

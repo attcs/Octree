@@ -1236,19 +1236,54 @@ namespace OrthoTree
     }
 
 
-    void _collectAllIdInDFS(Node const& nodeParent, vector<entity_id_type>& sidFound) const
+    template<bool fIdCheck = false>
+    void _collectAllIdInDFS(Node const& nodeParent, vector<entity_id_type>& sidFound, entity_id_type idMin = 0) const
     {
-      std::copy(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(sidFound));
+      if constexpr (fIdCheck)
+      {
+        for (autoc id : nodeParent.vid)
+          if (id > idMin)
+            sidFound.emplace_back(id);
+      }
+      else
+        std::copy(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(sidFound));
 
       for (morton_node_id_type_cref kChild : nodeParent.GetChildren())
-        _collectAllIdInDFS(this->GetNode(kChild), sidFound);
+        _collectAllIdInDFS<fIdCheck>(this->GetNode(kChild), sidFound, idMin);
+    }
+
+    template<typename data_type, bool fRangeMustContain = false, bool fIdCheck = false>
+    constexpr void _rangeSearchCopy(box_type const& range, span<data_type const> const& vData, Node const& nodeParent, vector<entity_id_type>& sidFound, entity_id_type idMin = 0) const
+    {
+      for (autoc id : nodeParent.vid)
+      {
+        if constexpr (std::is_same<data_type, box_type>::value)
+        {
+          if constexpr (fIdCheck)
+          {
+            if (id > idMin && _Ad::are_boxes_overlapped(range, vData[id], fRangeMustContain))
+              sidFound.emplace_back(id);
+          }
+          else
+          {
+            if (_Ad::are_boxes_overlapped(range, vData[id], fRangeMustContain))
+              sidFound.emplace_back(id);
+          }
+        }
+        else
+        {
+          if (_Ad::does_box_contain_point(range, vData[id]))
+            sidFound.emplace_back(id);
+        }
+      }
     }
 
 
-    void _rangeSearch(box_type const& range, double rVolumeRange, double rVolumeParent, Node const& nodeParent, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& sidFound) const
+    template<typename data_type, bool fRangeMustContain = false, bool fIdCheck = false>
+    void _rangeSearch(box_type const& range, span<data_type const> const& vData, double rVolumeRange, double rVolumeParent, Node const& nodeParent, vector<entity_id_type>& sidFound, entity_id_type idMin = 0) const
     {
-      std::copy_if(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(sidFound), fnPred);
-
+      _rangeSearchCopy<data_type, fRangeMustContain, fIdCheck>(range, vData, nodeParent, sidFound, idMin);
+      
       autoc rVolumeNode = rVolumeParent / this->_nChild;
       for (morton_node_id_type_cref keyChild : nodeParent.GetChildren())
       {
@@ -1266,19 +1301,20 @@ namespace OrthoTree
           continue;
 
         if (rVolumeRange >= rVolumeNode && _Ad::are_boxes_overlapped(range, nodeChild.box))
-          this->_collectAllIdInDFS(nodeChild, sidFound);
+          _collectAllIdInDFS<fIdCheck>(nodeChild, sidFound, idMin);
         else
-          this->_rangeSearch(range, rVolumeRange, rVolumeNode, nodeChild, fnPred, sidFound);
+          _rangeSearch<data_type, fRangeMustContain, fIdCheck>(range, vData, rVolumeRange, rVolumeNode, nodeChild, sidFound, idMin);
       }
     }
 
-
-    bool _rangeSearchRoot(box_type const& range, size_t nEntity, std::function<bool(entity_id_type)> const& fnPred, vector<entity_id_type>& sidFound, bool fLeafNodeContainsElementOnly = false) const
+    template<typename data_type, bool fRangeMustContain = false, bool fIdCheck = false, bool fLeafNodeContainsElementOnly = true>
+    bool _rangeSearchRoot(box_type const& range, span<data_type const> const& vData, vector<entity_id_type>& sidFound, entity_id_type idMin = 0) const
     {
+      autoc nEntity = vData.size();
       if (_Ad::are_boxes_overlapped(range, this->_box))
       {
-        sidFound.resize(nEntity);
-        std::iota(std::begin(sidFound), std::end(sidFound), 0);
+        sidFound.resize(fIdCheck ? nEntity - idMin - 1 : nEntity);
+        std::iota(std::begin(sidFound), std::end(sidFound), fIdCheck ? idMin + 1 : 0);
         return nEntity;
       }
       
@@ -1309,15 +1345,15 @@ namespace OrthoTree
       autoc nidFoundEstimation = this->_rVolume == 0 ? 10 : static_cast<size_t>((rVolumeRange * nEntity) / this->_rVolume);
       sidFound.reserve(nidFoundEstimation);
       autoc& node = this->GetNode(keyNodeSmallest);
-      this->_rangeSearch(range, rVolumeRange, rVolumeNode, node, fnPred, sidFound);
+      _rangeSearch<data_type, fRangeMustContain, fIdCheck>(range, vData, rVolumeRange, rVolumeNode, node, sidFound, idMin);
 
-      if (!fLeafNodeContainsElementOnly)
+      if constexpr (!fLeafNodeContainsElementOnly)
       {
         keyNodeSmallest >>= nDimension;
         for (; IsValidKey(keyNodeSmallest); keyNodeSmallest >>= nDimension)
         {
           autoc& node = this->GetNode(keyNodeSmallest);
-          std::copy_if(std::begin(node.vid), std::end(node.vid), std::back_inserter(sidFound), fnPred);
+          _rangeSearchCopy<data_type, fRangeMustContain, fIdCheck>(range, vData, node, sidFound, idMin);
         }
       }
 
@@ -1530,12 +1566,13 @@ namespace OrthoTree
 
 
     // Range search
-    vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt, bool fLeafNodeContainsElementOnly = false) const
+    template<bool fLeafNodeContainsElementOnly = false>
+    vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt) const
     {
       auto sidFound = vector<entity_id_type>();
 
       autoc nEntity = vpt.size();
-      if (!this->_rangeSearchRoot(range, nEntity, [&range, &vpt](autoc id) { return _Ad::does_box_contain_point(range, vpt[id]); }, sidFound, fLeafNodeContainsElementOnly))
+      if (!this->_rangeSearchRoot<point_type, false, false, fLeafNodeContainsElementOnly>(range, vpt, sidFound))
         return {};
 
       return sidFound;
@@ -2017,6 +2054,10 @@ namespace OrthoTree
       if (!_Ad::are_boxes_overlapped(this->_box, boxNew))
         return false;
 
+      if constexpr (nSplitStrategyAdditionalDepth == 0)
+        if (FindSmallestNode(boxOld) == FindSmallestNode(boxNew))
+          return true;
+ 
       if (!this->Erase(id, boxOld))
         return false; // id was not registered previously.
 
@@ -2048,12 +2089,13 @@ namespace OrthoTree
 
     
     // Range search
-    vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vBox, bool fFullyContained = true) const
+    template<bool fFullyContained = true>
+    vector<entity_id_type> RangeSearch(box_type const& range, span<box_type const> const& vBox) const
     {
       auto sidFound = vector<entity_id_type>();
 
       autoc nEntity = vBox.size();
-      if (!this->_rangeSearchRoot(range, nEntity, [&range, &vBox, fFullyContained](autoc id) { return _Ad::are_boxes_overlapped(range, vBox[id], fFullyContained); }, sidFound, false))
+      if (!this->_rangeSearchRoot<box_type, fFullyContained, false, false>(range, vBox, sidFound))
         return {};
 
       if constexpr (nSplitStrategyAdditionalDepth > 0)
@@ -2160,7 +2202,7 @@ namespace OrthoTree
         auto sidFound = vector<entity_id_type>();
 
         autoc nEntity = vBox.size();
-        if (!this->_rangeSearchRoot(vBox[idCheck], nEntity, [idCheck, &vBox](autoc id) { return idCheck < id && _Ad::are_boxes_overlapped(vBox[idCheck], vBox[id], false); }, sidFound, false))
+        if (!this->_rangeSearchRoot<box_type, false, true, false>(vBox[idCheck], vBox, sidFound, idCheck))
           return {};
 
         if constexpr (nSplitStrategyAdditionalDepth > 0)

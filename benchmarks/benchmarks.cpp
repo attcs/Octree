@@ -624,7 +624,7 @@ namespace
             autoc n = aBox.size();
             for (size_t i = 0; i < n; ++i)
             {
-              autoc vElem = nt.RangeSearch(aBox[i], aBox, false);
+              autoc vElem = nt.RangeSearch<false>(aBox[i], aBox);
               nFound += vElem.size();
               assert(vElem.size());
             }
