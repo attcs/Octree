@@ -278,6 +278,11 @@ namespace OrthoTree
       return (rel & EBoxRelationCandidate::AdjecentC) == EBoxRelationCandidate::AdjecentC ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
     }
 
+    static constexpr bool are_boxes_overlapped_strict(box_type const& e1, box_type const& e2)
+    {
+      return box_relation(e1, e2) == EBoxRelation::Overlapped;
+    }
+
     static constexpr bool are_boxes_overlapped(box_type const& e1, box_type const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false)
     {
       autoc e1_contains_e2min = does_box_contain_point(e1, base::box_min_c(e2));
@@ -1254,12 +1259,27 @@ namespace OrthoTree
         {
           if constexpr (fIdCheck)
           {
-            if (id > idMin && _Ad::are_boxes_overlapped(range, vData[id], fRangeMustContain))
+            if (id <= idMin)
+              continue;
+
+            bool fAdd = false;
+            if constexpr (fRangeMustContain)
+              fAdd = _Ad::are_boxes_overlapped(range, vData[id], fRangeMustContain);
+            else
+              fAdd = _Ad::are_boxes_overlapped_strict(range, vData[id]);
+
+            if (fAdd)
               sidFound.emplace_back(id);
           }
           else
           {
-            if (_Ad::are_boxes_overlapped(range, vData[id], fRangeMustContain))
+            bool fAdd = false;
+            if constexpr (fRangeMustContain)
+              fAdd = _Ad::are_boxes_overlapped(range, vData[id], fRangeMustContain);
+            else
+              fAdd = _Ad::are_boxes_overlapped_strict(range, vData[id]);
+
+            if (fAdd)
               sidFound.emplace_back(id);
           }
         }
@@ -1780,13 +1800,19 @@ namespace OrthoTree
       autoc nElement = std::distance(itEndPrev, itEnd);
       if (nElement < this->_nElementMax || nDepthRemain == 0)
       {
+        if (nElement == 0)
+          return;
+
         nodeParent.vid.resize(nElement);
         std::transform(itEndPrev, itEnd, begin(nodeParent.vid), [](autoc& item) { return item.id; });
         itEndPrev = itEnd;
+        if constexpr (nSplitStrategyAdditionalDepth > 0)
+        {
+          std::ranges::sort(nodeParent.vid);
+          nodeParent.vid.erase(std::unique(std::begin(nodeParent.vid), std::end(nodeParent.vid)), std::end(nodeParent.vid));
+        }
         return;
       }
-
-      autoc nGridHalfSizeOfNode = static_cast<grid_id_type>(pow_ce(2, nDepthRemain - 1));
 
       auto depthCheck = this->_nDepthMax - nDepthRemain;
       if (itEndPrev->depth == depthCheck)
@@ -1795,8 +1821,14 @@ namespace OrthoTree
         itEndPrev = std::partition_point(it, itEnd, [&](autoc& idLocation) { return idLocation.depth == it->depth; });
         autoc nElementCur = static_cast<int>(std::distance(it, itEndPrev));
 
+
         nodeParent.vid.resize(nElementCur);
         std::transform(it, itEndPrev, std::begin(nodeParent.vid), [](autoc& item) { return item.id; });
+        if constexpr (nSplitStrategyAdditionalDepth > 0)
+        {
+          std::ranges::sort(nodeParent.vid);
+          nodeParent.vid.erase(std::unique(std::begin(nodeParent.vid), std::end(nodeParent.vid)), std::end(nodeParent.vid));
+        }
       }
 
       ++depthCheck;
@@ -2235,9 +2267,10 @@ namespace OrthoTree
       return CollisionDetection(*this, vBox, treeOther, vBoxOther);
     }
 
-    // Collision detection between the stored elements
+  private:
+    // Collision detection between the stored elements from top to bottom logic
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vBox) const
+    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetectionObsolete(span<box_type const> const& vBox) const
     {
       autoc nEntity = vBox.size();
 
@@ -2273,6 +2306,224 @@ namespace OrthoTree
 
       return vPair;
     }
+
+  public:
+    // Collision detection between the stored elements from bottom to top logic
+    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vBox) const
+    {
+      autoc nEntity = vBox.size();
+      auto vidCollision = vector<pair<entity_id_type, entity_id_type>>();
+      vidCollision.reserve(vBox.size());
+
+
+      // nSplitStrategyAdditionalDepth version of this algorithm needs a reverse map
+      auto vReverseMap = vector<vector<morton_node_id_type>>(nEntity);
+      if constexpr (nSplitStrategyAdditionalDepth > 0)
+      {
+        std::for_each(std::begin(this->_nodes), std::end(this->_nodes), [&vReverseMap](autoc& pairKeyNode)
+        {
+          autoc& [kNode, node] = pairKeyNode;
+          for (autoc& id : node.vid)
+            vReverseMap[id].emplace_back(kNode);
+        });
+
+        std::for_each(execution_policy_type{}, std::begin(vReverseMap), std::end(vReverseMap), [](auto& vKey)
+        {
+          std::ranges::sort(vKey);
+        });
+      }
+
+
+      // Entities which contain all of the tree could slow the algorithm, so these are eliminated
+      auto vidDepth0 = vector<entity_id_type>();
+      {
+        autoc& nodeRoot = this->GetNode(this->GetRootKey());
+        for (autoc idEntity : nodeRoot.vid)
+        {
+          if (_Ad::are_boxes_overlapped(vBox[idEntity], this->_box))
+          {
+            for (auto idEntityOther = idEntity + 1; idEntityOther < nEntity; ++idEntityOther)
+              vidCollision.emplace_back(idEntity, idEntityOther);
+          }
+          else
+            vidDepth0.emplace_back(idEntity);
+        }
+      }
+
+
+      // Collision detection node-by-node without duplication
+      auto vvidCollisionByNode = vector<vector<pair<entity_id_type, entity_id_type>>>(this->_nodes.size());
+      std::transform(execution_policy_type{}, std::begin(this->_nodes), std::end(this->_nodes), std::begin(vvidCollisionByNode), [&vBox, &vReverseMap, &vidDepth0, this](autoc& pairKeyNode) -> vector<pair<entity_id_type, entity_id_type>>
+      {
+        auto aidPair = vector<pair<entity_id_type, entity_id_type>>{};
+        autoc& [keyNode, node] = pairKeyNode;
+
+        autoc nDepthNode = this->GetDepth(keyNode);
+
+        autoc pvid = nDepthNode == 0 ? &vidDepth0 : &node.vid;
+        autoc& vid = *pvid;
+        autoc nEntityNode = vid.size();
+
+        aidPair.reserve(nEntityNode);
+
+        // Collision detection with the parents
+        if (nDepthNode > 0)
+        {
+          auto idDepthParent = nDepthNode - 1;
+          auto idDepthDiff = depth_type(1);
+          for (auto keyParent = keyNode >> nDimension; base::IsValidKey(keyParent); keyParent >>= nDimension, --idDepthParent, ++idDepthDiff)
+          {
+            autoc pvidParent = idDepthParent == 0 ? &vidDepth0 : &this->GetNode(keyParent).vid;
+
+            if constexpr (nSplitStrategyAdditionalDepth == 0)
+            {
+              for (autoc iEntityNode : vid)
+                for (autoc iEntityParent : *pvidParent)
+                  if (_Ad::are_boxes_overlapped_strict(vBox[iEntityNode], vBox[iEntityParent]))
+                    aidPair.emplace_back(iEntityNode, iEntityParent);
+            }
+            else
+            {
+              // nSplitStrategyAdditionalDepth: idEntity could occur in multiple node. This algorithm aims to check only the first occurrence's parents.
+
+              auto vidCheckUp = vector<entity_id_type>{};
+              vidCheckUp.reserve(nEntityNode);
+              auto vidPairFromOtherBranch = unordered_map<entity_id_type, set<entity_id_type>>{};
+              for (size_t iEntity = 0; iEntity < nEntityNode; ++iEntity)
+              {
+                autoc& vKeyEntity = vReverseMap[vid[iEntity]];
+                autoc nKeyEntity = vKeyEntity.size();
+                if (nKeyEntity == 1)
+                  vidCheckUp.emplace_back(vid[iEntity]);
+                else
+                {
+                  if (vKeyEntity[0] == keyNode)
+                    vidCheckUp.emplace_back(vid[iEntity]);
+                  else if (idDepthDiff <= nSplitStrategyAdditionalDepth)
+                  {
+                    auto vKeyEntitySameDepth = vector<morton_node_id_type>();
+                    for (size_t iKeyEntity = 1; iKeyEntity < nKeyEntity; ++iKeyEntity)
+                    {
+                      // An earlier node is already check this level
+                      {
+                        auto& keyEntitySameDepth = vKeyEntitySameDepth.emplace_back(vKeyEntity[iKeyEntity - 1]);
+                        autoc nDepthPrev = this->GetDepth(keyEntitySameDepth);
+                        if (nDepthPrev > idDepthParent)
+                          keyEntitySameDepth >>= nDimension * (nDepthPrev - idDepthParent);
+
+                        if (keyEntitySameDepth == keyParent)
+                          break;
+                      }
+
+                      if (vKeyEntity[iKeyEntity] != keyNode)
+                        continue;
+
+                      // On other branch splitted boxes could conflict already
+                      for (autoc iEntityParent : *pvidParent)
+                      {
+                        autoc& vKeyEntityParent = vReverseMap[iEntityParent];
+                        autoc nKeyEntityParent = vKeyEntityParent.size();
+
+                        for (size_t iKeyEntityPrev = 0, iKeyEntityParent = 0; iKeyEntityPrev < iKeyEntity && iKeyEntityParent < nKeyEntityParent;)
+                        {
+                          if (vKeyEntityParent[iKeyEntityParent] == vKeyEntity[iKeyEntityPrev] || (vKeyEntityParent[iKeyEntityParent] == vKeyEntitySameDepth[iKeyEntityPrev]))
+                          {
+                            // Found a common an earlier common key
+                            vidPairFromOtherBranch[vid[iEntity]].emplace(iEntityParent);
+                            break;
+                          }
+                          else if (vKeyEntityParent[iKeyEntityParent] < vKeyEntity[iKeyEntityPrev])
+                            ++iKeyEntityParent;
+                          else
+                            ++iKeyEntityPrev;
+                        }
+                      }
+
+                      vidCheckUp.emplace_back(vid[iEntity]);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (vidPairFromOtherBranch.empty())
+              {
+                for (autoc iEntityNode : vidCheckUp)
+                  for (autoc iEntityParent : *pvidParent)
+                    if (_Ad::are_boxes_overlapped_strict(vBox[iEntityNode], vBox[iEntityParent]))
+                      aidPair.emplace_back(iEntityNode, iEntityParent);
+              }
+              else
+              {
+                for (autoc iEntityNode : vidCheckUp)
+                {
+                  autoc it = vidPairFromOtherBranch.find(iEntityNode);
+                  autoc fThereAreFromOtherBranch = it != vidPairFromOtherBranch.end();
+
+                  for (autoc iEntityParent : *pvidParent)
+                  {
+                    autoc fAlreadyContainted = fThereAreFromOtherBranch && it->second.contains(iEntityParent);
+                    if (!fAlreadyContainted && _Ad::are_boxes_overlapped_strict(vBox[iEntityNode], vBox[iEntityParent]))
+                      aidPair.emplace_back(iEntityNode, iEntityParent);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+
+        // Node inside collision detection
+        if (nEntityNode > 1)
+        {
+          for (size_t iEntity = 0; iEntity < nEntityNode; ++iEntity)
+          {
+            autoc iEntityNode = vid[iEntity];
+            autoc& vKeyEntity = vReverseMap[iEntityNode];
+            autoc nKeyEntity = vKeyEntity.size();
+
+            for (size_t jEntity = iEntity + 1; jEntity < nEntityNode; ++jEntity)
+            {
+              if constexpr (nSplitStrategyAdditionalDepth == 0)
+              {
+                if (_Ad::are_boxes_overlapped_strict(vBox[iEntityNode], vBox[vid[jEntity]]))
+                  aidPair.emplace_back(iEntityNode, vid[jEntity]);
+              }
+              else
+              {
+                // Same entities could collide in other nodes, but only the first should occurrence should check
+                autoc& vKeyEntityJ = vReverseMap[vid[jEntity]];
+                auto bIsTheFirstCollisionCheck = nKeyEntity == 1 || vKeyEntityJ.size() == 1;
+                if (!bIsTheFirstCollisionCheck)
+                {
+                  for (size_t iKeyEntity = 0, jKeyEntity = 0; iKeyEntity < nKeyEntity; )
+                  {
+                    if      (vKeyEntityJ[jKeyEntity] == vKeyEntity[iKeyEntity]) { bIsTheFirstCollisionCheck = keyNode == vKeyEntity[iKeyEntity]; break; }
+                    else if (vKeyEntityJ[jKeyEntity] < vKeyEntity[iKeyEntity])  ++jKeyEntity;
+                    else                                                        ++iKeyEntity;
+                  }
+                }
+
+                if (bIsTheFirstCollisionCheck)
+                  if (_Ad::are_boxes_overlapped_strict(vBox[iEntityNode], vBox[vid[jEntity]]))
+                    aidPair.emplace_back(iEntityNode, vid[jEntity]);
+              }
+            }
+          }
+        }
+
+        return aidPair;
+      });
+
+      //vidCollision.reserve(vBox.size());
+      for (autoc& vidCollisionNode : vvidCollisionByNode)
+        vidCollision.insert(vidCollision.end(), vidCollisionNode.begin(), vidCollisionNode.end());
+      
+      return vidCollision;
+    }
+
+
 
   private:
    
