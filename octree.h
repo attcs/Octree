@@ -2312,8 +2312,10 @@ namespace OrthoTree
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(span<box_type const> const& vBox) const
     {
+      using CollisionDetectionContainer = vector<std::pair<entity_id_type, entity_id_type>>;
+
       autoc nEntity = vBox.size();
-      auto vidCollision = vector<pair<entity_id_type, entity_id_type>>();
+      auto vidCollision = CollisionDetectionContainer();
       vidCollision.reserve(vBox.size());
 
 
@@ -2353,10 +2355,10 @@ namespace OrthoTree
 
 
       // Collision detection node-by-node without duplication
-      auto vvidCollisionByNode = vector<vector<pair<entity_id_type, entity_id_type>>>(this->_nodes.size());
-      std::transform(execution_policy_type{}, std::begin(this->_nodes), std::end(this->_nodes), std::begin(vvidCollisionByNode), [&vBox, &vReverseMap, &vidDepth0, this](autoc& pairKeyNode) -> vector<pair<entity_id_type, entity_id_type>>
+      auto vvidCollisionByNode = vector<CollisionDetectionContainer>(this->_nodes.size());
+      std::transform(execution_policy_type{}, std::begin(this->_nodes), std::end(this->_nodes), std::begin(vvidCollisionByNode), [&vBox, &vReverseMap, &vidDepth0, this](autoc& pairKeyNode) -> CollisionDetectionContainer
       {
-        auto aidPair = vector<pair<entity_id_type, entity_id_type>>{};
+        auto aidPair = CollisionDetectionContainer{};
         autoc& [keyNode, node] = pairKeyNode;
 
         autoc nDepthNode = this->GetDepth(keyNode);
@@ -2679,6 +2681,8 @@ namespace OrthoTree
   using TreeBox16D = TreeBoxND<16>;
 }
 
+
+#include "octree_container.h"
 
 #ifdef undef_autoc
 #undef autoc

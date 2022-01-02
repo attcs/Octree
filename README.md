@@ -1,9 +1,7 @@
 # Octree/Quadtree/N-dimensional linear tree
 [![MSBuild and Unittests](https://github.com/attcs/Octree/actions/workflows/msbuild.yml/badge.svg)](https://github.com/attcs/Octree/actions/workflows/msbuild.yml)
 <br>
-Lightweight, parallelizable, non-storing/non-owning C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
-<br>
-Why is it non-owning? Usually, the geometric objects and their metadata are already stored in a database, making the creation process efficient and avoiding the responsibility of the complex data management, this solution stores only id-s.<br>
+Lightweight, parallelizable C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
 <br>
 What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
@@ -20,6 +18,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Collision detection
 * Nodes can be accessed in O(1) time
 * Search is accelerated by Morton Z curve based location code
+* Both the non-owning `Core` and the `Container` wrapper is provided
 
 ## Limitations
 * Maximum number of dimensions is 63.
@@ -37,7 +36,8 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
 * Call the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
 * Call `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
-* Call edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
+* Call `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
+* Call `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
 * Call `CollisionDetection()` member function for two bounding box trees overlap examination.
 * Call `VisitNodes()` to traverse the tree from up to down (breadth-first search) with user-defined `selector()` and `procedure()`.
 * Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
@@ -47,7 +47,9 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 ## Notes
 * Header only implementation.
 * Point and Bounding box-based solution was distinguished.
-* Bounding box-based solution stores item id in the parent node if it is not fit into any child node.
+* Core types store only the entity ids, use Container types to store. Core types advantages: not copying and managing the entity information; disadvantages: this information may have to be provided again for the member function call.
+* Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
+* Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `nSplitStrategyAdditionalDepth` template parameter, these boxes can be splitted then placed on the deeper level of the tree. The `nSplitStrategyAdditionalDepth` default is 2 and this split method is applied by default.
 * Edit functions are available but not recommended to majorly build the tree.
 * If less element is collected in a node than the max element then the child node won't be created.
 * The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
@@ -57,11 +59,15 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Major aliases in OrthoTree
 ```C++
-  // Default geometrical base elements
+  /// Default geometrical base elements
+
   using Point2D = OrthoTree::PointND<2>;
   using Point3D = OrthoTree::PointND<3>;
   using BoundingBox2D = OrthoTree::BoundingBoxND<2>;
   using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
+
+
+  /// Core types
 
   // Quadtree for points (2D)
   using QuadtreePoint = TreePointND<2>;
@@ -80,64 +86,126 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
   
   // ...
   using TreePoint16D = TreePointND<16>;
+
+
+  /// Container types
+
+  // Quadtree for points (2D)
+  using QuadtreePointC = TreePointContainerND<2>;
+
+  // Quadtree for bounding boxes (2D)
+  using QuadtreeBoxC = TreeBoxContainerND<2>;
+
+  // Octree for points (3D)
+  using OctreePointC = TreePointContainerND<3>;
+
+  // Octree for bounding boxes (3D)
+  using OctreeBoxC = TreeBoxContainerND<3>;
 ```
 
 
 ## Basic examples
+
+Usage of Container types
 ```C++
     #include "octree.h"
     using namespace OrthoTree;
     
     // Example #1: Octree for points
     {
-        auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
-        auto const octree = OctreePoint::Create(points, 3 /*max depth*/);
+      auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
+      auto const octree = OctreePointC(points, 3 /*max depth*/);
 
-        auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
-        auto ids = octree.RangeSearch(search_box, points); // -> { 1, 2 }
-        auto knn_ids = octree.GetNearestNeighbors(Point3D{ 1.1,1.1,1.1 }, 2 /*k*/, points); // -> { 1, 2 }
+      auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
+      auto ids = octree.RangeSearch(search_box); // -> { 1, 2 }
+      auto knn_ids = octree.GetNearestNeighbors(Point3D{ 1.1,1.1,1.1 }, 2 /*k*/); // -> { 1, 2 }
     }
     
     // Example #2: Quadtree for bounding boxes
     {
-        auto boxes = vector
-        {
-            BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
-            BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
-            BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
-            BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
-            BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
-        };
+      auto boxes = vector
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+        BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
+      };
 
-        auto quadtreebox = QuadtreeBox::Create(boxes, 3
-            , std::nullopt // user-provided bounding box for all
-            , 2            // max element in a node 
-            );
+      auto quadtreebox = QuadtreeBoxC(boxes, 3
+        , std::nullopt // user-provided bounding box for all
+        , 2            // max element in a node 
+      );
 
-        auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
-        
-        // Boxes within the range
-        auto ids_inside = quadtreebox.RangeSearch(search_box, boxes); // -> { 1, 2, 4 }
-        
-        // Overlaping Boxes with the range
-        auto ids_overlaping = quadtreebox.RangeSearch<false/*overlap is enough*/>(search_box, boxes);
-            // -> { 1, 2, 3, 4 }
-        
-        // Picked boxes
-        auto ptPick = Point2D{ 2.5, 2.5 };
-        auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // -> { 2, 4 }
+      // Collision detection
+      auto ids_pairs_colliding = quadtreebox.CollisionDetection(); // { {1,4}, {2,4} }
+
+      // Range search
+      auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
+      auto ids_inside = quadtreebox.RangeSearch(search_box); // -> { 1, 2, 4 }
+      auto ids_overlaping = quadtreebox.RangeSearch<false /*overlap is enough*/>(search_box); // -> { 1, 2, 3, 4 }
+
+      // Picked boxes
+      auto ptPick = Point2D{ 2.5, 2.5 };
+      auto ids_picked = quadtreebox.PickSearch(ptPick); // -> { 2, 4 }
     }
     
     // Example #3: Parallel creation of octree for bounding boxes
     {
-        auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
-        auto octreebox = OctreeBox::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
-        // or
-        // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
+      auto octreebox = OctreeBoxC::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      // or
+      // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+    }
+```
+
+Usage of Core types
+```C++
+    #include "octree.h"
+    using namespace OrthoTree;
+    
+    // Example #1: Octree for points
+    {
+      auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
+      auto const octree = OctreePoint::Create(points, 3 /*max depth*/);
+       
+      auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
+      auto ids = octree.RangeSearch(search_box, points); // -> { 1, 2 }
+      auto knn_ids = octree.GetNearestNeighbors(Point3D{ 1.1,1.1,1.1 }, 2 /*k*/, points); // -> { 1, 2 }
     }
     
-    // For more examples, see the unit tests.
+    // Example #2: Quadtree for bounding boxes
+    {
+      auto boxes = vector
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+        BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
+      };
+
+      auto quadtreebox = QuadtreeBox::Create(boxes, 3
+        , std::nullopt // user-provided bounding box for all
+        , 2            // max element in a node 
+      );
+
+      // Collision detection
+      auto ids_pairs_colliding = quadtreebox.CollisionDetection(boxes); // { {1,4}, {2,4} }
+
+      // Range search
+      auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
+      auto ids_inside = quadtreebox.RangeSearch(search_box, boxes); // -> { 1, 2, 4 }
+      auto ids_overlaping = quadtreebox.RangeSearch<false/*overlap is enough*/>(search_box, boxes);
+        // -> { 1, 2, 3, 4 }
+      
+      // Picked boxes
+      auto ptPick = Point2D{ 2.5, 2.5 };
+      auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // -> { 2, 4 }
+    }
 ```
+    
+For more examples, see the unit tests.
 <div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/quadtree_example.PNG " align="center" height="300"></div>
 
 
