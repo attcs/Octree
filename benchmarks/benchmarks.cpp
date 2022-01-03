@@ -353,7 +353,7 @@ namespace
     return aBox;
   }
 
-  template <typename point_type, typename box_type>
+  template <typename vector_type, typename box_type>
   vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<box_type const> const& vBox)
   {
     autoc n = vBox.size();
@@ -365,13 +365,13 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, point_type, box_type>::are_boxes_overlapped(boxSearch, vBox[i], false))
+        if (AdaptorGeneral<N, vector_type, box_type>::are_boxes_overlapped(boxSearch, vBox[i], false))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
   }
 
-  template <typename point_type, typename box_type, typename execution_policy_type = std::execution::unsequenced_policy>
+  template <typename vector_type, typename box_type, typename execution_policy_type = std::execution::unsequenced_policy>
   vector<std::pair<entity_id_type, entity_id_type>> SelfConflicthNaive(span<box_type const> const& vBox)
   {
     autoc nEntity = vBox.size();
@@ -384,7 +384,7 @@ namespace
     {
       auto sidFound = vector<entity_id_type>();
       for (size_t i = idCheck + 1; i < nEntity; ++i)
-        if (AdaptorGeneral<N, point_type, box_type>::are_boxes_overlapped(vBox[idCheck], vBox[i], false))
+        if (AdaptorGeneral<N, vector_type, box_type>::are_boxes_overlapped(vBox[idCheck], vBox[i], false))
           sidFound.emplace_back(i);
 
       return sidFound;
@@ -402,8 +402,8 @@ namespace
   }
 
 
-  template <typename point_type, typename box_type>
-  vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<point_type const> const& vPoint)
+  template <typename vector_type, typename box_type>
+  vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<vector_type const> const& vPoint)
   {
     autoc n = vPoint.size();
     auto vElementFound = vector<vector<OrthoTree::entity_id_type>>();
@@ -414,7 +414,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, point_type, box_type>::does_box_contain_point(boxSearch, vPoint[i]))
+        if (AdaptorGeneral<N, vector_type, box_type>::does_box_contain_point(boxSearch, vPoint[i]))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;

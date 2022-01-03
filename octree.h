@@ -134,48 +134,48 @@ namespace OrthoTree
 
   // Adaptor concepts
 
-  template <class adaptor_type, typename point_type, typename box_type, typename geometry_type = double>
+  template <class adaptor_type, typename vector_type, typename box_type, typename geometry_type = double>
   concept AdaptorBasicsConcept =
-    requires (point_type & pt, dim_type iDimension) { {adaptor_type::point_comp(pt, iDimension)}->std::convertible_to<geometry_type&>; }
-  && requires (point_type const& pt, dim_type iDimension) { {adaptor_type::point_comp_c(pt, iDimension)}->std::convertible_to<geometry_type>; }
-  && requires (box_type& box) { { adaptor_type::box_min(box) }->std::convertible_to<point_type&>; }
-  && requires (box_type& box) { { adaptor_type::box_max(box) }->std::convertible_to<point_type&>; }
-  && requires (box_type const& box) { { adaptor_type::box_min_c(box) }->std::convertible_to<point_type>; }
-  && requires (box_type const& box) { { adaptor_type::box_max_c(box) }->std::convertible_to<point_type>; }
+    requires (vector_type & pt, dim_type iDimension) { {adaptor_type::point_comp(pt, iDimension)}->std::convertible_to<geometry_type&>; }
+  && requires (vector_type const& pt, dim_type iDimension) { {adaptor_type::point_comp_c(pt, iDimension)}->std::convertible_to<geometry_type>; }
+  && requires (box_type& box) { { adaptor_type::box_min(box) }->std::convertible_to<vector_type&>; }
+  && requires (box_type& box) { { adaptor_type::box_max(box) }->std::convertible_to<vector_type&>; }
+  && requires (box_type const& box) { { adaptor_type::box_min_c(box) }->std::convertible_to<vector_type>; }
+  && requires (box_type const& box) { { adaptor_type::box_max_c(box) }->std::convertible_to<vector_type>; }
   ;
 
-  template <class adaptor_type, typename point_type, typename box_type, typename geometry_type = double>
+  template <class adaptor_type, typename vector_type, typename box_type, typename geometry_type = double>
   concept AdaptorConcept =
-    requires { AdaptorBasicsConcept<adaptor_type, point_type, box_type, geometry_type>; }
-  && requires (box_type const& box, point_type const& pt) { { adaptor_type::does_box_contain_point(box, pt)}->std::convertible_to<bool>; }
+    requires { AdaptorBasicsConcept<adaptor_type, vector_type, box_type, geometry_type>; }
+  && requires (box_type const& box, vector_type const& pt) { { adaptor_type::does_box_contain_point(box, pt)}->std::convertible_to<bool>; }
   && requires (box_type const& e1, box_type const& e2, bool e1_must_contain_e2) { { adaptor_type::are_boxes_overlapped(e1, e2, e1_must_contain_e2)}->std::convertible_to<bool>; }
-  && requires (span<point_type const> const& vPoint) { { adaptor_type::box_of_points(vPoint)}->std::convertible_to<box_type>; }
+  && requires (span<vector_type const> const& vPoint) { { adaptor_type::box_of_points(vPoint)}->std::convertible_to<box_type>; }
   && requires (span<box_type const> const& vBox) { { adaptor_type::box_of_boxes(vBox)}->std::convertible_to<box_type>; }
   ;
 
 
   // Adaptors
 
-  template <dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
+  template <dim_type nDimension, typename vector_type, typename box_type, typename geometry_type = double>
   struct AdaptorGeneralBasics
   {
-    static constexpr geometry_type& point_comp(point_type& pt, dim_type iDimension) { return pt[iDimension]; }
-    static constexpr geometry_type const& point_comp_c(point_type const& pt, dim_type iDimension) { return pt[iDimension]; }
+    static constexpr geometry_type& point_comp(vector_type& pt, dim_type iDimension) { return pt[iDimension]; }
+    static constexpr geometry_type const& point_comp_c(vector_type const& pt, dim_type iDimension) { return pt[iDimension]; }
 
-    static constexpr point_type& box_min(box_type& box) { return box.Min; }
-    static constexpr point_type& box_max(box_type& box) { return box.Max; }
-    static constexpr point_type const& box_min_c(box_type const& box) { return box.Min; }
-    static constexpr point_type const& box_max_c(box_type const& box) { return box.Max; }
+    static constexpr vector_type& box_min(box_type& box) { return box.Min; }
+    static constexpr vector_type& box_max(box_type& box) { return box.Max; }
+    static constexpr vector_type const& box_min_c(box_type const& box) { return box.Min; }
+    static constexpr vector_type const& box_max_c(box_type const& box) { return box.Max; }
   };
 
 
-  template <dim_type nDimension, typename point_type, typename box_type, typename adaptor_basics_type, typename geometry_type = double>
+  template <dim_type nDimension, typename vector_type, typename box_type, typename adaptor_basics_type, typename geometry_type = double>
   struct AdaptorGeneralBase : adaptor_basics_type
   {
     using base = adaptor_basics_type;
-    static_assert(AdaptorBasicsConcept<base, point_type, box_type, geometry_type>);
+    static_assert(AdaptorBasicsConcept<base, vector_type, box_type, geometry_type>);
 
-    static constexpr geometry_type size2(point_type const& pt)
+    static constexpr geometry_type size2(vector_type const& pt)
     {
       auto d2 = geometry_type{ 0 };
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
@@ -186,54 +186,54 @@ namespace OrthoTree
       return d2;
     }
 
-    static constexpr geometry_type size(point_type const& pt)
+    static constexpr geometry_type size(vector_type const& pt)
     {
       return sqrt(size2(pt));
     }
 
-    static constexpr point_type add(point_type const& ptL, point_type const& ptR)
+    static constexpr vector_type add(vector_type const& ptL, vector_type const& ptR)
     {
-      auto pt = point_type{};
+      auto pt = vector_type{};
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
         base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) + base::point_comp_c(ptR, iDim);
 
       return pt;
     }
 
-    static constexpr point_type subtract(point_type const& ptL, point_type const& ptR)
+    static constexpr vector_type subtract(vector_type const& ptL, vector_type const& ptR)
     {
-      auto pt = point_type{};
+      auto pt = vector_type{};
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
         base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) - base::point_comp_c(ptR, iDim);
 
       return pt;
     }
 
-    static constexpr point_type div(point_type const& ptL, geometry_type const& rScalarR)
+    static constexpr vector_type div(vector_type const& ptL, geometry_type const& rScalarR)
     {
-      auto pt = point_type{};
+      auto pt = vector_type{};
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
         base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) / rScalarR;
 
       return pt;
     }
 
-    static constexpr geometry_type distance(point_type const& ptL, point_type const& ptR)
+    static constexpr geometry_type distance(vector_type const& ptL, vector_type const& ptR)
     {
       return size(subtract(ptL, ptR));
     }
 
-    static constexpr geometry_type distance2(point_type const& ptL, point_type const& ptR)
+    static constexpr geometry_type distance2(vector_type const& ptL, vector_type const& ptR)
     {
       return size2(subtract(ptL, ptR));
     }
 
-    static constexpr bool are_points_equal(point_type const& ptL, point_type const& ptR, geometry_type rAccuracy)
+    static constexpr bool are_points_equal(vector_type const& ptL, vector_type const& ptR, geometry_type rAccuracy)
     {
       return distance2(ptL, ptR) <= rAccuracy * rAccuracy;
     }
 
-    static constexpr bool does_box_contain_point(box_type const& box, point_type const& pt)
+    static constexpr bool does_box_contain_point(box_type const& box, vector_type const& pt)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         if (!(base::point_comp_c(base::box_min_c(box), iDimension) <= base::point_comp_c(pt, iDimension) && base::point_comp_c(pt, iDimension) <= base::point_comp_c(base::box_max_c(box), iDimension)))
@@ -242,7 +242,7 @@ namespace OrthoTree
       return true;
     }
 
-    static constexpr bool does_box_contain_point_strict(box_type const& box, point_type const& pt)
+    static constexpr bool does_box_contain_point_strict(box_type const& box, vector_type const& pt)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         if (!(base::point_comp_c(base::box_min_c(box), iDimension) < base::point_comp_c(pt, iDimension) && base::point_comp_c(pt, iDimension) < base::point_comp_c(base::box_max_c(box), iDimension)))
@@ -252,7 +252,7 @@ namespace OrthoTree
     }
 
 
-    static constexpr bool does_point_touch_box(box_type const& box, point_type const& pt)
+    static constexpr bool does_point_touch_box(box_type const& box, vector_type const& pt)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         if ((base::point_comp_c(base::box_min_c(box), iDimension) == base::point_comp_c(pt, iDimension)))
@@ -311,7 +311,7 @@ namespace OrthoTree
       return ext;
     }
 
-    static box_type box_of_points(span<point_type const> const& vPoint)
+    static box_type box_of_points(span<vector_type const> const& vPoint)
     {
       auto ext = box_inverted_init();
       for (autoc& pt : vPoint)
@@ -343,7 +343,7 @@ namespace OrthoTree
       return ext;
     }
 
-    static void move_box(box_type& box, point_type const& vMove)
+    static void move_box(box_type& box, vector_type const& vMove)
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
@@ -352,26 +352,26 @@ namespace OrthoTree
       }
     }
 
-    static std::optional<double> is_ray_hit(box_type const& box, point_type const& rayBase, point_type const& rayHeading)
+    static constexpr std::optional<double> is_ray_hit(box_type const& box, vector_type const& rayBasePoint, vector_type const& rayHeading)
     {
-      if (does_box_contain_point(box, rayBase))
+      if (does_box_contain_point(box, rayBasePoint))
         return 0.0;
 
       autoc& ptBoxMin = base::box_min_c(box);
       autoc& ptBoxMax = base::box_max_c(box);
 
       autoce inf = std::numeric_limits<double>::infinity();
-      // ptHit = rayBase + rayHeading * r
+      // ptHit = rayBasePoint + rayHeading * r
       auto aRMinMax = array<array<double, nDimension>, 2>();
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         autoc hComp = base::point_comp_c(rayHeading, iDimension);
         if (hComp == 0)
         {
-          if (base::point_comp_c(ptBoxMax, iDimension) < base::point_comp_c(rayBase, iDimension))
+          if (base::point_comp_c(ptBoxMax, iDimension) < base::point_comp_c(rayBasePoint, iDimension))
             return std::nullopt;
 
-          if (base::point_comp_c(ptBoxMin, iDimension) > base::point_comp_c(rayBase, iDimension))
+          if (base::point_comp_c(ptBoxMin, iDimension) > base::point_comp_c(rayBasePoint, iDimension))
             return std::nullopt;
 
           aRMinMax[0][iDimension] = -inf;
@@ -379,8 +379,8 @@ namespace OrthoTree
           continue;
         }
 
-        aRMinMax[0][iDimension] = (base::point_comp_c(hComp > 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBase, iDimension)) / hComp;
-        aRMinMax[1][iDimension] = (base::point_comp_c(hComp < 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBase, iDimension)) / hComp;
+        aRMinMax[0][iDimension] = (base::point_comp_c(hComp > 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBasePoint, iDimension)) / hComp;
+        aRMinMax[1][iDimension] = (base::point_comp_c(hComp < 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBasePoint, iDimension)) / hComp;
       }
 
       autoc rMin = *std::ranges::max_element(aRMinMax[0]);
@@ -393,8 +393,8 @@ namespace OrthoTree
   };
 
 
-  template<dim_type nDimension, typename point_type, typename box_type, typename geometry_type = double>
-  using AdaptorGeneral = AdaptorGeneralBase<nDimension, point_type, box_type, AdaptorGeneralBasics<nDimension, point_type, box_type, geometry_type>, geometry_type>;
+  template<dim_type nDimension, typename vector_type, typename box_type, typename geometry_type = double>
+  using AdaptorGeneral = AdaptorGeneralBase<nDimension, vector_type, box_type, AdaptorGeneralBasics<nDimension, vector_type, box_type, geometry_type>, geometry_type>;
 
 
   template<size_t N> using bitset_arithmetic = bitset<N>;
@@ -562,7 +562,7 @@ namespace OrthoTree
 
 
   // NTreeLinear: Non-owning base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
-  template<dim_type nDimension, typename point_type_, typename box_type_, typename adaptor_type = AdaptorGeneral<nDimension, point_type_, box_type_, double>, typename geometry_type = double>
+  template<dim_type nDimension, typename vector_type_, typename box_type_, typename adaptor_type = AdaptorGeneral<nDimension, vector_type_, box_type_, double>, typename geometry_type = double>
   class OrthoTreeBase
   {
     static_assert(0 < nDimension && nDimension < 64);
@@ -592,11 +592,11 @@ namespace OrthoTree
     using morton_node_id_type_cref = morton_grid_id_type_cref;
     using max_element_type = uint32_t;
     using depth_type = uint32_t;
-    using point_type = point_type_;
+    using vector_type = vector_type_;
     using box_type = box_type_;
 
     using _Ad = adaptor_type;
-    static_assert(AdaptorConcept<_Ad, point_type, box_type, geometry_type>);
+    static_assert(AdaptorConcept<_Ad, vector_type, box_type, geometry_type>);
 
   protected:
 
@@ -712,7 +712,7 @@ namespace OrthoTree
 
   protected: // Grid functions
 
-    static constexpr array<double, nDimension> _getGridRasterizer(point_type const& p0, point_type const& p1, grid_id_type n_divide)
+    static constexpr array<double, nDimension> _getGridRasterizer(vector_type const& p0, vector_type const& p1, grid_id_type n_divide)
     {
       auto aRasterizer = array<double, nDimension>{};
       
@@ -725,7 +725,7 @@ namespace OrthoTree
     }
 
 
-    constexpr array<grid_id_type, nDimension> _getGridIdPoint(point_type const& pe) const
+    constexpr array<grid_id_type, nDimension> _getGridIdPoint(vector_type const& pe) const
     {
       auto aid = array<grid_id_type, nDimension>{};
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
@@ -792,7 +792,7 @@ namespace OrthoTree
     }
 
 
-    constexpr morton_grid_id_type _getLocationId(point_type const& pt) const
+    constexpr morton_grid_id_type _getLocationId(vector_type const& pt) const
     {
       return MortonEncode(this->_getGridIdPoint(pt));
     }
@@ -1196,7 +1196,7 @@ namespace OrthoTree
 
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    void Move(point_type const& vMove)
+    void Move(vector_type const& vMove)
     {
       std::for_each(execution_policy_type{}, std::begin(_nodes), std::end(_nodes), [&vMove](auto& pairKeyNode)
       {
@@ -1390,11 +1390,11 @@ namespace OrthoTree
 
 
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
-  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
-  class OrthoTreePoint : public OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>
+  template<dim_type nDimension, typename vector_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, vector_type, box_type, double>, typename geometry_type = double>
+  class OrthoTreePoint : public OrthoTreeBase<nDimension, vector_type, box_type, adaptor_type, geometry_type>
   {
   protected:
-    using base = OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>;
+    using base = OrthoTreeBase<nDimension, vector_type, box_type, adaptor_type, geometry_type>;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
 
@@ -1453,14 +1453,14 @@ namespace OrthoTree
 
     // Ctors
     OrthoTreePoint() = default;
-    OrthoTreePoint(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    OrthoTreePoint(span<vector_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       *this = Create(vpt, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreePoint Create(span<point_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static OrthoTreePoint Create(span<vector_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : _Ad::box_of_points(vpt);
       autoc n = vpt.size();
@@ -1495,7 +1495,7 @@ namespace OrthoTree
   public: // Edit functions
 
     // Insert item into a node. If fInsertToLeaf is true: The smallest node will be chosen by the max depth. If fInsertToLeaf is false: The smallest existing level on the branch will be chosen.
-    bool Insert(entity_id_type id, point_type const& pt, bool fInsertToLeaf = false)
+    bool Insert(entity_id_type id, vector_type const& pt, bool fInsertToLeaf = false)
     {
       if (!_Ad::does_box_contain_point(this->_box, pt))
         return false;
@@ -1533,7 +1533,7 @@ namespace OrthoTree
 
     // Erase id, aided with the original point
     template<bool fReduceIds = true>
-    bool Erase(entity_id_type idErase, point_type const& pt)
+    bool Erase(entity_id_type idErase, vector_type const& pt)
     {
       autoc kOld = FindSmallestNode(pt);
       if (!kOld)
@@ -1561,7 +1561,7 @@ namespace OrthoTree
 
 
     // Update id by the new point information
-    bool Update(entity_id_type id, point_type const& ptNew, bool fInsertToLeaf = false)
+    bool Update(entity_id_type id, vector_type const& ptNew, bool fInsertToLeaf = false)
     {
       if (!_Ad::does_box_contain_point(this->_box, ptNew))
         return false;
@@ -1574,7 +1574,7 @@ namespace OrthoTree
 
 
     // Update id by the new point information and the erase part is aided by the old point geometry data
-    void Update(entity_id_type id, point_type const& ptOld, point_type const& ptNew)
+    void Update(entity_id_type id, vector_type const& ptOld, vector_type const& ptNew)
     {
       if (!_Ad::does_box_contain_point(this->_box, ptNew))
         return false;
@@ -1589,7 +1589,7 @@ namespace OrthoTree
   public: // Search functions
 
     // Find smallest node which contains the box
-    morton_node_id_type FindSmallestNode(point_type const& pt) const
+    morton_node_id_type FindSmallestNode(vector_type const& pt) const
     {
       if (!_Ad::does_box_contain_point(this->_box, pt))
         return morton_node_id_type{};
@@ -1598,7 +1598,7 @@ namespace OrthoTree
       return this->FindSmallestNodeKey(this->GetHash(this->_nDepthMax, idLocation));
     }
  
-    bool Contains(point_type const& pt, span<point_type const> const& vpt, geometry_type rAccuracy) const
+    bool Contains(vector_type const& pt, span<vector_type const> const& vpt, geometry_type rAccuracy) const
     {
       autoc kSmallestNode = this->FindSmallestNode(pt);
       if (!base::IsValidKey(kSmallestNode))
@@ -1611,12 +1611,12 @@ namespace OrthoTree
 
     // Range search
     template<bool fLeafNodeContainsElementOnly = false>
-    vector<entity_id_type> RangeSearch(box_type const& range, span<point_type const> const& vpt) const
+    vector<entity_id_type> RangeSearch(box_type const& range, span<vector_type const> const& vpt) const
     {
       auto sidFound = vector<entity_id_type>();
 
       autoc nEntity = vpt.size();
-      if (!this->_rangeSearchRoot<point_type, false, false, fLeafNodeContainsElementOnly>(range, vpt, sidFound))
+      if (!this->_rangeSearchRoot<vector_type, false, false, fLeafNodeContainsElementOnly>(range, vpt, sidFound))
         return {};
 
       return sidFound;
@@ -1625,7 +1625,7 @@ namespace OrthoTree
 
   private: // K Nearest Neighbor helpers
 
-    static geometry_type _getBoxWallDistanceMax(point_type const& pt, box_type const& box)
+    static geometry_type _getBoxWallDistanceMax(vector_type const& pt, box_type const& box)
     {
       autoc& ptMin = _Ad::box_min_c(box);
       autoc& ptMax = _Ad::box_max_c(box);
@@ -1647,7 +1647,7 @@ namespace OrthoTree
     }
 
 
-    static void _createEntityDistance(Node const& node, point_type const& pt, span<point_type const> const& vpt, multiset<_EntityDistance>& setEntity)
+    static void _createEntityDistance(Node const& node, vector_type const& pt, span<vector_type const> const& vpt, multiset<_EntityDistance>& setEntity)
     {
       for (autoc id : node.vid)
         setEntity.insert({ { _Ad::distance(pt, vpt[id]) }, id });
@@ -1672,7 +1672,7 @@ namespace OrthoTree
    public:
 
     // K Nearest Neighbor
-    vector<entity_id_type> GetNearestNeighbors(point_type const& pt, size_t k, span<point_type const> const& vpt) const
+    vector<entity_id_type> GetNearestNeighbors(vector_type const& pt, size_t k, span<vector_type const> const& vpt) const
     {
       auto setEntity = multiset<_EntityDistance>();
       autoc kSmallestNode = FindSmallestNode(pt);
@@ -1695,7 +1695,7 @@ namespace OrthoTree
         autoc& ptMin = _Ad::box_min_c(node.box);
         autoc& ptMax = _Ad::box_max_c(node.box);
 
-        auto aDist = point_type{};
+        auto aDist = vector_type{};
         for (dim_type iDim = 0; iDim < nDimension; ++iDim)
         {
           autoc dMin = _Ad::point_comp_c(ptMin, iDim) - _Ad::point_comp_c(pt, iDim);
@@ -1729,11 +1729,11 @@ namespace OrthoTree
 
   // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order. 
   // nSplitStrategyAdditionalDepth: if (nSplitStrategyAdditionalDepth > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
-  template<dim_type nDimension, typename point_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double, uint32_t nSplitStrategyAdditionalDepth = 2>
-  class OrthoTreeBoundingBox : public OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>
+  template<dim_type nDimension, typename vector_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, vector_type, box_type, double>, typename geometry_type = double, uint32_t nSplitStrategyAdditionalDepth = 2>
+  class OrthoTreeBoundingBox : public OrthoTreeBase<nDimension, vector_type, box_type, adaptor_type, geometry_type>
   {
   protected:
-    using base = OrthoTreeBase<nDimension, point_type, box_type, adaptor_type, geometry_type>;
+    using base = OrthoTreeBase<nDimension, vector_type, box_type, adaptor_type, geometry_type>;
     using _EntityDistance = typename base::_EntityDistance;
     using _BoxDistance = typename base::_BoxDistance;
 
@@ -2148,7 +2148,7 @@ namespace OrthoTree
   public: // Search functions
     
     // Pick search
-    vector<entity_id_type> PickSearch(point_type const& ptPick, span<box_type const> const& vBox) const
+    vector<entity_id_type> PickSearch(vector_type const& ptPick, span<box_type const> const& vBox) const
     {
       autoc idLocation = this->_getLocationId(ptPick);
 
@@ -2529,7 +2529,7 @@ namespace OrthoTree
 
   private:
    
-    void _rayIntersectedAll(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, point_type const& rayBase, point_type const& rayHeading, vector<_EntityDistance>& vdidOut) const
+    void _rayIntersectedAll(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, vector<_EntityDistance>& vdidOut) const
     {
       autoc oIsHit = _Ad::is_ray_hit(node.box, rayBase, rayHeading);
       if (!oIsHit)
@@ -2550,7 +2550,7 @@ namespace OrthoTree
     }
 
 
-    void _rayIntersectedFirst(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, point_type const& rayBase, point_type const& rayHeading, multiset<_EntityDistance>& vidOut) const
+    void _rayIntersectedFirst(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, multiset<_EntityDistance>& vidOut) const
     {
       autoc rLastDistance = vidOut.empty() ? std::numeric_limits<double>::infinity() : static_cast<double>(vidOut.rbegin()->distance);
       for (autoc id : node.vid)
@@ -2589,13 +2589,13 @@ namespace OrthoTree
   public:
 
     // Get all box which is intersected by the ray in order
-    vector<entity_id_type> RayIntersectedAll(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vBox) const
+    vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, span<box_type const> const& vBox) const
     {
       autoc kRoot = base::GetRootKey();
 
       auto vdid = vector<_EntityDistance>();
       vdid.reserve(20);
-      _rayIntersectedAll(kRoot, cont_at(this->_nodes, kRoot), vBox, rayBase, rayHeading, vdid);
+      _rayIntersectedAll(kRoot, cont_at(this->_nodes, kRoot), vBox, rayBasePoint, rayHeading, vdid);
 
       autoc itBegin = std::begin(vdid);
       auto itEnd = std::end(vdid);
@@ -2610,7 +2610,7 @@ namespace OrthoTree
     
 
     // Get first box which is intersected by the ray
-    std::optional<entity_id_type> RayIntersectedFirst(point_type const& rayBase, point_type const& rayHeading, span<box_type const> const& vBox) const
+    std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBase, vector_type const& rayHeading, span<box_type const> const& vBox) const
     {
       autoc kRoot = base::GetRootKey();
 

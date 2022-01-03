@@ -9,7 +9,7 @@
 using namespace std;
 
 
-template<size_t nDimension, typename point_type, typename box_type, typename adaptor_type = OrthoTree::AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+template<size_t nDimension, typename vector_type, typename box_type, typename adaptor_type = OrthoTree::AdaptorGeneral<nDimension, vector_type, box_type, double>, typename geometry_type = double>
 class OrthoTreePointDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << nDimension;
@@ -24,7 +24,7 @@ private:
 
   struct IdEntityNode { size_t id, idNode; };
 
-  void _process(span<IdEntityNode> aid, span<point_type const> const& vpt, size_t nDepthRemain, size_t nElementMax)
+  void _process(span<IdEntityNode> aid, span<vector_type const> const& vpt, size_t nDepthRemain, size_t nElementMax)
   {
     autoc nid = aid.size();
     if (nDepthRemain == 0 || nid < nElementMax)
@@ -69,7 +69,7 @@ private:
 
 
 public:
-  static OrthoTreePointDynamicGeneral Create(span<point_type const> const& vpt, size_t nDepthMax, std::optional<box_type> const& obox, size_t nElementMax)
+  static OrthoTreePointDynamicGeneral Create(span<vector_type const> const& vpt, size_t nDepthMax, std::optional<box_type> const& obox, size_t nElementMax)
   {
     autoc box = obox.has_value() ? *obox : _Ad::box_of_points(vpt);
 
@@ -93,7 +93,7 @@ public:
 
 
 
-template<size_t nDimension, typename point_type, typename box_type, typename adaptor_type = OrthoTree::AdaptorGeneral<nDimension, point_type, box_type, double>, typename geometry_type = double>
+template<size_t nDimension, typename vector_type, typename box_type, typename adaptor_type = OrthoTree::AdaptorGeneral<nDimension, vector_type, box_type, double>, typename geometry_type = double>
 class OrthoTreeBoxDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << nDimension;

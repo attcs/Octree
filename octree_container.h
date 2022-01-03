@@ -38,7 +38,7 @@ namespace OrthoTree
   {
   public:
     using _Ad = typename OrthoTree::_Ad;
-    using point_type = OrthoTree::point_type;
+    using vector_type = OrthoTree::vector_type;
     using box_type = OrthoTree::box_type;
 
   protected:
@@ -113,7 +113,7 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;
     using _Ad = typename base::_Ad;
-    using point_type = base::point_type;
+    using vector_type = base::vector_type;
     using box_type = base::box_type;
 
     using base::base; // inherits all constructors
@@ -139,7 +139,7 @@ namespace OrthoTree
     }
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    void Move(point_type const& vMove)
+    void Move(vector_type const& vMove)
     {
       this->_tree.Move<execution_policy_type>(vMove);
       std::for_each(execution_policy_type{}, std::begin(this->_vData), std::end(this->_vData), [&vMove](auto& pt) { pt = _Ad::add(pt, vMove); });
@@ -156,7 +156,7 @@ namespace OrthoTree
     }
 
     // K Nearest Neighbor
-    inline vector<entity_id_type> GetNearestNeighbors(point_type const& pt, size_t k) const
+    inline vector<entity_id_type> GetNearestNeighbors(vector_type const& pt, size_t k) const
     {
       return this->_tree.GetNearestNeighbors(pt, k, this->_vData);
     }
@@ -170,7 +170,7 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;
     using _Ad = typename base::_Ad;
-    using point_type = base::point_type;
+    using vector_type = base::vector_type;
     using box_type = base::box_type;
 
     using base::base; // inherits all constructors
@@ -196,7 +196,7 @@ namespace OrthoTree
     }
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    void Move(base::point_type const& vMove)
+    void Move(vector_type const& vMove)
     {
       this->_tree.Move<execution_policy_type>(vMove);
 
@@ -210,7 +210,7 @@ namespace OrthoTree
   public: // Search functions
 
     // Pick search
-    inline vector<entity_id_type> PickSearch(point_type const& ptPick) const
+    inline vector<entity_id_type> PickSearch(vector_type const& ptPick) const
     {
       return this->_tree.PickSearch(ptPick, this->_vData);
     }
@@ -248,15 +248,15 @@ namespace OrthoTree
   public: // Ray intersection
 
     // Get all box which is intersected by the ray in order
-    inline vector<entity_id_type> RayIntersectedAll(point_type const& rayBase, point_type const& rayHeading) const
+    inline vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading) const
     {
-      return this->_tree.RayIntersectedAll(rayBase, rayHeading, this->_vData);
+      return this->_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->_vData);
     }
 
     // Get first box which is intersected by the ray
-    inline std::optional<entity_id_type> RayIntersectedFirst(point_type const& rayBase, point_type const& rayHeading) const
+    inline std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBasePoint, vector_type const& rayHeading) const
     {
-      return this->_tree.RayIntersectedFirst(rayBase, rayHeading, this->_vData);
+      return this->_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->_vData);
     }
   };
 
