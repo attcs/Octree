@@ -38,7 +38,7 @@ What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Call `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Call `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
 * Call `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
-* Call `CollisionDetection()` member function for two bounding box trees overlap examination.
+* Call `CollisionDetection()` member function for bounding box overlap examination.
 * Call `VisitNodes()` to traverse the tree from up to down (breadth-first search) with user-defined `selector()` and `procedure()`.
 * Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
 * Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
