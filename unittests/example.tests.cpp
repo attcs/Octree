@@ -97,6 +97,7 @@ namespace Example
       auto quadtreebox = QuadtreeBoxC(boxes, 3
         , std::nullopt // user-provided bounding box for all
         , 2            // max element in a node 
+        , false        // parallel calculation flag
       );
 
       auto idPairColliding = quadtreebox.CollisionDetection(); // { {1,4}, {2,4} }
@@ -123,7 +124,16 @@ namespace Example
     TEST_METHOD(Example3_Container)
     {
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
-      auto octreebox = OctreeBoxC::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      // Using ctor
+      {
+        auto octreebox = OctreeBoxC(boxes, 3, std::nullopt, OctreeBox::max_element_default
+          , true // Set std::execution::parallel_unsequenced_policy
+        );
+      }
+      // Using Create
+      {
+        auto octreebox = OctreeBoxC::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      }
       // or
       // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
     }

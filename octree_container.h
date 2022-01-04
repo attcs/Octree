@@ -47,13 +47,21 @@ namespace OrthoTree
 
   public: // Constructors
     OrthoTreeContainerBase() = default;
-    OrthoTreeContainerBase(span<data_type const> const& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default)
+    OrthoTreeContainerBase(span<data_type const> const& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false)
       : _vData(vData.begin(), vData.end()), _tree(vData, nDepthMax, oBoxSpace, nElementMaxInNode)
-    {}
-
-    OrthoTreeContainerBase(vector<data_type>&& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default) : _vData(vData)
     {
-      _tree = OrthoTree::Create(_vData, nDepthMax, oBoxSpace, nElementMaxInNode);
+      if (fParallelCreate)
+        _tree = OrthoTree::template Create<std::execution::parallel_unsequenced_policy>(vData, nDepthMax, oBoxSpace, nElementMaxInNode);
+      else
+        _tree = OrthoTree::Create(vData, nDepthMax, oBoxSpace, nElementMaxInNode);
+    }
+
+    OrthoTreeContainerBase(vector<data_type>&& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false) : _vData(vData)
+    {
+      if (fParallelCreate)
+        _tree = OrthoTree::template Create<std::execution::parallel_unsequenced_policy>(_vData, nDepthMax, oBoxSpace, nElementMaxInNode);
+      else
+        _tree = OrthoTree::Create(_vData, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
 

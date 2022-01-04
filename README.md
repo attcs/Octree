@@ -135,6 +135,7 @@ Usage of Container types
       auto quadtreebox = QuadtreeBoxC(boxes, 3
         , std::nullopt // user-provided bounding box for all
         , 2            // max element in a node 
+        , false        // parallel calculation flag
       );
 
       // Collision detection
@@ -143,7 +144,8 @@ Usage of Container types
       // Range search
       auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
       auto ids_inside = quadtreebox.RangeSearch(search_box); // -> { 1, 2, 4 }
-      auto ids_overlaping = quadtreebox.RangeSearch<false /*overlap is enough*/>(search_box); // -> { 1, 2, 3, 4 }
+      auto ids_overlaping = quadtreebox.RangeSearch<false /*overlap is enough*/>(search_box); 
+        // -> { 1, 2, 3, 4 }
 
       // Picked boxes
       auto ptPick = Point2D{ 2.5, 2.5 };
@@ -153,9 +155,16 @@ Usage of Container types
     // Example #3: Parallel creation of octree for bounding boxes
     {
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
-      auto octreebox = OctreeBoxC::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
-      // or
-      // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      // Using ctor
+      {
+        auto octreebox = OctreeBoxC(boxes, 3, std::nullopt, OctreeBox::max_element_default
+          , true // Set std::execution::parallel_unsequenced_policy
+        );
+      }
+      // Using Create
+      {
+        auto octreebox = OctreeBoxC::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      }
     }
 ```
 
