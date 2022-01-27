@@ -702,10 +702,10 @@ namespace OrthoTree
     static constexpr child_id_type _mortonIdToChildId(uint64_t morton) { return morton; }
 
 
-    static inline vector<entity_id_type> _generatePointId(size_t n)
+    static constexpr vector<entity_id_type> _generatePointId(size_t n)
     {
       auto vidPoint = vector<entity_id_type>(n);
-      std::iota(begin(vidPoint), end(vidPoint), 0);
+      std::iota(std::begin(vidPoint), std::end(vidPoint), 0);
       return vidPoint;
     }
 
@@ -1455,21 +1455,20 @@ namespace OrthoTree
     OrthoTreePoint() = default;
     OrthoTreePoint(span<vector_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
-      *this = Create(vpt, nDepthMax, oBoxSpace, nElementMaxInNode);
+      Create(*this, vpt, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreePoint Create(span<vector_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static void Create(OrthoTreePoint& tree, span<vector_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : _Ad::box_of_points(vpt);
       autoc n = vpt.size();
 
-      auto tree = OrthoTreePoint{};
       tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
       base::_reserveContainer(tree._nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
       if (vpt.empty())
-        return tree;
+        return;
 
       autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
@@ -1486,8 +1485,6 @@ namespace OrthoTree
       std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
       auto itBegin = std::begin(aidLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aidLocation), morton_node_id_type{ 0 }, nDepthMax);
-
-      return tree;
     }
 
 
@@ -1806,11 +1803,6 @@ namespace OrthoTree
         nodeParent.vid.resize(nElement);
         std::transform(itEndPrev, itEnd, begin(nodeParent.vid), [](autoc& item) { return item.id; });
         itEndPrev = itEnd;
-        if constexpr (nSplitStrategyAdditionalDepth > 0)
-        {
-          std::ranges::sort(nodeParent.vid);
-          nodeParent.vid.erase(std::unique(std::begin(nodeParent.vid), std::end(nodeParent.vid)), std::end(nodeParent.vid));
-        }
         return;
       }
 
@@ -1821,14 +1813,8 @@ namespace OrthoTree
         itEndPrev = std::partition_point(it, itEnd, [&](autoc& idLocation) { return idLocation.depth == it->depth; });
         autoc nElementCur = static_cast<int>(std::distance(it, itEndPrev));
 
-
         nodeParent.vid.resize(nElementCur);
         std::transform(it, itEndPrev, std::begin(nodeParent.vid), [](autoc& item) { return item.id; });
-        if constexpr (nSplitStrategyAdditionalDepth > 0)
-        {
-          std::ranges::sort(nodeParent.vid);
-          nodeParent.vid.erase(std::unique(std::begin(nodeParent.vid), std::end(nodeParent.vid)), std::end(nodeParent.vid));
-        }
       }
 
       ++depthCheck;
@@ -1874,26 +1860,28 @@ namespace OrthoTree
         autoc nGridSplitFirst = (aidBoxGrid[0][iDim] / nStepGrid) + 1;
         autoc nGridSplitLast = (aidBoxGrid[1][iDim] / nStepGrid);
         autoc nMinGridList = (nGridSplitLast < nGridSplitFirst ? 0 : (nGridSplitLast - nGridSplitFirst + 1)) + 1;
+        nBoxByGrid *= nMinGridList;
+        if (nBoxByGrid >= this->_nChild)
+          return;
+
         aMinGridList[iDim].resize(nMinGridList);
         aMinGridList[iDim][0] = aidBoxGrid[0][iDim];
         size_t i = 1;
         for (auto nGridSplit = nGridSplitFirst; nGridSplit <= nGridSplitLast; ++nGridSplit, ++i)
           aMinGridList[iDim][i] = static_cast<grid_id_type>(nGridSplit * nStepGrid);
 
-        nBoxByGrid *= nMinGridList;
       }
-
-      if (nBoxByGrid >= this->_nChild)
-        return;
 
       auto vaidMinGrid = vector<array<grid_id_type, nDimension>>{};
       auto aidGrid = array<grid_id_type, nDimension>{};
+      vaidMinGrid.reserve(nBoxByGrid);
       base::template _constructGridIdRec<nDimension>(aMinGridList, aidGrid, vaidMinGrid);
+      
       autoc nBox = vaidMinGrid.size();
       vLocation.resize(nBox);
       autoc id = vLocation[0].id;
       autoc shift = nDepthRemain * nDimension;
-
+      
 #pragma loop(ivdep)
       for (size_t iBox = 0; iBox < nBox; ++iBox)
       {
@@ -1935,23 +1923,21 @@ namespace OrthoTree
     OrthoTreeBoundingBox() = default;
     OrthoTreeBoundingBox(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
-      *this = Create(vBox, nDepthMax, oBoxSpace, nElementMaxInNode);
+      Create(*this, vBox, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
-
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeBoundingBox Create(span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
+    static void Create(OrthoTreeBoundingBox& tree, span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default)
     {
       autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : _Ad::box_of_boxes(vBox);
-      auto tree = OrthoTreeBoundingBox{};
       tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
 
       autoc n = vBox.size();
 
       base::_reserveContainer(tree._nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
       if (n == 0)
-        return tree;
+        return;
 
       autoc kRoot = base::GetRootKey();
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
@@ -1972,7 +1958,16 @@ namespace OrthoTree
       std::sort(execution_policy_type{}, std::begin(aLocation), std::end(aLocation));
       auto itBegin = std::begin(aLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aLocation), morton_node_id_type{ 0 }, nDepthMax);
-      return tree;
+
+      if constexpr (nSplitStrategyAdditionalDepth > 0)
+      {
+        std::for_each(execution_policy_type{}, std::begin(tree._nodes), std::end(tree._nodes), [](auto& pairKeyNode)
+        {
+          auto& node = pairKeyNode.second;
+          std::ranges::sort(node.vid);
+          node.vid.erase(std::unique(std::begin(node.vid), std::end(node.vid)), std::end(node.vid));
+        });
+      }
     }
 
 

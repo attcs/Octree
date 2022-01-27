@@ -230,8 +230,8 @@ namespace PerformaceTest
     autoc aPoint16D_1M = CreatePoints<16, N1M>();
     autoc aPoint63D_1M = CreatePoints<63, N1M>();
 
-    autoc TreePoint2D = QuadtreePoint::Create<std::execution::parallel_unsequenced_policy>(aPoint2D_10M, 4);
-    autoc TreePoint3D = OctreePoint::Create<std::execution::parallel_unsequenced_policy>(aPoint3D_10M, 4);
+    autoc TreePoint2D = QuadtreePoint(aPoint2D_10M, 4);
+    autoc TreePoint3D = OctreePoint(aPoint3D_10M, 4);
 
 
     // Boxes
@@ -250,8 +250,8 @@ namespace PerformaceTest
 
     autoc box2D = BoundingBox2D{ Point2D{}, Point2D{ rMax, rMax} };
     autoc box3D = BoundingBox3D{ Point3D{}, Point3D{ rMax, rMax, rMax} };
-    autoc TreeBox2D_10M = QuadtreeBox::Create<std::execution::parallel_unsequenced_policy>(aBox2D_10M, 4, box2D);
-    autoc TreeBox3D_10M = OctreeBox::Create<std::execution::parallel_unsequenced_policy>(aBox3D_10M, 4, box3D);
+    autoc TreeBox2D_10M = QuadtreeBox(aBox2D_10M, 4, box2D);
+    autoc TreeBox3D_10M = OctreeBox(aBox3D_10M, 4, box3D);
   }
 
 
@@ -264,10 +264,11 @@ namespace PerformaceTest
     {
       autoc box = CreateSearcBox<nDim>(0.0, rMax);
 
-      auto nt = fPar
-        ? TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aPoint, depth, box)
-        : TreePointND<nDim>::Create(aPoint, depth, box)
-        ;
+      auto nt = TreePointND<nDim>{};
+      if (fPar)
+        TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, box);
+      else
+        TreePointND<nDim>::Create(nt, aPoint, depth, box);
 
       return nt;
     }
@@ -316,10 +317,11 @@ namespace PerformaceTest
     {
       autoc box = CreateSearcBox<nDim>(0.0, rMax);
 
-      auto nt = fPar
-        ? TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aBox, depth, box)
-        : TreeBoxND<nDim>::Create(aBox, depth, box)
-        ;
+      auto nt = TreeBoxND<nDim>{};
+      if (fPar)
+        TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
+      else
+        TreeBoxND<nDim>::Create(nt, aBox, depth, box);
 
       return nt;
     }

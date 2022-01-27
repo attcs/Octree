@@ -427,10 +427,11 @@ namespace
     auto box = BoundingBoxND<nDim>{};
     box.Max.fill(rMax);
 
-    auto nt = fPar
-      ? TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aPoint, depth, box)
-      : TreePointND<nDim>::Create(aPoint, depth, box)
-      ;
+    auto nt = TreePointND<nDim>{};
+    if (fPar)
+      TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, box);
+    else
+      TreePointND<nDim>::Create(nt, aPoint, depth, box);
 
     return nt.GetNodes().size();
   }
@@ -441,7 +442,7 @@ namespace
     auto box = BoundingBoxND<nDim>{};
     box.Max.fill(rMax);
 
-    auto nt = OrthoTreePointDynamicND<nDim>::Create(aPoint, depth, box, 11);
+    autoc nt = OrthoTreePointDynamicND<nDim>::Create(aPoint, depth, box, 11);
     return nt.GetNodeSize();
   }
 
@@ -452,10 +453,11 @@ namespace
     auto box = BoundingBoxND<nDim>{};
     box.Max.fill(rMax);
 
-    auto nt = fPar
-      ? TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(aBox, depth, box)
-      : TreeBoxND<nDim>::Create(aBox, depth, box)
-      ;
+    auto nt = TreeBoxND<nDim>{};
+    if (fPar)
+      TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
+    else
+      TreeBoxND<nDim>::Create(nt, aBox, depth, box);
 
     return nt.GetNodes().size();
   }
@@ -538,7 +540,7 @@ namespace
   autoce aSizeLog = array{ 10, 50, 100, 1000, 2500, 5000, 7500, 10000, 100000, N1M, 10 * N1M, 100 * N1M };
   autoce nSizeLog = aSizeLog.size();
 
-  autoce aRepeatLog = array{ 100000, 100000, 10000, 2000, 1000, 500, 500, 100, 100, 10, 10, 5 };
+  autoce aRepeatLog = array{ 100000, 100000, 10000, 2000, 1000, 500, 500, 100, 100, 10, 10, 2 };
   static_assert(nSizeLog == aRepeatLog.size());
 
 
@@ -608,15 +610,16 @@ namespace
         }
         vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepthActual, fPar, aBox_.subspan(0, aSizeNonLog[iSize]), [](size_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
         {
+          auto nt = TreeBoxND<N>{};
           if (fPar)
           {
-            autoc nt = TreeBoxND<N>::template Create<std::execution::parallel_unsequenced_policy>(aBox, nDepth, boxMax);
+            TreeBoxND<N>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth, boxMax);
             autoc vPair = nt.template CollisionDetection<std::execution::parallel_unsequenced_policy>(aBox);
             return vPair.size();
           }
           else
           {
-            autoc nt = TreeBoxND<N>::Create(aBox, nDepth, boxMax);
+            TreeBoxND<N>::Create(nt, aBox, nDepth, boxMax);
             autoc vPair = nt.CollisionDetection(aBox);
             return vPair.size();
             /*
@@ -746,6 +749,7 @@ int main()
   report.open("report.csv");
 
   autoce nDepth = 5;
+
   {
     autoc szName = string("Diagonally placed points");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
@@ -766,7 +770,6 @@ int main()
     autoc vTask = GeneratePointTasks<N>(nDepth, szName, aPointDiag_100M);
     RunTasks(vTask, report);
   }
-
   {
     autoc szName = string("Diagonally placed boxes");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Diagonal<N, 100 * N1M>(); }, szName, 100, report);

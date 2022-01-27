@@ -9,7 +9,7 @@ namespace Example
     TEST_METHOD(Example1)
     {
       auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
-      auto const octree = OctreePoint::Create(points, 3 /*max depth*/);
+      auto const octree = OctreePoint(points, 3 /*max depth*/);
 
       auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
       auto ids = octree.RangeSearch(search_box, points); // -> { 1, 2 }
@@ -32,7 +32,7 @@ namespace Example
           BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      auto quadtreebox = QuadtreeBox::Create(boxes, 3
+      auto quadtreebox = QuadtreeBox(boxes, 3
         , std::nullopt // user-provided bounding box for all
         , 2            // max element in a node 
       );
@@ -62,7 +62,8 @@ namespace Example
     TEST_METHOD(Example3)
     {
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
-      auto octreebox = OctreeBox::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      auto octreebox = OctreeBox{};
+      OctreeBox::Create<std::execution::parallel_unsequenced_policy>(octreebox, boxes, 3);
       // or
       // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
     }

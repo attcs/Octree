@@ -285,7 +285,7 @@ namespace GeneralTest
     {
       autoce N = 16;
       autoce vPoint = getPointSetNo1<N>();
-      autoc treeExpected = TreePointND<N>::Create(vPoint, 3);
+      autoc treeExpected = TreePointND<N>(vPoint, 3);
       autoc treeActual = TreePointND<N>(vPoint, 3);
 
       autoc& nodesE = treeExpected.GetNodes();
@@ -308,7 +308,7 @@ namespace GeneralTest
         BoundingBoxXD{ 0.0, 1.0 }, BoundingBoxXD{ 1.0, 2.0 }, BoundingBoxXD{ 2.0, 3.0 }, BoundingBoxXD{ 3.0, 4.0 }
       };
 
-      autoc treeExpected = TreeBoxND<N>::Create(vBox, 3);
+      autoc treeExpected = TreeBoxND<N>(vBox, 3);
       autoc treeActual = TreeBoxND<N>(vBox, 3);
 
       autoc& nodesE = treeExpected.GetNodes();
@@ -377,7 +377,7 @@ namespace GeneralTest
     TEST_METHOD(VisitNodes__points__0123)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
@@ -395,7 +395,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      autoc tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      autoc tree = DualtreeBox(vBox, 3, std::nullopt, 2);
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
@@ -409,7 +409,7 @@ namespace GeneralTest
     TEST_METHOD(EraseId__2__EmptyNode11)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
       autoc kNode = tree.GetHash(2, 2);
       autoc& node = tree.Get(kNode);
@@ -426,7 +426,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
       tree.UpdateIndexes({});
 
       auto ids = vector<size_t>();
@@ -446,7 +446,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
       tree.UpdateIndexes({ { 2, 7 } });
 
       auto ids = vector<size_t>();
@@ -465,7 +465,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
       tree.UpdateIndexes({ { 2, DualtreeBox::ERASE } });
 
       auto ids = vector<size_t>();
@@ -484,7 +484,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
       tree.UpdateIndexes(
         {
           { 3, 6 },
@@ -509,7 +509,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
       tree.UpdateIndexes(
         {
           { 1, 0 },
@@ -535,7 +535,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
       tree.UpdateIndexes(
         {
           { 6, 3 },
@@ -559,7 +559,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }
       };
-      auto tree = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
@@ -578,7 +578,7 @@ namespace GeneralTest
 
     TEST_METHOD(Contains_EmptyTree__False)
     {
-      autoc tree = DualtreePoint::Create({}, 3, std::nullopt, 2);
+      autoc tree = DualtreePoint({}, 3, std::nullopt, 2);
       autoc isPointContained = tree.Contains({}, {}, 1.0);
       Assert::IsFalse(isPointContained);
     }
@@ -589,7 +589,7 @@ namespace GeneralTest
     {
       using PointXD = PointND<N>;
       autoce vPoint = std::array<PointXD, 1>{ PointXD{ 1.1 } };
-      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      autoc tree = TreePointND<N>(vPoint, 3);
       return tree.Contains(vPoint[0], vPoint, 0.01);
     }
 
@@ -624,7 +624,7 @@ namespace GeneralTest
     bool _isTreeContainsPointSetNo1()
     {
       autoce vPoint = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      autoc tree = TreePointND<N>(vPoint, 3);
       return tree.Contains(vPoint[4], vPoint, 0.0);
     }
 
@@ -648,7 +648,7 @@ namespace GeneralTest
     {
       autoce N = 16;
       autoce vPoint = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      autoc tree = TreePointND<N>(vPoint, 3);
       autoc fContain = tree.Contains(PointND<N>{-1.0, -1.0 }, vPoint, 0.0);
 
       Assert::IsFalse(fContain);
@@ -658,7 +658,7 @@ namespace GeneralTest
     {
       autoce N = 3;
       autoce vPoint = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(vPoint, 3);
+      autoc tree = TreePointND<N>(vPoint, 3);
       autoc fContain = tree.Contains(PointND<N>{7.0, 9.0 }, vPoint, 0.0);
 
       Assert::IsFalse(fContain);
@@ -706,7 +706,7 @@ namespace GeneralTest
     TEST_METHOD(MoveP__P0__Same)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc treePre = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      autoc treePre = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       auto treeAfter = treePre;
       autoce vMove = Point1D{ 0.0 };
@@ -719,7 +719,7 @@ namespace GeneralTest
     TEST_METHOD(MoveP__P1__Moved)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc treePre = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      autoc treePre = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       auto treeAfter = treePre;
       autoce vMove = Point1D{ 1.0 };
@@ -737,7 +737,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto treePre = DualtreeBox::Create(vBox, 3, std::nullopt, 2);
+      auto treePre = DualtreeBox(vBox, 3, std::nullopt, 2);
 
       auto treeAfter = treePre;
       autoce vMove = Point1D{ -20.0 };
@@ -758,7 +758,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::IsFalse(oid.has_value());
     }
@@ -775,7 +775,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::IsFalse(oid.has_value());
     }
@@ -792,7 +792,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::IsFalse(oid.has_value());
     }
@@ -809,7 +809,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::IsFalse(oid.has_value());
     }
@@ -826,7 +826,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::IsFalse(oid.has_value());
     }
@@ -842,7 +842,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::AreEqual<entity_id_type>(0, oid.value());
     }
@@ -859,7 +859,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::AreEqual<entity_id_type>(1, oid.value());
     }
@@ -876,7 +876,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::AreEqual<entity_id_type>(1, oid.value());
     }
@@ -893,7 +893,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::AreEqual<entity_id_type>(1, oid.value());
     }
@@ -910,7 +910,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
       Assert::AreEqual<entity_id_type>(3, oid.value());
     }
@@ -930,7 +930,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.5, 2.5 }, { 3.5, 3.5 } },
       };
 
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
       Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == vid);
     }
@@ -949,7 +949,7 @@ namespace GeneralTest
         BoundingBox2D{ { 2.5, 2.5 }, { 3.5, 3.5 } },
       };
 
-      autoc qt = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
       Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
     }
@@ -968,7 +968,7 @@ namespace GeneralTest
         BoundingBox3D{ { 2.5, 2.5, 1.5 }, { 3.5, 3.5, 2.0 } },
       };
 
-      autoc qt = OctreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = OctreeBox(boxes, 3, std::nullopt, 2);
       autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
       Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
     }
@@ -988,7 +988,7 @@ namespace GeneralTest
         BoundingBoxND<N>{ { 2.5, 2.5, 1.5, 0.0, 0.0 }, { 3.5, 3.5, 2.0, 2.0, 2.0 } },
       };
 
-      autoc qt = TreeBoxND<N>::Create(boxes, 3, std::nullopt, 2);
+      autoc qt = TreeBoxND<N>(boxes, 3, std::nullopt, 2);
       autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
       Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
     }
@@ -1005,7 +1005,7 @@ namespace Tree1DTest
 		
 		TEST_METHOD(Empty)
 		{
-			autoc tree = DualtreePoint::Create({}, 2);
+			autoc tree = DualtreePoint({}, 2);
 			autoc& nodes = tree.GetNodes();
 			Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).vid.empty());
@@ -1015,7 +1015,7 @@ namespace Tree1DTest
     // ext    //!
     TEST_METHOD(NoPt1)
     {
-      autoc tree = DualtreePoint::Create(vector<Point1D>{ { 1.0 } }, 2);
+      autoc tree = DualtreePoint(vector<Point1D>{ { 1.0 } }, 2);
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsFalse(nodes.at(1).vid.empty());
@@ -1025,7 +1025,7 @@ namespace Tree1DTest
     // ext     //!
     TEST_METHOD(NoPt2)
     {
-      autoc tree = DualtreePoint::Create({}, 2);
+      autoc tree = DualtreePoint({}, 2);
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).vid.empty());
@@ -1034,7 +1034,7 @@ namespace Tree1DTest
     TEST_METHOD(NoPt4)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
       Assert::AreEqual<size_t>(tree.GetNodes().size(), 7);
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox1D{ Point1D{0.0}, Point1D{3.0} }));
@@ -1060,7 +1060,7 @@ namespace Tree1DTest
       using morton_node_id_type = DualtreePoint::morton_node_id_type;
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode(vpt.back());
       Assert::AreEqual<morton_node_id_type>(7, kLast);
     }
@@ -1070,7 +1070,7 @@ namespace Tree1DTest
       using morton_node_id_type = DualtreePoint::morton_node_id_type;
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode({2.9});
       Assert::AreEqual<morton_node_id_type>(7, kLast);
     }
@@ -1081,7 +1081,7 @@ namespace Tree1DTest
       using morton_node_id_type = DualtreePoint::morton_node_id_type;
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode({ 1.5 });
       Assert::AreEqual<morton_node_id_type>(6, kLast);
     }
@@ -1089,7 +1089,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__EqualAtBorder__12)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc ids = tree.RangeSearch({ 1.0, 2.0 }, vpt);
 
       Assert::IsTrue(std::ranges::is_permutation(vector{1, 2}, ids));
@@ -1098,7 +1098,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__Usual__23)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc ids = tree.RangeSearch({ 1.1, 3.1 }, vpt);
 
       Assert::IsTrue(std::ranges::is_permutation(vector{ 2, 3 }, ids));
@@ -1107,7 +1107,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__AtNodeBorder__2)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc ids = tree.RangeSearch({ 1.5, 2.25 }, vpt);
 
       Assert::IsTrue(std::ranges::is_permutation(vector{ 2 }, ids));
@@ -1116,7 +1116,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__ZeroBox__Empty)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc ids = tree.RangeSearch({}, vpt);
 
       Assert::IsTrue(ids.empty());
@@ -1125,7 +1125,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__Empty)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      autoc tree = DualtreePoint::Create(vpt, 2, std::nullopt, 2);
+      autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc ids = tree.RangeSearch({ 1.5, 1.75 }, vpt);
 
       Assert::IsTrue(ids.empty());
@@ -1138,7 +1138,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert__NonLeaf__Successful)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, Point1D{ 2.5 }, false));
 
@@ -1150,7 +1150,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert__Leaf__Successful)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, Point1D{ 2.5 }, true));
 
@@ -1162,7 +1162,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert__OutOfSpace__ReturnsFalse)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
       Assert::IsFalse(tree.Insert(4, Point1D{ 4.0 }, true));
 
       autoc& nodes = tree.GetNodes();
@@ -1180,7 +1180,7 @@ namespace Tree1DTest
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
       
       Assert::IsTrue(tree.Update(3, { 1.1 }));
       autoc ids = tree.CollectAllIdInBFS();
@@ -1191,7 +1191,7 @@ namespace Tree1DTest
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Update(2, { 1.1 }));
       autoc ids = tree.CollectAllIdInBFS();
@@ -1203,7 +1203,7 @@ namespace Tree1DTest
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       autoc idsPre = tree.CollectAllIdInBFS();
       Assert::IsFalse(tree.Update(2, { 3.1 }));
@@ -1216,7 +1216,7 @@ namespace Tree1DTest
     TEST_METHOD(Erase__3__Removed)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Erase(3, vpt.back()));
       autoc ids = tree.CollectAllIdInBFS();
@@ -1226,7 +1226,7 @@ namespace Tree1DTest
     TEST_METHOD(Erase__Nonexist__ReturnsFalse)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       autoc idsPre = tree.CollectAllIdInBFS();
       Assert::IsFalse(tree.Erase(4, vpt.back()));
@@ -1238,7 +1238,7 @@ namespace Tree1DTest
     TEST_METHOD(Erase__WrongPointWasGiven__ReturnsFalse)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint::Create(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       autoc idsPre = tree.CollectAllIdInBFS();
       Assert::IsFalse(tree.Erase(3, vpt.front()));
@@ -1270,10 +1270,10 @@ namespace Tree1DTest
     TEST_METHOD(CollistionDetection__0040_3565__P30)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      autoc treeL = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      autoc treeL = DualtreeBox(vBoxL, 3, std::nullopt, 2);
 
       autoce vBoxR = array{ BoundingBox1D{ 3.5, 4.5 },  BoundingBox1D{ 4.5, 5.5 },  BoundingBox1D{ 5.5, 6.5 } };
-      autoc treeR = DualtreeBox::Create(vBoxR, 3, std::nullopt, 2);
+      autoc treeR = DualtreeBox(vBoxR, 3, std::nullopt, 2);
 
       autoc ret = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
 
@@ -1292,7 +1292,7 @@ namespace Tree1DTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 }, 
         BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }
       };
-      autoc treeL = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      autoc treeL = DualtreeBox(vBoxL, 3, std::nullopt, 2);
 
       autoce vBoxR = array
       { 
@@ -1300,7 +1300,7 @@ namespace Tree1DTest
         BoundingBox1D{ 2.0, 4.0 }, BoundingBox1D{ 4.0, 6.0 }, 
         BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }, BoundingBox1D{ 4.0, 5.0 }, BoundingBox1D{ 5.0, 6.0 }
       };
-      autoc treeR = DualtreeBox::Create(vBoxR, 3, std::nullopt, 2);
+      autoc treeR = DualtreeBox(vBoxR, 3, std::nullopt, 2);
 
       autoc vActual = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
 
@@ -1332,7 +1332,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_IntoRoot_Successful)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 0, 4 }, false));
 
@@ -1345,7 +1345,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_NonLeaf_Successful)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, false));
 
@@ -1357,7 +1357,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_Leaf_Successful)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, true));
 
@@ -1370,7 +1370,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_LeafBut1_Successful)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 1.0, 3.0 }, true));
 
@@ -1383,7 +1383,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_LeafBut2_Successful)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 0.0, 2.0 }, true));
 
@@ -1396,7 +1396,7 @@ namespace Tree1DTest
     TEST_METHOD(Complex)
     {
       autoce vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox::Create(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
       tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, false);
       tree.Insert(5, BoundingBox1D{ 3.5, 3.7 }, true);
       tree.EraseId(3);
@@ -1432,7 +1432,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc nt = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc nt = TreePointND<N>(points, 3, std::nullopt, 3);
       autoc& nodes = nt.GetNodes();
       Assert::AreEqual<size_t>(22, nodes.size());
     }
@@ -1444,7 +1444,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
@@ -1455,7 +1455,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
@@ -1466,7 +1466,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 4, points);
@@ -1477,7 +1477,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 3.5, 5.5 };
       autoc vnn = tree.GetNearestNeighbors(pt, 100, points);
@@ -1492,7 +1492,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
@@ -1503,7 +1503,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 2, points);
@@ -1514,7 +1514,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ 2.0, 2.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 3, points);
@@ -1527,7 +1527,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 1, points);
@@ -1538,7 +1538,7 @@ namespace Tree2DTest
     {
       autoce N = 2;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
@@ -1551,7 +1551,7 @@ namespace Tree2DTest
     {
       autoce N = 23;
       autoce points = getPointSetNo1<N>();
-      autoc tree = TreePointND<N>::Create(points, 3, std::nullopt, 3);
+      autoc tree = TreePointND<N>(points, 3, std::nullopt, 3);
 
       autoce pt = PointND<N>{ -1.0, -1.0 };
       autoc vnn = tree.GetNearestNeighbors(pt, 5, points);
@@ -1573,7 +1573,7 @@ namespace Tree2DTest
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc nodes = quadtreebox.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
       
@@ -1612,7 +1612,7 @@ namespace Tree2DTest
         BoundingBox2D{ { 1.5, 1.5 }, { 2.0, 2.0 } },
       };
 
-      autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
       autoc nodes = quadtreebox.GetNodes();
       Assert::AreEqual<size_t>(8, nodes.size());
 
@@ -1660,7 +1660,7 @@ namespace Tree2DTest
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
 
       autoc search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
       autoc ids = quadtreebox.RangeSearch(search_box, boxes); // { 1, 2, 4 }
@@ -1679,7 +1679,7 @@ namespace Tree2DTest
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
 
       autoc search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
       autoc ids = quadtreebox.RangeSearch<false>(search_box, boxes); // { 1, 2, 3, 4 }
@@ -1698,7 +1698,7 @@ namespace Tree2DTest
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      autoc quadtreebox = QuadtreeBox::Create(boxes, 3, std::nullopt, 2);
+      autoc quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
 
       autoc ptPick = Point2D{ 2.5, 2.5 };
       auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // { 2, 4 }
@@ -1726,8 +1726,8 @@ namespace Tree2DTest
         BoundingBox2D{ { 2.5, 2.5 }, { 3.5, 3.5 } },
       };
 
-      autoc qtL = QuadtreeBox::Create(boxesL, 3, std::nullopt, 2);
-      autoc qtR = QuadtreeBox::Create(boxesR, 3, std::nullopt, 2);
+      autoc qtL = QuadtreeBox(boxesL, 3, std::nullopt, 2);
+      autoc qtR = QuadtreeBox(boxesR, 3, std::nullopt, 2);
 
       autoc aActualPair = QuadtreeBox::CollisionDetection(qtL, boxesL, qtR, boxesR); // { {3, 3}, {2, 4}, {3, 4} }
 
