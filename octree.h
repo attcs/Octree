@@ -1756,7 +1756,7 @@ namespace OrthoTree
       morton_grid_id_type idMin;
       depth_type depth;
 
-      auto operator < (_Location const& idLocationR) const
+      constexpr auto operator < (_Location const& idLocationR) const
       {
         if (depth == idLocationR.depth)
           return idMin < idLocationR.idMin;
@@ -1844,9 +1844,9 @@ namespace OrthoTree
     }
 
 
-    constexpr void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, vector<_Location> & vLocation) const
+    constexpr void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, _LocationContainer & vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
     {
-      auto nDepth = vLocation[0].depth + nSplitStrategyAdditionalDepth;
+      auto nDepth = vLocation[idLoc].depth + nSplitStrategyAdditionalDepth;
       if (nDepth > this->_nDepthMax)
         nDepth = this->_nDepthMax;
 
@@ -1854,7 +1854,7 @@ namespace OrthoTree
       autoc nStepGrid = pow_ce(2, nDepthRemain);
 
       auto aMinGridList = array<vector<grid_id_type>, nDimension>{};
-      auto nBoxByGrid = 1.0;
+      uint64_t nBoxByGrid = 1;
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
       {
         autoc nGridSplitFirst = (aidBoxGrid[0][iDim] / nStepGrid) + 1;
@@ -1878,24 +1878,41 @@ namespace OrthoTree
       base::template _constructGridIdRec<nDimension>(aMinGridList, aidGrid, vaidMinGrid);
       
       autoc nBox = vaidMinGrid.size();
-      vLocation.resize(nBox);
-      autoc id = vLocation[0].id;
+      autoc id = vLocation[idLoc].id;
+      size_t nSize = 1;
+      if (pMtx)
+      {
+        autoc lg = std::lock_guard(*pMtx);
+        nSize = vLocation.size() - 1;
+        vLocation.resize(nSize + nBox);
+      }
+      else
+      {
+        nSize = vLocation.size() - 1;
+        vLocation.resize(nSize + nBox);
+      }
+
       autoc shift = nDepthRemain * nDimension;
       
+      // First element into idLoc
+      vLocation[idLoc].depth = nDepth;
+      vLocation[idLoc].idMin = base::MortonEncode(vaidMinGrid[0]) >> shift;
+
+      // Other at the end
 #pragma loop(ivdep)
-      for (size_t iBox = 0; iBox < nBox; ++iBox)
+      for (size_t iBox = 1; iBox < nBox; ++iBox)
       {
-        vLocation[iBox].id = id;
-        vLocation[iBox].depth = nDepth;
-        vLocation[iBox].idMin = base::MortonEncode(vaidMinGrid[iBox]) >> shift;
+        vLocation[nSize + iBox].id = id;
+        vLocation[nSize + iBox].depth = nDepth;
+        vLocation[nSize + iBox].idMin = base::MortonEncode(vaidMinGrid[iBox]) >> shift;
       }
     }
 
-    constexpr void _setLocation(box_type const& box, vector<_Location>& vLocation) const
+    constexpr void _setLocation(box_type const& box, _LocationContainer& vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
     {
       autoc aidBoxGrid = this->_getGridIdBox(box);
 
-      auto& loc = vLocation[0];
+      auto& loc = vLocation[idLoc];
       loc.depth = this->_nDepthMax;
 
       loc.idMin = base::MortonEncode(aidBoxGrid[0]);
@@ -1913,7 +1930,7 @@ namespace OrthoTree
         if (base::IsValidKey((idMax - idMin) >> (nDepthRemain * nDimension - 1)))
           return; // all nodes are touched, it is leaved.
 
-        this->_split(aidBoxGrid, vLocation);
+        this->_split(aidBoxGrid, vLocation, idLoc, pMtx);
       }
     }
 
@@ -1943,19 +1960,32 @@ namespace OrthoTree
       auto& nodeRoot = cont_at(tree._nodes, kRoot);
 
       autoc vid = base::_generatePointId(n);
-      auto avLocation = vector<vector<_Location>>(n, { _Location{} });
-      std::for_each(execution_policy_type{}, std::begin(vid), std::end(vid), [&tree, &vBox, &avLocation](autoc id)
-      {
-        avLocation[id][0].id = id;
-        tree._setLocation(vBox[id], avLocation[id]);
-      });
 
-      auto aLocation = vector<_Location>();
-      aLocation.reserve(n * 4);
-      for (autoc& vLocation : avLocation)
-        std::copy(std::begin(vLocation), std::end(vLocation), std::back_inserter(aLocation));
+      auto aLocation = _LocationContainer(n);
+      aLocation.reserve(nSplitStrategyAdditionalDepth > 0 ? n * 4 : n);
+      if constexpr (std::is_same<execution_policy_type, std::execution::unsequenced_policy>::value 
+                 || std::is_same<execution_policy_type, std::execution::sequenced_policy>::value
+                 || nSplitStrategyAdditionalDepth == 0
+        )
+      {
+        std::for_each(execution_policy_type{}, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation](autoc id)
+        {
+          aLocation[id].id = id;
+          tree._setLocation(vBox[id], aLocation, id);
+        });
+      }
+      else
+      {
+        std::mutex mtx;
+        std::for_each(std::execution::par, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation, &mtx](autoc id)
+        {
+          aLocation[id].id = id;
+          tree._setLocation(vBox[id], aLocation, id, &mtx);
+        });
+      }
 
       std::sort(execution_policy_type{}, std::begin(aLocation), std::end(aLocation));
+
       auto itBegin = std::begin(aLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aLocation), morton_node_id_type{ 0 }, nDepthMax);
 
@@ -2015,7 +2045,7 @@ namespace OrthoTree
 
       auto vLocation = vector<_Location>(1);
       vLocation[0].id = id;
-      _setLocation(box, vLocation);
+      _setLocation(box, vLocation, 0);
 
       for (autoc& loc : vLocation)
       {
