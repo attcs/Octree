@@ -1355,7 +1355,7 @@ namespace OrthoTree
 
       autoc rVolumeNode = this->_rVolume / (1 << (nDimension * nDepth));
 
-      autoc nidFoundEstimation = this->_rVolume == 0 ? 10 : static_cast<size_t>((rVolumeRange * nEntity) / this->_rVolume);
+      autoc nidFoundEstimation = this->_rVolume < 0.01 ? 10 : static_cast<size_t>((rVolumeRange * nEntity) / this->_rVolume);
       sidFound.reserve(nidFoundEstimation);
       autoc& node = this->GetNode(keyNodeSmallest);
       _rangeSearch<data_type, fRangeMustContain, fIdCheck>(range, vData, rVolumeRange, rVolumeNode, node, sidFound, idMin);
