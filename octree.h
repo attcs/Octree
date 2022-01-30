@@ -1850,7 +1850,7 @@ namespace OrthoTree
       if (nDepth > this->_nDepthMax)
         nDepth = this->_nDepthMax;
 
-      autoc nDepthRemain = this->_nDepthMax - nDepth;
+      autoc nDepthRemain = static_cast<dim_type>(this->_nDepthMax - nDepth);
       autoc nStepGrid = pow_ce(2, nDepthRemain);
 
       auto aMinGridList = array<vector<grid_id_type>, nDimension>{};
