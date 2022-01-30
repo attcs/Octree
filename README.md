@@ -272,12 +272,9 @@ Octree creation for 3 point sets using different placing strategy, and Cylindric
 Octree creation for 3 box sets using different placing strategy, and Cylindrical box set generation time:<br><br>
 <div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/octree_box_perf_3sets.png" align="center"></div>
 <br><br>
-Point rangesearch, cyilndrical placing, number of ranges are 10% of number of points:<br><br>
-<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/range_search.png" align="center"></div>
-<br><br>
-Current Z order implementation compared to a typical ortho tree in 3D and 8D:<br><br>
-<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/zorder_vs_typical.png" align="center"></div>
+Collision detection:<br><br>
+<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/collisiondetection.png" align="center"></div>
 <br>
 <br>
-*CPU: Intel Core i5-6500 @ 3.20GHz, CPU benchmark: 5640
+*CPU: AMD Ryzen 5 5600X 6-Core @ 3.70GHz, CPU benchmark: 22146
 
