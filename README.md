@@ -3,7 +3,7 @@
 <br>
 Lightweight, parallelizable C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
 <br>
-What is an Octree and what is good for? https://en.wikipedia.org/wiki/Octree
+What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Features
 * Adaptable to any existing geometric system
