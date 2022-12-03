@@ -43,6 +43,7 @@ SOFTWARE.
 #include <execution>
 #include <stdexcept>
 
+#include <iterator>
 #include <assert.h>
 
 
