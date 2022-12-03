@@ -38,8 +38,10 @@ namespace OrthoTree
   {
   public:
     using _Ad = typename OrthoTree::_Ad;
-    using vector_type = OrthoTree::vector_type;
-    using box_type = OrthoTree::box_type;
+    using vector_type = typename OrthoTree::vector_type;
+    using box_type = typename OrthoTree::box_type;
+    using depth_type = typename OrthoTree::depth_type;
+    using max_element_type = typename OrthoTree::max_element_type;
 
   protected:
     OrthoTree _tree;
@@ -47,7 +49,7 @@ namespace OrthoTree
 
   public: // Constructors
     OrthoTreeContainerBase() = default;
-    OrthoTreeContainerBase(span<data_type const> const& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false)
+    OrthoTreeContainerBase(span<data_type const> const& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false)
       : _vData(vData.begin(), vData.end())
     {
       if (fParallelCreate)
@@ -56,7 +58,7 @@ namespace OrthoTree
         OrthoTree::Create(_tree, vData, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
-    OrthoTreeContainerBase(vector<data_type>&& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false) 
+    OrthoTreeContainerBase(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false) 
       : _vData(vData)
     {
       if (fParallelCreate)
@@ -71,7 +73,7 @@ namespace OrthoTree
     constexpr OrthoTree const& GetCore() const { return _tree; }
     constexpr vector<data_type> const& GetData() const { return _vData; }
 
-    constexpr void Init(box_type const& boxSpace, OrthoTree::depth_type nDepthMax, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default)
+    constexpr void Init(box_type const& boxSpace, depth_type nDepthMax, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       _tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
     }
@@ -122,15 +124,17 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;
     using _Ad = typename base::_Ad;
-    using vector_type = base::vector_type;
-    using box_type = base::box_type;
+    using vector_type = typename base::vector_type;
+    using box_type = typename base::box_type;
+    using depth_type = typename OrthoTree::depth_type;
+    using max_element_type = typename OrthoTree::max_element_type;
 
     using base::base; // inherits all constructors
 
   public: // Edit functions
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerPoint Create(span<data_type const> const& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default)
+    static OrthoTreeContainerPoint Create(span<data_type const> const& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       auto otc = OrthoTreeContainerPoint();
       otc._vData(vData.begin(), vData.end());
@@ -139,7 +143,7 @@ namespace OrthoTree
     }
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerPoint Create(vector<data_type>&& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default)
+    static OrthoTreeContainerPoint Create(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       auto otc = OrthoTreeContainerPoint();
       otc._vData = vData;
@@ -179,15 +183,17 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;
     using _Ad = typename base::_Ad;
-    using vector_type = base::vector_type;
-    using box_type = base::box_type;
+    using vector_type = typename base::vector_type;
+    using box_type = typename base::box_type;
+    using depth_type = typename OrthoTree::depth_type;
+    using max_element_type = typename OrthoTree::max_element_type;
 
     using base::base; // inherits all constructors
 
   public: // Edit functions
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerBox Create(span<data_type const> const& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default)
+    static OrthoTreeContainerBox Create(span<data_type const> const& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       auto otc = OrthoTreeContainerBox();
       otc._vData = vector(vData.begin(), vData.end());
@@ -196,7 +202,7 @@ namespace OrthoTree
     }
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerBox Create(vector<data_type>&& vData, OrthoTree::depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, OrthoTree::max_element_type nElementMaxInNode = OrthoTree::max_element_default)
+    static OrthoTreeContainerBox Create(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       auto otc = OrthoTreeContainerBox();
       otc._vData = vData;

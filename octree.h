@@ -42,7 +42,6 @@ SOFTWARE.
 #include <functional>
 #include <execution>
 #include <stdexcept>
-
 #include <iterator>
 #include <assert.h>
 
@@ -61,6 +60,16 @@ SOFTWARE.
 #define HASSERT(isOk) assert(isOk); if (!isOk) { exit(1); }
 #define UNDEF_HASSERT
 #endif
+
+
+#define LOOPIVDEP_IN_MSVC
+#ifdef _MSC_VER 
+#ifndef __clang__
+#undef LOOPIVDEP_IN_MSVC
+#define LOOPIVDEP_IN_MSVC _Pragma("loop(ivdep)")
+#endif
+#endif
+
 
 
 namespace OrthoTree
@@ -642,7 +651,7 @@ namespace OrthoTree
       constexpr bool IsChildNodeEnabled(child_id_type idChild)
       { 
         autoc midChild = morton_node_id_type(idChild);
-        return std::find_if(std::begin(_children), std::end(_children), [midChild](autoc& kChild) { return kChild & midChild == midChild; });
+        return std::find_if(std::begin(_children), std::end(_children), [midChild](autoc& kChild) { return (kChild & midChild) == midChild; });
       }
 
       constexpr void DisableChild(morton_node_id_type_cref kChild)
@@ -776,7 +785,7 @@ namespace OrthoTree
       auto& nodeChild = _nodes[kChild];
 
       {
-#pragma loop(ivdep)
+        LOOPIVDEP_IN_MSVC
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fGreater = ((child_id_type{ 1 } << iDimension) & iChild) > 0;
@@ -1845,7 +1854,7 @@ namespace OrthoTree
     }
 
 
-    constexpr void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, _LocationContainer & vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
+    void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, _LocationContainer & vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
     {
       auto nDepth = vLocation[idLoc].depth + nSplitStrategyAdditionalDepth;
       if (nDepth > this->_nDepthMax)
@@ -1900,7 +1909,7 @@ namespace OrthoTree
       vLocation[idLoc].idMin = base::MortonEncode(vaidMinGrid[0]) >> shift;
 
       // Other at the end
-#pragma loop(ivdep)
+      LOOPIVDEP_IN_MSVC
       for (size_t iBox = 1; iBox < nBox; ++iBox)
       {
         vLocation[nSize + iBox].id = id;
@@ -1909,7 +1918,7 @@ namespace OrthoTree
       }
     }
 
-    constexpr void _setLocation(box_type const& box, _LocationContainer& vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
+    void _setLocation(box_type const& box, _LocationContainer& vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
     {
       autoc aidBoxGrid = this->_getGridIdBox(box);
 
@@ -2520,7 +2529,7 @@ namespace OrthoTree
               }
               else
               {
-                // Same entities could collide in other nodes, but only the first should occurrence should check
+                // Same entities could collide in other nodes, but only the first occurrence should be checked
                 autoc& vKeyEntityJ = vReverseMap[vid[jEntity]];
                 auto bIsTheFirstCollisionCheck = nKeyEntity == 1 || vKeyEntityJ.size() == 1;
                 if (!bIsTheFirstCollisionCheck)
@@ -2724,5 +2733,7 @@ namespace OrthoTree
 #undef HASSERT
 #undef UNDEF_HASSERT
 #endif
+
+#undef LOOPIVDEP_IN_MSVC
 
 #endif // ORTHOTREE_GUARD
