@@ -11,7 +11,6 @@ namespace Microsoft {
   namespace VisualStudio {
     namespace CppUnitTestFramework
     {
-      template<> inline std::wstring ToString<uint16_t>(const uint16_t& t) { RETURN_WIDE_STRING(t); }
       template<> inline std::wstring ToString<bitset<65>>(const bitset<65>& t) { RETURN_WIDE_STRING(t); }
 
     }
