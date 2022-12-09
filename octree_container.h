@@ -234,7 +234,7 @@ namespace OrthoTree
     template<bool fFullyContained = true>
     inline vector<entity_id_type> RangeSearch(box_type const& range) const
     {
-      return this->_tree.RangeSearch<fFullyContained>(range, this->_vData);
+      return this->_tree.template RangeSearch<fFullyContained>(range, this->_vData);
     }
 
 

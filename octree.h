@@ -1622,8 +1622,7 @@ namespace OrthoTree
     {
       auto sidFound = vector<entity_id_type>();
 
-      autoc nEntity = vpt.size();
-      if (!this->_rangeSearchRoot<vector_type, false, false, fLeafNodeContainsElementOnly>(range, vpt, sidFound))
+      if (!this->template _rangeSearchRoot<vector_type, false, false, fLeafNodeContainsElementOnly>(range, vpt, sidFound))
         return {};
 
       return sidFound;
@@ -2209,8 +2208,7 @@ namespace OrthoTree
     {
       auto sidFound = vector<entity_id_type>();
 
-      autoc nEntity = vBox.size();
-      if (!this->_rangeSearchRoot<box_type, fFullyContained, false, false>(range, vBox, sidFound))
+      if (!this->template _rangeSearchRoot<box_type, fFullyContained, false, false>(range, vBox, sidFound))
         return {};
 
       if constexpr (nSplitStrategyAdditionalDepth > 0)
@@ -2227,7 +2225,7 @@ namespace OrthoTree
     // Collision detection: Returns all overlapping boxes from the source trees.
     static vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(OrthoTreeBoundingBox const& treeL, span<box_type const> const& vBoxL, OrthoTreeBoundingBox const& treeR, span<box_type const> const& vBoxR)
     {
-      using NodeIterator = base::template container_type<Node>::const_iterator;
+      using NodeIterator = typename base::template container_type<Node>::const_iterator;
       struct NodeIteratorAndStatus { NodeIterator it; bool fTraversed; };
       using ParentIteratorArray = array<NodeIteratorAndStatus, 2>;
 
@@ -2260,7 +2258,6 @@ namespace OrthoTree
           if (fTraversed)
             continue;
           
-          autoc flagPrefix = itNode->first << nDimension;
           autoc vidChild = itNode->second.GetChildren();
           avitChildNode[id].resize(vidChild.size());
           std::ranges::transform(vidChild, begin(avitChildNode[id]), [&](morton_node_id_type_cref kChild) -> NodeIteratorAndStatus
@@ -2302,7 +2299,7 @@ namespace OrthoTree
       return CollisionDetection(*this, vBox, treeOther, vBoxOther);
     }
 
-  private:
+  public:
     // Collision detection between the stored elements from top to bottom logic
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     vector<std::pair<entity_id_type, entity_id_type>> CollisionDetectionObsolete(span<box_type const> const& vBox) const
@@ -2553,7 +2550,6 @@ namespace OrthoTree
         return aidPair;
       });
 
-      //vidCollision.reserve(vBox.size());
       for (autoc& vidCollisionNode : vvidCollisionByNode)
         vidCollision.insert(vidCollision.end(), vidCollisionNode.begin(), vidCollisionNode.end());
       
@@ -2574,14 +2570,11 @@ namespace OrthoTree
       {
         autoc oDist = _Ad::is_ray_hit(vBox[id], rayBase, rayHeading);
         if (oDist)
-          vdidOut.push_back({ *oDist, id });
+          vdidOut.push_back({ { oDist.value() }, id });
       }
 
-      autoc flagPrefix = kNode << nDimension;
       for (autoc kChild : node.GetChildren())
-      {
         _rayIntersectedAll(kChild, cont_at(this->_nodes, kChild), vBox, rayBase, rayHeading, vdidOut);
-      }
     }
 
 
@@ -2600,7 +2593,6 @@ namespace OrthoTree
         vidOut.insert({ { *oDist }, id });
       }
 
-      autoc flagPrefix = kNode << nDimension;
       auto msNode = multiset<_BoxDistance>();
       for (autoc kChild : node.GetChildren())
       {
