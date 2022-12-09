@@ -154,7 +154,7 @@ namespace OrthoTree
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     void Move(vector_type const& vMove)
     {
-      this->_tree.Move<execution_policy_type>(vMove);
+      this->_tree.template Move<execution_policy_type>(vMove);
       std::for_each(execution_policy_type{}, std::begin(this->_vData), std::end(this->_vData), [&vMove](auto& pt) { pt = _Ad::add(pt, vMove); });
     }
 
@@ -213,7 +213,7 @@ namespace OrthoTree
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     void Move(vector_type const& vMove)
     {
-      this->_tree.Move<execution_policy_type>(vMove);
+      this->_tree.template Move<execution_policy_type>(vMove);
 
       std::for_each(execution_policy_type{}, std::begin(this->_vData), std::end(this->_vData), [&vMove](auto& box)
       {

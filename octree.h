@@ -25,26 +25,28 @@ SOFTWARE.
 #ifndef ORTHOTREE_GUARD
 #define ORTHOTREE_GUARD
 
+#include <algorithm>
+#include <concepts>
+#include <execution>
+#include <functional>
+#include <iterator>
+#include <numeric>
+#include <optional>
+#include <type_traits>
+#include <stdexcept>
+
 #include <array>
 #include <bitset>
-#include <optional>
-#include <span>
-#include <vector>
-#include <set>
 #include <map>
 #include <unordered_map>
 #include <queue>
+#include <set>
+#include <span>
+#include <vector>
 #include <tuple>
-#include <algorithm>
-#include <numeric>
-#include <concepts>
-#include <type_traits>
-#include <functional>
-#include <execution>
-#include <stdexcept>
-#include <iterator>
-#include <assert.h>
 
+#include <assert.h>
+#include <math.h>
 
 #ifndef autoc
 #define autoc auto const
@@ -1424,7 +1426,7 @@ namespace OrthoTree
 
   protected: // Aid functions
 
-    using _LocationIterator = typename vector<std::pair<entity_id_type, morton_grid_id_type>>::const_iterator;
+    using _LocationIterator = typename vector<std::pair<entity_id_type, morton_grid_id_type>>::iterator;
     void _addNodes(Node& nodeParent, morton_node_id_type_cref kParent, _LocationIterator& itEndPrev, _LocationIterator const& itEnd, morton_grid_id_type_cref idLocationBegin, depth_type nDepthRemain)
     {
       autoc nElement = std::distance(itEndPrev, itEnd);
@@ -1581,7 +1583,7 @@ namespace OrthoTree
 
 
     // Update id by the new point information and the erase part is aided by the old point geometry data
-    void Update(entity_id_type id, vector_type const& ptOld, vector_type const& ptNew)
+    bool Update(entity_id_type id, vector_type const& ptOld, vector_type const& ptNew)
     {
       if (!_Ad::does_box_contain_point(this->_box, ptNew))
         return false;
@@ -2315,7 +2317,7 @@ namespace OrthoTree
         auto sidFound = vector<entity_id_type>();
 
         autoc nEntity = vBox.size();
-        if (!this->_rangeSearchRoot<box_type, false, true, false>(vBox[idCheck], vBox, sidFound, idCheck))
+        if (!this->template _rangeSearchRoot<box_type, false, true, false>(vBox[idCheck], vBox, sidFound, idCheck))
           return {};
 
         if constexpr (nSplitStrategyAdditionalDepth > 0)
