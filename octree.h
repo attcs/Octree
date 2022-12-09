@@ -894,7 +894,7 @@ namespace OrthoTree
       }
 
       autoc nElementInNodeAvg = static_cast<float>(nElement) / static_cast<float>(nElementMax);
-      autoc nDepthEstimated = std::min(nDepthMax, static_cast<depth_type>(ceil((log2(nElementInNodeAvg) + 1) / static_cast<float>(nDimension))));
+      autoc nDepthEstimated = std::min(nDepthMax, static_cast<depth_type>(ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(nDimension))));
       if (nDepthEstimated * nDimension < 64)
         return static_cast<size_t>(rMult * (1 << nDepthEstimated * nDimension));
 
