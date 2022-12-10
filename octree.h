@@ -91,7 +91,7 @@ namespace OrthoTree
 #endif
   // Crash the program if out_of_range exception is raised
   template<typename var_type, typename index_type, typename container_type>
-  inline auto const& cont_at(container_type const& container, typename std::remove_reference_t<container_type>::key_type const& id)
+  inline auto const& cont_at(container_type const& container, typename std::remove_reference_t<container_type>::key_type const& id) noexcept
   {
     try { return container.at(id); }
     catch (std::out_of_range const&) { HASSERT(false); }
@@ -99,7 +99,7 @@ namespace OrthoTree
 
   // Crash the program if out_of_range exception is raised
   template<typename container_type>
-  inline auto& cont_at(container_type& container, typename std::remove_reference_t<container_type>::key_type const& id)
+  inline auto& cont_at(container_type& container, typename std::remove_reference_t<container_type>::key_type const& id) noexcept
   {
     try { return container.at(id); }
     catch (std::out_of_range const&) { HASSERT(false); }
@@ -934,7 +934,7 @@ namespace OrthoTree
     static inline morton_node_id_type RemoveSentinelBit(morton_node_id_type_cref key, std::optional<depth_type> const& onDepth = std::nullopt)
     {
       autoc nDepth = onDepth.has_value() ? *onDepth : GetDepth(key);
-      return key - (1 << nDepth);
+      return key - (morton_node_id_type{ 1 } << nDepth);
     }
 
 
@@ -942,9 +942,19 @@ namespace OrthoTree
 
     static inline child_id_type _getChildPartOfLocation(morton_node_id_type_cref key)
     {
-      autoce maskLastBits1 = (morton_node_id_type{ 1 } << nDimension) - 1;
+      if constexpr (is_linear_tree)
+      {
+        autoce maskLastBits1 = (morton_node_id_type{ 1 } << nDimension) - 1;
+        return _mortonIdToChildId(key & maskLastBits1);
+      }
+      else
+      {
+        auto idChild = morton_node_id_type{};
+        for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+          idChild[iDim] = key[iDim];
 
-      return _mortonIdToChildId(key & maskLastBits1);
+        return _mortonIdToChildId(idChild);
+      }
     }
 
     static constexpr morton_grid_id_type _part1By2(grid_id_type n)
@@ -1031,9 +1041,8 @@ namespace OrthoTree
   public: // Getters
 
     auto const& GetNodes() const noexcept { return _nodes; }
-    constexpr auto const& GetNode(morton_node_id_type_cref key) const { return cont_at(_nodes, key); }
+    constexpr auto const& GetNode(morton_node_id_type_cref key) const noexcept { return cont_at(_nodes, key); }
     auto const& GetBox() const noexcept { return _box; }
-    auto const& Get(morton_node_id_type_cref key) const { return cont_at(_nodes, key); }
     auto inline GetDepthMax() const noexcept { return _nDepthMax; }
     auto inline GetResolutionMax() const noexcept { return _nRasterResolutionMax; }
 
@@ -1130,12 +1139,12 @@ namespace OrthoTree
 
 
     // Collect all item id, traversing the tree in breadth-first search order
-    vector<entity_id_type> CollectAllIdInBFS() const
+    vector<entity_id_type> CollectAllIdInBFS(morton_node_id_type_cref kRoot = GetRootKey()) const
     {
       auto ids = vector<entity_id_type>();
       ids.reserve(_nodes.size() * std::max<size_t>(2, _nElementMax / 2));
 
-      VisitNodes(GetRootKey(), [&ids](morton_node_id_type_cref key, autoc& node)
+      VisitNodes(kRoot, [&ids](morton_node_id_type_cref key, autoc& node)
       { 
         ids.insert(std::end(ids), std::begin(node.vid), std::end(node.vid));
       });
@@ -1318,7 +1327,7 @@ namespace OrthoTree
         auto bOverlap = true;
         for (dim_type iDim = 0; iDim < nDimension && bOverlap; ++iDim)
         {
-          if (keyChild & (1 << iDim))
+          if (IsValidKey(keyChild & (morton_node_id_type{ 1 } << iDim)))
             bOverlap &= _Ad::point_comp_c(_Ad::box_min_c(nodeChild.box), iDim) < _Ad::point_comp_c(_Ad::box_max_c(range), iDim);
           else
             bOverlap &= _Ad::point_comp_c(_Ad::box_max_c(nodeChild.box), iDim) > _Ad::point_comp_c(_Ad::box_min_c(range), iDim);
@@ -2106,7 +2115,7 @@ namespace OrthoTree
     bool Erase(entity_id_type idErase, box_type const& box)
     {
       autoc kOld = FindSmallestNode(box);
-      if (!kOld)
+      if (!base::IsValidKey(kOld))
         return false; // old box is not in the handled space domain
 
       if (_eraseRec<nSplitStrategyAdditionalDepth>(kOld, idErase))
@@ -2370,9 +2379,13 @@ namespace OrthoTree
             vReverseMap[id].emplace_back(kNode);
         });
 
-        std::for_each(ep, std::begin(vReverseMap), std::end(vReverseMap), [](auto& vKey)
+        std::for_each(ep, std::begin(vReverseMap), std::end(vReverseMap), [this](auto& vKey)
         {
-          std::ranges::sort(vKey);
+          if constexpr (this->is_linear_tree)
+            std::ranges::sort(vKey);
+          else
+            std::ranges::sort(vKey, bitset_arithmetic_compare{});
+
         });
       }
 

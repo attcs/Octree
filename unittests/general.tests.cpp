@@ -411,7 +411,7 @@ namespace GeneralTest
       auto tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
       autoc kNode = tree.GetHash(2, 2);
-      autoc& node = tree.Get(kNode);
+      autoc& node = tree.GetNode(kNode);
       Assert::AreEqual<size_t>(node.vid.size(), 1);
       tree.EraseId(2);
       Assert::IsTrue(node.vid.empty());
