@@ -44,5 +44,8 @@
     <ClInclude Include="..\octree_container.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="compile_test.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

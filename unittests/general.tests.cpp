@@ -1,5 +1,6 @@
 #include "pch.h"
 
+
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-braces"
@@ -1745,4 +1746,17 @@ namespace Tree2DTest
 
 namespace Tree3DTest
 {
+}
+
+
+namespace CompileTest
+{
+  TEST_CLASS(CompileTest)
+  {
+    TEST_METHOD(AllFunc)
+    {
+      testCompileBoxBatchSplitStrategy();
+    }
+
+  };
 }

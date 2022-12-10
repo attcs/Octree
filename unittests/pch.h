@@ -10,6 +10,8 @@
 // add headers that you want to pre-compile here
 
 #include "../octree.h"
+#include "compile_test.h"
+
 #include "CppUnitTest.h"
 
 #endif //PCH_H
