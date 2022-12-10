@@ -824,13 +824,14 @@ namespace OrthoTree
       return itEndUnique == end(ids);
     }
 
-
+    template<bool bCheckUniqness>
     bool _insert(morton_node_id_type_cref kNode, morton_node_id_type_cref kNodeSmallest, entity_id_type id, bool fInsertToLeaf)
     {
       if (kNode == kNodeSmallest)
       {
         cont_at(this->_nodes, kNode).vid.emplace_back(id);
-        assert(this->_isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
+        if constexpr (bCheckUniqness)
+          assert(this->_isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
         return true;
       }
 
@@ -866,7 +867,9 @@ namespace OrthoTree
           itNode->second.vid.emplace_back(id);
       }
 
-      assert(this->_isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
+      if constexpr (bCheckUniqness)
+        assert(this->_isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
+
       return true;
     }
 
@@ -1052,7 +1055,7 @@ namespace OrthoTree
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
     void constexpr Init(box_type const& box, depth_type nDepthMax, max_element_type nElementMax = 11)
     {
-      assert(this->_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree is wanted to be reset, use the Clear() function before init.
+      assert(this->_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree is wanted to be reset, use the Reset() function before init.
       assert(nDepthMax > 1);
       assert(nDepthMax <= _nDepthMaxTheoretical);
       assert(nDepthMax < std::numeric_limits<uint8_t>::max());
@@ -1153,6 +1156,7 @@ namespace OrthoTree
 
 
     // Update all element which are in the given hash-table. Elements will be erased if the replacement id is std::numeric_limits<entity_id_type>::max().
+    template<bool bCheckUniqness = false>
     void UpdateIndexes(unordered_map<entity_id_type, entity_id_type> const& vIndexOldNew)
     {
       autoc itEnd = std::end(vIndexOldNew);
@@ -1169,7 +1173,8 @@ namespace OrthoTree
         node.second.vid.swap(vid);
       });
 
-      assert(_isEveryItemIdUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
+      if constexpr (bCheckUniqness)
+        assert(_isEveryItemIdUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
     }
 
 
@@ -1208,6 +1213,16 @@ namespace OrthoTree
     }
 
 
+    // Reset the tree
+    void Reset()
+    {
+      _nodes.clear();
+      _box = {};
+      _rVolume = 0.0;
+      _aRasterizer = {};
+    }
+
+
     // Remove all elements and ids, except Root
     void Clear()
     {
@@ -1216,6 +1231,7 @@ namespace OrthoTree
     }
 
 
+    // Move the whole tree with a vector of the movement
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     void Move(vector_type const& vMove)
     {
@@ -1528,7 +1544,7 @@ namespace OrthoTree
       autoc idLocation = this->_getLocationId(pt);
       autoc kNode = this->GetHash(this->_nDepthMax, idLocation);
 
-      return this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf);
+      return this->template _insert<true>(kNode, kNodeSmallest, id, fInsertToLeaf);
     }
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
@@ -1557,7 +1573,7 @@ namespace OrthoTree
     bool Erase(entity_id_type idErase, vector_type const& pt)
     {
       autoc kOld = FindSmallestNode(pt);
-      if (!kOld)
+      if (!base::IsValidKey(kOld))
         return false; // old box is not in the handled space domain
 
       auto& vid = cont_at(this->_nodes, kOld).vid;
@@ -1595,7 +1611,7 @@ namespace OrthoTree
 
 
     // Update id by the new point information and the erase part is aided by the old point geometry data
-    bool Update(entity_id_type id, vector_type const& ptOld, vector_type const& ptNew)
+    bool Update(entity_id_type id, vector_type const& ptOld, vector_type const& ptNew, bool fInsertToLeaf = false)
     {
       if (!_Ad::does_box_contain_point(this->_box, ptNew))
         return false;
@@ -1603,7 +1619,7 @@ namespace OrthoTree
       if (!this->Erase<false>(id, ptOld))
         return false;
 
-      return this->Insert(id, ptNew);
+      return this->Insert(id, ptNew, fInsertToLeaf);
     }
 
 
@@ -1867,7 +1883,7 @@ namespace OrthoTree
     }
 
 
-    void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, _LocationContainer & vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
+    void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, size_t idLoc, _LocationContainer& vLocation, _LocationContainer * pvLocationAdditional) const
     {
       auto nDepth = vLocation[idLoc].depth + nSplitStrategyAdditionalDepth;
       if (nDepth > this->_nDepthMax)
@@ -1902,40 +1918,43 @@ namespace OrthoTree
       
       autoc nBox = vaidMinGrid.size();
       autoc id = vLocation[idLoc].id;
-      size_t nSize = 1;
-      if (pMtx)
-      {
-        autoc lg = std::lock_guard(*pMtx);
-        nSize = vLocation.size() - 1;
-        vLocation.resize(nSize + nBox);
-      }
-      else
-      {
-        nSize = vLocation.size() - 1;
-        vLocation.resize(nSize + nBox);
-      }
-
       autoc shift = nDepthRemain * nDimension;
-      
+
+
       // First element into idLoc
       vLocation[idLoc].depth = nDepth;
       vLocation[idLoc].idMin = base::MortonEncode(vaidMinGrid[0]) >> shift;
 
-      // Other at the end
-      LOOPIVDEP_IN_MSVC
-      for (size_t iBox = 1; iBox < nBox; ++iBox)
+      size_t nSize = 0;
+      autoc nBoxAdd = nBox - 1;
+      if (pvLocationAdditional)
       {
-        vLocation[nSize + iBox].id = id;
-        vLocation[nSize + iBox].depth = nDepth;
-        vLocation[nSize + iBox].idMin = base::MortonEncode(vaidMinGrid[iBox]) >> shift;
+        pvLocationAdditional->resize(nBox - 1);
+      }
+      else
+      {
+        nSize = vLocation.size();
+        vLocation.resize(nSize + nBoxAdd);
+        pvLocationAdditional = &vLocation;
+      }
+
+      auto& vLocation_ = *pvLocationAdditional;
+      LOOPIVDEP_IN_MSVC
+      for (size_t iBox = 0; iBox < nBoxAdd; ++iBox)
+      {
+        vLocation_[nSize + iBox].id = id;
+        vLocation_[nSize + iBox].depth = nDepth;
+        vLocation_[nSize + iBox].idMin = base::MortonEncode(vaidMinGrid[iBox + 1]) >> shift;
       }
     }
 
-    void _setLocation(box_type const& box, _LocationContainer& vLocation, size_t idLoc, std::mutex * pMtx = nullptr) const
+
+    void _setLocation(box_type const& box, size_t idLoc, _LocationContainer& vLocation, vector<_LocationContainer>* pvvLocationAdditional = nullptr) const
     {
       autoc aidBoxGrid = this->_getGridIdBox(box);
 
       auto& loc = vLocation[idLoc];
+      loc.id = idLoc;
       loc.depth = this->_nDepthMax;
 
       loc.idMin = base::MortonEncode(aidBoxGrid[0]);
@@ -1953,7 +1972,7 @@ namespace OrthoTree
         if (base::IsValidKey((idMax - idMin) >> (nDepthRemain * nDimension - 1)))
           return; // all nodes are touched, it is leaved.
 
-        this->_split(aidBoxGrid, vLocation, idLoc, pMtx);
+        this->_split(aidBoxGrid, idLoc, vLocation, pvvLocationAdditional ? &pvvLocationAdditional->at(idLoc) : nullptr);
       }
     }
 
@@ -1986,26 +2005,30 @@ namespace OrthoTree
 
       auto ep = execution_policy_type{};
       auto aLocation = _LocationContainer(n);
-      aLocation.reserve(nSplitStrategyAdditionalDepth > 0 ? n * 4 : n);
-      if constexpr (std::is_same<execution_policy_type, std::execution::unsequenced_policy>::value 
-                 || std::is_same<execution_policy_type, std::execution::sequenced_policy>::value
-                 || nSplitStrategyAdditionalDepth == 0
+      aLocation.reserve(nSplitStrategyAdditionalDepth > 0 ? n * std::min<size_t>(10, base::_nChild * nSplitStrategyAdditionalDepth) : n);
+      if constexpr (nSplitStrategyAdditionalDepth == 0
+        || std::is_same<execution_policy_type, std::execution::unsequenced_policy>::value
+        || std::is_same<execution_policy_type, std::execution::sequenced_policy>::value
         )
       {
         std::for_each(ep, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation](autoc id)
         {
-          aLocation[id].id = id;
-          tree._setLocation(vBox[id], aLocation, id);
+          tree._setLocation(vBox[id], id, aLocation);
         });
       }
       else
       {
-        std::mutex mtx;
-        std::for_each(std::execution::par, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation, &mtx](autoc id)
+        auto vAddtional = vector<_LocationContainer>(n);
+        std::for_each(ep, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation, &vAddtional](autoc id)
         {
-          aLocation[id].id = id;
-          tree._setLocation(vBox[id], aLocation, id, &mtx);
+          tree._setLocation(vBox[id], id, aLocation, &vAddtional);
         });
+
+        std::for_each(std::begin(vAddtional), std::end(vAddtional), [&aLocation](autoc& vAdd)
+        {
+          aLocation.insert(end(aLocation), begin(vAdd), end(vAdd));
+        });
+
       }
 
       std::sort(ep, std::begin(aLocation), std::end(aLocation));
@@ -2068,13 +2091,12 @@ namespace OrthoTree
         return false; // new box is not in the handled space domain
 
       auto vLocation = vector<_Location>(1);
-      vLocation[0].id = id;
-      _setLocation(box, vLocation, 0);
+      _setLocation(box, 0, vLocation);
 
       for (autoc& loc : vLocation)
       {
         autoc kNode = this->GetHash(loc.depth, loc.idMin);
-        if (!this->_insert(kNode, kNodeSmallest, id, fInsertToLeaf))
+        if (!this->template _insert<nSplitStrategyAdditionalDepth == 0>(kNode, kNodeSmallest, id, fInsertToLeaf))
           return false;
       }
 
@@ -2698,7 +2720,8 @@ namespace OrthoTree
   using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
 
   template<size_t nDimension> using TreePointND = OrthoTree::OrthoTreePoint<nDimension, OrthoTree::PointND<nDimension>, OrthoTree::BoundingBoxND<nDimension>>;
-  template<size_t nDimension> using TreeBoxND = OrthoTree::OrthoTreeBoundingBox<nDimension, OrthoTree::PointND<nDimension>, OrthoTree::BoundingBoxND<nDimension>>;
+  template<size_t nDimension, uint32_t nSplitStrategyAdditionalDepth = 2> 
+  using TreeBoxND = OrthoTree::OrthoTreeBoundingBox<nDimension, OrthoTree::PointND<nDimension>, OrthoTree::BoundingBoxND<nDimension>, AdaptorGeneral<nDimension, OrthoTree::PointND<nDimension>, OrthoTree::BoundingBoxND<nDimension>>, double, nSplitStrategyAdditionalDepth>;
 
   // Dualtree for points
   using DualtreePoint = TreePointND<1>;

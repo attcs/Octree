@@ -113,7 +113,7 @@ namespace OrthoTree
     }
 
     inline void Clear() { _tree.Clear(); _vData.clear(); }
-
+    inline void Reset() { _tree.Reset(); _vData.clear(); }
   };
 
 
@@ -137,7 +137,7 @@ namespace OrthoTree
     static OrthoTreeContainerPoint Create(span<data_type const> const& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       auto otc = OrthoTreeContainerPoint();
-      otc._vData(vData.begin(), vData.end());
+      otc._vData = vector(vData.begin(), vData.end());
       OrthoTree::template Create<execution_policy_type>(otc._tree, vData, nDepthMax, oBoxSpace, nElementMaxInNode);
       return otc;
     }
@@ -146,7 +146,7 @@ namespace OrthoTree
     static OrthoTreeContainerPoint Create(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       auto otc = OrthoTreeContainerPoint();
-      otc._vData = vData;
+      otc._vData = std::move(vData);
       OrthoTree::template Create<execution_policy_type>(otc._tree, otc._vData, nDepthMax, oBoxSpace, nElementMaxInNode);
       return otc;
     }
@@ -205,7 +205,7 @@ namespace OrthoTree
     static OrthoTreeContainerBox Create(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default)
     {
       auto otc = OrthoTreeContainerBox();
-      otc._vData = vData;
+      otc._vData = std::move(vData);
       OrthoTree::template Create<execution_policy_type>(otc._tree, otc._vData, nDepthMax, oBoxSpace, nElementMaxInNode);
       return otc;
     }
@@ -250,7 +250,7 @@ namespace OrthoTree
     // Collision detection with another tree
     inline vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(OrthoTreeContainerBox const& treeOther) const
     {
-      return this->_tree.CollisionDetection(this->_tree, this->_vData, treeOther->_tree, treeOther->_vData);
+      return this->_tree.CollisionDetection(this->_tree, this->_vData, treeOther._tree, treeOther._vData);
     }
 
     // Collision detection between trees
@@ -278,8 +278,8 @@ namespace OrthoTree
   template<dim_type N>
   using TreePointContainerND = OrthoTreeContainerPoint<TreePointND<N>, PointND<N>>;
 
-  template<dim_type N>
-  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<N>, BoundingBoxND<N>>;
+  template<dim_type N, uint32_t nSplitStrategyAdditionalDepth = 2>
+  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<N, nSplitStrategyAdditionalDepth>, BoundingBoxND<N>>;
 
   // Dualtree for points
   using DualtreePointC = TreePointContainerND<1>;
