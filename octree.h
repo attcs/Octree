@@ -1210,7 +1210,8 @@ namespace OrthoTree
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     void Move(vector_type const& vMove)
     {
-      std::for_each(execution_policy_type{}, std::begin(_nodes), std::end(_nodes), [&vMove](auto& pairKeyNode)
+      auto ep = execution_policy_type{};
+      std::for_each(ep, std::begin(_nodes), std::end(_nodes), [&vMove](auto& pairKeyNode)
       {
         _Ad::move_box(pairKeyNode.second.box, vMove);
       });
@@ -1489,12 +1490,14 @@ namespace OrthoTree
       // Generate Morton location ids
       autoc vidPoint = base::_generatePointId(n);
       auto aidLocation = vector<std::pair<entity_id_type, morton_grid_id_type>>(n);
-      std::transform(execution_policy_type{}, std::begin(vpt), std::end(vpt), std::begin(vidPoint), std::begin(aidLocation), [&](autoc& pt, autoc id) -> std::pair<entity_id_type, morton_grid_id_type>
+
+      auto ep = execution_policy_type{}; // GCC 11.3 only accept in this form
+      std::transform(ep, vpt.begin(), vpt.end(), vidPoint.begin(), aidLocation.begin(), [&](autoc& pt, autoc id) -> std::pair<entity_id_type, morton_grid_id_type>
       {
         return { id, tree._getLocationId(pt) };
       });
 
-      std::sort(execution_policy_type{}, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
+      std::sort(ep, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
       auto itBegin = std::begin(aidLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aidLocation), morton_node_id_type{ 0 }, nDepthMax);
     }
@@ -1972,6 +1975,7 @@ namespace OrthoTree
 
       autoc vid = base::_generatePointId(n);
 
+      auto ep = execution_policy_type{};
       auto aLocation = _LocationContainer(n);
       aLocation.reserve(nSplitStrategyAdditionalDepth > 0 ? n * 4 : n);
       if constexpr (std::is_same<execution_policy_type, std::execution::unsequenced_policy>::value 
@@ -1979,7 +1983,7 @@ namespace OrthoTree
                  || nSplitStrategyAdditionalDepth == 0
         )
       {
-        std::for_each(execution_policy_type{}, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation](autoc id)
+        std::for_each(ep, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation](autoc id)
         {
           aLocation[id].id = id;
           tree._setLocation(vBox[id], aLocation, id);
@@ -1995,14 +1999,14 @@ namespace OrthoTree
         });
       }
 
-      std::sort(execution_policy_type{}, std::begin(aLocation), std::end(aLocation));
+      std::sort(ep, std::begin(aLocation), std::end(aLocation));
 
       auto itBegin = std::begin(aLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aLocation), morton_node_id_type{ 0 }, nDepthMax);
 
       if constexpr (nSplitStrategyAdditionalDepth > 0)
       {
-        std::for_each(execution_policy_type{}, std::begin(tree._nodes), std::end(tree._nodes), [](auto& pairKeyNode)
+        std::for_each(ep, std::begin(tree._nodes), std::end(tree._nodes), [](auto& pairKeyNode)
         {
           auto& node = pairKeyNode.second;
           std::ranges::sort(node.vid);
@@ -2312,7 +2316,8 @@ namespace OrthoTree
       std::iota(std::begin(vidCheck), std::end(vidCheck), 0);
 
       auto vvidCollision = vector<vector<entity_id_type>>(vidCheck.size());
-      std::transform(execution_policy_type{}, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&vBox, this](autoc idCheck) -> vector<entity_id_type>
+      auto ep = execution_policy_type{};
+      std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&vBox, this](autoc idCheck) -> vector<entity_id_type>
       {
         auto sidFound = vector<entity_id_type>();
 
@@ -2352,6 +2357,7 @@ namespace OrthoTree
       auto vidCollision = CollisionDetectionContainer();
       vidCollision.reserve(vBox.size());
 
+      auto ep = execution_policy_type{};
 
       // nSplitStrategyAdditionalDepth version of this algorithm needs a reverse map
       auto vReverseMap = vector<vector<morton_node_id_type>>(nEntity);
@@ -2364,7 +2370,7 @@ namespace OrthoTree
             vReverseMap[id].emplace_back(kNode);
         });
 
-        std::for_each(execution_policy_type{}, std::begin(vReverseMap), std::end(vReverseMap), [](auto& vKey)
+        std::for_each(ep, std::begin(vReverseMap), std::end(vReverseMap), [](auto& vKey)
         {
           std::ranges::sort(vKey);
         });
@@ -2390,7 +2396,7 @@ namespace OrthoTree
 
       // Collision detection node-by-node without duplication
       auto vvidCollisionByNode = vector<CollisionDetectionContainer>(this->_nodes.size());
-      std::transform(execution_policy_type{}, std::begin(this->_nodes), std::end(this->_nodes), std::begin(vvidCollisionByNode), [&vBox, &vReverseMap, &vidDepth0, this](autoc& pairKeyNode) -> CollisionDetectionContainer
+      std::transform(ep, std::begin(this->_nodes), std::end(this->_nodes), std::begin(vvidCollisionByNode), [&vBox, &vReverseMap, &vidDepth0, this](autoc& pairKeyNode) -> CollisionDetectionContainer
       {
         auto aidPair = CollisionDetectionContainer{};
         autoc& [keyNode, node] = pairKeyNode;
