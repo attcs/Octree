@@ -43,7 +43,7 @@ namespace PerformaceTest
   static vector<PointND<nDim>> CreatePoints()
   {
     auto aPoint = vector<PointND<nDim>>(nNumber);
-    if (nNumber <= 1)
+    if constexpr (nNumber <= 1)
       return aPoint;
 
     size_t iNumber = 1;
@@ -67,7 +67,7 @@ namespace PerformaceTest
       autoc nRemain = nNumber - iNumber;
       autoc rStep = rMax / (nRemain + 2);
       for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
-        for (dim_type iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
+        for (dim_type iDim = 0; iDim < nDim; ++iDim)
           aPoint[nNumber - iNumber - 1][iDim] = iRemain * rStep;
 
     }
@@ -79,7 +79,7 @@ namespace PerformaceTest
   static vector<PointND<nDim>> CreateRandomPoints()
   {
     auto aPoint = vector<PointND<nDim>>(nNumber);
-    if (nNumber <= 1)
+    if constexpr (nNumber <= 1)
       return aPoint;
 
     size_t iNumber = 1;
@@ -113,14 +113,13 @@ namespace PerformaceTest
   template<dim_type nDim, size_t nNumber>
   static vector<BoundingBoxND<nDim>> CreateBoxes()
   {
-    if (nNumber == 0)
+    if constexpr (nNumber == 0)
       return {};
 
-    autoce rMax = 8.0;
     autoce rUnit = 1.0;
     auto aBox = vector<BoundingBoxND<nDim>>(nNumber);
     aBox[0] = CreateBox(PointND<nDim>(), rMax);
-    if (nNumber == 1)
+    if constexpr (nNumber == 1)
       return aBox;
 
     size_t iNumber = 1;
@@ -164,14 +163,13 @@ namespace PerformaceTest
   template<dim_type nDim, size_t nNumber>
   static vector<BoundingBoxND<nDim>> CreateRandomBoxes()
   {
-    if (nNumber == 0)
+    if constexpr (nNumber == 0)
       return {};
 
-    autoce rMax = 8.0;
     autoce rUnit = 1.0;
     auto aBox = vector<BoundingBoxND<nDim>>(nNumber);
     aBox[0] = CreateBox(PointND<nDim>(), rMax);
-    if (nNumber == 1)
+    if constexpr (nNumber == 1)
       return aBox;
 
     size_t iNumber = 1;
@@ -260,7 +258,7 @@ namespace PerformaceTest
   private:
 
     template<dim_type nDim>
-    static TreePointND<nDim> CreateTest(unsigned depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
+    static TreePointND<nDim> CreateTest(depth_type depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
     {
       autoc box = CreateSearcBox<nDim>(0.0, rMax);
 
@@ -313,7 +311,7 @@ namespace PerformaceTest
   {
   private:
     template<dim_type nDim>
-    static auto CreateTest(unsigned depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
+    static auto CreateTest(depth_type depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
     {
       autoc box = CreateSearcBox<nDim>(0.0, rMax);
 

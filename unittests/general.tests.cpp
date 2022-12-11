@@ -352,7 +352,7 @@ namespace GeneralTest
     TEST_METHOD(GetDepth__37_15__3)
     {
       autoc lc = DualtreePoint::GetDepth(DualtreePoint::GetHash(3, 7));
-      Assert::AreEqual(DualtreePoint::depth_type{ 3 }, lc);
+      Assert::AreEqual(depth_type{ 3 }, lc);
     }
 
     TEST_METHOD(RemoveSentinelBit__37_15__7)
@@ -370,7 +370,7 @@ namespace GeneralTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(1, nodes.size());
-      Assert::AreEqual<DualtreePoint::depth_type>(3, tree.GetDepthMax());
+      Assert::AreEqual<depth_type>(3, tree.GetDepthMax());
       Assert::AreEqual<grid_id_type>(8, tree.GetResolutionMax());
     }
 
@@ -381,7 +381,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{0, 1, 2, 3 });
@@ -399,7 +399,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
@@ -431,7 +431,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
@@ -451,7 +451,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 7, 3 });
@@ -470,7 +470,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 3 });
@@ -495,7 +495,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{3, 4, 5, 0, 1, 2, 6 });
@@ -520,7 +520,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc key, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 1, 0, 2, 3 });

@@ -78,8 +78,8 @@ void testCompilePoint()
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](autoc& keyNode, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-    , [](autoc& key, autoc& node) -> bool { return true; }
+      , [&vListIsAnyChild](autoc&, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
+      , [](autoc&, autoc&) -> bool { return true; }
     );
   }
 
@@ -160,8 +160,8 @@ void testCompileBox()
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](autoc& keyNode, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-    , [](autoc& key, autoc& node) -> bool { return true; }
+      , [&vListIsAnyChild](autoc&, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
+      , [](autoc&, autoc&) -> bool { return true; }
     );
   }
 

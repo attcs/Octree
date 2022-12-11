@@ -139,6 +139,9 @@ namespace OrthoTree
   // Type of the dimension
   using dim_type = uint8_t;
 
+  // Type of depth
+  using depth_type = uint8_t;
+
   // Content id type
   using entity_id_type = size_t;
 
@@ -314,6 +317,7 @@ namespace OrthoTree
       auto& ptMax = base::box_max(ext);
 
       autoce inf = std::numeric_limits<geometry_type>::infinity();
+      LOOPIVDEP_IN_MSVC
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         base::point_comp(ptMin, iDimension) = +inf;
@@ -357,6 +361,7 @@ namespace OrthoTree
 
     static void move_box(box_type& box, vector_type const& vMove)
     {
+      LOOPIVDEP_IN_MSVC
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         base::point_comp(base::box_min(box), iDimension) += base::point_comp_c(vMove, iDimension);
@@ -603,7 +608,6 @@ namespace OrthoTree
     using morton_grid_id_type_cref = typename std::conditional<is_linear_tree, morton_node_id_type, morton_node_id_type const&>::type;
     using morton_node_id_type_cref = morton_grid_id_type_cref;
     using max_element_type = uint32_t;
-    using depth_type = uint32_t;
     using vector_type = vector_type_;
     using box_type = box_type_;
 
@@ -696,11 +700,11 @@ namespace OrthoTree
   protected: // Member variables
     container_type<Node> _nodes;
     box_type _box = {};
-    depth_type _nDepthMax = 0;
-    grid_id_type _nRasterResolutionMax = 0;
-    grid_id_type _idSlotMax = 0;
+    depth_type _nDepthMax = {};
+    grid_id_type _nRasterResolutionMax = {};
+    grid_id_type _idSlotMax = {};
     max_element_type _nElementMax = 11;
-    double _rVolume = 0.0;
+    double _rVolume = {};
     array<double, nDimension> _aRasterizer;
 
   protected: // Aid functions
@@ -874,7 +878,7 @@ namespace OrthoTree
     }
 
     template<typename data_type = Node>
-    static void _reserveContainer(map<morton_node_id_type, data_type, bitset_arithmetic_compare>& m, size_t n) {};
+    static void _reserveContainer(map<morton_node_id_type, data_type, bitset_arithmetic_compare>&, size_t) {};
     
     template<typename data_type = Node>
     static void _reserveContainer(unordered_map<morton_node_id_type, data_type>& m, size_t n) { m.reserve(n); };
@@ -994,9 +998,9 @@ namespace OrthoTree
     {
       if constexpr (nDimension == 1)
         return morton_grid_id_type(aidGrid[0]);
-      else if (nDimension == 2)
+      else if constexpr (nDimension == 2)
         return (_part1By1(aidGrid[1]) << 1) + _part1By1(aidGrid[0]);
-      else if (nDimension == 3)
+      else if constexpr (nDimension == 3)
         return (_part1By2(aidGrid[2]) << 2) + (_part1By2(aidGrid[1]) << 1) + _part1By2(aidGrid[0]);
       else
       {
@@ -1027,7 +1031,7 @@ namespace OrthoTree
         autoc nDepth = GetDepth(kNode);
 
         auto mask = morton_grid_id_type{ 1 };
-        for (dim_type iDepth = nDepthMax - nDepth, shift = 0; iDepth < nDepthMax; ++iDepth)
+        for (depth_type iDepth = nDepthMax - nDepth, shift = 0; iDepth < nDepthMax; ++iDepth)
           for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, ++shift)
             if constexpr (is_linear_tree)
             {
@@ -1106,7 +1110,7 @@ namespace OrthoTree
     // Visit nodes with special selection and procedure in breadth-first search order
     inline void VisitNodes(morton_node_id_type_cref kRoot, fnProcedure const& procedure) const
     {
-      VisitNodes(kRoot, procedure, [](morton_node_id_type_cref key, Node const& node) -> bool { return true; });
+      VisitNodes(kRoot, procedure, [](morton_node_id_type_cref, Node const&){ return true; });
     }
 
 
@@ -1147,7 +1151,7 @@ namespace OrthoTree
       auto ids = vector<entity_id_type>();
       ids.reserve(_nodes.size() * std::max<size_t>(2, _nElementMax / 2));
 
-      VisitNodes(kRoot, [&ids](morton_node_id_type_cref key, autoc& node)
+      VisitNodes(kRoot, [&ids](morton_node_id_type_cref, autoc& node)
       { 
         ids.insert(std::end(ids), std::begin(node.vid), std::end(node.vid));
       });
@@ -1190,6 +1194,7 @@ namespace OrthoTree
       ptMinBoxNode = ptMinBoxRoot;
 
       auto aSize = array<geometry_type, nDimension>();
+      LOOPIVDEP_IN_MSVC
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         aSize[iDimension] = _Ad::point_comp_c(ptMaxBoxRoot, iDimension) - _Ad::point_comp_c(ptMinBoxRoot, iDimension);
 
@@ -1202,10 +1207,17 @@ namespace OrthoTree
       for (depth_type iDepth = 0; iDepth < nDepth; ++iDepth)
       {
         autoc r = rMax * (1 << iDepth);
-        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, keyShifted >>= 1)
-          _Ad::point_comp(ptMinBoxNode, iDimension) += static_cast<geometry_type>((aSize[iDimension] * r)) * ((keyShifted & one) > morton_grid_id_type{});
+
+        LOOPIVDEP_IN_MSVC
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        {
+          autoc fApply = ((keyShifted >> iDimension) & one) > morton_grid_id_type{};
+          _Ad::point_comp(ptMinBoxNode, iDimension) += static_cast<geometry_type>((aSize[iDimension] * r)) * fApply;
+        }
+        keyShifted >>= nDimension;
       }
 
+      LOOPIVDEP_IN_MSVC
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         _Ad::point_comp(ptMaxBoxNode, iDimension) = _Ad::point_comp_c(ptMinBoxNode, iDimension) + static_cast<geometry_type>(aSize[iDimension] * rMax);
 
@@ -1400,12 +1412,8 @@ namespace OrthoTree
 
       if constexpr (!fLeafNodeContainsElementOnly)
       {
-        keyNodeSmallest >>= nDimension;
-        for (; IsValidKey(keyNodeSmallest); keyNodeSmallest >>= nDimension)
-        {
-          autoc& node = this->GetNode(keyNodeSmallest);
-          _rangeSearchCopy<data_type, fRangeMustContain, fIdCheck>(range, vData, node, sidFound, idMin);
-        }
+        for (keyNodeSmallest >>= nDimension; IsValidKey(keyNodeSmallest); keyNodeSmallest >>= nDimension)
+          _rangeSearchCopy<data_type, fRangeMustContain, fIdCheck>(range, vData, this->GetNode(keyNodeSmallest), sidFound, idMin);
       }
 
       return true;
@@ -1438,7 +1446,6 @@ namespace OrthoTree
 
   public:
     using _Ad = typename base::_Ad;
-    using depth_type = typename base::depth_type;
     using morton_grid_id_type = typename base::morton_grid_id_type;
     using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
     using morton_node_id_type = typename base::morton_node_id_type;
@@ -1766,7 +1773,7 @@ namespace OrthoTree
 
   // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order. 
   // nSplitStrategyAdditionalDepth: if (nSplitStrategyAdditionalDepth > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
-  template<dim_type nDimension, typename vector_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, vector_type, box_type, double>, typename geometry_type = double, uint32_t nSplitStrategyAdditionalDepth = 2>
+  template<dim_type nDimension, typename vector_type, typename box_type, typename adaptor_type = AdaptorGeneral<nDimension, vector_type, box_type, double>, typename geometry_type = double, depth_type nSplitStrategyAdditionalDepth = 2>
   class OrthoTreeBoundingBox : public OrthoTreeBase<nDimension, vector_type, box_type, adaptor_type, geometry_type>
   {
   protected:
@@ -1776,7 +1783,6 @@ namespace OrthoTree
 
   public:
     using _Ad = typename base::_Ad;
-    using depth_type = typename base::depth_type;
     using morton_grid_id_type = typename base::morton_grid_id_type;
     using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
     using morton_node_id_type = typename base::morton_node_id_type;
@@ -1846,7 +1852,7 @@ namespace OrthoTree
         return;
       }
 
-      auto depthCheck = this->_nDepthMax - nDepthRemain;
+      depth_type depthCheck = this->_nDepthMax - nDepthRemain;
       if (itEndPrev->depth == depthCheck)
       {
         auto it = itEndPrev;
@@ -1886,11 +1892,11 @@ namespace OrthoTree
 
     void _split(array<array<grid_id_type, nDimension>, 2> const& aidBoxGrid, size_t idLoc, _LocationContainer& vLocation, _LocationContainer * pvLocationAdditional) const
     {
-      auto nDepth = vLocation[idLoc].depth + nSplitStrategyAdditionalDepth;
+      depth_type nDepth = vLocation[idLoc].depth + nSplitStrategyAdditionalDepth;
       if (nDepth > this->_nDepthMax)
         nDepth = this->_nDepthMax;
 
-      autoc nDepthRemain = static_cast<dim_type>(this->_nDepthMax - nDepth);
+      depth_type const nDepthRemain = this->_nDepthMax - nDepth;
       autoc nStepGrid = pow_ce(2, nDepthRemain);
 
       auto aMinGridList = array<vector<grid_id_type>, nDimension>{};
@@ -2215,7 +2221,7 @@ namespace OrthoTree
       if (!this->Erase<false>(id, boxOld))
         return false; // id was not registered previously.
 
-      return this->Insert(id, boxNew);
+      return this->Insert(id, boxNew, fInsertToLeaf);
     }
 
 
@@ -2404,7 +2410,7 @@ namespace OrthoTree
         });
 
         auto ep = execution_policy_type{}; // GCC 11.3
-        std::for_each(ep, std::begin(vReverseMap), std::end(vReverseMap), [this](auto& vKey)
+        std::for_each(ep, std::begin(vReverseMap), std::end(vReverseMap), [](auto& vKey)
         {
           if constexpr (base::is_linear_tree)
             std::ranges::sort(vKey);
@@ -2607,7 +2613,7 @@ namespace OrthoTree
 
   private:
    
-    void _rayIntersectedAll(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, vector<_EntityDistance>& vdidOut) const
+    void _rayIntersectedAll(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, vector<_EntityDistance>& vdidOut) const
     {
       autoc oIsHit = _Ad::is_ray_hit(node.box, rayBase, rayHeading);
       if (!oIsHit)
@@ -2621,11 +2627,11 @@ namespace OrthoTree
       }
 
       for (autoc kChild : node.GetChildren())
-        _rayIntersectedAll(kChild, cont_at(this->_nodes, kChild), vBox, rayBase, rayHeading, vdidOut);
+        _rayIntersectedAll(cont_at(this->_nodes, kChild), vBox, rayBase, rayHeading, vdidOut);
     }
 
 
-    void _rayIntersectedFirst(morton_node_id_type_cref kNode, Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, multiset<_EntityDistance>& vidOut) const
+    void _rayIntersectedFirst(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, multiset<_EntityDistance>& vidOut) const
     {
       autoc rLastDistance = vidOut.empty() ? std::numeric_limits<double>::infinity() : static_cast<double>(vidOut.rbegin()->distance);
       for (autoc id : node.vid)
@@ -2655,7 +2661,7 @@ namespace OrthoTree
       }
       
       for (autoc& nodeData : msNode)
-        _rayIntersectedFirst(nodeData.kNode, nodeData.node, vBox, rayBase, rayHeading, vidOut);
+        _rayIntersectedFirst(nodeData.node, vBox, rayBase, rayHeading, vidOut);
       
     }
 
@@ -2665,11 +2671,9 @@ namespace OrthoTree
     // Get all box which is intersected by the ray in order
     vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, span<box_type const> const& vBox) const
     {
-      autoc kRoot = base::GetRootKey();
-
       auto vdid = vector<_EntityDistance>();
       vdid.reserve(20);
-      _rayIntersectedAll(kRoot, cont_at(this->_nodes, kRoot), vBox, rayBasePoint, rayHeading, vdid);
+      _rayIntersectedAll(cont_at(this->_nodes, base::GetRootKey()), vBox, rayBasePoint, rayHeading, vdid);
 
       autoc itBegin = std::begin(vdid);
       auto itEnd = std::end(vdid);
@@ -2686,15 +2690,13 @@ namespace OrthoTree
     // Get first box which is intersected by the ray
     std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBase, vector_type const& rayHeading, span<box_type const> const& vBox) const
     {
-      autoc kRoot = base::GetRootKey();
-
-      autoc& node = cont_at(this->_nodes, kRoot);
+      autoc& node = cont_at(this->_nodes, base::GetRootKey());
       autoc oDist = _Ad::is_ray_hit(node.box, rayBase, rayHeading);
       if (!oDist)
         return std::nullopt;
 
       auto vid = multiset<_EntityDistance>();
-      _rayIntersectedFirst(kRoot, node, vBox, rayBase, rayHeading, vid);
+      _rayIntersectedFirst(node, vBox, rayBase, rayHeading, vid);
       if (vid.empty())
         return std::nullopt;
     

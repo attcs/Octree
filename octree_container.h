@@ -40,7 +40,6 @@ namespace OrthoTree
     using _Ad = typename OrthoTree::_Ad;
     using vector_type = typename OrthoTree::vector_type;
     using box_type = typename OrthoTree::box_type;
-    using depth_type = typename OrthoTree::depth_type;
     using max_element_type = typename OrthoTree::max_element_type;
 
   protected:
@@ -126,7 +125,6 @@ namespace OrthoTree
     using _Ad = typename base::_Ad;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
-    using depth_type = typename OrthoTree::depth_type;
     using max_element_type = typename OrthoTree::max_element_type;
 
     using base::base; // inherits all constructors
@@ -186,7 +184,6 @@ namespace OrthoTree
     using _Ad = typename base::_Ad;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
-    using depth_type = typename OrthoTree::depth_type;
     using max_element_type = typename OrthoTree::max_element_type;
 
     using base::base; // inherits all constructors
