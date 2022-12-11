@@ -1235,7 +1235,7 @@ namespace OrthoTree
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     void Move(vector_type const& vMove)
     {
-      auto ep = execution_policy_type{};
+      auto ep = execution_policy_type{}; // GCC 11.3
       std::for_each(ep, std::begin(_nodes), std::end(_nodes), [&vMove](auto& pairKeyNode)
       {
         _Ad::move_box(pairKeyNode.second.box, vMove);
@@ -1516,13 +1516,14 @@ namespace OrthoTree
       autoc vidPoint = base::_generatePointId(n);
       auto aidLocation = vector<std::pair<entity_id_type, morton_grid_id_type>>(n);
 
-      auto ep = execution_policy_type{}; // GCC 11.3 only accept in this form
-      std::transform(ep, vpt.begin(), vpt.end(), vidPoint.begin(), aidLocation.begin(), [&](autoc& pt, autoc id) -> std::pair<entity_id_type, morton_grid_id_type>
+      auto ept = execution_policy_type{}; // GCC 11.3 only accept in this form
+      std::transform(ept, vpt.begin(), vpt.end(), vidPoint.begin(), aidLocation.begin(), [&](autoc& pt, autoc id) -> std::pair<entity_id_type, morton_grid_id_type>
       {
         return { id, tree._getLocationId(pt) };
       });
 
-      std::sort(ep, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
+      auto eps = execution_policy_type{}; // GCC 11.3 only accept in this form
+      std::sort(eps, std::begin(aidLocation), std::end(aidLocation), [&](autoc& idL, autoc& idR) { return idL.second < idR.second; });
       auto itBegin = std::begin(aidLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aidLocation), morton_node_id_type{ 0 }, nDepthMax);
     }
@@ -1821,7 +1822,7 @@ namespace OrthoTree
     };
 
     using _LocationContainer = vector<_Location>;
-    using _LocationIterator = typename _LocationContainer::const_iterator;
+    using _LocationIterator = typename _LocationContainer::iterator;
 
     static constexpr child_id_type _getIdChildAtDepth(_Location const& loc, depth_type depthCheck, morton_node_id_type_cref idLocationCurDepth)
     {
@@ -2003,7 +2004,7 @@ namespace OrthoTree
 
       autoc vid = base::_generatePointId(n);
 
-      auto ep = execution_policy_type{};
+      auto epf = execution_policy_type{}; // GCC 11.3
       auto aLocation = _LocationContainer(n);
       aLocation.reserve(nSplitStrategyAdditionalDepth > 0 ? n * std::min<size_t>(10, base::_nChild * nSplitStrategyAdditionalDepth) : n);
       if constexpr (nSplitStrategyAdditionalDepth == 0
@@ -2011,7 +2012,7 @@ namespace OrthoTree
         || std::is_same<execution_policy_type, std::execution::sequenced_policy>::value
         )
       {
-        std::for_each(ep, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation](autoc id)
+        std::for_each(epf, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation](autoc id)
         {
           tree._setLocation(vBox[id], id, aLocation);
         });
@@ -2019,7 +2020,7 @@ namespace OrthoTree
       else
       {
         auto vAddtional = vector<_LocationContainer>(n);
-        std::for_each(ep, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation, &vAddtional](autoc id)
+        std::for_each(epf, std::begin(vid), std::end(vid), [&tree, &vBox, &aLocation, &vAddtional](autoc id)
         {
           tree._setLocation(vBox[id], id, aLocation, &vAddtional);
         });
@@ -2031,14 +2032,16 @@ namespace OrthoTree
 
       }
 
-      std::sort(ep, std::begin(aLocation), std::end(aLocation));
+      auto eps = execution_policy_type{}; // GCC 11.3
+      std::sort(eps, std::begin(aLocation), std::end(aLocation));
 
       auto itBegin = std::begin(aLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aLocation), morton_node_id_type{ 0 }, nDepthMax);
 
       if constexpr (nSplitStrategyAdditionalDepth > 0)
       {
-        std::for_each(ep, std::begin(tree._nodes), std::end(tree._nodes), [](auto& pairKeyNode)
+        auto epsp = execution_policy_type{}; // GCC 11.3
+        std::for_each(epsp, std::begin(tree._nodes), std::end(tree._nodes), [](auto& pairKeyNode)
         {
           auto& node = pairKeyNode.second;
           std::ranges::sort(node.vid);
@@ -2347,7 +2350,7 @@ namespace OrthoTree
       std::iota(std::begin(vidCheck), std::end(vidCheck), 0);
 
       auto vvidCollision = vector<vector<entity_id_type>>(vidCheck.size());
-      auto ep = execution_policy_type{};
+      auto ep = execution_policy_type{}; // GCC 11.3
       std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&vBox, this](autoc idCheck) -> vector<entity_id_type>
       {
         auto sidFound = vector<entity_id_type>();
@@ -2388,7 +2391,6 @@ namespace OrthoTree
       auto vidCollision = CollisionDetectionContainer();
       vidCollision.reserve(vBox.size());
 
-      auto ep = execution_policy_type{};
 
       // nSplitStrategyAdditionalDepth version of this algorithm needs a reverse map
       auto vReverseMap = vector<vector<morton_node_id_type>>(nEntity);
@@ -2401,9 +2403,10 @@ namespace OrthoTree
             vReverseMap[id].emplace_back(kNode);
         });
 
+        auto ep = execution_policy_type{}; // GCC 11.3
         std::for_each(ep, std::begin(vReverseMap), std::end(vReverseMap), [this](auto& vKey)
         {
-          if constexpr (this->is_linear_tree)
+          if constexpr (base::is_linear_tree)
             std::ranges::sort(vKey);
           else
             std::ranges::sort(vKey, bitset_arithmetic_compare{});
@@ -2428,6 +2431,7 @@ namespace OrthoTree
         }
       }
 
+      auto ep = execution_policy_type{}; // GCC 11.3
 
       // Collision detection node-by-node without duplication
       auto vvidCollisionByNode = vector<CollisionDetectionContainer>(this->_nodes.size());

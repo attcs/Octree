@@ -155,7 +155,8 @@ namespace OrthoTree
     void Move(vector_type const& vMove)
     {
       this->_tree.template Move<execution_policy_type>(vMove);
-      std::for_each(execution_policy_type{}, std::begin(this->_vData), std::end(this->_vData), [&vMove](auto& pt) { pt = _Ad::add(pt, vMove); });
+      auto ep = execution_policy_type{}; // GCC 11.3
+      std::for_each(ep, std::begin(this->_vData), std::end(this->_vData), [&vMove](auto& pt) { pt = _Ad::add(pt, vMove); });
     }
 
 
@@ -214,8 +215,8 @@ namespace OrthoTree
     void Move(vector_type const& vMove)
     {
       this->_tree.template Move<execution_policy_type>(vMove);
-
-      std::for_each(execution_policy_type{}, std::begin(this->_vData), std::end(this->_vData), [&vMove](auto& box)
+      auto ep = execution_policy_type{}; // GCC 11.3
+      std::for_each(ep, std::begin(this->_vData), std::end(this->_vData), [&vMove](auto& box)
       {
         _Ad::move_box(box, vMove);
       });
