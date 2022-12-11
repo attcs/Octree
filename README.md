@@ -55,7 +55,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
-* Tested compilers: MSVC 2019, Clang 12.0.0
+* Tested compilers: MSVC 2019, Clang 12.0.0, GCC 11.3
 
 ## Major aliases in OrthoTree
 ```C++
