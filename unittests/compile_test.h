@@ -10,6 +10,17 @@
 #define autoce auto constexpr
 #endif
 
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+#endif
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
 // Enforce the compilation of all template function
 
 template<OrthoTree::dim_type N, typename execution_policy_type>
@@ -67,8 +78,8 @@ void testCompilePoint()
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](OT::morton_node_id_type_cref keyNode, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-    , [](OT::morton_node_id_type_cref key, autoc& node) -> bool { return true; }
+      , [&vListIsAnyChild](autoc& keyNode, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
+    , [](autoc& key, autoc& node) -> bool { return true; }
     );
   }
 
@@ -149,8 +160,8 @@ void testCompileBox()
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](OT::morton_node_id_type_cref keyNode, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-    , [](OT::morton_node_id_type_cref key, autoc& node) -> bool { return true; }
+      , [&vListIsAnyChild](autoc& keyNode, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
+    , [](autoc& key, autoc& node) -> bool { return true; }
     );
   }
 
@@ -169,7 +180,7 @@ void testCompileBox()
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<execution_policy_type>(tree, boxes, 3);
+    OT::template Create<execution_policy_type>(tree, boxes, 4);
   }
 }
 
@@ -229,7 +240,6 @@ void testCompilePointC()
 template<OrthoTree::dim_type N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxC()
 {
-  using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using OT = OrthoTree::TreeBoxContainerND<N, nSplitStrategyAdditionalDepth>;
 
@@ -366,6 +376,14 @@ inline void testCompileBoxBatchSplitStrategy()
   testCompileBoxBatchExPol<2>();
   testCompileBoxBatchExPol<4>();
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef autoc_remove
 #undef autoc_remove
