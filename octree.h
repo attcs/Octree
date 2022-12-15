@@ -64,12 +64,16 @@ SOFTWARE.
 #endif
 
 
-#define LOOPIVDEP_IN_MSVC
-#ifdef _MSC_VER 
-#ifndef __clang__
-#undef LOOPIVDEP_IN_MSVC
-#define LOOPIVDEP_IN_MSVC _Pragma("loop(ivdep)")
-#endif
+#if defined(__clang__)
+  #define LOOPIVDEP
+#elif defined(__INTEL_COMPILER)
+  #define LOOPIVDEP _Pragma("ivdep")
+#elif defined(__GNUC__)
+  #define LOOPIVDEP _Pragma("GCC ivdep")
+#elif defined(_MSC_VER)
+  #define LOOPIVDEP _Pragma("loop(ivdep)")
+#else
+  #define LOOPIVDEP
 #endif
 
 
@@ -315,7 +319,7 @@ namespace OrthoTree
       auto& ptMax = base::box_max(ext);
 
       autoce inf = std::numeric_limits<geometry_type>::infinity();
-      LOOPIVDEP_IN_MSVC
+      LOOPIVDEP
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         base::point_comp(ptMin, iDimension) = +inf;
@@ -359,7 +363,7 @@ namespace OrthoTree
 
     static void move_box(box_type& box, vector_type const& vMove) noexcept
     {
-      LOOPIVDEP_IN_MSVC
+      LOOPIVDEP
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         base::point_comp(base::box_min(box), iDimension) += base::point_comp_c(vMove, iDimension);
@@ -376,7 +380,7 @@ namespace OrthoTree
       autoc& ptBoxMax = base::box_max_c(box);
 
       autoce inf = std::numeric_limits<double>::infinity();
-      // ptHit = rayBasePoint + rayHeading * r
+
       auto aRMinMax = array<array<double, nDimension>, 2>();
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
@@ -729,11 +733,11 @@ namespace OrthoTree
     static constexpr array<double, nDimension> _getGridRasterizer(vector_type const& p0, vector_type const& p1, grid_id_type n_divide) noexcept
     {
       auto aRasterizer = array<double, nDimension>{};
-      
+      autoc rn_divide = static_cast<double>(n_divide);
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         autoc rExt = adaptor_type::point_comp_c(p1, iDimension) - adaptor_type::point_comp_c(p0, iDimension);
-        aRasterizer[iDimension] = rExt == 0 ? 1.0 : (static_cast<double>(n_divide) / rExt);
+        aRasterizer[iDimension] = rExt == 0 ? 1.0 : (rn_divide / rExt);
       }
       return aRasterizer;
     }
@@ -789,7 +793,7 @@ namespace OrthoTree
       auto& nodeChild = _nodes[kChild];
 
       {
-        LOOPIVDEP_IN_MSVC
+        LOOPIVDEP
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fGreater = ((child_id_type{ 1 } << iDimension) & iChild) > 0;
@@ -847,7 +851,7 @@ namespace OrthoTree
         auto kNodeParent = kNode;
         do
         {
-          kNodeParent = kNodeParent >>= nDimension;
+          kNodeParent >>= nDimension;
           assert(IsValidKey(kNodeParent));
           auto& nodeParent = this->_nodes[kNodeParent];
           nodeParent.AddChildInOrder(kNodeParent);
@@ -1008,13 +1012,18 @@ namespace OrthoTree
 
         morton_grid_id_type id = 0;
         grid_id_type mask = 1;
-        for (dim_type i = 0, shift = 0; msb; mask <<= 1, msb >>= 1, ++i)
-          for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension, ++shift)
+        for (dim_type i = 0; msb; mask <<= 1, msb >>= 1, ++i)
+        {
+          LOOPIVDEP
+          for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+          {
+            autoc shift = iDimension + i * nDimension;
             if constexpr (is_linear_tree)
               id |= (aidGrid[iDimension] & mask) << (shift - i);
             else
               id[shift] = aidGrid[iDimension] & mask;
-
+          }
+        }
         return id;
       }
     }
@@ -1070,7 +1079,7 @@ namespace OrthoTree
         this->_rVolume *= _Ad::point_comp_c(_Ad::box_max_c(this->_box), iDimension) - _Ad::point_comp_c(_Ad::box_min_c(this->_box), iDimension);
 
       this->_nDepthMax = nDepthMax;
-      this->_nRasterResolutionMax = static_cast<grid_id_type>(pow_ce(2, static_cast<uint8_t>(nDepthMax)));
+      this->_nRasterResolutionMax = static_cast<grid_id_type>(pow_ce(2, nDepthMax));
       this->_idSlotMax = this->_nRasterResolutionMax - 1;
       this->_nElementMax = nElementMax;
 
@@ -1192,7 +1201,7 @@ namespace OrthoTree
       ptMinBoxNode = ptMinBoxRoot;
 
       auto aSize = array<geometry_type, nDimension>();
-      LOOPIVDEP_IN_MSVC
+      LOOPIVDEP
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         aSize[iDimension] = _Ad::point_comp_c(ptMaxBoxRoot, iDimension) - _Ad::point_comp_c(ptMinBoxRoot, iDimension);
 
@@ -1206,7 +1215,7 @@ namespace OrthoTree
       {
         autoc r = rMax * (1 << iDepth);
 
-        LOOPIVDEP_IN_MSVC
+        LOOPIVDEP
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fApply = ((keyShifted >> iDimension) & one) > morton_grid_id_type{};
@@ -1215,7 +1224,7 @@ namespace OrthoTree
         keyShifted >>= nDimension;
       }
 
-      LOOPIVDEP_IN_MSVC
+      LOOPIVDEP
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         _Ad::point_comp(ptMaxBoxNode, iDimension) = _Ad::point_comp_c(ptMinBoxNode, iDimension) + static_cast<geometry_type>(aSize[iDimension] * rMax);
 
@@ -1566,8 +1575,7 @@ namespace OrthoTree
         std::ranges::for_each(this->_nodes, [idErase](auto& pairNode)
         {
           for (auto& id : pairNode.second.vid)
-            if (idErase > id)
-              --id;
+            id -= idErase > id;
         });
       }
 
@@ -1594,8 +1602,7 @@ namespace OrthoTree
         std::ranges::for_each(this->_nodes, [idErase](auto& pairNode)
         {
           for (auto& id : pairNode.second.vid)
-            if (idErase > id)
-              --id;
+            id -= idErase > id;
         });
       }
 
@@ -1894,26 +1901,27 @@ namespace OrthoTree
       if (nDepth > this->_nDepthMax)
         nDepth = this->_nDepthMax;
 
-      depth_type const nDepthRemain = this->_nDepthMax - nDepth;
-      autoc nStepGrid = pow_ce(2, nDepthRemain);
+      autoc nDepthRemain = static_cast<depth_type>(this->_nDepthMax - nDepth);
+      autoc nStepGrid = static_cast<grid_id_type>(pow_ce(2, nDepthRemain));
 
       auto aMinGridList = array<vector<grid_id_type>, nDimension>{};
       uint64_t nBoxByGrid = 1;
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
       {
-        autoc nGridSplitFirst = (aidBoxGrid[0][iDim] / nStepGrid) + 1;
-        autoc nGridSplitLast = (aidBoxGrid[1][iDim] / nStepGrid);
-        autoc nMinGridList = (nGridSplitLast < nGridSplitFirst ? 0 : (nGridSplitLast - nGridSplitFirst + 1)) + 1;
+        grid_id_type const nGridSplitFirst = (aidBoxGrid[0][iDim] / nStepGrid) + grid_id_type{ 1 };
+        grid_id_type const nGridSplitLast = (aidBoxGrid[1][iDim] / nStepGrid);
+        grid_id_type const nMinGridList = (nGridSplitLast < nGridSplitFirst ? 0 : (nGridSplitLast - nGridSplitFirst + 1)) + 1;
         nBoxByGrid *= nMinGridList;
         if (nBoxByGrid >= this->_nChild)
           return;
 
-        aMinGridList[iDim].resize(nMinGridList);
-        aMinGridList[iDim][0] = aidBoxGrid[0][iDim];
-        size_t i = 1;
-        for (auto nGridSplit = nGridSplitFirst; nGridSplit <= nGridSplitLast; ++nGridSplit, ++i)
-          aMinGridList[iDim][i] = static_cast<grid_id_type>(nGridSplit * nStepGrid);
+        auto& aMinGridList_ = aMinGridList[iDim];
+        aMinGridList_.resize(nMinGridList);
+        aMinGridList_[0] = aidBoxGrid[0][iDim];
 
+        LOOPIVDEP
+        for (grid_id_type i = 1; i < nMinGridList; ++i)
+          aMinGridList_[i] = (nGridSplitFirst + i - 1) * nStepGrid;
       }
 
       auto vaidMinGrid = vector<array<grid_id_type, nDimension>>{};
@@ -1944,7 +1952,7 @@ namespace OrthoTree
       }
 
       auto& vLocation_ = *pvLocationAdditional;
-      LOOPIVDEP_IN_MSVC
+      LOOPIVDEP
       for (size_t iBox = 0; iBox < nBoxAdd; ++iBox)
       {
         vLocation_[nSize + iBox].id = id;
@@ -2173,9 +2181,14 @@ namespace OrthoTree
         bErased = std::ranges::any_of(this->_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, idErase); });
       else
       {
+#ifdef _MSC_VER
 #pragma warning( suppress : 4805 )
+#endif // _MSC_VER
         std::ranges::for_each(this->_nodes, [&](auto& pairNode) { bErased |= erase(pairNode.second.vid, idErase); });
+#ifdef _MSC_VER
 #pragma warning( default : 4805 )
+#endif // _MSC_VER
+
       }
 
       if (!bErased)
@@ -2185,8 +2198,7 @@ namespace OrthoTree
         std::ranges::for_each(this->_nodes, [&](auto& pairNode)
         {
           for (auto& id : pairNode.second.vid)
-            if (idErase > id)
-              --id;
+            id -= idErase > id;
         });
 
       return true;
@@ -2774,6 +2786,6 @@ namespace OrthoTree
 #undef UNDEF_HASSERT
 #endif
 
-#undef LOOPIVDEP_IN_MSVC
+#undef LOOPIVDEP
 
 #endif // ORTHOTREE_GUARD
