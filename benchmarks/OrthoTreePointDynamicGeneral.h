@@ -20,7 +20,7 @@ public:
   vector<size_t> vid;
 
 private:
-  using _Ad = typename adaptor_type;
+  using _Ad = adaptor_type;
 
   struct IdEntityNode { size_t id, idNode; };
 
@@ -104,7 +104,7 @@ public:
   vector<size_t> vid;
 
 private:
-  using _Ad = typename adaptor_type;
+  using _Ad = adaptor_type;
 
   struct IdEntityNode { size_t id, idNode; };
 

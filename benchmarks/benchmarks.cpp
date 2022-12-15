@@ -380,7 +380,8 @@ namespace
     std::iota(std::begin(vidCheck), std::end(vidCheck), 0);
 
     auto vvidCollision = vector<vector<entity_id_type>>(vidCheck.size());
-    std::transform(execution_policy_type{}, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](autoc idCheck) -> vector<entity_id_type>
+    auto ep = execution_policy_type{};
+    std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](autoc idCheck) -> vector<entity_id_type>
     {
       auto sidFound = vector<entity_id_type>();
       for (size_t i = idCheck + 1; i < nEntity; ++i)
@@ -453,11 +454,12 @@ namespace
     auto box = BoundingBoxND<nDim>{};
     box.Max.fill(rMax);
 
-    auto nt = TreeBoxND<nDim>{};
+    autoce nSplit = 0;
+    auto nt = TreeBoxND<nDim, nSplit>{};
     if (fPar)
-      TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
+      TreeBoxND<nDim, nSplit>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
     else
-      TreeBoxND<nDim>::Create(nt, aBox, depth, box);
+      TreeBoxND<nDim, nSplit>::Create(nt, aBox, depth, box);
 
     return nt.GetNodes().size();
   }
@@ -476,9 +478,9 @@ namespace
   void display_time(microseconds const& time)
   {
     if (time.count() < 10000)
-      std::cout << time;
+      std::cout << time.count() << "us";
     else
-      std::cout << duration_cast<milliseconds>(time);
+      std::cout << duration_cast<milliseconds>(time).count() << "ms";
   }
 
   inline double microseconds_to_double(microseconds const& time)
@@ -616,12 +618,14 @@ namespace
             TreeBoxND<N>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth, boxMax);
             autoc vPair = nt.template CollisionDetection<std::execution::parallel_unsequenced_policy>(aBox);
             return vPair.size();
+            //return nt.GetNodes().size();
           }
           else
           {
             TreeBoxND<N>::Create(nt, aBox, nDepth, boxMax);
             autoc vPair = nt.CollisionDetection(aBox);
             return vPair.size();
+            //return nt.GetNodes().size();
             /*
             size_t nFound = 0;
             autoc n = aBox.size();
@@ -749,7 +753,7 @@ int main()
   report.open("report.csv");
 
   autoce nDepth = 5;
-
+  
   {
     autoc szName = string("Diagonally placed points");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
@@ -809,9 +813,9 @@ int main()
     RunTasks(vTaskDynB, report);
 
   }
-  // Search
   
-  // Range search: Brute force vs Octree
+  
+  // Collision detection
   {
     autoc szName = string("Search: Cylindrical semi-random placed point NoPt/NoBox:100%");
     //autoc aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_CylindricalSemiRandom<N, N1M>(); }, szName, N1M, report);

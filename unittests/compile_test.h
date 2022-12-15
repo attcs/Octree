@@ -19,6 +19,7 @@
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
 // Enforce the compilation of all template function
@@ -317,7 +318,7 @@ void testCompileBoxBatchDimension()
     testCompilePoint<16, execution_policy_type>();
     testCompilePoint<32, execution_policy_type>();
     testCompilePoint<63, execution_policy_type>();
-
+    
     testCompileBox<2, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBox<3, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBox<4, execution_policy_type, nSplitStrategyAdditionalDepth>();
@@ -330,7 +331,7 @@ void testCompileBoxBatchDimension()
     testCompileBox<32, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBox<63, execution_policy_type, nSplitStrategyAdditionalDepth>();
   }
-
+  
   // Container types
   {
     testCompilePointC<2, execution_policy_type>();
@@ -382,6 +383,7 @@ inline void testCompileBoxBatchSplitStrategy()
 #endif
 
 #ifdef __GNUC__
+#pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
 #endif
 
