@@ -1575,7 +1575,7 @@ namespace OrthoTree
         std::ranges::for_each(this->_nodes, [idErase](auto& pairNode)
         {
           for (auto& id : pairNode.second.vid)
-            id -= idErase > id;
+            id -= idErase < id;
         });
       }
 
@@ -1602,7 +1602,7 @@ namespace OrthoTree
         std::ranges::for_each(this->_nodes, [idErase](auto& pairNode)
         {
           for (auto& id : pairNode.second.vid)
-            id -= idErase > id;
+            id -= idErase < id;
         });
       }
 
@@ -2049,7 +2049,7 @@ namespace OrthoTree
 
       auto itBegin = std::begin(aLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aLocation), morton_node_id_type{ 0 }, nDepthMax);
-
+      
       if constexpr (nSplitStrategyAdditionalDepth > 0)
       {
         auto epsp = execution_policy_type{}; // GCC 11.3
@@ -2161,8 +2161,7 @@ namespace OrthoTree
           std::ranges::for_each(this->_nodes, [&](auto& pairNode)
           { 
             for (auto& id : pairNode.second.vid)
-              if (idErase > id)
-                --id;
+              id -= idErase < id;
           });
 
         return true;
@@ -2198,7 +2197,7 @@ namespace OrthoTree
         std::ranges::for_each(this->_nodes, [&](auto& pairNode)
         {
           for (auto& id : pairNode.second.vid)
-            id -= idErase > id;
+            id -= idErase < id;
         });
 
       return true;
