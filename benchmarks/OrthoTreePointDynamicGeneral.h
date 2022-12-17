@@ -7,6 +7,7 @@
 #include "../octree.h"
 
 using namespace std;
+using namespace OrthoTree;
 
 
 template<size_t nDimension, typename vector_type, typename box_type, typename adaptor_type = OrthoTree::AdaptorGeneral<nDimension, vector_type, box_type, double>, typename geometry_type = double>
@@ -40,7 +41,7 @@ private:
     for (auto& [id, idNode] : aid)
     {
       idNode = 0;
-      for (size_t iDimension = 0; iDimension < nDimension; ++iDimension)
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         idNode |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(vpt[id], iDimension)) << iDimension;
     }
     sort(begin(aid), end(aid), [&](autoc& idL, autoc& idR) { return idL.idNode < idR.idNode; });
@@ -51,7 +52,7 @@ private:
       vNode[itidNodeLast->idNode] = make_unique<OrthoTreePointDynamicGeneral>();
 
       auto& node = *vNode[itidNodeLast->idNode].get();
-      for (size_t iDimension = 0; iDimension < nDimension; ++iDimension)
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
         _Ad::point_comp(_Ad::box_min(node.box), iDimension) = fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::point_comp_c(_Ad::box_min_c(box), iDimension);
@@ -123,9 +124,9 @@ private:
     autoc ptMiddle = _Ad::div(_Ad::add(_Ad::box_max_c(box), _Ad::box_min_c(box)), 2.0);
     for (auto& [id, idNode] : aid)
     {
-      auto idNode1 = 0;
-      auto idNode2 = 0;
-      for (size_t iDimension = 0; iDimension < nDimension; ++iDimension)
+      size_t idNode1 = 0;
+      size_t idNode2 = 0;
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         idNode1 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(_Ad::box_min_c(vBox[id]), iDimension)) << iDimension;
         idNode2 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(_Ad::box_max_c(vBox[id]), iDimension)) << iDimension;
@@ -154,7 +155,7 @@ private:
 
         auto& node = *vNode[itidNodeLast->idNode].get();
 
-        for (size_t iDimension = 0; iDimension < nDimension; ++iDimension)
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
           _Ad::point_comp(_Ad::box_min(node.box), iDimension) = fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::point_comp_c(_Ad::box_min_c(box), iDimension);
