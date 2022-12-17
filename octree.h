@@ -1276,16 +1276,19 @@ namespace OrthoTree
   protected:
 
     template <dim_type iDimensionSet>
-    static constexpr void _constructGridIdRec(array<vector<grid_id_type>, nDimension> const& avidGridList, array<grid_id_type, nDimension>& aidGrid, vector<array<grid_id_type, nDimension>>& vidGrid) noexcept
+    static constexpr void _constructGridIdRec(array<array<grid_id_type, 3>, nDimension> const& avidGridList, array<grid_id_type, nDimension>& aidGrid, vector<array<grid_id_type, nDimension>>& vidGrid, grid_id_type nStep) noexcept
     {
       if constexpr (iDimensionSet == 0)
         vidGrid.emplace_back(aidGrid);
       else
       {
-        for (autoc idGrid : avidGridList[iDimensionSet - 1])
+        autoc& [nGridMin, nGridBegin, nGridEnd] = avidGridList[iDimensionSet - 1];
+        aidGrid[iDimensionSet - 1] = nGridMin;
+        _constructGridIdRec<iDimensionSet - 1>(avidGridList, aidGrid, vidGrid, nStep);
+        for (auto idGrid = nGridBegin; idGrid < nGridEnd; idGrid += nStep)
         {
           aidGrid[iDimensionSet - 1] = idGrid;
-          _constructGridIdRec<iDimensionSet - 1>(avidGridList, aidGrid, vidGrid);
+          _constructGridIdRec<iDimensionSet - 1>(avidGridList, aidGrid, vidGrid, nStep);
         }
       }
     }
@@ -1904,7 +1907,7 @@ namespace OrthoTree
       autoc nDepthRemain = static_cast<depth_type>(this->_nDepthMax - nDepth);
       autoc nStepGrid = static_cast<grid_id_type>(pow_ce(2, nDepthRemain));
 
-      auto aMinGridList = array<vector<grid_id_type>, nDimension>{};
+      auto aMinGridList = array<array<grid_id_type, 3>, nDimension>{};
       uint64_t nBoxByGrid = 1;
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
       {
@@ -1915,19 +1918,13 @@ namespace OrthoTree
         if (nBoxByGrid >= this->_nChild)
           return;
 
-        auto& aMinGridList_ = aMinGridList[iDim];
-        aMinGridList_.resize(nMinGridList);
-        aMinGridList_[0] = aidBoxGrid[0][iDim];
-
-        LOOPIVDEP
-        for (grid_id_type i = 1; i < nMinGridList; ++i)
-          aMinGridList_[i] = (nGridSplitFirst + i - 1) * nStepGrid;
+        aMinGridList[iDim] = { aidBoxGrid[0][iDim], nGridSplitFirst, nGridSplitLast + 1 };
       }
 
       auto vaidMinGrid = vector<array<grid_id_type, nDimension>>{};
       auto aidGrid = array<grid_id_type, nDimension>{};
       vaidMinGrid.reserve(nBoxByGrid);
-      base::template _constructGridIdRec<nDimension>(aMinGridList, aidGrid, vaidMinGrid);
+      base::template _constructGridIdRec<nDimension>(aMinGridList, aidGrid, vaidMinGrid, nStepGrid);
       
       autoc nBox = vaidMinGrid.size();
       autoc id = vLocation[idLoc].id;
@@ -1951,13 +1948,13 @@ namespace OrthoTree
         pvLocationAdditional = &vLocation;
       }
 
-      auto& vLocation_ = *pvLocationAdditional;
       LOOPIVDEP
       for (size_t iBox = 0; iBox < nBoxAdd; ++iBox)
       {
-        vLocation_[nSize + iBox].id = id;
-        vLocation_[nSize + iBox].depth = nDepth;
-        vLocation_[nSize + iBox].idMin = base::MortonEncode(vaidMinGrid[iBox + 1]) >> shift;
+        auto& loc = pvLocationAdditional->at(nSize + iBox);
+        loc.id = id;
+        loc.depth = nDepth;
+        loc.idMin = base::MortonEncode(vaidMinGrid[iBox + 1]) >> shift;
       }
     }
 
@@ -2037,11 +2034,23 @@ namespace OrthoTree
           tree._setLocation(vBox[id], id, aLocation, &vAddtional);
         });
 
-        std::for_each(std::begin(vAddtional), std::end(vAddtional), [&aLocation](autoc& vAdd)
-        {
-          aLocation.insert(end(aLocation), begin(vAdd), end(vAdd));
-        });
+        auto vAddtionalSize = vector<size_t>(n);
+        auto epe = execution_policy_type{};
+        std::transform_exclusive_scan(epe, std::begin(vAddtional), std::end(vAddtional), std::begin(vAddtionalSize),
+          n,
+          std::plus<size_t>(),
+          [](autoc& vAdd) { return vAdd.size(); }
+        );
 
+        aLocation.resize(vAddtionalSize.back() + vAddtional.back().size());
+        auto epf2 = execution_policy_type{}; // GCC 11.3
+        std::for_each(epf2, std::begin(vid), std::end(vid), [&aLocation, &vAddtionalSize, &vAddtional](autoc& id)
+        {
+          if (vAddtional[id].empty())
+            return;
+
+          std::copy(std::begin(vAddtional[id]), std::begin(vAddtional[id]), std::next(std::begin(aLocation), vAddtionalSize[id]));
+        });
       }
 
       auto eps = execution_policy_type{}; // GCC 11.3
@@ -2049,9 +2058,9 @@ namespace OrthoTree
 
       auto itBegin = std::begin(aLocation);
       tree._addNodes(nodeRoot, kRoot, itBegin, std::end(aLocation), morton_node_id_type{ 0 }, nDepthMax);
-      
       if constexpr (nSplitStrategyAdditionalDepth > 0)
       {
+        // Eliminate duplicates. Not all sub-nodes will be created due to the nElementMaxInNode, which cause duplicates in the parent nodes.
         auto epsp = execution_policy_type{}; // GCC 11.3
         std::for_each(epsp, std::begin(tree._nodes), std::end(tree._nodes), [](auto& pairKeyNode)
         {
@@ -2179,16 +2188,7 @@ namespace OrthoTree
       if constexpr (nSplitStrategyAdditionalDepth == 0)
         bErased = std::ranges::any_of(this->_nodes, [&](auto& pairNode) { return erase(pairNode.second.vid, idErase); });
       else
-      {
-#ifdef _MSC_VER
-#pragma warning( suppress : 4805 )
-#endif // _MSC_VER
-        std::ranges::for_each(this->_nodes, [&](auto& pairNode) { bErased |= erase(pairNode.second.vid, idErase); });
-#ifdef _MSC_VER
-#pragma warning( default : 4805 )
-#endif // _MSC_VER
-
-      }
+        std::ranges::for_each(this->_nodes, [&](auto& pairNode) { bErased |= erase(pairNode.second.vid, idErase) > 0; });
 
       if (!bErased)
         return false;
