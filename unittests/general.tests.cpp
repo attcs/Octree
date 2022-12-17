@@ -416,7 +416,12 @@ namespace GeneralTest
       Assert::AreEqual<size_t>(node.vid.size(), 1);
       tree.EraseId(2);
       Assert::IsTrue(node.vid.empty());
+
+      autoc kNode3 = tree.GetHash(2, 3);
+      autoc& node3 = tree.GetNode(kNode3);
+      Assert::AreEqual<entity_id_type>(node3.vid[0], 2);
     }
+
 
     TEST_METHOD(UpdateIndexes__None__NothingsChange)
     {
