@@ -1304,7 +1304,7 @@ namespace OrthoTree
             sidFound.emplace_back(id);
       }
       else
-        std::copy(std::begin(nodeParent.vid), std::end(nodeParent.vid), std::back_inserter(sidFound));
+        sidFound.insert(std::end(sidFound), std::begin(nodeParent.vid), std::end(nodeParent.vid));
 
       for (morton_node_id_type_cref kChild : nodeParent.GetChildren())
         _collectAllIdInDFS<fIdCheck>(this->GetNode(kChild), sidFound, idMin);
@@ -1413,7 +1413,7 @@ namespace OrthoTree
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         rVolumeRange *= _Ad::point_comp_c(_Ad::box_max_c(range), iDimension) - _Ad::point_comp_c(_Ad::box_min_c(range), iDimension);
 
-      autoc rVolumeNode = this->_rVolume / (1 << (nDimension * nDepth));
+      autoc rVolumeNode = this->_rVolume / static_cast<double>(1 << (nDimension * nDepth));
 
       autoc nidFoundEstimation = this->_rVolume < 0.01 ? 10 : static_cast<size_t>((rVolumeRange * nEntity) / this->_rVolume);
       sidFound.reserve(nidFoundEstimation);
@@ -1927,7 +1927,6 @@ namespace OrthoTree
       base::template _constructGridIdRec<nDimension>(aMinGridList, aidGrid, vaidMinGrid, nStepGrid);
       
       autoc nBox = vaidMinGrid.size();
-      autoc id = vLocation[idLoc].id;
       autoc shift = nDepthRemain * nDimension;
 
 
@@ -1952,7 +1951,7 @@ namespace OrthoTree
       for (size_t iBox = 0; iBox < nBoxAdd; ++iBox)
       {
         auto& loc = pvLocationAdditional->at(nSize + iBox);
-        loc.id = id;
+        loc.id = idLoc;
         loc.depth = nDepth;
         loc.idMin = base::MortonEncode(vaidMinGrid[iBox + 1]) >> shift;
       }
@@ -2049,7 +2048,7 @@ namespace OrthoTree
           if (vAddtional[id].empty())
             return;
 
-          std::copy(std::begin(vAddtional[id]), std::begin(vAddtional[id]), std::next(std::begin(aLocation), vAddtionalSize[id]));
+          std::copy(std::begin(vAddtional[id]), std::end(vAddtional[id]), std::next(std::begin(aLocation), vAddtionalSize[id]));
         });
       }
 
