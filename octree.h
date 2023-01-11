@@ -773,7 +773,7 @@ namespace OrthoTree
 
         if (ridMax < 1.0)
           aid[1][iDimension] = 0;
-        else if (ridMax >= _idSlotMax)
+        else if (ridMax > _idSlotMax)
           aid[1][iDimension] = _idSlotMax;
         else if (ridMin != ridMax && floor(ridMax) == ridMax)
           aid[1][iDimension] = static_cast<grid_id_type>(ridMax) - 1;
@@ -1285,9 +1285,9 @@ namespace OrthoTree
         autoc& [nGridMin, nGridBegin, nGridEnd] = avidGridList[iDimensionSet - 1];
         aidGrid[iDimensionSet - 1] = nGridMin;
         _constructGridIdRec<iDimensionSet - 1>(avidGridList, aidGrid, vidGrid, nStep);
-        for (auto idGrid = nGridBegin; idGrid < nGridEnd; idGrid += nStep)
+        for (auto idGrid = nGridBegin; idGrid < nGridEnd; ++idGrid)
         {
-          aidGrid[iDimensionSet - 1] = idGrid;
+          aidGrid[iDimensionSet - 1] = idGrid * nStep;
           _constructGridIdRec<iDimensionSet - 1>(avidGridList, aidGrid, vidGrid, nStep);
         }
       }

@@ -1267,10 +1267,84 @@ namespace Tree1DTest
       //!
     }
 
+
     TEST_METHOD(RangeSearch_)
     {
       //!
     }
+
+    TEST_METHOD(SplitStrategy_Seq)
+    {
+      autoc boxes = array
+      {
+          BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+          BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+          BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+          BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+          BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } },
+          BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 1.8 } }, // 5; 19
+          BoundingBox2D{ { 0.5, 0.0 }, { 1.5, 0.5 } }  // 16; 17
+
+      };
+
+      auto quadtreebox = QuadtreeBox(boxes, 2
+        , std::nullopt // user-provided bounding box for all
+        , 2            // max element in a node 
+      );
+
+
+      autoc& nodes = quadtreebox.GetNodes();
+      Assert::AreEqual<size_t>(9, nodes.size());
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 4 }, quadtreebox.GetNode(1).vid));
+      Assert::IsTrue(quadtreebox.GetNode(4).vid.empty());
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5 }, quadtreebox.GetNode(5).vid));
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 6 }, quadtreebox.GetNode(16).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 6 }, quadtreebox.GetNode(17).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 5 }, quadtreebox.GetNode(19).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 2 }, quadtreebox.GetNode(28).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 3 }, quadtreebox.GetNode(31).vid));
+    }
+
+
+    TEST_METHOD(SplitStrategy_Par)
+    {
+      autoc boxes = array
+      {
+          BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+          BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+          BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+          BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+          BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } },
+          BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 1.8 } }, // 5; 19
+          BoundingBox2D{ { 0.5, 0.0 }, { 1.5, 0.5 } }  // 16; 17
+
+      };
+
+      auto quadtreebox = QuadtreeBox{};
+      QuadtreeBox::Create<std::execution::parallel_unsequenced_policy>(quadtreebox, boxes, 2
+        , std::nullopt // user-provided bounding box for all
+        , 2            // max element in a node 
+      );
+
+
+      autoc& nodes = quadtreebox.GetNodes();
+      Assert::AreEqual<size_t>(9, nodes.size());
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 4 }, quadtreebox.GetNode(1).vid));
+      Assert::IsTrue(quadtreebox.GetNode(4).vid.empty());
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5 }, quadtreebox.GetNode(5).vid));
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 6 }, quadtreebox.GetNode(16).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 6 }, quadtreebox.GetNode(17).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 5 }, quadtreebox.GetNode(19).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 2 }, quadtreebox.GetNode(28).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 3 }, quadtreebox.GetNode(31).vid));
+    }
+
+
+
 
     TEST_METHOD(CollistionDetection__0040_3565__P30)
     {
