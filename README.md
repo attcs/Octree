@@ -46,7 +46,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Notes
 * Header only implementation.
-* Point and Bounding box-based solution was distinguished.
+* Point and Bounding box-based solution is distinguished.
 * Core types store only the entity ids, use Container types to store. Core types advantages: not copying and managing the entity information; disadvantages: this information may have to be provided again for the member function call.
 * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
 * Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `nSplitStrategyAdditionalDepth` template parameter, these boxes can be splitted then placed on the deeper level of the tree. The `nSplitStrategyAdditionalDepth` default is 2 and this split method is applied by default.
