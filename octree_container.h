@@ -41,6 +41,7 @@ namespace OrthoTree
     using vector_type = typename OrthoTree::vector_type;
     using box_type = typename OrthoTree::box_type;
     using max_element_type = typename OrthoTree::max_element_type;
+    using geometry_type = typename OrthoTree::geometry_type;
 
   protected:
     OrthoTree _tree;
@@ -182,6 +183,7 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;
     using _Ad = typename base::_Ad;
+    using geometry_type = typename base::geometry_type;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
     using max_element_type = typename OrthoTree::max_element_type;
@@ -261,9 +263,9 @@ namespace OrthoTree
   public: // Ray intersection
 
     // Get all box which is intersected by the ray in order
-    inline vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading) const noexcept
+    inline vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type rMaxDistance = std::numeric_limits<geometry_type>::max()) const noexcept
     {
-      return this->_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->_vData);
+      return this->_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->_vData, rMaxDistance);
     }
 
     // Get first box which is intersected by the ray

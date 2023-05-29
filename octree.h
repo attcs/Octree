@@ -581,7 +581,7 @@ namespace OrthoTree
 
 
   // NTreeLinear: Non-owning base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
-  template<dim_type nDimension, typename vector_type_, typename box_type_, typename adaptor_type = AdaptorGeneral<nDimension, vector_type_, box_type_, double>, typename geometry_type = double>
+  template<dim_type nDimension, typename vector_type_, typename box_type_, typename adaptor_type = AdaptorGeneral<nDimension, vector_type_, box_type_, double>, typename geometry_type_ = double>
   class OrthoTreeBase
   {
     static_assert(0 < nDimension && nDimension < 64);
@@ -610,6 +610,7 @@ namespace OrthoTree
     using morton_grid_id_type_cref = typename std::conditional<is_linear_tree, morton_node_id_type, morton_node_id_type const&>::type;
     using morton_node_id_type_cref = morton_grid_id_type_cref;
     using max_element_type = uint32_t;
+    using geometry_type = geometry_type_;
     using vector_type = vector_type_;
     using box_type = box_type_;
 
@@ -1440,7 +1441,7 @@ namespace OrthoTree
 
 
     // Doubles the handled space relative to the root. iRootNew defines the relative location in the new space
-    //!IMPLEMENT void Extend(morton_node_id_type_cref iRootNew = 0) {}
+    //TODO IMPLEMENT void Extend(morton_node_id_type_cref iRootNew = 0) {}
   };
 
 
@@ -2620,8 +2621,8 @@ namespace OrthoTree
 
 
   private:
-   
-    void _rayIntersectedAll(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, vector<_EntityDistance>& vdidOut) const noexcept
+
+    void _rayIntersectedAll(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, geometry_type rMaxDistance, vector<_EntityDistance>& vdidOut) const noexcept
     {
       autoc oIsHit = _Ad::is_ray_hit(node.box, rayBase, rayHeading);
       if (!oIsHit)
@@ -2630,12 +2631,12 @@ namespace OrthoTree
       for (autoc id : node.vid)
       {
         autoc oDist = _Ad::is_ray_hit(vBox[id], rayBase, rayHeading);
-        if (oDist)
+        if (oDist && (rMaxDistance == 0 || oDist.value() <= rMaxDistance))
           vdidOut.push_back({ { oDist.value() }, id });
       }
 
       for (autoc kChild : node.GetChildren())
-        _rayIntersectedAll(cont_at(this->_nodes, kChild), vBox, rayBase, rayHeading, vdidOut);
+        _rayIntersectedAll(cont_at(this->_nodes, kChild), vBox, rayBase, rayHeading, rMaxDistance, vdidOut);
     }
 
 
@@ -2677,11 +2678,11 @@ namespace OrthoTree
   public:
 
     // Get all box which is intersected by the ray in order
-    vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, span<box_type const> const& vBox) const noexcept
+    vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, span<box_type const> const& vBox, geometry_type rMaxDistance = 0) const noexcept
     {
       auto vdid = vector<_EntityDistance>();
       vdid.reserve(20);
-      _rayIntersectedAll(cont_at(this->_nodes, base::GetRootKey()), vBox, rayBasePoint, rayHeading, vdid);
+      _rayIntersectedAll(cont_at(this->_nodes, base::GetRootKey()), vBox, rayBasePoint, rayHeading, rMaxDistance, vdid);
 
       autoc itBegin = std::begin(vdid);
       auto itEnd = std::end(vdid);
@@ -2693,7 +2694,7 @@ namespace OrthoTree
       std::transform(itBegin, itEnd, std::begin(vid), [](autoc& did) { return did.id; });
       return vid;
     }
-    
+
 
     // Get first box which is intersected by the ray
     std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBase, vector_type const& rayHeading, span<box_type const> const& vBox) const noexcept
