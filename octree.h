@@ -852,10 +852,11 @@ namespace OrthoTree
         auto kNodeParent = kNode;
         do
         {
+          auto kNodeChild = kNodeParent;
           kNodeParent >>= nDimension;
           assert(IsValidKey(kNodeParent));
           auto& nodeParent = this->m_nodes[kNodeParent];
-          nodeParent.AddChildInOrder(kNodeParent);
+          nodeParent.AddChildInOrder(kNodeChild);
           nodeParent.box = this->CalculateExtent(kNodeParent);
         } while (kNodeParent != kNodeSmallest);
       }

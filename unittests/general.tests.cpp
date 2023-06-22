@@ -374,6 +374,64 @@ namespace GeneralTest
       Assert::AreEqual<grid_id_type>(8, tree.GetResolutionMax());
     }
 
+    TEST_METHOD(InitThenInsert)
+    {
+      auto tree = DualtreeBoxC{};
+      autoc handledSpaceDomain = BoundingBox1D{ -2, +2 };
+      tree.Init(handledSpaceDomain, 3, 10);
+
+      // Trying to add into the lead nodes
+      {
+        autoc boxes = array
+        {
+          BoundingBox1D{ -2.0, -1.0 },   // Fit in the leaf node
+          BoundingBox1D{ -1.0,  0.0 },    // Fit in the leaf node
+          BoundingBox1D{  0.0,  1.0 },    // Fit in the leaf node
+          BoundingBox1D{  1.0,  2.0 },    // Fit in the leaf node
+          BoundingBox1D{ -1.5,  1.5 } // Only fit in a parent node
+        };
+
+        for (autoc box : boxes)
+        {
+          autoc isInsertedSuccessfully = tree.Add(box, true /* Insert into leaf */);
+          Assert::IsTrue(isInsertedSuccessfully);
+        }
+      }
+
+      // Adding nodes in the current structure
+      {
+        autoc boxes = array
+        {
+          BoundingBox1D{ -1.5, -1.2 },    // Fit in the leaf node
+          BoundingBox1D{ -1.2,  0.2 },    // Not fit in the leaf node
+          BoundingBox1D{  0.0,  1.0 },    // Fit in the leaf node
+          BoundingBox1D{ -1.1,  1.2 }     // Only fit in the root
+        };
+
+        for (autoc box : boxes)
+        {
+          autoc isInsertedSuccessfully = tree.Add(box, false /* Insert into the previously defined nodes */);
+          Assert::IsTrue(isInsertedSuccessfully);
+        }
+      }
+
+
+      // Outside of the handled domain
+      {
+        autoc boxIsNotInTheHandledSpace = BoundingBox1D{ 1, 3 }; // Min point inside, max point outside
+        autoc isInsertedSuccessfully = tree.Add(boxIsNotInTheHandledSpace);
+        Assert::IsFalse(isInsertedSuccessfully);
+      }
+
+      autoc& nodes = tree.GetCore().GetNodes();
+      Assert::AreEqual<size_t>(7, nodes.size());
+
+      autoc idsActual = tree.RangeSearch<false /*overlap instead of fully contained*/>(BoundingBox1D{ -1.1, 0.9 });
+      autoc idsExpected = vector<size_t>{ /* 1. phase */ 0, 1, 2, 4, /* 2. phase */ 6, 7, 8 };
+      Assert::IsTrue(std::ranges::is_permutation(idsActual, idsExpected));
+    }
+
+
     TEST_METHOD(VisitNodes__points__0123)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
