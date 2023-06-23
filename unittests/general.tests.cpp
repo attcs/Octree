@@ -432,6 +432,17 @@ namespace GeneralTest
     }
 
 
+    TEST_METHOD(EraseFromEmpty)
+    {
+      autoc handledSpaceDomain = BoundingBox1D{ -2, +2 };
+
+      auto tree = DualtreeBoxC{};
+      tree.Reset();
+      tree.Init(handledSpaceDomain, 10, 4);
+      autoc isErased = tree.Erase(0);
+      Assert::IsFalse(isErased);
+    }
+
     TEST_METHOD(VisitNodes__points__0123)
     {
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };

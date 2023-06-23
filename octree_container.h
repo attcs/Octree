@@ -103,6 +103,9 @@ namespace OrthoTree
 
     bool Erase(entity_id_type id) noexcept
     {
+      if (m_vData.size() <= id)
+        return false;
+
       if (m_tree.Erase(id, m_vData[id]))
       {
         m_vData.erase(std::next(std::begin(m_vData), id));
