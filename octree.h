@@ -915,6 +915,17 @@ namespace OrthoTree
     }
 
 
+    static inline depth_type EstimateMaxDepth(size_t nElement, max_element_type nElementMax) noexcept
+    {
+      if (nElement < nElementMax)
+        return 2;
+
+      autoc nLeaf = nElement / nElementMax;
+      // nLeaf = (2^nDepth)^nDimension
+      return std::clamp(static_cast<depth_type>(std::log2(nLeaf) / static_cast<double>(nDimension)), depth_type(2), depth_type(10));
+    }
+
+
     static inline morton_node_id_type GetHash(depth_type depth, morton_node_id_type_cref key) noexcept
     {
       assert(key < (morton_node_id_type(1) << (depth * nDimension)));
@@ -1066,7 +1077,7 @@ namespace OrthoTree
   public: // Main service functions
 
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    void constexpr Init(box_type const& box, depth_type nDepthMax, max_element_type nElementMax = 11) noexcept
+    constexpr void Init(box_type const& box, depth_type nDepthMax, max_element_type nElementMax = 11) noexcept
     {
       assert(this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree is wanted to be reset, use the Reset() function before init.
       assert(nDepthMax > 1);
@@ -1527,11 +1538,12 @@ namespace OrthoTree
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static void Create(OrthoTreePoint& tree, span<vector_type const> const& vpt, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default) noexcept
+    static void Create(OrthoTreePoint& tree, span<vector_type const> const& vpt, depth_type nDepthMaxIn = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default) noexcept
     {
       autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : AD::box_of_points(vpt);
       autoc n = vpt.size();
 
+      autoc nDepthMax = nDepthMaxIn == 0 ? base::EstimateMaxDepth(n, nElementMaxInNode) : nDepthMaxIn;
       tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
       base::reserveContainer(tree.m_nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
       if (vpt.empty())
@@ -2008,12 +2020,12 @@ namespace OrthoTree
 
     // Create
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static void Create(OrthoTreeBoundingBox& tree, span<box_type const> const& vBox, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default) noexcept
+    static void Create(OrthoTreeBoundingBox& tree, span<box_type const> const& vBox, depth_type nDepthMaxIn = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = max_element_default) noexcept
     {
       autoc boxSpace = oBoxSpace.has_value() ? *oBoxSpace : AD::box_of_boxes(vBox);
-      tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
-
       autoc n = vBox.size();
+      autoc nDepthMax = nDepthMaxIn == 0 ? base::EstimateMaxDepth(n, nElementMaxInNode) : nDepthMaxIn;
+      tree.Init(boxSpace, nDepthMax, nElementMaxInNode);
 
       base::reserveContainer(tree.m_nodes, base::EstimateNodeNumber(n, nDepthMax, nElementMaxInNode));
       if (n == 0)

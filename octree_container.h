@@ -49,7 +49,7 @@ namespace OrthoTree
 
   public: // Constructors
     OrthoTreeContainerBase() noexcept = default;
-    OrthoTreeContainerBase(span<data_type const> const& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false) noexcept
+    OrthoTreeContainerBase(span<data_type const> const& vData, depth_type nDepthMax = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false) noexcept
       : m_vData(vData.begin(), vData.end())
     {
       if (fParallelCreate)
@@ -58,7 +58,7 @@ namespace OrthoTree
         OrthoTree::Create(m_tree, vData, nDepthMax, oBoxSpace, nElementMaxInNode);
     }
 
-    OrthoTreeContainerBase(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false) noexcept
+    OrthoTreeContainerBase(vector<data_type>&& vData, depth_type nDepthMax = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default, bool fParallelCreate = false) noexcept
       : m_vData(vData)
     {
       if (fParallelCreate)
@@ -136,7 +136,7 @@ namespace OrthoTree
   public: // Edit functions
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerPoint Create(span<data_type const> const& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
+    static OrthoTreeContainerPoint Create(span<data_type const> const& vData, depth_type nDepthMax = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_vData = vector(vData.begin(), vData.end());
@@ -145,7 +145,7 @@ namespace OrthoTree
     }
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerPoint Create(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
+    static OrthoTreeContainerPoint Create(vector<data_type>&& vData, depth_type nDepthMax = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_vData = std::move(vData);
@@ -196,7 +196,7 @@ namespace OrthoTree
   public: // Edit functions
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerBox Create(span<data_type const> const& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
+    static OrthoTreeContainerBox Create(span<data_type const> const& vData, depth_type nDepthMax = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_vData = vector(vData.begin(), vData.end());
@@ -205,7 +205,7 @@ namespace OrthoTree
     }
 
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    static OrthoTreeContainerBox Create(vector<data_type>&& vData, depth_type nDepthMax, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
+    static OrthoTreeContainerBox Create(vector<data_type>&& vData, depth_type nDepthMax = 0, std::optional<box_type> const& oBoxSpace = std::nullopt, max_element_type nElementMaxInNode = OrthoTree::max_element_default) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_vData = std::move(vData);
