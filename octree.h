@@ -1382,7 +1382,7 @@ namespace OrthoTree
       }
     }
 
-    template<typename data_type, bool fRangeMustContain = false, bool fIdCheck = false, bool fLeafNodeContainsElementOnly = true>
+    template<typename data_type, bool fRangeMustContain = false, bool fIdCheck = false, bool fLeafNodeContainsElementOnly = true, bool isBoxType = false>
     bool rangeSearchRoot(box_type const& range, span<data_type const> const& vData, vector<entity_id_type>& sidFound, entity_id_type idMin = 0) const noexcept
     {
       autoc nEntity = vData.size();
@@ -1392,15 +1392,25 @@ namespace OrthoTree
         std::iota(std::begin(sidFound), std::end(sidFound), fIdCheck ? idMin + 1 : 0);
         return nEntity;
       }
-      
+
       // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         if (AD::point_comp_c(AD::box_min_c(range), iDimension) >= AD::point_comp_c(AD::box_max_c(range), iDimension))
           return false;
 
-      autoc aid = this->getGridIdBox(range);
-      auto idLocationMin = MortonEncode(aid[0]);
-      auto idLocationMax = MortonEncode(aid[1]);
+      auto idLocationMin = morton_grid_id_type{};
+      auto idLocationMax = morton_grid_id_type{};
+      if constexpr (isBoxType)
+      {
+        autoc aid = this->getGridIdBox(range);
+        idLocationMin = MortonEncode(aid[0]);
+        idLocationMax = MortonEncode(aid[1]);
+      }
+      else
+      {
+        idLocationMin = MortonEncode(getGridIdPoint(AD::box_min_c(range)));
+        idLocationMax = MortonEncode(getGridIdPoint(AD::box_max_c(range)));
+      }
 
       auto nDepth = this->m_nDepthMax;
       for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
@@ -1410,7 +1420,7 @@ namespace OrthoTree
       auto keyNodeSmallest = this->FindSmallestNodeKey(keyRange);
       if (!IsValidKey(keyNodeSmallest))
         return false;
-     
+
       auto rVolumeRange = 1.0;
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         rVolumeRange *= AD::point_comp_c(AD::box_max_c(range), iDimension) - AD::point_comp_c(AD::box_min_c(range), iDimension);
@@ -1670,7 +1680,7 @@ namespace OrthoTree
     {
       auto sidFound = vector<entity_id_type>();
 
-      if (!this->template rangeSearchRoot<vector_type, false, false, fLeafNodeContainsElementOnly>(range, vpt, sidFound))
+      if (!this->template rangeSearchRoot<vector_type, false, false, fLeafNodeContainsElementOnly, false>(range, vpt, sidFound))
         return {};
 
       return sidFound;
@@ -2264,7 +2274,7 @@ namespace OrthoTree
     {
       auto sidFound = vector<entity_id_type>();
 
-      if (!this->template rangeSearchRoot<box_type, isFullyContained, false, false>(range, vBox, sidFound))
+      if (!this->template rangeSearchRoot<box_type, isFullyContained, false, false, true>(range, vBox, sidFound))
         return {};
 
       if constexpr (nSplitStrategyAdditionalDepth > 0)
@@ -2372,7 +2382,7 @@ namespace OrthoTree
         auto sidFound = vector<entity_id_type>();
 
         autoc nEntity = vBox.size();
-        if (!this->template rangeSearchRoot<box_type, false, true, false>(vBox[idCheck], vBox, sidFound, idCheck))
+        if (!this->template rangeSearchRoot<box_type, false, true, false, true>(vBox[idCheck], vBox, sidFound, idCheck))
           return {};
 
         if constexpr (nSplitStrategyAdditionalDepth > 0)

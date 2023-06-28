@@ -1897,6 +1897,109 @@ namespace Tree3DTest
 }
 
 
+namespace LongIntAdaptor
+{
+  using namespace OrthoTree;
+
+  using GeometryType = long int;
+  template <size_t N> using CustomVectorTypeND = std::array<GeometryType, N>;
+  template <size_t N> using CustomBoundingBoxND = std::array<CustomVectorTypeND<N>, 2>;
+
+  template <size_t N>
+  struct AdaptorBasicsCustom
+  {
+    static inline GeometryType& point_comp(CustomVectorTypeND<N>& pt, OrthoTree::dim_type iDimension)
+    {
+      return pt[iDimension];
+    }
+
+    static constexpr GeometryType point_comp_c(CustomVectorTypeND<N> const& pt, OrthoTree::dim_type iDimension)
+    {
+      return pt[iDimension];
+    }
+
+    static inline CustomVectorTypeND<N>& box_min(CustomBoundingBoxND<N>& box) { return box[0]; }
+    static inline CustomVectorTypeND<N>& box_max(CustomBoundingBoxND<N>& box) { return box[1]; }
+    static constexpr CustomVectorTypeND<N> const& box_min_c(CustomBoundingBoxND<N> const& box) { return box[0]; }
+    static constexpr CustomVectorTypeND<N> const& box_max_c(CustomBoundingBoxND<N> const& box) { return box[1]; }
+  };
+
+  template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorBasicsCustom<N>, GeometryType>;
+  template <size_t N> using OrthoTreePointCustom = OrthoTreePoint<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorCustom<N>, GeometryType>;
+  template <size_t N> using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainerPoint<OrthoTreePointCustom<N>, CustomVectorTypeND<N>>;
+  template <size_t N, depth_type nSplit = 2> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorCustom<N>, GeometryType, nSplit>;
+  template <size_t N> using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainerBox<OrthoTreeBoxCustom<N>, CustomBoundingBoxND<N>>;
+
+
+  TEST_CLASS(LongIntTest)
+  {
+    TEST_METHOD(RangeSearchPointAtTheBorder)
+    {
+      autoce nDim = 1;
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      autoce points = array
+      {
+        Vector{ 0 },
+        Vector{ 4 },
+        Vector{ 5 },
+        Vector{ 8 }
+      };
+
+      autoc tree = OrthoTreePointContainerCustom<nDim>(points, 3, std::nullopt, 2);
+
+      {
+        autoc vidActual = tree.RangeSearch(Box{ points[1], points[2] });
+        autoce vidExpected = array{ 1, 2 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+
+      {
+        autoc vidActual = tree.RangeSearch(Box{ points[2], Vector{ 6 } });
+        autoce vidExpected = array{ 2 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+    }
+
+    TEST_METHOD(RangeSearchBoxAtTheBorder)
+    {
+      autoce nDim = 1;
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      autoc boxes = array<Box, 5>
+      {
+        Box{ 0, 1 },
+        Box{ 3, 4 },
+        Box{ 4, 5 },
+        Box{ 5, 6 },
+        Box{ 7, 8 }
+      };
+
+      autoc tree = OrthoTreeBoxContainerCustom<nDim>(boxes, 3, std::nullopt, 2, false);
+      {
+        autoc vidActual = tree.RangeSearch(boxes[1]);
+        autoce vidExpected = array{ 1 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+
+      {
+        autoc vidActual = tree.RangeSearch(boxes[2]);
+        autoce vidExpected = array{ 2 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+
+      {
+        autoc vidActual = tree.RangeSearch(CustomBoundingBoxND<nDim>{ 4, 8 });
+        autoce vidExpected = array{ 2, 3, 4 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+    }
+
+  };
+}
+
 namespace CompileTest
 {
   TEST_CLASS(CompileTest)
