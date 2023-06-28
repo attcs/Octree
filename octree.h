@@ -423,7 +423,7 @@ namespace OrthoTree
   {
     bool carry = false;
     auto ans = bitset_arithmetic<N>();
-    for (size_t i = 0; i < N; i++)
+    for (size_t i = 0; i < N; ++i)
     {
       autoc sum = (lhs[i] ^ rhs[i]) ^ carry;
       carry = (lhs[i] && rhs[i]) || (lhs[i] && carry) || (rhs[i] && carry);
@@ -478,13 +478,13 @@ namespace OrthoTree
 
     if (lhs.count() < rhs.count())
     {
-      for (size_t i = 0; i < N; i++)
+      for (size_t i = 0; i < N; ++i)
         if (lhs[i])
           ret = ret + (rhs << i);
     }
     else
     {
-      for (size_t i = 0; i < N; i++)
+      for (size_t i = 0; i < N; ++i)
         if (rhs[i])
           ret = ret + (lhs << i);
     }
