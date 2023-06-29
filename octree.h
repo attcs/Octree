@@ -1428,7 +1428,7 @@ namespace OrthoTree
       for (auto flagDiffOfLocation = idLocationMin ^ idLocationMax; IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
         idLocationMin >>= nDimension;
 
-      autoc keyRange = morton_node_id_type{ 1 } << (nDepth * nDimension) | idLocationMin;
+      autoc keyRange = this->GetHash(nDepth, idLocationMin);
       auto keyNodeSmallest = this->FindSmallestNodeKey(keyRange);
       if (!IsValidKey(keyNodeSmallest))
         return false;
@@ -2258,17 +2258,72 @@ namespace OrthoTree
     }
 
 
+  private:
+
+    constexpr array<array<grid_id_type, nDimension>, 2> getGridIdPointEdge(vector_type const& point) const noexcept
+    {
+      autoc& p0 = AD::box_min_c(this->m_box);
+
+      auto aid = array<array<grid_id_type, nDimension>, 2>{};
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+      {
+        autoc rid = static_cast<double>(adaptor_type::point_comp_c(point, iDimension) - adaptor_type::point_comp_c(p0, iDimension)) * this->m_aRasterizer[iDimension];
+        aid[0][iDimension] = aid[1][iDimension] = static_cast<grid_id_type>(rid);
+        aid[0][iDimension] -= (aid[0][iDimension] > 0) && (floor(rid) == rid);
+      }
+      return aid;
+    }
+
+
+    void pickSearch(vector_type const& ptPick, span<box_type const> const& vData, Node const& nodeParent, vector<entity_id_type>& vidFound) const noexcept
+    {
+      std::ranges::copy_if(nodeParent.vid, back_inserter(vidFound), [&](autoc id) { return AD::does_box_contain_point(vData[id], ptPick); });
+
+      for (morton_node_id_type_cref keyChild : nodeParent.GetChildren())
+      {
+        autoc& nodeChild = this->GetNode(keyChild);
+
+        if (!AD::does_box_contain_point(nodeChild.box, ptPick))
+          continue;
+
+        pickSearch(ptPick, vData, nodeChild, vidFound);
+      }
+    }
+
+
   public: // Search functions
     
     // Pick search
     vector<entity_id_type> PickSearch(vector_type const& ptPick, span<box_type const> const& vBox) const noexcept
     {
-      autoc idLocation = this->getLocationId(ptPick);
-
       auto vidFound = vector<entity_id_type>();
+      if (!AD::does_box_contain_point(this->m_box, ptPick))
+        return vidFound;
+
       vidFound.reserve(100);
+
       autoc itEnd = std::end(this->m_nodes);
-      for (auto kNode = this->GetHash(this->m_nDepthMax, idLocation); base::IsValidKey(kNode); kNode >>= nDimension)
+      autoc aid = this->getGridIdPointEdge(ptPick);
+      auto idLocation = base::MortonEncode(aid[0]);
+
+      auto kNode = this->GetHash(this->m_nDepthMax, idLocation);
+      if (aid[0] != aid[1]) // Pick point is on the nodes edge. It must check more nodes downward.
+      {
+        autoc idLocationMax = base::MortonEncode(aid[1]);
+        auto nDepth = this->m_nDepthMax;
+        for (auto flagDiffOfLocation = idLocation ^ idLocationMax; base::IsValidKey(flagDiffOfLocation); flagDiffOfLocation >>= nDimension, --nDepth)
+          idLocation >>= nDimension;
+
+        autoc keyRange = this->GetHash(nDepth, idLocation);
+        kNode = this->FindSmallestNodeKey(keyRange);
+        autoc itNode = this->m_nodes.find(kNode);
+        if (itNode != itEnd)
+          pickSearch(ptPick, vBox, itNode->second, vidFound);
+
+        kNode >>= nDimension;
+      }
+
+      for (; base::IsValidKey(kNode); kNode >>= nDimension)
       {
         autoc itNode = this->m_nodes.find(kNode);
         if (itNode == itEnd)
@@ -2276,7 +2331,7 @@ namespace OrthoTree
 
         std::ranges::copy_if(itNode->second.vid, back_inserter(vidFound), [&](autoc id) { return AD::does_box_contain_point(vBox[id], ptPick); });
       }
-
+      
       return vidFound;
     }
 

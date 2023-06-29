@@ -1997,6 +1997,28 @@ namespace LongIntAdaptor
       }
     }
 
+    TEST_METHOD(PickSearchAtTheBorder)
+    {
+      autoce nDim = 1;
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      autoc boxes = array<Box, 5>
+      {
+        Box{ 0, 1 },
+        Box{ 3, 4 },
+        Box{ 4, 5 },
+        Box{ 5, 6 },
+        Box{ 7, 8 }
+      };
+
+      autoc tree = OrthoTreeBoxContainerCustom<nDim>(boxes, 3, std::nullopt, 2, false);
+      {
+        autoc vidActual = tree.PickSearch(Vector{4});
+        autoce vidExpected = array{ 1, 2 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+    }
   };
 }
 
