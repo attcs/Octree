@@ -1378,10 +1378,11 @@ namespace OrthoTree
         auto bOverlap = true;
         for (dim_type iDim = 0; iDim < nDimension && bOverlap; ++iDim)
         {
-          if (IsValidKey(keyChild & (morton_node_id_type{ 1 } << iDim)))
+          autoc isUpperNodeInTheDimension = IsValidKey(keyChild & (morton_node_id_type{ 1 } << iDim));
+          if (isUpperNodeInTheDimension)
             bOverlap &= AD::point_comp_c(AD::box_min_c(nodeChild.box), iDim) <= AD::point_comp_c(AD::box_max_c(range), iDim);
           else
-            bOverlap &= AD::point_comp_c(AD::box_max_c(nodeChild.box), iDim) > AD::point_comp_c(AD::box_min_c(range), iDim);
+            bOverlap &= AD::point_comp_c(AD::box_max_c(nodeChild.box), iDim) >= AD::point_comp_c(AD::box_min_c(range), iDim);
         }
         if (!bOverlap)
           continue;
