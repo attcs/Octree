@@ -1,5 +1,8 @@
 #include "pch.h"
 
+#include <filesystem>
+#include <charconv>
+#include <fstream>
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -2019,6 +2022,84 @@ namespace LongIntAdaptor
         Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
       }
     }
+
+    template<int nDim>
+    vector<CustomVectorTypeND<nDim>> readPointCloud(std::filesystem::path const& path)
+    {
+      auto points = vector<CustomVectorTypeND<nDim>>{};
+      auto file = std::ifstream(path, std::ios::in);
+      if (file.fail())
+        return points;
+
+      auto line = std::string{};
+      while (std::getline(file, line))
+      {
+        if (file.fail())
+          return points;
+
+        auto& point = points.emplace_back();
+        auto sw = std::string_view(line);
+        for (int iDim = 0; iDim < nDim; ++iDim)
+        {
+          autoc[ptr, ec] = std::from_chars(sw.data(), sw.data() + sw.length(), point[iDim]);
+          if (ec != std::errc{})
+            return points;
+
+          sw.remove_prefix(ptr - sw.data());
+          if (!sw.empty())
+            sw.remove_prefix(1); // space
+        }
+      }
+
+      return points;
+    }
+
+
+    template<int nDim>
+    vector<entity_id_type> brute_force_search(vector<CustomVectorTypeND<nDim>> const& points, CustomBoundingBoxND<nDim> const& searchbox)
+    {
+      auto vid = vector<entity_id_type>{};
+      autoc nid = points.size();
+      for (entity_id_type id = 0; id < nid; ++id)
+        if (AdaptorCustom<nDim>::does_box_contain_point(searchbox, points[id]))
+          vid.emplace_back(id);
+
+      return vid;
+    }
+
+
+    TEST_METHOD(BruteForceRangeSearch_UsingPredefinedData_IfAvailable)
+    {
+      autoce nDim = 3;
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      autoc points = readPointCloud<nDim>("../../../octree_data.txt");
+      if (points.empty())
+        return;
+
+      autoc searchbox = Box{ Vector{39, 43, 72}, Vector{49, 53, 76} };
+
+      autoc tree = OrthoTreePointContainerCustom<nDim>(points, 3, std::nullopt, 2);
+      auto vidActual = tree.RangeSearch(searchbox);
+      auto vidExpected = brute_force_search(points, searchbox);
+
+      autoc idNode__164 = tree.GetCore().Find(164);
+      autoc idNode__166 = tree.GetCore().Find(165);
+      autoc idNode__375 = tree.GetCore().Find(375);
+      autoc idNode_1549 = tree.GetCore().Find(1549);
+      {
+        std::ranges::sort(vidActual);
+        std::ranges::sort(vidExpected);
+
+        auto missing_ids = vector<entity_id_type>{};
+        std::ranges::set_difference(vidExpected, vidActual, std::back_inserter(missing_ids));
+      }
+      
+      Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+    }
+
+
   };
 }
 
