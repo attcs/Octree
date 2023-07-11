@@ -709,6 +709,10 @@ namespace OrthoTree
     max_element_type m_nElementMax = 11;
     double m_rVolume = {};
     array<double, nDimension> m_aRasterizer;
+    array<double, nDimension> m_aBoxSize;
+    array<double, nDimension> m_aMinPoint;
+
+    
 
   protected: // Aid functions
 
@@ -731,16 +735,18 @@ namespace OrthoTree
 
   protected: // Grid functions
 
-    static constexpr array<double, nDimension> getGridRasterizer(vector_type const& p0, vector_type const& p1, grid_id_type n_divide) noexcept
+    static constexpr std::tuple<array<double, nDimension>, array<double, nDimension>> getGridRasterizer(vector_type const& p0, vector_type const& p1, grid_id_type n_divide) noexcept
     {
-      auto aRasterizer = array<double, nDimension>{};
+      auto ret = std::tuple<array<double, nDimension>, array<double, nDimension>>{};
+      auto& [aRasterizer, aBoxSize] = ret;
       autoc rn_divide = static_cast<double>(n_divide);
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
-        autoc rExt = adaptor_type::point_comp_c(p1, iDimension) - adaptor_type::point_comp_c(p0, iDimension);
-        aRasterizer[iDimension] = rExt == 0 ? 1.0 : (rn_divide / rExt);
+        aBoxSize[iDimension] = static_cast<double>(adaptor_type::point_comp_c(p1, iDimension) - adaptor_type::point_comp_c(p0, iDimension));
+        aRasterizer[iDimension] = aBoxSize[iDimension] == 0 ? 1.0 : (rn_divide / aBoxSize[iDimension]);
       }
-      return aRasterizer;
+
+      return ret;
     }
 
 
@@ -751,13 +757,6 @@ namespace OrthoTree
       {
         autoc local_comp = adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(adaptor_type::box_min_c(this->m_box), iDimension);
         auto raster_id = static_cast<double>(local_comp) * this->m_aRasterizer[iDimension];
-        if constexpr (std::is_integral_v<geometry_type>)
-        {
-          // the borders of the nodes are highly displaced compared to floating point types 
-          autoc raster_id_ceiled = std::ceil(raster_id);
-          if (local_comp >= static_cast<geometry_type>(raster_id_ceiled / this->m_aRasterizer[iDimension]))
-            raster_id = raster_id_ceiled;
-        }
         aid[iDimension] = std::min<grid_id_type>(this->m_idSlotMax, static_cast<grid_id_type>(raster_id));
       }
       return aid;
@@ -802,19 +801,49 @@ namespace OrthoTree
       nodeParent.AddChild(kChild);
 
       auto& nodeChild = m_nodes[kChild];
+      if constexpr (std::is_integral_v<geometry_type>)
+      {
+        std::array<double, nDimension> ptNodeMin = this->m_aMinPoint, ptNodeMax;
 
+        autoc nDepth = this->GetDepth(kChild);
+        auto mask = morton_node_id_type{ 1 } << (nDepth * nDimension - 1);
+
+        auto rScale = 1.0;
+        for (depth_type iDepth = 0; iDepth < nDepth; ++iDepth)
+        {
+          rScale *= 0.5;
+          for (dim_type iDimension = nDimension; iDimension > 0; --iDimension)
+          {
+            bool const isGreater = (kChild & mask);
+            ptNodeMin[iDimension - 1] += isGreater * this->m_aBoxSize[iDimension - 1] * rScale;
+            mask >>= 1;
+          }
+        }
+
+        LOOPIVDEP
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+          ptNodeMax[iDimension] = ptNodeMin[iDimension] + this->m_aBoxSize[iDimension] * rScale;
+
+        LOOPIVDEP
+        for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        {
+          AD::point_comp(AD::box_min(nodeChild.box), iDimension) = static_cast<geometry_type>(ptNodeMin[iDimension]);
+          AD::point_comp(AD::box_max(nodeChild.box), iDimension) = static_cast<geometry_type>(ptNodeMax[iDimension]);
+        }
+      }
+      else
       {
         LOOPIVDEP
         for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fGreater = ((child_id_type{ 1 } << iDimension) & iChild) > 0;
           AD::point_comp(AD::box_min(nodeChild.box), iDimension) =
-            fGreater * (AD::point_comp_c(AD::box_max_c(nodeParent.box), iDimension) + AD::point_comp_c(AD::box_min_c(nodeParent.box), iDimension)) / geometry_type{ 2 } +
+            fGreater * (AD::point_comp_c(AD::box_max_c(nodeParent.box), iDimension) + AD::point_comp_c(AD::box_min_c(nodeParent.box), iDimension)) * geometry_type{ 0.5 } +
             (!fGreater) * AD::point_comp_c(AD::box_min_c(nodeParent.box), iDimension);
 
           AD::point_comp(AD::box_max(nodeChild.box), iDimension) =
             fGreater * AD::point_comp_c(AD::box_max_c(nodeParent.box), iDimension) +
-            (!fGreater) * ((AD::point_comp_c(AD::box_max_c(nodeParent.box), iDimension) + AD::point_comp_c(AD::box_min_c(nodeParent.box), iDimension)) / geometry_type{ 2 });
+            (!fGreater) * ((AD::point_comp_c(AD::box_max_c(nodeParent.box), iDimension) + AD::point_comp_c(AD::box_min_c(nodeParent.box), iDimension)) * geometry_type{ 0.5 });
         }
       }
       return nodeChild;
@@ -1108,7 +1137,11 @@ namespace OrthoTree
 
       auto& nodeRoot = this->m_nodes[GetRootKey()];
       nodeRoot.box = box;
-      this->m_aRasterizer = this->getGridRasterizer(AD::box_min_c(this->m_box), AD::box_max_c(this->m_box), this->m_nRasterResolutionMax);
+      tie(this->m_aRasterizer, this->m_aBoxSize) = this->getGridRasterizer(AD::box_min_c(this->m_box), AD::box_max_c(this->m_box), this->m_nRasterResolutionMax);
+
+      LOOPIVDEP
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        this->m_aMinPoint[iDimension] = static_cast<double>(AD::point_comp_c(AD::box_min_c(this->m_box), iDimension));
     }
 
 

@@ -2073,6 +2073,7 @@ namespace LongIntAdaptor
       autoce nDim = 3;
       using Vector = CustomVectorTypeND<nDim>;
       using Box = CustomBoundingBoxND<nDim>;
+      using Tree = OrthoTreePointContainerCustom<nDim>;
 
       autoc points = readPointCloud<nDim>("../../../octree_data.txt");
       if (points.empty())
@@ -2080,21 +2081,17 @@ namespace LongIntAdaptor
 
       autoc searchbox = Box{ Vector{39, 43, 72}, Vector{49, 53, 76} };
 
-      autoc tree = OrthoTreePointContainerCustom<nDim>(points, 3, std::nullopt, 2);
+      autoc tree = Tree(points, 3, std::nullopt, 2);
       auto vidActual = tree.RangeSearch(searchbox);
       auto vidExpected = brute_force_search(points, searchbox);
-
-      autoc idNode__164 = tree.GetCore().Find(164);
-      autoc idNode__166 = tree.GetCore().Find(165);
-      autoc idNode__375 = tree.GetCore().Find(375);
-      autoc idNode_1549 = tree.GetCore().Find(1549);
-      {
-        std::ranges::sort(vidActual);
-        std::ranges::sort(vidExpected);
-
-        auto missing_ids = vector<entity_id_type>{};
-        std::ranges::set_difference(vidExpected, vidActual, std::back_inserter(missing_ids));
-      }
+      
+      // To investigate
+      std::ranges::sort(vidActual);
+      std::ranges::sort(vidExpected);
+      auto missing_ids = vector<entity_id_type>{};
+      std::ranges::set_difference(vidExpected, vidActual, std::back_inserter(missing_ids));
+      auto missing_nodes = vector<OrthoTreePointCustom<nDim>::morton_node_id_type>(missing_ids.size());
+      std::ranges::transform(missing_ids, missing_nodes.begin(), [&](autoc id) { return tree.GetCore().Find(id); });
       
       Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
     }
