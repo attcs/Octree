@@ -748,8 +748,18 @@ namespace OrthoTree
     {
       auto aid = array<grid_id_type, nDimension>{};
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        aid[iDimension] = std::min<grid_id_type>(this->m_idSlotMax, static_cast<grid_id_type>(static_cast<double>(adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(adaptor_type::box_min_c(this->m_box), iDimension)) * this->m_aRasterizer[iDimension]));
-
+      {
+        autoc local_comp = adaptor_type::point_comp_c(pe, iDimension) - adaptor_type::point_comp_c(adaptor_type::box_min_c(this->m_box), iDimension);
+        auto raster_id = static_cast<double>(local_comp) * this->m_aRasterizer[iDimension];
+        if constexpr (std::is_integral_v<geometry_type>)
+        {
+          // the borders of the nodes are highly displaced compared to floating point types 
+          autoc raster_id_ceiled = std::ceil(raster_id);
+          if (local_comp >= static_cast<geometry_type>(raster_id_ceiled / this->m_aRasterizer[iDimension]))
+            raster_id = raster_id_ceiled;
+        }
+        aid[iDimension] = std::min<grid_id_type>(this->m_idSlotMax, static_cast<grid_id_type>(raster_id));
+      }
       return aid;
     }
 
