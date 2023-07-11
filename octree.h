@@ -1285,6 +1285,15 @@ namespace OrthoTree
       return morton_node_id_type{}; // Not found
     }
 
+    morton_node_id_type Find(entity_id_type id) const noexcept
+    {
+      autoc it = find_if(this->m_nodes.begin(), this->m_nodes.end(), [id](autoc& keyAndNode)
+      {
+        return std::ranges::find(keyAndNode.second.vid, id) != end(keyAndNode.second.vid);
+      });
+
+      return it == this->m_nodes.end() ? 0 : it->first;
+    }
 
   protected:
 
