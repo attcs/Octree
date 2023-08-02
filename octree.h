@@ -157,8 +157,8 @@ namespace OrthoTree
   && requires (vector_type const& pt, dim_type iDimension) { {adaptor_type::point_comp_c(pt, iDimension)}->std::convertible_to<geometry_type>; }
   && requires (box_type& box) { { adaptor_type::box_min(box) }->std::convertible_to<vector_type&>; }
   && requires (box_type& box) { { adaptor_type::box_max(box) }->std::convertible_to<vector_type&>; }
-  && requires (box_type const& box) { { adaptor_type::box_min_c(box) }->std::convertible_to<vector_type>; }
-  && requires (box_type const& box) { { adaptor_type::box_max_c(box) }->std::convertible_to<vector_type>; }
+  && requires (box_type const& box) { { adaptor_type::box_min_c(box) }->std::convertible_to<vector_type const&>; }
+  && requires (box_type const& box) { { adaptor_type::box_max_c(box) }->std::convertible_to<vector_type const&>; }
   ;
 
   template <class adaptor_type, typename vector_type, typename box_type, typename geometry_type = double>
@@ -182,7 +182,7 @@ namespace OrthoTree
     static constexpr vector_type& box_min(box_type& box) noexcept { return box.Min; }
     static constexpr vector_type& box_max(box_type& box) noexcept { return box.Max; }
     static constexpr vector_type const& box_min_c(box_type const& box) noexcept { return box.Min; }
-    static constexpr vector_type const& box_max_c(box_type const& box)  noexcept { return box.Max; }
+    static constexpr vector_type const& box_max_c(box_type const& box) noexcept { return box.Max; }
   };
 
 
