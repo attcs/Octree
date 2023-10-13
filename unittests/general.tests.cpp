@@ -1858,6 +1858,26 @@ namespace Tree2DTest
     }
 
 
+    TEST_METHOD(PickSearch__124)
+    {
+      autoce boxes = array
+      {
+        BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+        BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+        BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+        BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+        BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
+      };
+
+      autoc quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
+
+      autoc ptPick = Point2D{ 2.0, 2.0 };
+      auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // { 1, 2, 4 }
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 1, 2, 4 }, ids_picked));
+    }
+
+
     TEST_METHOD(CollistionDetection__33_24_34)
     {
       autoce boxesL = array
@@ -1897,6 +1917,47 @@ namespace Tree2DTest
 
 namespace Tree3DTest
 {
+  TEST_CLASS(Box_AddTest)
+  {
+    TEST_METHOD(CreateWithData)
+    {
+      // This gives a tree with 9 nodes.
+      std::vector<BoundingBox3D> treeData = {
+      { { -2.00375, -0.20375, +0.19625 }, { -1.52125, -0.19625, +0.20375 } },
+      { { -0.88692, -1.05210, -0.80026 }, { +0.88692, +0.72175, +0.97359 } },
+      { { -0.78692, -1.05210, -0.80026 }, { +0.98692, +0.72175, +0.97359 } },
+      { { -0.68692, -1.05210, -0.80026 }, { +1.08692, +0.72175, +0.97359 } },
+      { { -0.58692, -1.05210, -0.80026 }, { +1.18692, +0.72175, +0.97359 } },
+      };
+
+      OctreeBox tree(treeData, 8, BoundingBox3D{ { -10, -10, -10 }, { +10, +10, +10 } }, 2);
+      tree.UpdateIndexes<false>({});
+    }
+
+
+    TEST_METHOD(AddToEmptyTree)
+    {
+      // This gives a tree with 10 nodes.
+      std::vector<BoundingBox3D> treeData;
+      OctreeBox tree(treeData, 8, BoundingBox3D{ { -10, -10, -10 }, { +10, +10, +10 } }, 2);
+
+      std::vector<BoundingBox3D> boxes = {
+      { { -2.00375, -0.20375, +0.19625 }, { -1.52125, -0.19625, +0.20375 } },
+      { { -0.88692, -1.05210, -0.80026 }, { +0.88692, +0.72175, +0.97359 } },
+      { { -0.78692, -1.05210, -0.80026 }, { +0.98692, +0.72175, +0.97359 } },
+      { { -0.68692, -1.05210, -0.80026 }, { +1.08692, +0.72175, +0.97359 } },
+      { { -0.58692, -1.05210, -0.80026 }, { +1.18692, +0.72175, +0.97359 } },
+      };
+
+      for (unsigned i = 0; i < boxes.size(); ++i) {
+        Assert::IsTrue(tree.Insert(i, boxes[i], true));
+        treeData.emplace_back(boxes[i]);
+
+      }
+      tree.UpdateIndexes<false>({});
+    }
+  };
+
 }
 
 
@@ -2022,6 +2083,250 @@ namespace LongIntAdaptor
         Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
       }
     }
+
+    TEST_METHOD(PickSearchAtTheBorder3LevelPos)
+    {
+      autoce nDim = 1;
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      autoc boxes = array
+      {
+        Box{ 0, 16 },
+
+        Box{ 0, 1 },
+        Box{ 3, 4 },
+        Box{ 4, 5 },
+        Box{ 5, 6 },
+
+        Box{ 2, 4 },
+        Box{ 4, 6 },
+        Box{ 2, 6 },
+      };
+
+      autoc tree = OrthoTreeBoxContainerCustom<nDim>(boxes, 4, std::nullopt, 2, false);
+      {
+        autoc vidActual = tree.PickSearch(Vector{ 4 });
+        autoce vidExpected = array{ 0, 2, 3, 5, 6, 7 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+    }
+
+    TEST_METHOD(PickSearchAtTheBorder3LevelPosNeg)
+    {
+      autoce nDim = 1;
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      autoc boxes = array
+      {
+        Box{ -8, 8 },
+
+        Box{  0,  1 },
+        Box{ -4, -3 },
+        Box{  4,  5 },
+        Box{ -6, -5 },
+
+        Box{ -4,  2 },
+        Box{  4,  6 },
+        Box{ -6,  2 },
+      };
+
+      autoc tree = OrthoTreeBoxContainerCustom<nDim>(boxes, 4, std::nullopt, 2, false);
+      {
+        autoc vidActual = tree.PickSearch(Vector{ -4 });
+        autoce vidExpected = array{ 0, 2, 5, 7 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+    }
+
+    TEST_METHOD(PickSearchAtTheBorder3LevelNeg)
+    {
+      autoce nDim = 1;
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      autoc boxes = array
+      {
+        Box{ -17,  -1 },
+
+        Box{  -2,  -1 },
+        Box{  -4, -3 },
+        Box{  -5, -4 },
+        Box{  -6, -5 },
+
+        Box{  -4, -2 },
+        Box{  -6, -4 },
+        Box{  -6, -2 },
+      };
+
+      autoc tree = OrthoTreeBoxContainerCustom<nDim>(boxes, 4, std::nullopt, 2, false);
+      {
+        autoc vidActual = tree.PickSearch(Vector{ -4 });
+        autoce vidExpected = array{ 0, 2, 3, 5, 6, 7 };
+        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      }
+    }
+
+    TEST_METHOD(PickSearch_Issue8)
+    {
+      autoce nDim = 3;
+
+      using Vector = CustomVectorTypeND<nDim>;
+      using Box = CustomBoundingBoxND<nDim>;
+
+      auto mGridCells = array<Box, 144>{};
+      mGridCells[0] = Box{ Vector{-1024, 0, 1024}, Vector{-961, 0, 1087} };
+      mGridCells[1] = Box{ Vector{-1024, 0, 1088}, Vector {-961, 0, 1151} };
+      mGridCells[2] = Box{ Vector{-1024, 0, 1152}, Vector {-961, 0, 1215} };
+      mGridCells[3] = Box{ Vector{-1024, 0, 1216}, Vector {-961, 0, 1279} };
+      mGridCells[4] = Box{ Vector{-1024, 0, 1280}, Vector {-961, 0, 1343} };
+      mGridCells[5] = Box{ Vector{-1024, 0, 1344}, Vector {-961, 0, 1407} };
+      mGridCells[6] = Box{ Vector{-1024, 0, 1408}, Vector {-961, 0, 1471} };
+      mGridCells[7] = Box{ Vector{-1024, 0, 1472}, Vector {-961, 0, 1535} };
+      mGridCells[8] = Box{ Vector{-960, 0, 1024}, Vector{-897, 0, 1087} };
+      mGridCells[9] = Box{ Vector{-960, 0, 1088}, Vector{-897, 0, 1151} };
+      mGridCells[10] = Box{ Vector{-960, 0, 1152}, Vector{-897, 0, 1215} };
+      mGridCells[11] = Box{ Vector{-960, 0, 1216}, Vector{-897, 0, 1279} };
+      mGridCells[12] = Box{ Vector{-960, 0, 1280}, Vector{-897, 0, 1343} };
+      mGridCells[13] = Box{ Vector{-960, 0, 1344}, Vector{-897, 0, 1407} };
+      mGridCells[14] = Box{ Vector{-960, 0, 1408}, Vector{-897, 0, 1471} };
+      mGridCells[15] = Box{ Vector{-960, 0, 1472}, Vector{-897, 0, 1535} };
+      mGridCells[16] = Box{ Vector{-896, 0, 1024}, Vector{-833, 0, 1087} };
+      mGridCells[17] = Box{ Vector{-896, 0, 1088}, Vector{-833, 0, 1151} };
+      mGridCells[18] = Box{ Vector{-896, 0, 1152}, Vector{-833, 0, 1215} };
+      mGridCells[19] = Box{ Vector{-896, 0, 1216}, Vector{-833, 0, 1279} };
+      mGridCells[20] = Box{ Vector{-896, 0, 1280}, Vector{-833, 0, 1343} };
+      mGridCells[21] = Box{ Vector{-896, 0, 1344}, Vector{-833, 0, 1407} };
+      mGridCells[22] = Box{ Vector{-896, 0, 1408}, Vector{-833, 0, 1471} };
+      mGridCells[23] = Box{ Vector{-896, 0, 1472}, Vector{-833, 0, 1535} };
+      mGridCells[24] = Box{ Vector{-832, 0, 1024}, Vector{-769, 0, 1087} };
+      mGridCells[25] = Box{ Vector{-832, 0, 1088}, Vector{-769, 0, 1151} };
+      mGridCells[26] = Box{ Vector{-832, 0, 1152}, Vector{-769, 0, 1215} };
+      mGridCells[27] = Box{ Vector{-832, 0, 1216}, Vector{-769, 0, 1279} };
+      mGridCells[28] = Box{ Vector{-832, 0, 1280}, Vector{-769, 0, 1343} };
+      mGridCells[29] = Box{ Vector{-832, 0, 1344}, Vector{-769, 0, 1407} };
+      mGridCells[30] = Box{ Vector{-832, 0, 1408}, Vector{-769, 0, 1471} };
+      mGridCells[31] = Box{ Vector{-832, 0, 1472}, Vector{-769, 0, 1535} };
+      mGridCells[32] = Box{ Vector{-768, 0, 1024}, Vector{-705, 0, 1087} };
+      mGridCells[33] = Box{ Vector{-768, 0, 1088}, Vector{-705, 0, 1151} };
+      mGridCells[34] = Box{ Vector{-768, 0, 1152}, Vector{-705, 0, 1215} };
+      mGridCells[35] = Box{ Vector{-768, 0, 1216}, Vector{-705, 0, 1279} };
+      mGridCells[36] = Box{ Vector{-768, 0, 1280}, Vector{-705, 0, 1343} };
+      mGridCells[37] = Box{ Vector{-768, 0, 1344}, Vector{-705, 0, 1407} };
+      mGridCells[38] = Box{ Vector{-768, 0, 1408}, Vector{-705, 0, 1471} };
+      mGridCells[39] = Box{ Vector{-768, 0, 1472}, Vector{-705, 0, 1535} };
+      mGridCells[40] = Box{ Vector{-704, 0, 1024}, Vector{-641, 0, 1087} };
+      mGridCells[41] = Box{ Vector{-704, 0, 1088}, Vector{-641, 0, 1151} };
+      mGridCells[42] = Box{ Vector{-704, 0, 1152}, Vector{-641, 0, 1215} };
+      mGridCells[43] = Box{ Vector{-704, 0, 1216}, Vector{-641, 0, 1279} };
+      mGridCells[44] = Box{ Vector{-704, 0, 1280}, Vector{-641, 0, 1343} };
+      mGridCells[45] = Box{ Vector{-704, 0, 1344}, Vector{-641, 0, 1407} };
+      mGridCells[46] = Box{ Vector{-704, 0, 1408}, Vector{-641, 0, 1471} };
+      mGridCells[47] = Box{ Vector{-704, 0, 1472}, Vector{-641, 0, 1535} };
+      mGridCells[48] = Box{ Vector{-640, 0, 1024}, Vector{-577, 0, 1087} };
+      mGridCells[49] = Box{ Vector{-640, 0, 1088}, Vector{-577, 0, 1151} };
+      mGridCells[50] = Box{ Vector{-640, 0, 1152}, Vector{-577, 0, 1215} };
+      mGridCells[51] = Box{ Vector{-640, 0, 1216}, Vector{-577, 0, 1279} };
+      mGridCells[52] = Box{ Vector{-640, 0, 1280}, Vector{-577, 0, 1343} };
+      mGridCells[53] = Box{ Vector{-640, 0, 1344}, Vector{-577, 0, 1407} };
+      mGridCells[54] = Box{ Vector{-640, 0, 1408}, Vector{-577, 0, 1471} };
+      mGridCells[55] = Box{ Vector{-640, 0, 1472}, Vector{-577, 0, 1535} };
+      mGridCells[56] = Box{ Vector{-576, 0, 1024}, Vector{-513, 0, 1087} };
+      mGridCells[57] = Box{ Vector{-576, 0, 1088}, Vector{-513, 0, 1151} };
+      mGridCells[58] = Box{ Vector{-576, 0, 1152}, Vector{-513, 0, 1215} };
+      mGridCells[59] = Box{ Vector{-576, 0, 1216}, Vector{-513, 0, 1279} };
+      mGridCells[60] = Box{ Vector{-576, 0, 1280}, Vector{-513, 0, 1343} };
+      mGridCells[61] = Box{ Vector{-576, 0, 1344}, Vector{-513, 0, 1407} };
+      mGridCells[62] = Box{ Vector{-576, 0, 1408}, Vector{-513, 0, 1471} };
+      mGridCells[63] = Box{ Vector{-576, 0, 1472}, Vector{-513, 0, 1535} };
+      mGridCells[64] = Box{ Vector{-1152, 0, 896}, Vector{-1089, 0, 959} };
+      mGridCells[65] = Box{ Vector{-1152, 0, 960}, Vector{-1089, 0, 1023} };
+      mGridCells[66] = Box{ Vector{-1152, 0, 1024}, Vector{-1089, 0, 1087} };
+      mGridCells[67] = Box{ Vector{-1152, 0, 1088}, Vector{-1089, 0, 1151} };
+      mGridCells[68] = Box{ Vector{-1152, 0, 1152}, Vector{-1089, 0, 1215} };
+      mGridCells[69] = Box{ Vector{-1152, 0, 1216}, Vector{-1089, 0, 1279} };
+      mGridCells[70] = Box{ Vector{-1152, 0, 1280}, Vector{-1089, 0, 1343} };
+      mGridCells[71] = Box{ Vector{-1152, 0, 1344}, Vector{-1089, 0, 1407} };
+      mGridCells[72] = Box{ Vector{-1152, 0, 1408}, Vector{-1089, 0, 1471} };
+      mGridCells[73] = Box{ Vector{-1152, 0, 1472}, Vector{-1089, 0, 1535} };
+      mGridCells[74] = Box{ Vector{-1152, 0, 1536}, Vector{-1089, 0, 1599} };
+      mGridCells[75] = Box{ Vector{-1152, 0, 1600}, Vector{-1089, 0, 1663} };
+      mGridCells[76] = Box{ Vector{-1088, 0, 896}, Vector{-1025, 0, 959} };
+      mGridCells[77] = Box{ Vector{-1088, 0, 960}, Vector{-1025, 0, 1023} };
+      mGridCells[78] = Box{ Vector{-1088, 0, 1024}, Vector{-1025, 0, 1087} };
+      mGridCells[79] = Box{ Vector{-1088, 0, 1088}, Vector{-1025, 0, 1151} };
+      mGridCells[80] = Box{ Vector{-1088, 0, 1152}, Vector{-1025, 0, 1215} };
+      mGridCells[81] = Box{ Vector{-1088, 0, 1216}, Vector{-1025, 0, 1279} };
+      mGridCells[82] = Box{ Vector{-1088, 0, 1280}, Vector{-1025, 0, 1343} };
+      mGridCells[83] = Box{ Vector{-1088, 0, 1344}, Vector{-1025, 0, 1407} };
+      mGridCells[84] = Box{ Vector{-1088, 0, 1408}, Vector{-1025, 0, 1471} };
+      mGridCells[85] = Box{ Vector{-1088, 0, 1472}, Vector{-1025, 0, 1535} };
+      mGridCells[86] = Box{ Vector{-1088, 0, 1536}, Vector{-1025, 0, 1599} };
+      mGridCells[87] = Box{ Vector{-1088, 0, 1600}, Vector{-1025, 0, 1663} };
+      mGridCells[88] = Box{ Vector{-512, 0, 896}, Vector{-449, 0, 959} };
+      mGridCells[89] = Box{ Vector{-512, 0, 960}, Vector{-449, 0, 1023} };
+      mGridCells[90] = Box{ Vector{-512, 0, 1024}, Vector{-449, 0, 1087} };
+      mGridCells[91] = Box{ Vector{-512, 0, 1088}, Vector{-449, 0, 1151} };
+      mGridCells[92] = Box{ Vector{-512, 0, 1152}, Vector{-449, 0, 1215} };
+      mGridCells[93] = Box{ Vector{-512, 0, 1216}, Vector{-449, 0, 1279} };
+      mGridCells[94] = Box{ Vector{-512, 0, 1280}, Vector{-449, 0, 1343} };
+      mGridCells[95] = Box{ Vector{-512, 0, 1344}, Vector{-449, 0, 1407} };
+      mGridCells[96] = Box{ Vector{-512, 0, 1408}, Vector{-449, 0, 1471} };
+      mGridCells[97] = Box{ Vector{-512, 0, 1472}, Vector{-449, 0, 1535} };
+      mGridCells[98] = Box{ Vector{-512, 0, 1536}, Vector{-449, 0, 1599} };
+      mGridCells[99] = Box{ Vector{-512, 0, 1600}, Vector{-449, 0, 1663} };
+      mGridCells[100] = Box{ Vector{-448, 0, 896}, Vector{-385, 0, 959} };
+      mGridCells[101] = Box{ Vector{-448, 0, 960}, Vector{-385, 0, 1023} };
+      mGridCells[102] = Box{ Vector{-448, 0, 1024}, Vector{-385, 0, 1087} };
+      mGridCells[103] = Box{ Vector{-448, 0, 1088}, Vector{-385, 0, 1151} };
+      mGridCells[104] = Box{ Vector{-448, 0, 1152}, Vector{-385, 0, 1215} };
+      mGridCells[105] = Box{ Vector{-448, 0, 1216}, Vector{-385, 0, 1279} };
+      mGridCells[106] = Box{ Vector{-448, 0, 1280}, Vector{-385, 0, 1343} };
+      mGridCells[107] = Box{ Vector{-448, 0, 1344}, Vector{-385, 0, 1407} };
+      mGridCells[108] = Box{ Vector{-448, 0, 1408}, Vector{-385, 0, 1471} };
+      mGridCells[109] = Box{ Vector{-448, 0, 1472}, Vector{-385, 0, 1535} };
+      mGridCells[110] = Box{ Vector{-448, 0, 1536}, Vector{-385, 0, 1599} };
+      mGridCells[111] = Box{ Vector{-448, 0, 1600}, Vector{-385, 0, 1663} };
+      mGridCells[112] = Box{ Vector{-1024, 0, 896}, Vector{-961, 0, 959} };
+      mGridCells[113] = Box{ Vector{-1024, 0, 960}, Vector{-961, 0, 1023} };
+      mGridCells[114] = Box{ Vector{-960, 0, 896}, Vector{-897, 0, 959} };
+      mGridCells[115] = Box{ Vector{-960, 0, 960}, Vector{-897, 0, 1023} };
+      mGridCells[116] = Box{ Vector{-896, 0, 896}, Vector{-833, 0, 959} };
+      mGridCells[117] = Box{ Vector{-896, 0, 960}, Vector{-833, 0, 1023} };
+      mGridCells[118] = Box{ Vector{-832, 0, 896}, Vector{-769, 0, 959} };
+      mGridCells[119] = Box{ Vector{-832, 0, 960}, Vector{-769, 0, 1023} };
+      mGridCells[120] = Box{ Vector{-768, 0, 896}, Vector{-705, 0, 959} };
+      mGridCells[121] = Box{ Vector{-768, 0, 960}, Vector{-705, 0, 1023} };
+      mGridCells[122] = Box{ Vector{-704, 0, 896}, Vector{-641, 0, 959} };
+      mGridCells[123] = Box{ Vector{-704, 0, 960}, Vector{-641, 0, 1023} };
+      mGridCells[124] = Box{ Vector{-640, 0, 896}, Vector{-577, 0, 959} };
+      mGridCells[125] = Box{ Vector{-640, 0, 960}, Vector{-577, 0, 1023} };
+      mGridCells[126] = Box{ Vector{-576, 0, 896}, Vector{-513, 0, 959} };
+      mGridCells[127] = Box{ Vector{-576, 0, 960}, Vector{-513, 0, 1023} };
+      mGridCells[128] = Box{ Vector{-1024, 0, 1536}, Vector{-961, 0, 1599} };
+      mGridCells[129] = Box{ Vector{-1024, 0, 1600}, Vector{-961, 0, 1663} };
+      mGridCells[130] = Box{ Vector{-960, 0, 1536}, Vector{-897, 0, 1599} };
+      mGridCells[131] = Box{ Vector{-960, 0, 1600}, Vector{-897, 0, 1663} };
+      mGridCells[132] = Box{ Vector{-896, 0, 1536}, Vector{-833, 0, 1599} };
+      mGridCells[133] = Box{ Vector{-896, 0, 1600}, Vector{-833, 0, 1663} };
+      mGridCells[134] = Box{ Vector{-832, 0, 1536}, Vector{-769, 0, 1599} };
+      mGridCells[135] = Box{ Vector{-832, 0, 1600}, Vector{-769, 0, 1663} };
+      mGridCells[136] = Box{ Vector{-768, 0, 1536}, Vector{-705, 0, 1599} };
+      mGridCells[137] = Box{ Vector{-768, 0, 1600}, Vector{-705, 0, 1663} };
+      mGridCells[138] = Box{ Vector{-704, 0, 1536}, Vector{-641, 0, 1599} };
+      mGridCells[139] = Box{ Vector{-704, 0, 1600}, Vector{-641, 0, 1663} };
+      mGridCells[140] = Box{ Vector{-640, 0, 1536}, Vector{-577, 0, 1599} };
+      mGridCells[141] = Box{ Vector{-640, 0, 1600}, Vector{-577, 0, 1663} };
+      mGridCells[142] = Box{ Vector{-576, 0, 1536}, Vector{-513, 0, 1599} };
+      mGridCells[143] = Box{ Vector{-576, 0, 1600}, Vector{-513, 0, 1663} };
+
+      autoc tree = OrthoTreeBoxContainerCustom<nDim>(mGridCells, 3, std::nullopt, 21, true);
+      autoc vidActual = tree.PickSearch(Vector{ -864, 0, 1471 });
+      autoce vidExpected = array{ 22 };
+      Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+    }
+
 
     template<int nDim>
     vector<CustomVectorTypeND<nDim>> readPointCloud(std::filesystem::path const& path)
