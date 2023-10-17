@@ -318,15 +318,11 @@ namespace OrthoTree
       auto& ptMin = base::box_min(ext);
       auto& ptMax = base::box_max(ext);
 
-      autoce inf = std::numeric_limits<geometry_type>::has_infinity 
-        ? std::numeric_limits<geometry_type>::infinity()
-        : std::numeric_limits<geometry_type>::max()
-        ;
       LOOPIVDEP
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
       {
-        base::point_comp(ptMin, iDimension) = +inf;
-        base::point_comp(ptMax, iDimension) = -inf;
+        base::point_comp(ptMin, iDimension) = std::numeric_limits<geometry_type>::max();
+        base::point_comp(ptMax, iDimension) = std::numeric_limits<geometry_type>::lowest();
       }
 
       return ext;
@@ -1788,10 +1784,7 @@ namespace OrthoTree
     static geometry_type getFarestDistance(multiset<EntityDistance>& setEntity, size_t k) noexcept
     {
       if (setEntity.size() < k)
-        return std::numeric_limits<geometry_type>::has_infinity
-          ? std::numeric_limits<geometry_type>::infinity()
-          : std::numeric_limits<geometry_type>::max()
-          ;
+        return std::numeric_limits<geometry_type>::max();
 
       return std::next(std::begin(setEntity), k - 1)->distance;
     }

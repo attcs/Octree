@@ -24,7 +24,7 @@ namespace Microsoft {
 
 namespace
 {
-  autoce BB1_INV = BoundingBox1D{ std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity() };
+  autoce BB1_INV = BoundingBox1D{ std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest() };
 
   static bool AreEqualAlmost(double l, double r) noexcept
   {
