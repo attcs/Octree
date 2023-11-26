@@ -1753,7 +1753,7 @@ namespace OrthoTree
 
   private: // K Nearest Neighbor helpers
 
-    static geometry_type getBoxWallDistanceMax(vector_type const& pt, box_type const& box) noexcept
+    static geometry_type getBoxWallDistance(vector_type const& pt, box_type const& box) noexcept
     {
       autoc& ptMin = AD::box_min_c(box);
       autoc& ptMax = AD::box_max_c(box);
@@ -1771,7 +1771,7 @@ namespace OrthoTree
           return 0.0;
       }
 
-      return *std::min_element(begin(vDist), end(vDist));
+      return *std::ranges::min_element(vDist);
     }
 
 
@@ -1807,9 +1807,10 @@ namespace OrthoTree
       if (base::IsValidKey(kSmallestNode))
       {
         autoc& nodeSmallest = cont_at(this->m_nodes, kSmallestNode);
+        autoc wallDist = getBoxWallDistance(pt, nodeSmallest.box);
         createEntityDistance(nodeSmallest, pt, vpt, setEntity);
         if (!nodeSmallest.IsAnyChildExist())
-          if (getFarestDistance(setEntity, k) < getBoxWallDistanceMax(pt, nodeSmallest.box))
+          if (getFarestDistance(setEntity, k) < wallDist)
             return convertEntityDistanceToList(setEntity, k);
       }
 
@@ -1837,7 +1838,7 @@ namespace OrthoTree
 
       if (!setNodeDist.empty())
       {
-        auto rLatestNodeDist = std::begin(setNodeDist)->distance;
+        auto rLatestNodeDist = setEntity.size() > k ? next(setEntity.begin(), k)->distance : std::numeric_limits<geometry_type>::max();
         for (autoc& nodeDist : setNodeDist)
         {
           autoc n = setEntity.size();
@@ -1845,7 +1846,8 @@ namespace OrthoTree
             break;
 
           createEntityDistance(nodeDist.node, pt, vpt, setEntity);
-          rLatestNodeDist = nodeDist.distance;
+          if (setEntity.size() > k)
+            rLatestNodeDist = next(setEntity.begin(), k)->distance;
         }
       }
 

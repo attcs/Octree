@@ -1709,6 +1709,56 @@ namespace Tree2DTest
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{0, 1, 5, 6, 11}, vnn));
     }
 
+
+    TEST_METHOD(Issue9)
+    {
+      autoc poses = vector<array<double, 2>>
+      {
+        { 78.2619, 77.843 },
+        { 90.3005, 90.5172 },
+        { 69.8652, 12.2467 },
+        { 48.4675, 48.4948 },
+        { 36.3226, 68.4619 },
+        { 98.8799, 42.7149 },
+        { 31.412, 38.6866 },
+        { 63.2748, 77.0524 },
+        { 62.8844, 17.0536 },
+        { 80.8931, 39.8099 },
+        { 77.426, 64.9844 },
+        { 81.9552, 25.009 },
+        { 87.6088, 51.319 },
+        { 78.5609, 80.4623 },
+        { 51.3967, 39.5269 },
+        { 32.2042, 81.8779 },
+        { 79.1739, 81.5467 },
+        { 95.2619, 40.4742 },
+        { 86.437, 92.4406 },
+        { 3.95388, 60.2327 },
+        { 31.1283, 44.4917 },
+        { 35.6778, 79.8545 },
+        { 50.9926, 66.1373 },
+        { 3.16271, 65.2519 },
+        { 56.3665, 45.3819 }
+      };
+
+
+      autoce search_point = array<double, 2>{ 43.6406, 57.5691 };
+      using AD = OrthoTree::AdaptorGeneral<2, array<double, 2>, OrthoTree::BoundingBox2D>;
+      autoc itMin = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::distance2(lhs, search_point) < AD::distance2(rhs, search_point); });
+
+      std::array<double, 2> inspection_space_min = { 0.0, 0.0 };
+      std::array<double, 2> inspection_space_max = { 100.0, 100.0 };
+      OrthoTree::BoundingBox2D inspection_space;
+      inspection_space.Min = inspection_space_min;
+      inspection_space.Max = inspection_space_max;
+      //Standard Tree
+      auto tree = QuadtreePointC(poses, 9, inspection_space);
+
+      auto neighbors = tree.GetNearestNeighbors(search_point, 1);
+      Assert::AreEqual<size_t>(std::distance(poses.begin(), itMin), neighbors[0]);
+    }
+
+
   };
 
   TEST_CLASS(Box_General)
