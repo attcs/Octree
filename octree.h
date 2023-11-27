@@ -1838,7 +1838,7 @@ namespace OrthoTree
 
       if (!setNodeDist.empty())
       {
-        auto rLatestNodeDist = setEntity.size() > k ? next(setEntity.begin(), k)->distance : std::numeric_limits<geometry_type>::max();
+        auto rLatestNodeDist = getFarestDistance(setEntity, k);
         for (autoc& nodeDist : setNodeDist)
         {
           autoc n = setEntity.size();
@@ -1846,8 +1846,7 @@ namespace OrthoTree
             break;
 
           createEntityDistance(nodeDist.node, pt, vpt, setEntity);
-          if (setEntity.size() > k)
-            rLatestNodeDist = next(setEntity.begin(), k)->distance;
+          rLatestNodeDist = getFarestDistance(setEntity, k);
         }
       }
 
