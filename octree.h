@@ -1070,7 +1070,7 @@ namespace OrthoTree
           {
             autoc shift = iDimension + i * nDimension;
             if constexpr (is_linear_tree)
-              id |= (aidGrid[iDimension] & mask) << (shift - i);
+              id |= static_cast<morton_grid_id_type>(aidGrid[iDimension] & mask) << (shift - i);
             else
               id[shift] = aidGrid[iDimension] & mask;
           }

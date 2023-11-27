@@ -1710,7 +1710,7 @@ namespace Tree2DTest
     }
 
 
-    TEST_METHOD(Issue9)
+    TEST_METHOD(Issue9_2D)
     {
       autoc poses = vector<array<double, 2>>
       {
@@ -1759,6 +1759,54 @@ namespace Tree2DTest
     }
 
 
+    TEST_METHOD(Issue9_6D)
+    {
+      using VectorType = array<double, 6>;
+
+      autoc poses = vector<VectorType>
+      {
+        { 50.2232, 0.276687, 37.7662, 41.2776, 26.3818, 74.0284 },
+        { 35.8946, 83.7503, 97.1127, 47.2895, 40.9232, 83.7666 },
+        { 33.3541, 63.0669, 3.86075, 47.7923, 19.8039, 87.5608 },
+        { 89.0684, 67.3278, 50.867, 49.8193, 72.6692, 54.0271 },
+        { 75.7099, 53.1241, 39.624, 40.4669, 13.6433, 88.6247 },
+        { 43.7641, 93.7985, 68.8286, 9.71882, 2.16644, 12.1925 },
+        { 82.5195, 30.6964, 71.0556, 48.4744, 99.2295, 70.4137 },
+        { 28.4568, 37.8366, 74.8597, 27.897, 60.6816, 0.247821 },
+        { 58.3617, 17.0165, 15.1021, 70.9832, 22.5325, 34.8085 },
+        { 33.1004, 72.6729, 35.7043, 35.2888, 94.9917, 17.652 },
+        { 80.9693, 7.41406, 2.18394, 40.2606, 1.63274, 65.8996 },
+        { 88.4851, 73.8366, 55.0264, 77.6467, 61.6751, 33.7444 },
+        { 48.1777, 90.1285, 75.9069, 49.1867, 39.7186, 74.2862 },
+        { 68.0826, 73.0622, 7.85933, 60.8879, 41.3229, 16.6928 },
+        { 19.1693, 49.1172, 91.055, 52.5548, 16.2326, 0.610075 },
+        { 19.3085, 81.9363, 55.8924, 1.77161, 29.4124, 72.3873 },
+        { 57.8801, 28.3918, 45.7062, 92.1774, 0.742745, 29.0499 },
+        { 74.2952, 84.6691, 46.3357, 76.7894, 68.8394, 24.1707 },
+        { 0.199418, 93.2845, 94.9628, 38.2295, 82.1998, 59.2499 },
+        { 68.4689, 0.261607, 75.5001, 58.427, 55.4243, 18.7392 },
+        { 53.9164, 95.4966, 59.657, 71.0292, 82.4362, 53.9452 },
+      };
+
+      autoc search_point = VectorType{ 78.8658, 64.0361, 18.7755, 61.4618, 14.3312, 40.0196 };
+      using AD = OrthoTree::AdaptorGeneral<6, VectorType, OrthoTree::BoundingBoxND<6>>;
+      autoc itMinExpected = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::distance2(lhs, search_point) < AD::distance2(rhs, search_point); });
+
+      autoc inspection_space = OrthoTree::BoundingBoxND<6>
+      {
+        { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 },
+        { 100.0, 100.0, 100.0, 100.0, 100.0, 100.0 }
+      };
+
+      //Standard Tree
+      autoc ss = sizeof(TreePointND<6>::morton_grid_id_type);
+      auto tree = TreePointND<6>();
+      tree.Create(tree, poses, 10, inspection_space);
+
+      autoc neighbors = tree.GetNearestNeighbors(search_point, 1, poses);
+      autoc idMinExpected = std::distance(poses.begin(), itMinExpected);
+      Assert::AreEqual<size_t>(idMinExpected, neighbors[0]);
+    }
   };
 
   TEST_CLASS(Box_General)
