@@ -836,7 +836,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::IsFalse(oid.has_value());
     }
 
@@ -853,7 +853,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::IsFalse(oid.has_value());
     }
 
@@ -870,7 +870,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::IsFalse(oid.has_value());
     }
 
@@ -887,7 +887,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::IsFalse(oid.has_value());
     }
 
@@ -904,7 +904,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::IsFalse(oid.has_value());
     }
 
@@ -920,7 +920,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::AreEqual<entity_id_type>(0, oid.value());
     }
 
@@ -937,7 +937,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::AreEqual<entity_id_type>(1, oid.value());
     }
 
@@ -954,7 +954,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::AreEqual<entity_id_type>(1, oid.value());
     }
 
@@ -971,7 +971,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::AreEqual<entity_id_type>(1, oid.value());
     }
 
@@ -988,7 +988,7 @@ namespace GeneralTest
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
       };
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes);
+      autoc oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
       Assert::AreEqual<entity_id_type>(3, oid.value());
     }
 
@@ -1008,7 +1008,7 @@ namespace GeneralTest
       };
 
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
       Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == vid);
     }
 
@@ -1027,7 +1027,7 @@ namespace GeneralTest
       };
 
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
       Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
     }
 
@@ -1046,7 +1046,7 @@ namespace GeneralTest
       };
 
       autoc qt = OctreeBox(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
       Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
     }
 
@@ -1066,7 +1066,7 @@ namespace GeneralTest
       };
 
       autoc qt = TreeBoxND<N>(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes);
+      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
       Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
     }
 

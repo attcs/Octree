@@ -250,10 +250,10 @@ namespace OrthoTree
       return distance2(ptL, ptR) <= rAccuracy * rAccuracy;
     }
 
-    static constexpr bool does_box_contain_point(box_type const& box, vector_type const& pt) noexcept
+    static constexpr bool does_box_contain_point(box_type const& box, vector_type const& pt, geometry_type tolerance = 0) noexcept
     {
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        if (!(base::point_comp_c(base::box_min_c(box), iDimension) <= base::point_comp_c(pt, iDimension) && base::point_comp_c(pt, iDimension) <= base::point_comp_c(base::box_max_c(box), iDimension)))
+        if (!(base::point_comp_c(base::box_min_c(box), iDimension) - tolerance <= base::point_comp_c(pt, iDimension) && base::point_comp_c(pt, iDimension) <= base::point_comp_c(base::box_max_c(box), iDimension) + tolerance))
           return false;
 
       return true;
@@ -370,9 +370,9 @@ namespace OrthoTree
       }
     }
 
-    static constexpr std::optional<double> is_ray_hit(box_type const& box, vector_type const& rayBasePoint, vector_type const& rayHeading) noexcept
+    static constexpr std::optional<double> is_ray_hit(box_type const& box, vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance) noexcept
     {
-      if (does_box_contain_point(box, rayBasePoint))
+      if (does_box_contain_point(box, rayBasePoint, tolerance))
         return 0.0;
 
       autoc& ptBoxMin = base::box_min_c(box);
@@ -386,10 +386,10 @@ namespace OrthoTree
         autoc hComp = base::point_comp_c(rayHeading, iDimension);
         if (hComp == 0)
         {
-          if (base::point_comp_c(ptBoxMax, iDimension) < base::point_comp_c(rayBasePoint, iDimension))
+          if (base::point_comp_c(ptBoxMax, iDimension) + tolerance < base::point_comp_c(rayBasePoint, iDimension))
             return std::nullopt;
 
-          if (base::point_comp_c(ptBoxMin, iDimension) > base::point_comp_c(rayBasePoint, iDimension))
+          if (base::point_comp_c(ptBoxMin, iDimension) - tolerance > base::point_comp_c(rayBasePoint, iDimension))
             return std::nullopt;
 
           aRMinMax[0][iDimension] = -inf;
@@ -397,8 +397,8 @@ namespace OrthoTree
           continue;
         }
 
-        aRMinMax[0][iDimension] = (base::point_comp_c(hComp > 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBasePoint, iDimension)) / hComp;
-        aRMinMax[1][iDimension] = (base::point_comp_c(hComp < 0.0 ? ptBoxMin : ptBoxMax, iDimension) - base::point_comp_c(rayBasePoint, iDimension)) / hComp;
+        aRMinMax[0][iDimension] = (base::point_comp_c(hComp > 0.0 ? ptBoxMin : ptBoxMax, iDimension) - tolerance - base::point_comp_c(rayBasePoint, iDimension)) / hComp;
+        aRMinMax[1][iDimension] = (base::point_comp_c(hComp < 0.0 ? ptBoxMin : ptBoxMax, iDimension) + tolerance - base::point_comp_c(rayBasePoint, iDimension)) / hComp;
       }
 
       autoc rMin = *std::ranges::max_element(aRMinMax[0]);
@@ -2752,31 +2752,30 @@ namespace OrthoTree
 
 
   private:
-
-    void getRayIntersectedAll(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, geometry_type rMaxDistance, vector<EntityDistance>& vdidOut) const noexcept
+    void getRayIntersectedAll(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, geometry_type tolerance, geometry_type rMaxDistance, vector<EntityDistance>& vdidOut) const noexcept
     {
-      autoc oIsHit = AD::is_ray_hit(node.box, rayBase, rayHeading);
+      autoc oIsHit = AD::is_ray_hit(node.box, rayBase, rayHeading, tolerance);
       if (!oIsHit)
         return;
 
       for (autoc id : node.vid)
       {
-        autoc oDist = AD::is_ray_hit(vBox[id], rayBase, rayHeading);
+        autoc oDist = AD::is_ray_hit(vBox[id], rayBase, rayHeading, tolerance);
         if (oDist && (rMaxDistance == 0 || oDist.value() <= rMaxDistance))
           vdidOut.push_back({ { oDist.value() }, id });
       }
 
       for (autoc kChild : node.GetChildren())
-        getRayIntersectedAll(cont_at(this->m_nodes, kChild), vBox, rayBase, rayHeading, rMaxDistance, vdidOut);
+        getRayIntersectedAll(cont_at(this->m_nodes, kChild), vBox, rayBase, rayHeading, tolerance, rMaxDistance, vdidOut);
     }
 
 
-    void getRayIntersectedFirst(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, multiset<EntityDistance>& vidOut) const noexcept
+    void getRayIntersectedFirst(Node const& node, span<box_type const> const& vBox, vector_type const& rayBase, vector_type const& rayHeading, geometry_type tolerance, multiset<EntityDistance>& vidOut) const noexcept
     {
       autoc rLastDistance = vidOut.empty() ? std::numeric_limits<double>::infinity() : static_cast<double>(vidOut.rbegin()->distance);
       for (autoc id : node.vid)
       {
-        autoc oDist = AD::is_ray_hit(vBox[id], rayBase, rayHeading);
+        autoc oDist = AD::is_ray_hit(vBox[id], rayBase, rayHeading, tolerance);
         if (!oDist)
           continue;
 
@@ -2790,7 +2789,7 @@ namespace OrthoTree
       for (autoc kChild : node.GetChildren())
       {
         autoc& nodeChild = cont_at(this->m_nodes, kChild);
-        autoc oDist = AD::is_ray_hit(nodeChild.box, rayBase, rayHeading);
+        autoc oDist = AD::is_ray_hit(nodeChild.box, rayBase, rayHeading, tolerance);
         if (!oDist)
           continue;
 
@@ -2799,21 +2798,21 @@ namespace OrthoTree
 
         msNode.insert({ { static_cast<geometry_type>(oDist.value()) }, kChild, nodeChild });
       }
-      
+
       for (autoc& nodeData : msNode)
-        getRayIntersectedFirst(nodeData.node, vBox, rayBase, rayHeading, vidOut);
-      
+        getRayIntersectedFirst(nodeData.node, vBox, rayBase, rayHeading, tolerance, vidOut);
+
     }
 
 
   public:
 
     // Get all box which is intersected by the ray in order
-    vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, span<box_type const> const& vBox, geometry_type rMaxDistance = 0) const noexcept
+    vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, span<box_type const> const& vBox, geometry_type tolerance, geometry_type rMaxDistance = 0) const noexcept
     {
       auto vdid = vector<EntityDistance>();
       vdid.reserve(20);
-      getRayIntersectedAll(cont_at(this->m_nodes, base::GetRootKey()), vBox, rayBasePoint, rayHeading, rMaxDistance, vdid);
+      getRayIntersectedAll(cont_at(this->m_nodes, base::GetRootKey()), vBox, rayBasePoint, rayHeading, tolerance, rMaxDistance, vdid);
 
       autoc itBegin = std::begin(vdid);
       auto itEnd = std::end(vdid);
@@ -2828,18 +2827,18 @@ namespace OrthoTree
 
 
     // Get first box which is intersected by the ray
-    std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBase, vector_type const& rayHeading, span<box_type const> const& vBox) const noexcept
+    std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBase, vector_type const& rayHeading, span<box_type const> const& vBox, geometry_type tolerance) const noexcept
     {
       autoc& node = cont_at(this->m_nodes, base::GetRootKey());
-      autoc oDist = AD::is_ray_hit(node.box, rayBase, rayHeading);
+      autoc oDist = AD::is_ray_hit(node.box, rayBase, rayHeading, tolerance);
       if (!oDist)
         return std::nullopt;
 
       auto vid = multiset<EntityDistance>();
-      getRayIntersectedFirst(node, vBox, rayBase, rayHeading, vid);
+      getRayIntersectedFirst(node, vBox, rayBase, rayHeading, tolerance, vid);
       if (vid.empty())
         return std::nullopt;
-    
+
       return std::begin(vid)->id;
     }
   };

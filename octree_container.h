@@ -266,15 +266,15 @@ namespace OrthoTree
   public: // Ray intersection
 
     // Get all box which is intersected by the ray in order
-    inline vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type rMaxDistance = std::numeric_limits<geometry_type>::max()) const noexcept
+    inline vector<entity_id_type> RayIntersectedAll(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance, geometry_type rMaxDistance = std::numeric_limits<geometry_type>::max()) const noexcept
     {
-      return this->m_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->m_vData, rMaxDistance);
+      return this->m_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->m_vData, tolerance, rMaxDistance);
     }
 
     // Get first box which is intersected by the ray
-    inline std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBasePoint, vector_type const& rayHeading) const noexcept
+    inline std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance) const noexcept
     {
-      return this->m_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->m_vData);
+      return this->m_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->m_vData, tolerance);
     }
   };
 
