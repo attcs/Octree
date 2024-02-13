@@ -235,6 +235,16 @@ namespace OrthoTree
       return pt;
     }
 
+    static constexpr geometry_type dot(vector_type const& ptL, vector_type const& ptR) noexcept
+    {
+      auto value = geometry_type{};
+      for (dim_type iDim = 0; iDim < nDimension; ++iDim)
+        value += base::point_comp_c(ptL, iDim) * base::point_comp_c(ptR, iDim);
+
+      return value;
+    }
+
+
     static constexpr geometry_type distance(vector_type const& ptL, vector_type const& ptR) noexcept
     {
       return size(subtract(ptL, ptR));
