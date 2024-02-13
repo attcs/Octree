@@ -37,10 +37,11 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
 * Call the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
 * Call `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
+* Call `PlaneSearch()` / `PlaneIntersection()` member functions for plane related searches
 * Call `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
 * Call `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
 * Call `CollisionDetection()` member function for bounding box overlap examination.
-* Call `VisitNodes()` to traverse the tree from up to down (breadth-first search) with user-defined `selector()` and `procedure()`.
+* Call `VisitNodes()` / `VisitNodesInDFS()` to traverse the tree from up to down (former is breadth-first search) with user-defined `selector()` and `procedure()`.
 * Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
 * Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
 
