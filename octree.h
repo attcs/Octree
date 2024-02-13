@@ -226,11 +226,11 @@ namespace OrthoTree
       return pt;
     }
 
-    static constexpr vector_type div(vector_type const& ptL, geometry_type const& rScalarR) noexcept
+    static constexpr vector_type multiply(vector_type const& ptL, double rScalarR) noexcept
     {
       auto pt = vector_type{};
       for (dim_type iDim = 0; iDim < nDimension; ++iDim)
-        base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) / rScalarR;
+        base::point_comp(pt, iDim) = base::point_comp_c(ptL, iDim) * rScalarR;
 
       return pt;
     }
