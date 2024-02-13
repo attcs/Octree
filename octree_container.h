@@ -240,6 +240,11 @@ namespace OrthoTree
       return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_vData);
     }
 
+    // Plane intersection (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
+    inline vector<entity_id_type> PlaneIntersection(geometry_type distanceOfOrigo, vector_type const& planeNormal,  geometry_type tolerance) const noexcept
+    {
+      return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_vData);
+    }
 
   public: // Collision detection
 

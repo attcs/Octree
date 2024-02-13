@@ -418,6 +418,26 @@ namespace OrthoTree
 
       return rMin < 0 ? rMax : rMin;
     }
+
+
+    // Plane intersection (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
+    static constexpr bool does_plane_intersect(box_type const& box, geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) noexcept
+    {
+      autoc& minPoint = base::box_min_c(box);
+      autoc& maxPoint = base::box_max_c(box);
+
+      autoc center = multiply(add(minPoint, maxPoint), 0.5);
+      autoc radius = subtract(maxPoint, center);
+
+      double radiusProjected = 0.0;
+      for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
+        radiusProjected += base::point_comp_c(radius, iDimension) * abs(base::point_comp_c(planeNormal, iDimension));
+
+      autoc centerProjected = dot(planeNormal, center);
+
+      return abs(centerProjected - distanceOfOrigo) <= radiusProjected + tolerance;
+    }
+
   };
 
 
@@ -2428,6 +2448,36 @@ namespace OrthoTree
       }
 
       return sidFound;
+    }
+
+
+    // Plane intersection (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
+    vector<entity_id_type> PlaneIntersection(geometry_type const& distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, span<box_type const> const& vBox) const noexcept
+    {
+      auto results = vector<entity_id_type>{};
+      if constexpr (nDimension < 3) // under 3 dimension, every boxes will be intersected.
+      {
+        results.resize(vBox.size());
+        iota(results.begin(), results.end(), 0);
+        return results;
+      }
+
+      autoc selector = [&](morton_node_id_type id, Node const& node) -> bool
+      {
+        return AD::does_plane_intersect(node.box, distanceOfOrigo, planeNormal, tolerance);
+      };
+
+      autoc procedure = [&](morton_node_id_type id, Node const& node)
+      {
+        for (autoc id : node.vid)
+          if (AD::does_plane_intersect(vBox[id], distanceOfOrigo, planeNormal, tolerance))
+            if (std::find(results.begin(), results.end(), id) == results.end())
+              results.emplace_back(id);
+      };
+
+      this->VisitNodesInDFS(base::GetRootKey(), procedure, selector);
+
+      return results;
     }
 
 

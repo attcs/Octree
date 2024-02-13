@@ -1976,6 +1976,112 @@ namespace Tree2DTest
     }
 
 
+    TEST_METHOD(PlaneIntersection_3D_XY_d0)
+    {
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
+        BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
+        BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 1.2, 1.2, -1.0 }, { 2.8, 2.8, 1.0 } }
+      };
+
+      autoc octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
+      autoc intersectedBoxes = octreebox.PlaneIntersection(0.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, boxes);
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 0, 1, 4 }, intersectedBoxes));
+    }
+
+
+    TEST_METHOD(PlaneIntersection_3D_XY_dP1)
+    {
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
+        BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
+        BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 1.2, 1.2, -1.0 }, { 2.8, 2.8, 1.1 } }
+      };
+
+      autoc octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
+      autoc intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, boxes);
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 4 }, intersectedBoxes));
+    }
+
+    TEST_METHOD(PlaneIntersection_3D_XY_dN1)
+    {
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
+        BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
+        BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
+      };
+
+      autoc octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
+      autoc intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, boxes);
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 1, 2, 4 }, intersectedBoxes));
+    }
+
+
+    TEST_METHOD(PlaneIntersection_3D_YZ_dP1)
+    {
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
+        BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
+        BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
+      };
+
+      autoc octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
+      autoc intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01, boxes);
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 0, 1 }, intersectedBoxes));
+    }
+
+    TEST_METHOD(PlaneIntersection_3D_YZ_dN1)
+    {
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
+        BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
+        BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
+      };
+
+      autoc octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
+      autoc intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01, boxes);
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{}, intersectedBoxes));
+    }
+
+    TEST_METHOD(PlaneIntersection_3D_YZA_dPSQRT2)
+    {
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
+        BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
+        BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
+      };
+
+      autoc octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
+      autoc sqrt2__2 = std::sqrt(2.0) * 0.5;
+      autoc intersectedBoxes = octreebox.PlaneIntersection(std::sqrt(2.0), Point3D{ 0.0, sqrt2__2, sqrt2__2 }, 0.01, boxes);
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{1, 2, 4}, intersectedBoxes));
+    }
+
+
     TEST_METHOD(CollistionDetection__33_24_34)
     {
       autoce boxesL = array
