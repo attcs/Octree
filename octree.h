@@ -1207,6 +1207,19 @@ namespace OrthoTree
     }
 
 
+    // Visit nodes with special selection and procedure in depth-first search order
+    void VisitNodesInDFS(morton_node_id_type_cref key, fnProcedure const& procedure, fnSelector const& selector) const noexcept
+    {
+      autoc& node = cont_at(m_nodes, key);
+      if (!selector(key, node))
+        return;
+
+      procedure(key, node);
+      for (autoc kChild : node.GetChildren())
+        VisitNodesInDFS(kChild, procedure, selector);
+    }
+
+
     // Collect all item id, traversing the tree in breadth-first search order
     vector<entity_id_type> CollectAllIdInBFS(morton_node_id_type_cref kRoot = GetRootKey()) const noexcept
     {
