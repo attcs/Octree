@@ -127,6 +127,7 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;
     using AD = typename base::AD;
+    using geometry_type = typename base::geometry_type;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
     using max_element_type = typename OrthoTree::max_element_type;
@@ -169,6 +170,12 @@ namespace OrthoTree
     inline vector<entity_id_type> RangeSearch(box_type const& range) const noexcept
     {
       return this->m_tree.RangeSearch(range, this->m_vData);
+    }
+
+    // Plane search (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
+    inline vector<entity_id_type> PlaneSearch(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    {
+      return this->m_tree.PlaneSearch(distanceOfOrigo, planeNormal, tolerance, this->m_vData);
     }
 
     // K Nearest Neighbor

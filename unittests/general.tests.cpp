@@ -1587,6 +1587,77 @@ namespace Tree2DTest
       autoc& nodes = nt.GetNodes();
       Assert::AreEqual<size_t>(22, nodes.size());
     }
+
+    TEST_METHOD(PlaneSearch_3D_XY_dP0)
+    {
+      autoc vpt = vector
+      {
+        Point3D{ 2.0, -1.0, 0.0 }, 
+        Point3D{ 3.0, -2.0, 1.0 }, 
+        Point3D{ 4.0, -3.0, 0.02 },
+        Point3D{ 4.0, -2.0, 0.00 },
+        Point3D{ 5.0,  0.0, 0.00999 }
+      };
+
+      autoc tree = OctreePoint(vpt, 3, std::nullopt, 2);
+
+      autoc ids = tree.PlaneSearch(0.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, vpt);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 0, 3, 4 }, ids));
+    }
+
+
+    TEST_METHOD(PlaneSearch_3D_XY_dP1)
+    {
+      autoc vpt = vector
+      {
+        Point3D{ 2.0, -1.0, 0.0 },
+        Point3D{ 3.0, -2.0, 1.0 },
+        Point3D{ 4.0, -3.0, 0.02 },
+        Point3D{ 4.0, -2.0, 0.00 },
+        Point3D{ 5.0,  0.0, 1.00999 }
+      };
+
+      autoc tree = OctreePoint(vpt, 3, std::nullopt, 2);
+
+      autoc ids = tree.PlaneSearch(1.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, vpt);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 1, 4 }, ids));
+    }
+
+
+    TEST_METHOD(PlaneSearch_3D_XZ_dP4)
+    {
+      autoc vpt = vector
+      {
+        Point3D{ 2.0, -1.0, 0.0 },
+        Point3D{ 3.0, -2.0, 1.0 },
+        Point3D{ 4.0, -3.0, 0.02 },
+        Point3D{ 4.0, -2.0, 0.00 },
+        Point3D{ 5.0,  0.0, 1.00999 }
+      };
+
+      autoc tree = OctreePoint(vpt, 3, std::nullopt, 2);
+
+      autoc ids = tree.PlaneSearch(4.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01, vpt);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 2, 3 }, ids));
+    }
+
+
+    TEST_METHOD(PlaneSearchC_3D_XZ_dP4)
+    {
+      autoc vpt = vector
+      {
+        Point3D{ 2.0, -1.0, 0.0 },
+        Point3D{ 3.0, -2.0, 1.0 },
+        Point3D{ 4.0, -3.0, 0.02 },
+        Point3D{ 4.0, -2.0, 0.00 },
+        Point3D{ 5.0,  0.0, 1.00999 }
+      };
+
+      autoc tree = OctreePointC(vpt, 3, std::nullopt, 2);
+
+      autoc ids = tree.PlaneSearch(4.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 2, 3 }, ids));
+    }
   };
 
   TEST_CLASS(Point_kNNTest)
@@ -2063,6 +2134,22 @@ namespace Tree2DTest
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{}, intersectedBoxes));
     }
 
+    TEST_METHOD(PlaneIntersectionC_3D_YZ_dN1)
+    {
+      autoce boxes = array
+      {
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
+        BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
+        BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
+      };
+
+      autoc octreebox = OctreeBoxC(boxes, 3, std::nullopt, 2);
+      autoc intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01);
+
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{}, intersectedBoxes));
+    }
     TEST_METHOD(PlaneIntersection_3D_YZA_dPSQRT2)
     {
       autoce boxes = array

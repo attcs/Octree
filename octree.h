@@ -1794,6 +1794,35 @@ namespace OrthoTree
     }
 
 
+    // Plane search (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
+    inline vector<entity_id_type> PlaneSearch(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, span<vector_type const> const& vpt) const noexcept
+    {
+      auto results = vector<entity_id_type>{};
+      if constexpr (nDimension < 3) // under 3 dimension, every boxes will be intersected.
+      {
+        results.resize(vpt.size());
+        iota(results.begin(), results.end(), 0);
+        return results;
+      }
+
+      autoc selector = [&](morton_node_id_type id, Node const& node) -> bool
+      {
+        return AD::does_plane_intersect(node.box, distanceOfOrigo, planeNormal, tolerance);
+      };
+
+      autoc procedure = [&](morton_node_id_type id, Node const& node)
+      {
+        for (autoc id : node.vid)
+          if (abs(AD::dot(vpt[id], planeNormal) - distanceOfOrigo) <= tolerance)
+            if (std::find(results.begin(), results.end(), id) == results.end())
+              results.emplace_back(id);
+      };
+
+      this->VisitNodesInDFS(base::GetRootKey(), procedure, selector);
+
+      return results;
+    }
+
   private: // K Nearest Neighbor helpers
 
     static geometry_type getBoxWallDistance(vector_type const& pt, box_type const& box) noexcept
