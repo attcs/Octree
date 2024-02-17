@@ -118,9 +118,13 @@ Usage of Container types
       auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
       auto const octree = OctreePointC(points, 3 /*max depth*/);
 
-      auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
-      auto ids = octree.RangeSearch(search_box); // -> { 1, 2 }
-      auto knn_ids = octree.GetNearestNeighbors(Point3D{ 1.1,1.1,1.1 }, 2 /*k*/); // -> { 1, 2 }
+      auto const searchBox = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
+      auto const pointIDs = octree.RangeSearch(searchBox); //: { 1, 2 }
+
+      auto neighborNo = 2;
+      auto pointIDsByKNN = octree.GetNearestNeighbors(Point3D{ 1.1, 1.1, 1.1 }
+        , neighborNo
+      ); //: { 1, 2 }
     }
     
     // Example #2: Quadtree for bounding boxes
@@ -134,39 +138,49 @@ Usage of Container types
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      auto quadtreebox = QuadtreeBoxC(boxes, 3
-        , std::nullopt // user-provided bounding box for all
+      auto quadtree = QuadtreeBoxC(boxes
+        , 3            // max depth
+        , std::nullopt // user-provided bounding Box for all
         , 2            // max element in a node 
-        , false        // parallel calculation flag
+        , false        // parallel calculation option
       );
 
-      // Collision detection
-      auto ids_pairs_colliding = quadtreebox.CollisionDetection(); // { {1,4}, {2,4} }
+      auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
 
-      // Range search
-      auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
-      auto ids_inside = quadtreebox.RangeSearch(search_box); // -> { 1, 2, 4 }
-      auto ids_overlaping = quadtreebox.RangeSearch<false /*overlap is enough*/>(search_box); 
-        // -> { 1, 2, 3, 4 }
+      auto searchBox = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
+
+      // Boxes within the range
+      auto insideBoxIDs = quadtree.RangeSearch(searchBox); //: { 1, 2, 4 }
+
+      // Overlapping Boxes with the range
+      constexpr bool shouldFullyContain = false; // overlap is enough
+      auto overlappingBoxIDs = quadtree.RangeSearch<shouldFullyContain>(searchBox); 
+                               //: { 1, 2, 3, 4 }
 
       // Picked boxes
-      auto ptPick = Point2D{ 2.5, 2.5 };
-      auto ids_picked = quadtreebox.PickSearch(ptPick); // -> { 2, 4 }
+      auto pickPoint = Point2D{ 2.5, 2.5 };
+      auto pickedIDs = quadtree.PickSearch(pickPoint); //: { 2, 4 }
     }
     
     // Example #3: Parallel creation of octree for bounding boxes
     {
-      auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
-      // Using ctor
-      {
-        auto octreebox = OctreeBoxC(boxes, 3, std::nullopt, OctreeBox::max_element_default
-          , true // Set std::execution::parallel_unsequenced_policy
-        );
-      }
-      // Using Create
-      {
-        auto octreebox = OctreeBoxC::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
-      }
+      auto boxes = vector
+      { 
+        BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } 
+        /* and more... */
+      };
+
+      auto octreeUsingCtor = OctreeBoxC(boxes
+        , 3
+        , std::nullopt
+        , OctreeBox::DEFAULT_MAX_ELEMENT
+        , true // Set std::execution::parallel_unsequenced_policy
+      );
+
+      using namespace std::execution;
+      auto octreeUsingCreate = OctreeBoxC::Create<parallel_unsequenced_policy>(boxes
+        , 3
+      );
     }
 ```
 
@@ -179,10 +193,13 @@ Usage of Core types
     {
       auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
       auto const octree = OctreePoint(points, 3 /*max depth*/);
-       
-      auto const search_box = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
-      auto ids = octree.RangeSearch(search_box, points); // -> { 1, 2 }
-      auto knn_ids = octree.GetNearestNeighbors(Point3D{ 1.1,1.1,1.1 }, 2 /*k*/, points); // -> { 1, 2 }
+
+      auto const searchBox = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
+      auto pointIDsByRange = octree.RangeSearch(searchBox, points); //: { 1, 2 }
+      auto pointIDsByKNN = octree.GetNearestNeighbors(Point3D{ 1.1,1.1,1.1 }
+        , 2 // k neighbor
+        , points
+      ); //: { 1, 2 }
     }
     
     // Example #2: Quadtree for bounding boxes
@@ -196,23 +213,28 @@ Usage of Core types
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      auto quadtreebox = QuadtreeBox(boxes, 3
-        , std::nullopt // user-provided bounding box for all
+      auto qt = QuadtreeBox(boxes
+        , 3            // max depth
+        , std::nullopt // user-provided bounding Box for all
         , 2            // max element in a node 
       );
 
-      // Collision detection
-      auto ids_pairs_colliding = quadtreebox.CollisionDetection(boxes); // { {1,4}, {2,4} }
+      auto collidingIDPairs = qt.CollisionDetection(boxes); //: { {1,4}, {2,4} }
 
-      // Range search
-      auto search_box = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
-      auto ids_inside = quadtreebox.RangeSearch(search_box, boxes); // -> { 1, 2, 4 }
-      auto ids_overlaping = quadtreebox.RangeSearch<false/*overlap is enough*/>(search_box, boxes);
-        // -> { 1, 2, 3, 4 }
-      
+      auto searchBox = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
+
+      // Boxes within the range
+      auto insideBoxIDs = qt.RangeSearch(searchBox, boxes); //: { 1, 2, 4 }
+
+      // Overlapping Boxes with the range
+      constexpr bool shouldFullyContain = false;
+      auto overlappingBoxIDs = qt.RangeSearch<shouldFullyContain>(searchBox
+        , boxes
+      ); //: { 1, 2, 3, 4 }
+
       // Picked boxes
-      auto ptPick = Point2D{ 2.5, 2.5 };
-      auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // -> { 2, 4 }
+      auto pickPoint = Point2D{ 2.5, 2.5 };
+      auto pickedBoxIDs = qt.PickSearch(pickPoint, boxes); //: { 2, 4 }
     }
 ```
     
