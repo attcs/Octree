@@ -2,6 +2,9 @@
 
 using namespace OrthoTree;
 
+using std::array;
+using std::vector;
+
 namespace BitsetArithmeticTest
 {
   TEST_CLASS(BitsetArithmeticTest)

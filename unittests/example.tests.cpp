@@ -2,6 +2,9 @@
 
 using namespace OrthoTree;
 
+using std::array;
+using std::vector;
+
 namespace Example
 {
   TEST_CLASS(ExampleTests)
@@ -33,7 +36,7 @@ namespace Example
       };
 
       auto quadtreebox = QuadtreeBox(boxes, 3
-        , std::nullopt // user-provided bounding box for all
+        , std::nullopt // user-provided bounding Box for all
         , 2            // max element in a node 
       );
 
@@ -96,7 +99,7 @@ namespace Example
       };
 
       auto quadtreebox = QuadtreeBoxC(boxes, 3
-        , std::nullopt // user-provided bounding box for all
+        , std::nullopt // user-provided bounding Box for all
         , 2            // max element in a node 
         , false        // parallel calculation flag
       );
@@ -127,7 +130,7 @@ namespace Example
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
       // Using ctor
       {
-        auto octreebox = OctreeBoxC(boxes, 3, std::nullopt, OctreeBox::max_element_default
+        auto octreebox = OctreeBoxC(boxes, 3, std::nullopt, OctreeBox::DEFAULT_MAX_ELEMENT
           , true // Set std::execution::parallel_unsequenced_policy
         );
       }

@@ -65,7 +65,7 @@ void testCompilePoint()
 
     autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
     autoc boxAll = tree.GetBox();
-    autoc nDepth = tree.GetDepth(keyRoot);
+    autoc nDepth = tree.GetDepthID(keyRoot);
     autoc nDepthMax = tree.GetDepthMax();
     autoc nodeRoot = tree.GetNode(keyRoot);
     autoc nodes = tree.GetNodes();
@@ -142,7 +142,7 @@ void testCompileBox()
 
     autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
     autoc boxAll = tree.GetBox();
-    autoc nDepth = tree.GetDepth(keyRoot);
+    autoc nDepth = tree.GetDepthID(keyRoot);
     autoc nDepthMax = tree.GetDepthMax();
     autoc nodeRoot = tree.GetNode(keyRoot);
     autoc nodes = tree.GetNodes();

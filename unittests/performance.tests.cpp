@@ -2,6 +2,9 @@
 
 using namespace OrthoTree;
 
+using std::array;
+using std::vector;
+
 #ifdef _M_X64
 
 namespace PerformaceTest
@@ -19,12 +22,12 @@ namespace PerformaceTest
   static constexpr BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
   {
     using Ad = AdaptorGeneral<nDim, PointND<nDim>, BoundingBoxND<nDim>>;
-    auto box = BoundingBoxND<nDim>{ pt, pt };
-    auto& ptMax = Ad::box_max(box);
+    auto Box = BoundingBoxND<nDim>{ pt, pt };
+    auto& ptMax = Ad::box_max(Box);
     for (size_t iDim = 0; iDim < nDim; ++iDim)
       Ad::point_comp(ptMax, static_cast<dim_type>(iDim)) += size;
 
-    return box;
+    return Box;
   }
 
 
@@ -260,13 +263,13 @@ namespace PerformaceTest
     template<dim_type nDim>
     static TreePointND<nDim> CreateTest(depth_type depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
     {
-      autoc box = CreateSearcBox<nDim>(0.0, rMax);
+      autoc Box = CreateSearcBox<nDim>(0.0, rMax);
 
       auto nt = TreePointND<nDim>{};
       if (fPar)
-        TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, box);
+        TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, Box);
       else
-        TreePointND<nDim>::Create(nt, aPoint, depth, box);
+        TreePointND<nDim>::Create(nt, aPoint, depth, Box);
 
       return nt;
     }
@@ -313,13 +316,13 @@ namespace PerformaceTest
     template<dim_type nDim>
     static auto CreateTest(depth_type depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
     {
-      autoc box = CreateSearcBox<nDim>(0.0, rMax);
+      autoc Box = CreateSearcBox<nDim>(0.0, rMax);
 
       auto nt = TreeBoxND<nDim>{};
       if (fPar)
-        TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
+        TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, Box);
       else
-        TreeBoxND<nDim>::Create(nt, aBox, depth, box);
+        TreeBoxND<nDim>::Create(nt, aBox, depth, Box);
 
       return nt;
     }

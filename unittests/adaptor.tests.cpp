@@ -2,6 +2,9 @@
 
 using namespace OrthoTree;
 
+using std::array;
+using std::vector;
+
 namespace CustomGeometryType
 {
   // User-defined geometrical objects
@@ -34,10 +37,10 @@ namespace CustomGeometryType
       }
     }
 
-    static constexpr Point2DCustom& box_min(BoundingBox2DCustom& box) { return box[0]; }
-    static constexpr Point2DCustom& box_max(BoundingBox2DCustom& box) { return box[1]; }
-    static constexpr Point2DCustom const& box_min_c(BoundingBox2DCustom const& box) { return box[0]; }
-    static constexpr Point2DCustom const& box_max_c(BoundingBox2DCustom const& box) { return box[1]; }
+    static constexpr Point2DCustom& box_min(BoundingBox2DCustom& Box) { return Box[0]; }
+    static constexpr Point2DCustom& box_max(BoundingBox2DCustom& Box) { return Box[1]; }
+    static constexpr Point2DCustom const& box_min_c(BoundingBox2DCustom const& Box) { return Box[0]; }
+    static constexpr Point2DCustom const& box_max_c(BoundingBox2DCustom const& Box) { return Box[1]; }
   };
 
   using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
@@ -79,7 +82,7 @@ namespace AdaptorTest
       autoc tree = QuadtreePointCustom(vector<Point2DCustom>{}, 2);
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
-      Assert::IsTrue(nodes.at(1).vid.empty());
+      Assert::IsTrue(nodes.at(1).Entities.empty());
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox2DCustom{}));
     }
 
@@ -92,7 +95,7 @@ namespace AdaptorTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
-      Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).vid == vector<size_t>{ 3, 4 });
+      Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).Entities == vector<size_t>{ 3, 4 });
     }
 
     TEST_METHOD(Contains__1__True)

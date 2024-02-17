@@ -11,11 +11,14 @@
 
 using namespace OrthoTree;
 
+using std::array;
+using std::vector;
+
 namespace Microsoft {
   namespace VisualStudio {
     namespace CppUnitTestFramework
     {
-      template<> inline std::wstring ToString<bitset<65>>(const bitset<65>& t) { RETURN_WIDE_STRING(t); }
+      template<> inline std::wstring ToString<std::bitset<65>>(const std::bitset<65>& t) { RETURN_WIDE_STRING(t); }
 
     }
   }
@@ -354,7 +357,7 @@ namespace GeneralTest
 
     TEST_METHOD(GetDepth__37_15__3)
     {
-      autoc lc = DualtreePoint::GetDepth(DualtreePoint::GetHash(3, 7));
+      autoc lc = DualtreePoint::GetDepthID(DualtreePoint::GetHash(3, 7));
       Assert::AreEqual(depth_type{ 3 }, lc);
     }
 
@@ -394,9 +397,9 @@ namespace GeneralTest
           BoundingBox1D{ -1.5,  1.5 } // Only fit in a parent node
         };
 
-        for (autoc box : boxes)
+        for (autoc Box : boxes)
         {
-          autoc isInsertedSuccessfully = tree.Add(box, true /* Insert into leaf */);
+          autoc isInsertedSuccessfully = tree.Add(Box, true /* Insert into leaf */);
           Assert::IsTrue(isInsertedSuccessfully);
         }
       }
@@ -411,9 +414,9 @@ namespace GeneralTest
           BoundingBox1D{ -1.1,  1.2 }     // Only fit in the root
         };
 
-        for (autoc box : boxes)
+        for (autoc Box : boxes)
         {
-          autoc isInsertedSuccessfully = tree.Add(box, false /* Insert into the previously defined nodes */);
+          autoc isInsertedSuccessfully = tree.Add(Box, false /* Insert into the previously defined nodes */);
           Assert::IsTrue(isInsertedSuccessfully);
         }
       }
@@ -453,7 +456,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{0, 1, 2, 3 });
@@ -471,7 +474,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
@@ -485,13 +488,13 @@ namespace GeneralTest
 
       autoc kNode = tree.GetHash(2, 2);
       autoc& node = tree.GetNode(kNode);
-      Assert::AreEqual<size_t>(node.vid.size(), 1);
+      Assert::AreEqual<size_t>(node.Entities.size(), 1);
       tree.EraseId(2);
-      Assert::IsTrue(node.vid.empty());
+      Assert::IsTrue(node.Entities.empty());
 
       autoc kNode3 = tree.GetHash(2, 3);
       autoc& node3 = tree.GetNode(kNode3);
-      Assert::AreEqual<entity_id_type>(node3.vid[0], 2);
+      Assert::AreEqual<entity_id_type>(node3.Entities[0], 2);
     }
 
 
@@ -508,7 +511,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
@@ -528,7 +531,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 7, 3 });
@@ -547,7 +550,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 3 });
@@ -572,7 +575,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{3, 4, 5, 0, 1, 2, 6 });
@@ -597,7 +600,7 @@ namespace GeneralTest
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
-        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.vid), end(node.vid)); }
+        , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 1, 0, 2, 3 });
@@ -644,7 +647,7 @@ namespace GeneralTest
       tree.Clear();
       Assert::AreEqual<size_t>(1, nodes.size());
       autoc node = nodes.at(tree.GetHash(0, 0));
-      Assert::AreEqual<size_t>(1, node.vid.empty());
+      Assert::AreEqual<size_t>(1, node.Entities.empty());
     }
 
 
@@ -770,8 +773,8 @@ namespace GeneralTest
 
         autoc& nodePre = pairPre.second;
         autoc& nodeAfter = pairAfter.second;
-        autoc bMin = Ad::are_points_equal(Ad::subtract(Ad::box_min_c(nodeAfter.box), Ad::box_min_c(nodePre.box)), vMoveExpected, rAcc);
-        autoc bMax = Ad::are_points_equal(Ad::subtract(Ad::box_max_c(nodeAfter.box), Ad::box_max_c(nodePre.box)), vMoveExpected, rAcc);
+        autoc bMin = Ad::are_points_equal(Ad::subtract(Ad::box_min_c(nodeAfter.Box), Ad::box_min_c(nodePre.Box)), vMoveExpected, rAcc);
+        autoc bMax = Ad::are_points_equal(Ad::subtract(Ad::box_max_c(nodeAfter.Box), Ad::box_max_c(nodePre.Box)), vMoveExpected, rAcc);
         return bMin && bMax;
       });
 
@@ -1008,8 +1011,8 @@ namespace GeneralTest
       };
 
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == vid);
+      autoc Entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
+      Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == Entities);
     }
 
     TEST_METHOD(RayIntersectedAll_2D_General_34)
@@ -1027,8 +1030,8 @@ namespace GeneralTest
       };
 
       autoc qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
+      autoc Entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, Entities));
     }
 
     TEST_METHOD(RayIntersectedAll_3D_General_34)
@@ -1046,8 +1049,8 @@ namespace GeneralTest
       };
 
       autoc qt = OctreeBox(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
+      autoc Entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, Entities));
     }
 
     TEST_METHOD(RayIntersectedAll_5D_General_34)
@@ -1066,8 +1069,8 @@ namespace GeneralTest
       };
 
       autoc qt = TreeBoxND<N>(boxes, 3, std::nullopt, 2);
-      autoc vid = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, vid));
+      autoc Entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, Entities));
     }
 
 
@@ -1085,7 +1088,7 @@ namespace Tree1DTest
 			autoc tree = DualtreePoint({}, 2);
 			autoc& nodes = tree.GetNodes();
 			Assert::IsTrue(nodes.size() == 1);
-      Assert::IsTrue(nodes.at(1).vid.empty());
+      Assert::IsTrue(nodes.at(1).Entities.empty());
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BB1_INV));
 		}
 
@@ -1095,7 +1098,7 @@ namespace Tree1DTest
       autoc tree = DualtreePoint(vector<Point1D>{ { 1.0 } }, 2);
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
-      Assert::IsFalse(nodes.at(1).vid.empty());
+      Assert::IsFalse(nodes.at(1).Entities.empty());
       Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox1D{ Point1D{1.0}, Point1D{1.0} }));
     }
 
@@ -1105,7 +1108,7 @@ namespace Tree1DTest
       autoc tree = DualtreePoint({}, 2);
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
-      Assert::IsTrue(nodes.at(1).vid.empty());
+      Assert::IsTrue(nodes.at(1).Entities.empty());
     }
 
     TEST_METHOD(NoPt4)
@@ -1125,7 +1128,7 @@ namespace Tree1DTest
       
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
-      Assert::IsTrue(nodes.at(1).vid.empty());
+      Assert::IsTrue(nodes.at(1).Entities.empty());
     }
 	};
 
@@ -1221,7 +1224,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
-      Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3, 4 });
+      Assert::IsTrue(nodes.at(7).Entities == vector<size_t>{ 3, 4 });
     }
 
     TEST_METHOD(Insert__Leaf__Successful)
@@ -1233,7 +1236,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 8);
-      Assert::IsTrue(nodes.at(14).vid == vector<size_t>{ 4 });
+      Assert::IsTrue(nodes.at(14).Entities == vector<size_t>{ 4 });
     }
 
     TEST_METHOD(Insert__OutOfSpace__ReturnsFalse)
@@ -1244,7 +1247,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3 });
+      Assert::IsTrue(nodes.at(7).Entities == vector<size_t>{ 3 });
     }
 
 
@@ -1360,7 +1363,7 @@ namespace Tree1DTest
       };
 
       auto quadtreebox = QuadtreeBox(boxes, 2
-        , std::nullopt // user-provided bounding box for all
+        , std::nullopt // user-provided bounding Box for all
         , 2            // max element in a node 
       );
 
@@ -1368,15 +1371,15 @@ namespace Tree1DTest
       autoc& nodes = quadtreebox.GetNodes();
       Assert::AreEqual<size_t>(9, nodes.size());
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 4 }, quadtreebox.GetNode(1).vid));
-      Assert::IsTrue(quadtreebox.GetNode(4).vid.empty());
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5 }, quadtreebox.GetNode(5).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 4 }, quadtreebox.GetNode(1).Entities));
+      Assert::IsTrue(quadtreebox.GetNode(4).Entities.empty());
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5 }, quadtreebox.GetNode(5).Entities));
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 6 }, quadtreebox.GetNode(16).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 6 }, quadtreebox.GetNode(17).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 5 }, quadtreebox.GetNode(19).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 2 }, quadtreebox.GetNode(28).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 3 }, quadtreebox.GetNode(31).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 6 }, quadtreebox.GetNode(16).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 6 }, quadtreebox.GetNode(17).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 5 }, quadtreebox.GetNode(19).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 2 }, quadtreebox.GetNode(28).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 3 }, quadtreebox.GetNode(31).Entities));
     }
 
 
@@ -1396,7 +1399,7 @@ namespace Tree1DTest
 
       auto quadtreebox = QuadtreeBox{};
       QuadtreeBox::Create<std::execution::parallel_unsequenced_policy>(quadtreebox, boxes, 2
-        , std::nullopt // user-provided bounding box for all
+        , std::nullopt // user-provided bounding Box for all
         , 2            // max element in a node 
       );
 
@@ -1404,15 +1407,15 @@ namespace Tree1DTest
       autoc& nodes = quadtreebox.GetNodes();
       Assert::AreEqual<size_t>(9, nodes.size());
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 4 }, quadtreebox.GetNode(1).vid));
-      Assert::IsTrue(quadtreebox.GetNode(4).vid.empty());
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5 }, quadtreebox.GetNode(5).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 4 }, quadtreebox.GetNode(1).Entities));
+      Assert::IsTrue(quadtreebox.GetNode(4).Entities.empty());
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5 }, quadtreebox.GetNode(5).Entities));
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 6 }, quadtreebox.GetNode(16).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 6 }, quadtreebox.GetNode(17).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 5 }, quadtreebox.GetNode(19).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 2 }, quadtreebox.GetNode(28).vid));
-      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 3 }, quadtreebox.GetNode(31).vid));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 6 }, quadtreebox.GetNode(16).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 6 }, quadtreebox.GetNode(17).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 5 }, quadtreebox.GetNode(19).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 2 }, quadtreebox.GetNode(28).Entities));
+      Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 3 }, quadtreebox.GetNode(31).Entities));
     }
 
 
@@ -1489,7 +1492,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(nodes.at(tree.GetRootKey()).vid == vector<size_t>{ 4 });
+      Assert::IsTrue(nodes.at(tree.GetRootKey()).Entities == vector<size_t>{ 4 });
     }
 
 
@@ -1502,7 +1505,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(nodes.at(7).vid == vector<size_t>{ 3, 4 });
+      Assert::IsTrue(nodes.at(7).Entities == vector<size_t>{ 3, 4 });
     }
     
     TEST_METHOD(Insert_Leaf_Successful)
@@ -1514,7 +1517,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 8);
-      Assert::IsTrue(nodes.at(15).vid == vector<size_t>{ 4 });
+      Assert::IsTrue(nodes.at(15).Entities == vector<size_t>{ 4 });
     }
 
 
@@ -1527,7 +1530,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(nodes.at(1).vid == vector<size_t>{ 4 });
+      Assert::IsTrue(nodes.at(1).Entities == vector<size_t>{ 4 });
     }
 
 
@@ -1540,7 +1543,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(nodes.at(2).vid == vector<size_t>{ 4 });
+      Assert::IsTrue(nodes.at(2).Entities == vector<size_t>{ 4 });
     }
 
 
@@ -1705,9 +1708,9 @@ namespace Tree2DTest
       autoc vnn = tree.GetNearestNeighbors(pt, 100, points);
       Assert::AreEqual(points.size(), vnn.size());
 
-      auto vid = vector<size_t>(points.size());
-      iota(begin(vid), end(vid), 0);
-      Assert::IsTrue(std::ranges::is_permutation(vid, vnn));
+      auto Entities = vector<size_t>(points.size());
+      iota(begin(Entities), end(Entities), 0);
+      Assert::IsTrue(std::ranges::is_permutation(Entities, vnn));
     }
 
     TEST_METHOD(N4_k1__1)
@@ -1898,25 +1901,25 @@ namespace Tree2DTest
       Assert::AreEqual<size_t>(7, nodes.size());
       
       Assert::IsTrue(nodes.contains(1));
-      Assert::IsTrue(nodes.at(1).vid == vector<entity_id_type>{ 4 });
+      Assert::IsTrue(nodes.at(1).Entities == vector<entity_id_type>{ 4 });
 
       Assert::IsTrue(nodes.contains(4));
-      Assert::IsTrue(nodes.at(4).vid.empty());
+      Assert::IsTrue(nodes.at(4).Entities.empty());
 
       Assert::IsTrue(nodes.contains(7));
-      Assert::IsTrue(nodes.at(7).vid.empty());
+      Assert::IsTrue(nodes.at(7).Entities.empty());
 
       Assert::IsTrue(nodes.contains(16));
-      Assert::IsTrue(nodes.at(16).vid == vector<entity_id_type>{ 0 });
+      Assert::IsTrue(nodes.at(16).Entities == vector<entity_id_type>{ 0 });
 
       Assert::IsTrue(nodes.contains(19));
-      Assert::IsTrue(nodes.at(19).vid == vector<entity_id_type>{ 1 });
+      Assert::IsTrue(nodes.at(19).Entities == vector<entity_id_type>{ 1 });
 
       Assert::IsTrue(nodes.contains(28));
-      Assert::IsTrue(nodes.at(28).vid == vector<entity_id_type>{ 2 });
+      Assert::IsTrue(nodes.at(28).Entities == vector<entity_id_type>{ 2 });
 
       Assert::IsTrue(nodes.contains(31));
-      Assert::IsTrue(nodes.at(31).vid == vector<entity_id_type>{ 3 });
+      Assert::IsTrue(nodes.at(31).Entities == vector<entity_id_type>{ 3 });
     }
 
 
@@ -1937,31 +1940,31 @@ namespace Tree2DTest
       Assert::AreEqual<size_t>(8, nodes.size());
 
       Assert::IsTrue(nodes.contains(1));
-      Assert::IsTrue(nodes.at(1).vid == vector<entity_id_type>{ 4 });
+      Assert::IsTrue(nodes.at(1).Entities == vector<entity_id_type>{ 4 });
 
       Assert::IsTrue(nodes.contains(4));
-      Assert::IsTrue(nodes.at(4).vid.empty());
+      Assert::IsTrue(nodes.at(4).Entities.empty());
 
       Assert::IsTrue(nodes.contains(7));
-      Assert::IsTrue(nodes.at(7).vid.empty());
+      Assert::IsTrue(nodes.at(7).Entities.empty());
 
       Assert::IsTrue(nodes.contains(16));
-      Assert::IsTrue(nodes.at(16).vid == vector<entity_id_type>{ 0 });
+      Assert::IsTrue(nodes.at(16).Entities == vector<entity_id_type>{ 0 });
 
       Assert::IsTrue(nodes.contains(19));
-      Assert::IsTrue(nodes.at(19).vid == vector<entity_id_type>{ 1 });
+      Assert::IsTrue(nodes.at(19).Entities == vector<entity_id_type>{ 1 });
 
       Assert::IsTrue(nodes.contains(28));
-      Assert::IsTrue(nodes.at(28).vid == vector<entity_id_type>{ 2 });
+      Assert::IsTrue(nodes.at(28).Entities == vector<entity_id_type>{ 2 });
 
       Assert::IsTrue(nodes.contains(31));
-      Assert::IsTrue(nodes.at(31).vid == vector<entity_id_type>{ 3 });
+      Assert::IsTrue(nodes.at(31).Entities == vector<entity_id_type>{ 3 });
 
       Assert::IsTrue(nodes.contains(31));
-      Assert::IsTrue(nodes.at(31).vid == vector<entity_id_type>{ 3 });
+      Assert::IsTrue(nodes.at(31).Entities == vector<entity_id_type>{ 3 });
 
       Assert::IsTrue(nodes.contains(79));
-      Assert::IsTrue(nodes.at(79).vid == vector<entity_id_type>{ 5 });
+      Assert::IsTrue(nodes.at(79).Entities == vector<entity_id_type>{ 5 });
 
     }
 
@@ -2273,10 +2276,10 @@ namespace LongIntAdaptor
       return pt[iDimension];
     }
 
-    static inline CustomVectorTypeND<N>& box_min(CustomBoundingBoxND<N>& box) { return box[0]; }
-    static inline CustomVectorTypeND<N>& box_max(CustomBoundingBoxND<N>& box) { return box[1]; }
-    static constexpr CustomVectorTypeND<N> const& box_min_c(CustomBoundingBoxND<N> const& box) { return box[0]; }
-    static constexpr CustomVectorTypeND<N> const& box_max_c(CustomBoundingBoxND<N> const& box) { return box[1]; }
+    static inline CustomVectorTypeND<N>& box_min(CustomBoundingBoxND<N>& Box) { return Box[0]; }
+    static inline CustomVectorTypeND<N>& box_max(CustomBoundingBoxND<N>& Box) { return Box[1]; }
+    static constexpr CustomVectorTypeND<N> const& box_min_c(CustomBoundingBoxND<N> const& Box) { return Box[0]; }
+    static constexpr CustomVectorTypeND<N> const& box_max_c(CustomBoundingBoxND<N> const& Box) { return Box[1]; }
   };
 
   template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorBasicsCustom<N>, GeometryType>;
@@ -2654,13 +2657,13 @@ namespace LongIntAdaptor
     template<int nDim>
     vector<entity_id_type> brute_force_search(vector<CustomVectorTypeND<nDim>> const& points, CustomBoundingBoxND<nDim> const& searchbox)
     {
-      auto vid = vector<entity_id_type>{};
+      auto Entities = vector<entity_id_type>{};
       autoc nid = points.size();
       for (entity_id_type id = 0; id < nid; ++id)
         if (AdaptorCustom<nDim>::does_box_contain_point(searchbox, points[id]))
-          vid.emplace_back(id);
+          Entities.emplace_back(id);
 
-      return vid;
+      return Entities;
     }
 
 
