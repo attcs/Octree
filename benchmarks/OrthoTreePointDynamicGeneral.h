@@ -37,12 +37,12 @@ private:
       return;
     }
 
-    autoc ptMiddle = _Ad::div(_Ad::add(_Ad::box_max_c(box), _Ad::box_min_c(box)), 2.0);
+    autoc ptMiddle = _Ad::multiply(_Ad::add(_Ad::box_max_c(box), _Ad::box_min_c(box)), 0.5);
     for (auto& [id, idNode] : aid)
     {
       idNode = 0;
       for (dim_type iDimension = 0; iDimension < nDimension; ++iDimension)
-        idNode |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(vpt[id], iDimension)) << iDimension;
+        idNode |= static_cast<size_t>(_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(vpt[id], iDimension)) << static_cast<size_t>(iDimension);
     }
     sort(begin(aid), end(aid), [&](autoc& idL, autoc& idR) { return idL.idNode < idR.idNode; });
 
@@ -121,7 +121,7 @@ private:
       return;
     }
 
-    autoc ptMiddle = _Ad::div(_Ad::add(_Ad::box_max_c(box), _Ad::box_min_c(box)), 2.0);
+    autoc ptMiddle = _Ad::multiply(_Ad::add(_Ad::box_max_c(box), _Ad::box_min_c(box)), 0.5);
     for (auto& [id, idNode] : aid)
     {
       size_t idNode1 = 0;
