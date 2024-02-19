@@ -106,6 +106,7 @@ namespace
 
     std::random_device rd;
     std::mt19937 g(rd());
+    g.seed();
     std::shuffle(next(begin(aPoint), nNumberPre), end(aPoint), g);
 
     autoc box = Adaptor::box_of_points(aPoint);
@@ -774,6 +775,7 @@ int main()
     autoc vTask = GeneratePointTasks<N>(nDepth, szName, aPointDiag_100M);
     RunTasks(vTask, report);
   }
+  
   {
     autoc szName = string("Diagonally placed boxes");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
