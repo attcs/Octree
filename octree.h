@@ -812,15 +812,6 @@ namespace OrthoTree
     }
     static constexpr child_id_type convertMortonIdToChildId(uint64_t morton) noexcept { return morton; }
 
-
-    static constexpr std::vector<entity_id_type> generateEntitiyIDList(size_t entityNo) noexcept
-    {
-      auto entityIDs = std::vector<entity_id_type>(entityNo);
-      std::iota(entityIDs.begin(), entityIDs.end(), 0);
-      return entityIDs;
-    }
-
-
   protected: // Grid functions
     static constexpr std::tuple<std::array<double, t_DimensionNo>, std::array<double, t_DimensionNo>> getGridRasterizer(
       vector_type const& minPoint, vector_type const& maxPoint, grid_id_type subDivisionNo) noexcept
@@ -1753,13 +1744,10 @@ namespace OrthoTree
       autoc rootKey = base::GetRootKey();
       auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
 
-
-      // Generate Morton location ids
-      autoc pointIDs = base::generateEntitiyIDList(pointNo);
       auto pointLocations = std::vector<Location>(pointNo);
-
       auto ept = execution_policy_type{}; // GCC 11.3 only accept in this form
-      std::transform(ept, points.begin(), points.end(), pointIDs.begin(), pointLocations.begin(), [&](autoc& point, autoc id) {
+      std::transform(ept, points.begin(), points.end(), pointLocations.begin(), [&](autoc& point) {
+        entity_id_type const id = std::distance(&points[0], &point);
         return Location{ id, tree.getLocationID(point) };
       });
 
@@ -2280,25 +2268,26 @@ namespace OrthoTree
       autoc rootKey = base::GetRootKey();
       auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
 
-      autoc entityIDs = base::generateEntitiyIDList(entityNo);
+      autoce isNoSplit = t_AdditionalDepthOfSplitStrategy == 0;
+      autoce isNonParallel = std::is_same<execution_policy_type, std::execution::unsequenced_policy>::value ||
+        std::is_same<execution_policy_type, std::execution::sequenced_policy>::value;
 
       auto epf = execution_policy_type{}; // GCC 11.3
       auto locations = LocationContainer(entityNo);
-      locations.reserve(
-        t_AdditionalDepthOfSplitStrategy > 0 ? entityNo * std::min<size_t>(10, base::CHILD_NO * t_AdditionalDepthOfSplitStrategy) : entityNo);
-      if constexpr (
-        t_AdditionalDepthOfSplitStrategy == 0 || std::is_same<execution_policy_type, std::execution::unsequenced_policy>::value ||
-        std::is_same<execution_policy_type, std::execution::sequenced_policy>::value)
+      locations.reserve(isNoSplit ? entityNo : (entityNo * std::min<size_t>(10, base::CHILD_NO * t_AdditionalDepthOfSplitStrategy)));
+      if constexpr (isNoSplit || isNonParallel)
       {
-        std::for_each(epf, entityIDs.begin(), entityIDs.end(), [&tree, &boxes, &locations](autoc entityID) {
-          tree.setLocation(boxes[entityID], entityID, locations);
+        std::for_each(epf, boxes.begin(), boxes.end(), [&tree, &boxes, &locations](autoc& box) {
+          entity_id_type const entityID = std::distance(&boxes[0], &box);
+          tree.setLocation(box, entityID, locations);
         });
       }
       else
       {
         auto additionalLocations = std::vector<LocationContainer>(entityNo);
-        std::for_each(epf, entityIDs.begin(), entityIDs.end(), [&tree, &boxes, &locations, &additionalLocations](autoc entityID) {
-          tree.setLocation(boxes[entityID], entityID, locations, &additionalLocations);
+        std::for_each(epf, boxes.begin(), boxes.end(), [&tree, &boxes, &locations, &additionalLocations](autoc& box) {
+          entity_id_type const entityID = std::distance(&boxes[0], &box);
+          tree.setLocation(box, entityID, locations, &additionalLocations);
         });
 
         auto additionalLocationSizes = std::vector<size_t>(entityNo);
@@ -2310,12 +2299,12 @@ namespace OrthoTree
 
         locations.resize(additionalLocationSizes.back() + additionalLocations.back().size());
         auto epf2 = execution_policy_type{}; // GCC 11.3
-        std::for_each(epf2, entityIDs.begin(), entityIDs.end(), [&locations, &additionalLocationSizes, &additionalLocations](autoc entityID) {
-          if (additionalLocations[entityID].empty())
+        std::for_each(epf2, additionalLocations.begin(), additionalLocations.end(), [&locations, &additionalLocationSizes, &additionalLocations](auto& additionalLocation) {
+          if (additionalLocation.empty())
             return;
 
-          std::copy(
-            additionalLocations[entityID].begin(), additionalLocations[entityID].end(), std::next(locations.begin(), additionalLocationSizes[entityID]));
+          entity_id_type const entityID = std::distance(&additionalLocations[0], &additionalLocation);
+          std::copy(additionalLocation.begin(), additionalLocation.end(), std::next(locations.begin(), additionalLocationSizes[entityID]));
         });
       }
 
