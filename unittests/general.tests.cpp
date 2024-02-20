@@ -546,7 +546,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 4.0 }
       };
       auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
-      tree.UpdateIndexes({ { 2, DualtreeBox::ERASE } });
+      tree.UpdateIndexes({ { 2, DualtreeBox::UpdateID::ERASE } });
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
@@ -622,7 +622,7 @@ namespace GeneralTest
           { 3, 6 },
           { 4, 5 },
           { 5, 1 },
-          { 1, DualtreeBox::ERASE },
+          { 1, DualtreeBox::UpdateID::ERASE },
         }
       );
 

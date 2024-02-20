@@ -138,7 +138,7 @@ namespace OrthoTree
 
   // General OrthoTree container for point types
   template<typename OrthoTree, typename data_type>
-  class OrthoTreeContainerPoint : public OrthoTreeContainerBase<OrthoTree, data_type>
+  class OrthoTreeContainerPoint final : public OrthoTreeContainerBase<OrthoTree, data_type>
   {
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;
@@ -210,7 +210,7 @@ namespace OrthoTree
 
   // General OrthoTree container for Box types
   template<typename OrthoTree, typename data_type>
-  class OrthoTreeContainerBox : public OrthoTreeContainerBase<OrthoTree, data_type>
+  class OrthoTreeContainerBox final : public OrthoTreeContainerBase<OrthoTree, data_type>
   {
   public:
     using base = OrthoTreeContainerBase<OrthoTree, data_type>;

@@ -123,20 +123,28 @@ namespace OrthoTree
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-
-  constexpr uint64_t pow_ce(uint64_t a, uint8_t e)
+ 
+  template<uint8_t e>
+  consteval uint64_t pow2_ce()
   {
-    return e == 0 ? 1 : a * pow_ce(a, e - 1);
+    static_assert(e >= 0 && e < 64);
+    return uint64_t(1) << e;
+  }
+
+  constexpr int32_t pow2(int32_t e)
+  {
+    assert(e >= 0 && e < 31);
+    return int32_t(1) << e;
   }
 
   // Grid id
   using grid_id_type = uint32_t;
 
   // Type of the dimension
-  using dim_type = uint8_t;
+  using dim_type = int;
 
   // Type of depth
-  using depth_type = uint8_t;
+  using depth_type = int;
 
   // Content id type
   using entity_id_type = size_t;
@@ -302,7 +310,7 @@ namespace OrthoTree
       return true;
     }
 
-    enum EBoxRelation : int8_t
+    enum class EBoxRelation
     {
       Overlapped = -1,
       Adjecent = 0,
@@ -316,7 +324,7 @@ namespace OrthoTree
         AdjecentC = 0x2,
         SeparatedC = 0x4
       };
-      int8_t rel = 0;
+      uint8_t rel = 0;
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
         if (
@@ -671,17 +679,15 @@ namespace OrthoTree
   template<dim_type t_DimensionNo, typename vector_type_, typename box_type_, typename adaptor_type = AdaptorGeneral<t_DimensionNo, vector_type_, box_type_, double>, typename geometry_type_ = double>
   class OrthoTreeBase
   {
-    static_assert(0 < t_DimensionNo && t_DimensionNo < 64);
-
-  protected:
-    // Max number of children
-    static autoce CHILD_NO = pow_ce(2, t_DimensionNo);
-
   public:
-    enum UpdateId
+    struct UpdateID
     {
-      ERASE = std::numeric_limits<entity_id_type>::max()
+      enum : entity_id_type
+      {
+        ERASE = std::numeric_limits<entity_id_type>::max()
+      };
     };
+
     static autoce IS_LINEAR_TREE = t_DimensionNo < 15;
 
     // Max value: 2 ^ t_DimensionNo
@@ -702,8 +708,11 @@ namespace OrthoTree
 
     using AD = adaptor_type;
     static_assert(AdaptorConcept<AD, vector_type, box_type, geometry_type>);
+    static_assert(0 < t_DimensionNo && t_DimensionNo < 64);
 
   protected:
+    // Max number of children
+    static autoce CHILD_NO = pow2_ce<t_DimensionNo>();
     // Type system determined maximal depth.
     static autoce MAX_THEORETICAL_DEPTH = depth_type((CHAR_BIT * sizeof(morton_node_id_type) - 1 /*sentinal bit*/) / t_DimensionNo);
 
@@ -719,6 +728,7 @@ namespace OrthoTree
 
     public:
       constexpr void AddChild(morton_node_id_type_cref childKey) noexcept { m_children.emplace_back(childKey); }
+
       constexpr void AddChildInOrder(morton_node_id_type_cref childKey) noexcept
       {
         auto it = std::end(m_children);
@@ -780,27 +790,30 @@ namespace OrthoTree
       entity_id_type EntityID;
       auto operator<=>(EntityDistance const& rhs) const = default;
     };
+
     struct BoxDistance : ItemDistance
     {
       morton_node_id_type NodeKey;
       Node const& Node;
     };
 
+    using DimensionArray = std::array<double, t_DimensionNo>;
+
     template<typename data_type>
-    using container_type =
+    using UnderlyingContainer =
       typename std::conditional<IS_LINEAR_TREE, std::unordered_map<morton_node_id_type, data_type>, std::map<morton_node_id_type, data_type, bitset_arithmetic_compare>>::type;
 
   protected: // Member variables
-    container_type<Node> m_nodes;
+    UnderlyingContainer<Node> m_nodes;
     box_type m_boxSpace = {};
     depth_type m_maxDepthNo = {};
     grid_id_type m_maxRasterResolution = {};
     grid_id_type m_maxRasterID = {};
     max_element_type m_maxElementNo = 11;
     double m_volumeOfOverallSpace = {};
-    std::array<double, t_DimensionNo> m_rasterizerFactors;
-    std::array<double, t_DimensionNo> m_sizeInDimensions;
-    std::array<double, t_DimensionNo> m_minInDimensions;
+    DimensionArray m_rasterizerFactors;
+    DimensionArray m_sizeInDimensions;
+    DimensionArray m_minInDimensions;
 
 
   protected: // Aid functions
@@ -813,10 +826,10 @@ namespace OrthoTree
     static constexpr child_id_type convertMortonIdToChildId(uint64_t morton) noexcept { return morton; }
 
   protected: // Grid functions
-    static constexpr std::tuple<std::array<double, t_DimensionNo>, std::array<double, t_DimensionNo>> getGridRasterizer(
+    static constexpr std::tuple<DimensionArray, DimensionArray> getGridRasterizer(
       vector_type const& minPoint, vector_type const& maxPoint, grid_id_type subDivisionNo) noexcept
     {
-      auto ret = std::tuple<std::array<double, t_DimensionNo>, std::array<double, t_DimensionNo>>{};
+      auto ret = std::tuple<DimensionArray, DimensionArray>{};
       auto& [rasterizerFactors, boxSizes] = ret;
       autoc subDivisionNoFactor = static_cast<double>(subDivisionNo);
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
@@ -889,32 +902,33 @@ namespace OrthoTree
       auto& nodeChild = m_nodes[childKey];
       if constexpr (std::is_integral_v<geometry_type>)
       {
-        std::array<double, t_DimensionNo> ptNodeMin = this->m_minInDimensions, ptNodeMax;
+        DimensionArray minNodePoint = this->m_minInDimensions;
+        DimensionArray maxNodePoint;
 
         autoc nDepth = this->GetDepthID(childKey);
         auto mask = morton_node_id_type{ 1 } << (nDepth * t_DimensionNo - 1);
 
-        auto rScale = 1.0;
+        auto scaleFactor = 1.0;
         for (depth_type iDepth = 0; iDepth < nDepth; ++iDepth)
         {
-          rScale *= 0.5;
+          scaleFactor *= 0.5;
           for (dim_type dimensionID = t_DimensionNo; dimensionID > 0; --dimensionID)
           {
             bool const isGreater = (childKey & mask);
-            ptNodeMin[dimensionID - 1] += isGreater * this->m_sizeInDimensions[dimensionID - 1] * rScale;
+            minNodePoint[dimensionID - 1] += isGreater * this->m_sizeInDimensions[dimensionID - 1] * scaleFactor;
             mask >>= 1;
           }
         }
 
         LOOPIVDEP
         for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
-          ptNodeMax[dimensionID] = ptNodeMin[dimensionID] + this->m_sizeInDimensions[dimensionID] * rScale;
+          maxNodePoint[dimensionID] = minNodePoint[dimensionID] + this->m_sizeInDimensions[dimensionID] * scaleFactor;
 
         LOOPIVDEP
         for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
         {
-          AD::point_comp(AD::box_min(nodeChild.Box), dimensionID) = static_cast<geometry_type>(ptNodeMin[dimensionID]);
-          AD::point_comp(AD::box_max(nodeChild.Box), dimensionID) = static_cast<geometry_type>(ptNodeMax[dimensionID]);
+          AD::point_comp(AD::box_min(nodeChild.Box), dimensionID) = static_cast<geometry_type>(minNodePoint[dimensionID]);
+          AD::point_comp(AD::box_max(nodeChild.Box), dimensionID) = static_cast<geometry_type>(maxNodePoint[dimensionID]);
         }
       }
       else
@@ -922,15 +936,15 @@ namespace OrthoTree
         LOOPIVDEP
         for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
         {
-          autoc fGreater = ((child_id_type{ 1 } << dimensionID) & childID) > 0;
+          autoc isGreater = ((child_id_type{ 1 } << dimensionID) & childID) > 0;
           AD::point_comp(AD::box_min(nodeChild.Box), dimensionID) =
-            fGreater * (AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
+            isGreater * (AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
               geometry_type{ 0.5 } +
-            (!fGreater) * AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID);
+            (!isGreater) * AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID);
 
           AD::point_comp(AD::box_max(nodeChild.Box), dimensionID) =
-            fGreater * AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) +
-            (!fGreater) * ((AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
+            isGreater * AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) +
+            (!isGreater) * ((AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
                            geometry_type{ 0.5 });
         }
       }
@@ -1214,7 +1228,7 @@ namespace OrthoTree
           AD::point_comp_c(AD::box_max_c(this->m_boxSpace), dimensionID) - AD::point_comp_c(AD::box_min_c(this->m_boxSpace), dimensionID);
 
       this->m_maxDepthNo = maxDepthNo;
-      this->m_maxRasterResolution = static_cast<grid_id_type>(pow_ce(2, maxDepthNo));
+      this->m_maxRasterResolution = static_cast<grid_id_type>(pow2(maxDepthNo));
       this->m_maxRasterID = this->m_maxRasterResolution - 1;
       this->m_maxElementNo = maxElementNo;
 
@@ -1334,7 +1348,7 @@ namespace OrthoTree
           return it == mapEndIterator ? id : it->second;
         });
 
-        std::erase_if(idList, [](autoc id) { return id == UpdateId::ERASE; });
+        std::erase_if(idList, [](autoc id) { return id == UpdateID::ERASE; });
         node.second.Entities.swap(idList);
       });
 
@@ -1360,7 +1374,7 @@ namespace OrthoTree
         spaceSizes[dimensionID] = AD::point_comp_c(maxSpacePoint, dimensionID) - AD::point_comp_c(minSpacePoint, dimensionID);
 
       autoc depthIDOfNode = GetDepthID(nodeKey);
-      autoc rasterResolutionNoAtNodeDepth = pow_ce(2, depthIDOfNode);
+      autoc rasterResolutionNoAtNodeDepth = pow2(depthIDOfNode);
       autoc rasterFactorAtNodeDepth = 1.0 / static_cast<double>(rasterResolutionNoAtNodeDepth);
 
       autoce one = morton_grid_id_type{ 1 };
@@ -1635,16 +1649,12 @@ namespace OrthoTree
       autoc& node = cont_at(this->m_nodes, parentKey);
       collectAllIdInDFS(node, entityIDs);
     }
-
-
-    // Doubles the handled space relative to the root. iRootNew defines the relative location in the new space
-    // TODO IMPLEMENT void Extend(morton_node_id_type_cref iRootNew = 0) {}
   };
 
 
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<dim_type t_DimensionNo, typename vector_type, typename box_type, typename adaptor_type = AdaptorGeneral<t_DimensionNo, vector_type, box_type, double>, typename geometry_type = double>
-  class OrthoTreePoint : public OrthoTreeBase<t_DimensionNo, vector_type, box_type, adaptor_type, geometry_type>
+  class OrthoTreePoint final : public OrthoTreeBase<t_DimensionNo, vector_type, box_type, adaptor_type, geometry_type>
   {
   protected:
     using base = OrthoTreeBase<t_DimensionNo, vector_type, box_type, adaptor_type, geometry_type>;
@@ -1892,7 +1902,7 @@ namespace OrthoTree
       if constexpr (t_DimensionNo < 3) // under 3 dimension, every boxes will be intersected.
       {
         results.resize(points.size());
-        iota(results.begin(), results.end(), 0);
+        std::iota(results.begin(), results.end(), 0);
         return results;
       }
 
@@ -2022,7 +2032,7 @@ namespace OrthoTree
     typename adaptor_type = AdaptorGeneral<t_DimensionNo, vector_type, box_type, double>,
     typename geometry_type = double,
     depth_type t_AdditionalDepthOfSplitStrategy = 2>
-  class OrthoTreeBoundingBox : public OrthoTreeBase<t_DimensionNo, vector_type, box_type, adaptor_type, geometry_type>
+  class OrthoTreeBoundingBox final : public OrthoTreeBase<t_DimensionNo, vector_type, box_type, adaptor_type, geometry_type>
   {
   protected:
     using base = OrthoTreeBase<t_DimensionNo, vector_type, box_type, adaptor_type, geometry_type>;
@@ -2154,7 +2164,7 @@ namespace OrthoTree
         depthID = this->m_maxDepthNo;
 
       autoc remainingDepthNo = static_cast<depth_type>(this->m_maxDepthNo - depthID);
-      autoc gridStepNo = static_cast<grid_id_type>(pow_ce(2, remainingDepthNo));
+      autoc gridStepNo = static_cast<grid_id_type>(pow2(remainingDepthNo));
 
       auto gridBoundaries = std::array<GridBoundary, t_DimensionNo>{};
       uint64_t boxNoByGrid = 1;
@@ -2594,7 +2604,7 @@ namespace OrthoTree
       if constexpr (t_DimensionNo < 3) // under 3 dimension, every boxes will be intersected.
       {
         results.resize(boxes.size());
-        iota(results.begin(), results.end(), 0);
+        std::iota(results.begin(), results.end(), 0);
         return results;
       }
 
@@ -2622,7 +2632,7 @@ namespace OrthoTree
       OrthoTreeBoundingBox const& rightTree,
       std::span<box_type const> const& rightBoxes) noexcept
     {
-      using NodeIterator = typename base::template container_type<Node>::const_iterator;
+      using NodeIterator = typename base::template UnderlyingContainer<Node>::const_iterator;
       struct NodeIteratorAndStatus
       {
         NodeIterator Iterator;
@@ -3058,7 +3068,7 @@ namespace OrthoTree
     {
       auto foundEntities = std::vector<EntityDistance>();
       foundEntities.reserve(20);
-      getRayIntersectedAll(cont_at(this->m_nodes, base::GetRootKey()), boxes, rayBasePointPoint, rayHeading, tolerance, maxExaminationDistance, foundEntities);
+      getRayIntersectedAll(this->GetNode(this->GetRootKey()), boxes, rayBasePointPoint, rayHeading, tolerance, maxExaminationDistance, foundEntities);
 
       autoc beginIteratorOfEntities = foundEntities.begin();
       auto endIteratorOfEntities = foundEntities.end();
@@ -3079,7 +3089,7 @@ namespace OrthoTree
     std::optional<entity_id_type> RayIntersectedFirst(
       vector_type const& rayBasePointPoint, vector_type const& rayHeading, std::span<box_type const> const& boxes, geometry_type tolerance) const noexcept
     {
-      autoc& node = cont_at(this->m_nodes, base::GetRootKey());
+      autoc& node = this->GetNode(this->GetRootKey());
       autoc distance = AD::is_ray_hit(node.Box, rayBasePointPoint, rayHeading, tolerance);
       if (!distance)
         return std::nullopt;
