@@ -417,41 +417,42 @@ namespace OrthoTree
     }
 
     static constexpr std::optional<double> is_ray_hit(
-      box_type const& box, vector_type const& rayBasePointPoint, vector_type const& rayHeading, geometry_type tolerance) noexcept
+      box_type const& box, vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance) noexcept
     {
-      if (does_box_contain_point(box, rayBasePointPoint, tolerance))
+      if (does_box_contain_point(box, rayBasePoint, tolerance))
         return 0.0;
 
-      autoc& ptBoxMin = base::box_min_c(box);
-      autoc& ptBoxMax = base::box_max_c(box);
+      autoc& minBoxPoint = base::box_min_c(box);
+      autoc& maxBoxPoint = base::box_max_c(box);
 
       autoce inf = std::numeric_limits<double>::infinity();
 
-      auto aRMinMax = std::array<std::array<double, t_DimensionNo>, 2>();
+      auto minDistances = std::array<double, t_DimensionNo>{};
+      auto maxDistances = std::array<double, t_DimensionNo>{};
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
         autoc hComp = base::point_comp_c(rayHeading, dimensionID);
         if (hComp == 0)
         {
-          if (base::point_comp_c(ptBoxMax, dimensionID) + tolerance < base::point_comp_c(rayBasePointPoint, dimensionID))
+          if (base::point_comp_c(maxBoxPoint, dimensionID) + tolerance < base::point_comp_c(rayBasePoint, dimensionID))
             return std::nullopt;
 
-          if (base::point_comp_c(ptBoxMin, dimensionID) - tolerance > base::point_comp_c(rayBasePointPoint, dimensionID))
+          if (base::point_comp_c(minBoxPoint, dimensionID) - tolerance > base::point_comp_c(rayBasePoint, dimensionID))
             return std::nullopt;
 
-          aRMinMax[0][dimensionID] = -inf;
-          aRMinMax[1][dimensionID] = +inf;
+          minDistances[dimensionID] = -inf;
+          maxDistances[dimensionID] = +inf;
           continue;
         }
 
-        aRMinMax[0][dimensionID] =
-          (base::point_comp_c(hComp > 0.0 ? ptBoxMin : ptBoxMax, dimensionID) - tolerance - base::point_comp_c(rayBasePointPoint, dimensionID)) / hComp;
-        aRMinMax[1][dimensionID] =
-          (base::point_comp_c(hComp < 0.0 ? ptBoxMin : ptBoxMax, dimensionID) + tolerance - base::point_comp_c(rayBasePointPoint, dimensionID)) / hComp;
+        minDistances[dimensionID] =
+          (base::point_comp_c(hComp > 0.0 ? minBoxPoint : maxBoxPoint, dimensionID) - tolerance - base::point_comp_c(rayBasePoint, dimensionID)) / hComp;
+        maxDistances[dimensionID] =
+          (base::point_comp_c(hComp < 0.0 ? minBoxPoint : maxBoxPoint, dimensionID) + tolerance - base::point_comp_c(rayBasePoint, dimensionID)) / hComp;
       }
 
-      autoc rMin = *std::ranges::max_element(aRMinMax[0]);
-      autoc rMax = *std::ranges::min_element(aRMinMax[1]);
+      autoc rMin = *std::ranges::max_element(minDistances);
+      autoc rMax = *std::ranges::min_element(maxDistances);
       if (rMin > rMax || rMax < 0.0)
         return std::nullopt;
 
