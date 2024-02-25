@@ -1635,7 +1635,7 @@ namespace OrthoTree
 
 
   public:
-    std::vector<entity_id_type> CollectAllIdInDFS(morton_grid_id_type_cref parentKey) const noexcept
+    std::vector<entity_id_type> CollectAllIdInDFS(morton_grid_id_type_cref parentKey = GetRootKey()) const noexcept
     {
       auto entityIDs = std::vector<entity_id_type>{};
       collectAllIdInDFS(GetNode(parentKey), entityIDs);
