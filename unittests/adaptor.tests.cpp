@@ -1,5 +1,9 @@
 #include "pch.h"
 
+#include <Eigen/Geometry>
+#include "../adaptor.eigen.h"
+
+
 using namespace OrthoTree;
 
 using std::array;
@@ -106,4 +110,108 @@ namespace AdaptorTest
       Assert::IsTrue(tree.Contains(vpt[1], vpt, 0));
     }
   };
+
+  namespace EigenAdaptorTest
+  {
+    TEST_CLASS(EigenTest)
+    {
+    public:
+      TEST_METHOD(PointGeneral3D)
+      {
+        auto vpt = vector{
+          Eigen::Vector3d(0.0, 0.0, 0.0), 
+          Eigen::Vector3d(1.0, 1.0, 1.0),
+          Eigen::Vector3d(2.0, 2.0, 2.0),
+          Eigen::Vector3d(3.0, 3.0, 3.0),
+          Eigen::Vector3d(4.0, 4.0, 4.0),
+          Eigen::Vector3d(0.0, 0.0, 4.0),
+          Eigen::Vector3d(0.0, 4.0, 0.0),
+          Eigen::Vector3d(4.0, 0.0, 0.0),
+          Eigen::Vector3d(1.5, 1.5, 1.0),
+          Eigen::Vector3d(1.0, 1.5, 1.5),
+        };
+        auto tree = Eigen::OctreePoint3d(vpt, 3, std::nullopt, 2);
+        
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+
+        auto searchBox = Eigen::AlignedBox3d(Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(2.0, 2.0, 2.0));
+        auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
+        
+        auto sqrt3Reciproc = 1.0 / sqrt(3.0);
+        auto pointsInPlane = tree.PlaneSearch(2.6, Eigen::Vector3d(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), 0.3, vpt);
+
+        autoc n = vpt.size();
+        vpt.push_back(Eigen::Vector3d(1.0, 1.0, 1.5));
+        tree.Insert(n, vpt.back());
+        tree.Erase<false>(0, vpt[0]);
+        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+
+        auto searchPoint = Eigen::Vector3d(1.0, 1.0, 1.0);
+        auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
+        
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5, 6, 7, 8, 9 }, pointsInPlane));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 10, 8 }, entityIDsKNN));
+
+        Assert::IsTrue(vector<entity_id_type>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
+        Assert::IsTrue(vector<entity_id_type>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
+        Assert::IsTrue(vector<entity_id_type>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
+      }
+ 
+      TEST_METHOD(BoxGeneral2DC_Example2)
+      {
+        auto boxes = std::vector
+        {
+          Eigen::AlignedBox2d( Eigen::Vector2d( 0.0, 0.0 ), Eigen::Vector2d( 1.0, 1.0 ) ),
+          Eigen::AlignedBox2d( Eigen::Vector2d( 1.0, 1.0 ), Eigen::Vector2d( 2.0, 2.0 ) ),
+          Eigen::AlignedBox2d( Eigen::Vector2d( 2.0, 2.0 ), Eigen::Vector2d( 3.0, 3.0 ) ),
+          Eigen::AlignedBox2d( Eigen::Vector2d( 3.0, 3.0 ), Eigen::Vector2d( 4.0, 4.0 ) ),
+          Eigen::AlignedBox2d( Eigen::Vector2d( 1.2, 1.2 ), Eigen::Vector2d( 2.8, 2.8 ) )
+        };
+
+        auto quadtree = Eigen::QuadtreeBoxC2d(boxes
+          , 3            // max depth
+          , std::nullopt // user-provided bounding Box for all
+          , 2            // max element in a node 
+          , false        // parallel calculation option
+        );
+
+        auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
+
+        auto searchBox = Eigen::AlignedBox2d( Eigen::Vector2d( 1.0, 1.0 ), Eigen::Vector2d( 3.1, 3.1 ) );
+
+        // Boxes within the range
+        auto insideBoxIDs = quadtree.RangeSearch(searchBox); //: { 1, 2, 4 }
+
+        // Overlapping Boxes with the range
+        constexpr bool shouldFullyContain = false; // overlap is enough
+        auto overlappingBoxIDs = quadtree.RangeSearch<shouldFullyContain>(searchBox); //: { 1, 2, 3, 4 }
+
+        // Picked boxes
+        auto pickPoint = Eigen::Vector2d(2.5, 2.5);
+        auto pickedIDs = quadtree.PickSearch(pickPoint); //: { 2, 4 }
+
+        // Ray intersections
+        auto rayBasePoint = Eigen::Vector2d(1.5, 2.5);
+        auto rayHeading = Eigen::Vector2d(1.5, 0.5);
+        auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint, rayHeading, 0.01); //: 4
+        auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01); //: { 4, 2, 3 } in distance order!
+
+        // Collect all IDs in breadth/depth first order
+        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<entity_id_type, entity_id_type>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 4}, insideBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 3, 4}, overlappingBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{2, 4}, pickedIDs));
+        Assert::IsTrue(firstIntersectedBox.has_value());
+        Assert::AreEqual(entity_id_type(4), *firstIntersectedBox);
+        Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == intersectedPoints);
+        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
+        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
+      }
+    };
+  }
 }

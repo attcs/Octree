@@ -47,5 +47,11 @@
     <ClInclude Include="compile_test.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\adaptor.eigen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
