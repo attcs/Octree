@@ -346,12 +346,18 @@ namespace OrthoTree
 
     static constexpr bool are_boxes_overlapped(box_type const& e1, box_type const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
     {
-      autoc e1_contains_e2min = does_box_contain_point(e1, base::box_min_c(e2));
-
-      return e1_must_contain_e2 ? e1_contains_e2min && does_box_contain_point(e1, base::box_max_c(e2))
-           : fOverlapPtTouchAllowed
-             ? e1_contains_e2min || does_box_contain_point(e1, base::box_max_c(e2)) || does_box_contain_point(e2, base::box_max_c(e1))
-             : box_relation(e1, e2) == EBoxRelation::Overlapped;
+      if (e1_must_contain_e2)
+      {
+        return does_box_contain_point(e1, base::box_min_c(e2)) && does_box_contain_point(e1, base::box_max_c(e2));
+      }
+      else
+      {
+        autoc rel = box_relation(e1, e2);
+        if (fOverlapPtTouchAllowed)
+          return rel == EBoxRelation::Adjecent || rel == EBoxRelation::Overlapped;
+        else
+          return rel == EBoxRelation::Overlapped;
+      }
     }
 
     static inline box_type box_inverted_init() noexcept
