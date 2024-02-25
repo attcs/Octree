@@ -97,12 +97,6 @@ namespace OrthoTree
 #ifdef _MSC_VER
 #pragma warning(disable : 4715)
 #endif
-  // Crash the program if out_of_range exception is raised
-  template<typename var_type, typename index_type, typename container_type>
-  inline auto const& cont_at(container_type const& container, typename std::remove_reference_t<container_type>::key_type const& id) noexcept
-  {
-    return container.at(id);
-  }
 
   // Crash the program if out_of_range exception is raised
   template<typename container_type>
@@ -1204,7 +1198,7 @@ namespace OrthoTree
 
   public: // Getters
     inline auto const& GetNodes() const noexcept { return m_nodes; }
-    inline auto const& GetNode(morton_node_id_type_cref key) const noexcept { return cont_at(m_nodes, key); }
+    inline auto const& GetNode(morton_node_id_type_cref key) const noexcept { return m_nodes.at(key); }
     inline auto const& GetBox() const noexcept { return m_boxSpace; }
     inline auto GetDepthMax() const noexcept { return m_maxDepthNo; }
     inline auto GetResolutionMax() const noexcept { return m_maxRasterResolution; }
@@ -1257,12 +1251,12 @@ namespace OrthoTree
       for (nodeIDsToProceed.push(rootKey); !nodeIDsToProceed.empty(); nodeIDsToProceed.pop())
       {
         autoc& key = nodeIDsToProceed.front();
-        autoc& node = cont_at(m_nodes, key);
+        autoc& node = GetNode(key);
         procedure(key, node);
 
         for (morton_node_id_type_cref childKey : node.GetChildren())
         {
-          if (selector(childKey, cont_at(m_nodes, childKey)))
+          if (selector(childKey, GetNode(childKey)))
             nodeIDsToProceed.push(childKey);
         }
       }
@@ -1314,7 +1308,7 @@ namespace OrthoTree
     // Visit nodes with special selection and procedure in depth-first search order
     void VisitNodesInDFS(morton_node_id_type_cref key, fnProcedure const& procedure, fnSelector const& selector) const noexcept
     {
-      autoc& node = cont_at(m_nodes, key);
+      autoc& node = GetNode(key);
       if (!selector(key, node))
         return;
 
@@ -1752,9 +1746,6 @@ namespace OrthoTree
       if (points.empty())
         return;
 
-      autoc rootKey = base::GetRootKey();
-      auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
-
       auto pointLocations = std::vector<Location>(pointNo);
       auto ept = execution_policy_type{}; // GCC 11.3 only accept in this form
       std::transform(ept, points.begin(), points.end(), pointLocations.begin(), [&](autoc& point) {
@@ -1766,6 +1757,10 @@ namespace OrthoTree
       std::sort(eps, pointLocations.begin(), pointLocations.end(), [&](autoc& leftLocation, autoc& rightLocation) {
         return leftLocation.GridID < rightLocation.GridID;
       });
+
+      autoc rootKey = base::GetRootKey();
+      auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
+
       auto beginIterator = pointLocations.begin();
       tree.addNodes(nodeRoot, rootKey, beginIterator, pointLocations.end(), morton_node_id_type{ 0 }, maxDepthNo);
     }
@@ -1877,7 +1872,7 @@ namespace OrthoTree
       if (!base::IsValidKey(smallestNodeKey))
         return false;
 
-      autoc& node = cont_at(this->m_nodes, smallestNodeKey);
+      autoc& node = this->GetNode(smallestNodeKey);
       return std::ranges::any_of(node.Entities, [&](autoc& entityID) { return AD::are_points_equal(searchPoint, points[entityID], tolerance); });
     }
 
@@ -1976,7 +1971,7 @@ namespace OrthoTree
       autoc smallestNodeKey = FindSmallestNode(searchPoint);
       if (base::IsValidKey(smallestNodeKey))
       {
-        autoc& smallestNode = cont_at(this->m_nodes, smallestNodeKey);
+        autoc& smallestNode = this->GetNode(smallestNodeKey);
         autoc wallDistance = getMinBoxWallDistance(searchPoint, smallestNode.Box);
         createEntityDistance(smallestNode, searchPoint, points, neighborEntities);
         if (!smallestNode.IsAnyChildExist())
@@ -2410,7 +2405,7 @@ namespace OrthoTree
       auto ret = this->doErase(nodeKey, entityID);
       if constexpr (t_remainingDepth > 0)
       {
-        autoc& node = cont_at(this->m_nodes, nodeKey);
+        autoc& node = this->GetNode(nodeKey);
         for (morton_node_id_type_cref childKey : node.GetChildren())
           ret |= doEraseRec<t_remainingDepth - 1>(childKey, entityID);
       }
@@ -2578,12 +2573,12 @@ namespace OrthoTree
 
 
     // Range search
-    template<bool isFullyContained = true>
+    template<bool t_isFullyContained = true>
     std::vector<entity_id_type> RangeSearch(box_type const& range, std::span<box_type const> const& boxes) const noexcept
     {
       auto foundEntities = std::vector<entity_id_type>();
 
-      if (!this->template rangeSearchRoot<box_type, isFullyContained, false, false, true>(range, boxes, foundEntities))
+      if (!this->template rangeSearchRoot<box_type, t_isFullyContained, false, false, true>(range, boxes, foundEntities))
         return {};
 
       if constexpr (t_AdditionalDepthOfSplitStrategy > 0)
@@ -3013,7 +3008,7 @@ namespace OrthoTree
       }
 
       for (autoc childKey : node.GetChildren())
-        getRayIntersectedAll(cont_at(this->m_nodes, childKey), boxes, rayBasePoint, rayHeading, tolerance, maxExaminationDistance, foundEntities);
+        getRayIntersectedAll(this->GetNode(childKey), boxes, rayBasePoint, rayHeading, tolerance, maxExaminationDistance, foundEntities);
     }
 
 
@@ -3042,7 +3037,7 @@ namespace OrthoTree
       auto nodeDistances = std::multiset<BoxDistance>();
       for (autoc childKey : node.GetChildren())
       {
-        autoc& nodeChild = cont_at(this->m_nodes, childKey);
+        autoc& nodeChild = this->GetNode(childKey);
         autoc distance = AD::is_ray_hit(nodeChild.Box, rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
