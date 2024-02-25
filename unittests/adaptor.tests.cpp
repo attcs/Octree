@@ -2,6 +2,7 @@
 
 #include <Eigen/Geometry>
 #include "../adaptor.eigen.h"
+#include "../adaptor.xyz.h"
 
 
 using namespace OrthoTree;
@@ -117,7 +118,7 @@ namespace AdaptorTest
     {
     public:
       TEST_METHOD(PointGeneral3D)
-      {
+      {        
         auto vpt = vector{
           Eigen::Vector3d(0.0, 0.0, 0.0), 
           Eigen::Vector3d(1.0, 1.0, 1.0),
@@ -214,4 +215,117 @@ namespace AdaptorTest
       }
     };
   }
+
+  
+  namespace XYZAdaptorTest
+  {
+    using namespace BasicTypesXYZ;
+
+    TEST_CLASS(XYZTest)
+    {
+    public:
+      TEST_METHOD(PointGeneral3D)
+      {
+        auto vpt = vector{
+          BasicTypesXYZ::Point3D(0.0, 0.0, 0.0), 
+          BasicTypesXYZ::Point3D(1.0, 1.0, 1.0),
+          BasicTypesXYZ::Point3D(2.0, 2.0, 2.0),
+          BasicTypesXYZ::Point3D(3.0, 3.0, 3.0),
+          BasicTypesXYZ::Point3D(4.0, 4.0, 4.0),
+          BasicTypesXYZ::Point3D(0.0, 0.0, 4.0),
+          BasicTypesXYZ::Point3D(0.0, 4.0, 0.0),
+          BasicTypesXYZ::Point3D(4.0, 0.0, 0.0),
+          BasicTypesXYZ::Point3D(1.5, 1.5, 1.0),
+          BasicTypesXYZ::Point3D(1.0, 1.5, 1.5),
+        };
+        auto tree = XYZ::OctreePoint(vpt, 3, std::nullopt, 2);
+        
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+
+        auto searchBox = BasicTypesXYZ::BoundingBox3D{
+          BasicTypesXYZ::Point3D{0.0, 0.0, 0.0},
+          BasicTypesXYZ::Point3D{2.0, 2.0, 2.0}
+        };
+        auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
+        
+        auto sqrt3Reciproc = BasicTypesXYZ::float_t(1.0 / sqrt(3.0));
+        auto pointsInPlane = tree.PlaneSearch(2.6f, BasicTypesXYZ::Point3D{ sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc }, 0.3f, vpt);
+
+        autoc n = vpt.size();
+        vpt.push_back(BasicTypesXYZ::Point3D(1.0, 1.0, 1.5));
+        tree.Insert(n, vpt.back());
+        tree.Erase<false>(0, vpt[0]);
+        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+
+        auto searchPoint = BasicTypesXYZ::Point3D(1.0, 1.0, 1.0);
+        auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
+        
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5, 6, 7, 8, 9 }, pointsInPlane));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 10, 8 }, entityIDsKNN));
+
+        Assert::IsTrue(vector<entity_id_type>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
+        Assert::IsTrue(vector<entity_id_type>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
+        Assert::IsTrue(vector<entity_id_type>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
+      }
+ 
+      TEST_METHOD(BoxGeneral2DC_Example2)
+      {
+        auto boxes = std::vector
+        {
+          BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 0.0f, 0.0f }, BasicTypesXYZ::Point2D{ 1.0f, 1.0f } },
+          BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 1.0f, 1.0f }, BasicTypesXYZ::Point2D{ 2.0f, 2.0f } },
+          BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 2.0f, 2.0f }, BasicTypesXYZ::Point2D{ 3.0f, 3.0f } },
+          BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 3.0f, 3.0f }, BasicTypesXYZ::Point2D{ 4.0f, 4.0f } },
+          BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 1.2f, 1.2f }, BasicTypesXYZ::Point2D{ 2.8f, 2.8f } }
+        };
+
+        auto quadtree = XYZ::QuadtreeBoxC(boxes
+          , 3            // max depth
+          , std::nullopt // user-provided bounding Box for all
+          , 2            // max element in a node 
+          , false        // parallel calculation option
+        );
+
+        auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
+
+        auto searchBox = BasicTypesXYZ::BoundingBox2D{
+          BasicTypesXYZ::Point2D{1.0f, 1.0f},
+          BasicTypesXYZ::Point2D{3.1f, 3.1f}
+        };
+
+        // Boxes within the range
+        auto insideBoxIDs = quadtree.RangeSearch(searchBox); //: { 1, 2, 4 }
+
+        // Overlapping Boxes with the range
+        constexpr bool shouldFullyContain = false; // overlap is enough
+        auto overlappingBoxIDs = quadtree.RangeSearch<shouldFullyContain>(searchBox); //: { 1, 2, 3, 4 }
+
+        // Picked boxes
+        auto pickPoint = BasicTypesXYZ::Point2D{ 2.5f, 2.5f };
+        auto pickedIDs = quadtree.PickSearch(pickPoint); //: { 2, 4 }
+
+        // Ray intersections
+        auto rayBasePoint = BasicTypesXYZ::Point2D{ 1.5f, 2.5f };
+        auto rayHeading = BasicTypesXYZ::Point2D{ 1.5f, 0.5f };
+        auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint, rayHeading, 0.01f); //: 4
+        auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01f); //: { 4, 2, 3 } in distance order!
+
+        // Collect all IDs in breadth/depth first order
+        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<entity_id_type, entity_id_type>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 4}, insideBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 3, 4}, overlappingBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{2, 4}, pickedIDs));
+        Assert::IsTrue(firstIntersectedBox.has_value());
+        Assert::AreEqual(entity_id_type(4), *firstIntersectedBox);
+        Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == intersectedPoints);
+        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
+        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
+      }
+    };
+  } // namespace XYZAdaptorTest
 }
