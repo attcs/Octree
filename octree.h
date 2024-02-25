@@ -117,7 +117,7 @@ namespace OrthoTree
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
- 
+
   template<uint8_t e>
   consteval uint64_t pow2_ce()
   {
@@ -250,7 +250,7 @@ namespace OrthoTree
     {
       auto point = vector_type{};
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
-        base::point_comp(point, dimensionID) = base::point_comp_c(ptL, dimensionID) * rScalarR;
+        base::point_comp(point, dimensionID) = geometry_type(base::point_comp_c(ptL, dimensionID) * rScalarR);
 
       return point;
     }
@@ -943,8 +943,9 @@ namespace OrthoTree
 
           AD::point_comp(AD::box_max(nodeChild.Box), dimensionID) =
             isGreater * AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) +
-            (!isGreater) * ((AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
-                           geometry_type{ 0.5 });
+            (!isGreater) *
+              ((AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
+               geometry_type{ 0.5 });
         }
       }
       return nodeChild;
@@ -1295,7 +1296,7 @@ namespace OrthoTree
         autoc& node = GetNode(key);
         if (!doAvoidSelectionParent && !selector(key, node))
           continue;
-   
+
         autoc doAvoidSelection = doAvoidSelectionParent || selectorUnconditional(key, node);
         procedure(key, node, doAvoidSelection);
 
@@ -2279,7 +2280,7 @@ namespace OrthoTree
 
       autoce isNoSplit = t_AdditionalDepthOfSplitStrategy == 0;
       autoce isNonParallel = std::is_same<execution_policy_type, std::execution::unsequenced_policy>::value ||
-        std::is_same<execution_policy_type, std::execution::sequenced_policy>::value;
+                             std::is_same<execution_policy_type, std::execution::sequenced_policy>::value;
 
       auto epf = execution_policy_type{}; // GCC 11.3
       auto locations = LocationContainer(entityNo);
@@ -2308,13 +2309,14 @@ namespace OrthoTree
 
         locations.resize(additionalLocationSizes.back() + additionalLocations.back().size());
         auto epf2 = execution_policy_type{}; // GCC 11.3
-        std::for_each(epf2, additionalLocations.begin(), additionalLocations.end(), [&locations, &additionalLocationSizes, &additionalLocations](auto& additionalLocation) {
-          if (additionalLocation.empty())
-            return;
+        std::for_each(
+          epf2, additionalLocations.begin(), additionalLocations.end(), [&locations, &additionalLocationSizes, &additionalLocations](auto& additionalLocation) {
+            if (additionalLocation.empty())
+              return;
 
-          entity_id_type const entityID = std::distance(&additionalLocations[0], &additionalLocation);
-          std::copy(additionalLocation.begin(), additionalLocation.end(), std::next(locations.begin(), additionalLocationSizes[entityID]));
-        });
+            entity_id_type const entityID = std::distance(&additionalLocations[0], &additionalLocation);
+            std::copy(additionalLocation.begin(), additionalLocation.end(), std::next(locations.begin(), additionalLocationSizes[entityID]));
+          });
       }
 
       auto eps = execution_policy_type{}; // GCC 11.3
@@ -3009,7 +3011,7 @@ namespace OrthoTree
       {
         autoc entityDistance = AD::is_ray_hit(boxes[entityID], rayBasePoint, rayHeading, tolerance);
         if (entityDistance && (maxExaminationDistance == 0 || entityDistance.value() <= maxExaminationDistance))
-          foundEntities.push_back({ { entityDistance.value() }, entityID });
+          foundEntities.push_back({ { geometry_type(entityDistance.value()) }, entityID });
       }
 
       for (autoc childKey : node.GetChildren())
@@ -3036,7 +3038,7 @@ namespace OrthoTree
         if (*distance > maxExaminationDistance)
           continue;
 
-        foundEntities.insert({ { *distance }, entityID });
+        foundEntities.insert({ { geometry_type(*distance) }, entityID });
       }
 
       auto nodeDistances = std::multiset<BoxDistance>();
