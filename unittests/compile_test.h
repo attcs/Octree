@@ -57,9 +57,7 @@ void testCompilePoint()
     autoc extent = tree.CalculateExtent(keyRoot);
 
     autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
-
-    auto allidDFS = std::vector<OrthoTree::entity_id_type>{};
-    tree.CollectAllIdInDFS(keyRoot, allidDFS);
+    autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
 
     autoc nodeSmallest = tree.FindSmallestNode(vpt.back());
 
@@ -74,6 +72,7 @@ void testCompilePoint()
     autoc aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
     autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
     autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
+    autoc aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
 
     autoc kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
@@ -134,9 +133,7 @@ void testCompileBox()
     autoc extent = tree.CalculateExtent(keyRoot);
 
     autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
-
-    auto allidDFS = std::vector<OrthoTree::entity_id_type>{};
-    tree.CollectAllIdInDFS(keyRoot, allidDFS);
+    autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
 
     autoc nodeSmallest = tree.FindSmallestNode(boxes.back());
 

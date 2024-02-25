@@ -1639,10 +1639,11 @@ namespace OrthoTree
 
 
   public:
-    void CollectAllIdInDFS(morton_grid_id_type_cref parentKey, std::vector<entity_id_type>& entityIDs) const noexcept
+    std::vector<entity_id_type> CollectAllIdInDFS(morton_grid_id_type_cref parentKey) const noexcept
     {
-      autoc& node = cont_at(this->m_nodes, parentKey);
-      collectAllIdInDFS(node, entityIDs);
+      auto entityIDs = std::vector<entity_id_type>{};
+      collectAllIdInDFS(GetNode(parentKey), entityIDs);
+      return entityIDs;
     }
   };
 
