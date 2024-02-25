@@ -1252,13 +1252,13 @@ namespace OrthoTree
       {
         autoc& key = nodeIDsToProceed.front();
         autoc& node = GetNode(key);
+        if (!selector(key, node))
+          continue;
+
         procedure(key, node);
 
         for (morton_node_id_type_cref childKey : node.GetChildren())
-        {
-          if (selector(childKey, GetNode(childKey)))
-            nodeIDsToProceed.push(childKey);
-        }
+          nodeIDsToProceed.push(childKey);
       }
     }
 
@@ -1280,27 +1280,23 @@ namespace OrthoTree
       struct Search
       {
         morton_node_id_type Key;
-        Node const& Node;
-        depth_type DepthID;
-        bool DoAvoidSelection;
+        bool DoAvoidSelectionParent;
       };
 
-      autoc nDepthRoot = GetDepthID(rootKey);
       auto nodesToProceed = std::queue<Search>();
-      for (nodesToProceed.push({ rootKey, cont_at(m_nodes, rootKey), nDepthRoot, false }); !nodesToProceed.empty(); nodesToProceed.pop())
+      for (nodesToProceed.push({ rootKey, false }); !nodesToProceed.empty(); nodesToProceed.pop())
       {
-        autoc& item = nodesToProceed.front();
-        procedure(item.Key, item.Node, item.DoAvoidSelection);
+        autoc & [key, doAvoidSelectionParent] = nodesToProceed.front();
 
-        autoc childDepthID = depth_type{ item.DepthID + 1 };
-        for (morton_node_id_type childKey : item.Node.GetChildren())
-        {
-          autoc& childNode = cont_at(m_nodes, childKey);
-          if (item.DoAvoidSelection)
-            nodesToProceed.push({ childKey, childNode, childDepthID, true });
-          else if (selector(childKey, childNode))
-            nodesToProceed.push({ childKey, childNode, childDepthID, selectorUnconditional(childKey, childNode) });
-        }
+        autoc& node = GetNode(key);
+        if (!doAvoidSelectionParent && !selector(key, node))
+          continue;
+   
+        autoc doAvoidSelection = doAvoidSelectionParent || selectorUnconditional(key, node);
+        procedure(key, node, doAvoidSelection);
+
+        for (morton_node_id_type childKey : node.GetChildren())
+          nodesToProceed.push({ childKey, doAvoidSelection });
       }
     }
 
