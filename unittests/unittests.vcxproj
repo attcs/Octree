@@ -192,6 +192,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\adaptor.eigen.h" />
+    <ClInclude Include="..\adaptor.unreal.h" />
     <ClInclude Include="..\adaptor.xyz.h" />
     <ClInclude Include="..\octree.h" />
     <ClInclude Include="..\octree_container.h" />
