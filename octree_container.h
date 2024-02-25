@@ -86,6 +86,8 @@ namespace OrthoTree
       m_tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
     }
 
+    data_type const& Get(entity_id_type entityID) const noexcept { return m_geometryCollection[entityID]; }
+
     bool Add(data_type const& data, bool doInsertToLeaf = false) noexcept
     {
       autoc id = m_geometryCollection.size();
@@ -128,10 +130,21 @@ namespace OrthoTree
       m_tree.Clear();
       m_geometryCollection.clear();
     }
+
     inline void Reset() noexcept
     {
       m_tree.Reset();
       m_geometryCollection.clear();
+    }
+
+    inline std::vector<entity_id_type> CollectAllIdInBFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    {
+      return m_tree.CollectAllIdInBFS(parentKey);
+    }
+
+    inline std::vector<entity_id_type> CollectAllIdInDFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    {
+      return m_tree.CollectAllIdInDFS(parentKey);
     }
   };
 
