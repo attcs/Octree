@@ -274,6 +274,8 @@ namespace OrthoTree
       return distance2(ptL, ptR) <= rAccuracy * rAccuracy;
     }
 
+    static constexpr bool is_normalized_vector(vector_type const& normal) noexcept { return abs(size2(normal) - 1.0) < 0.000001; }
+
     static constexpr bool does_box_contain_point(box_type const& box, vector_type const& point, geometry_type tolerance = 0) noexcept
     {
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
@@ -457,6 +459,8 @@ namespace OrthoTree
     // Plane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
     static constexpr bool does_plane_intersect(box_type const& box, geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) noexcept
     {
+      assert(is_normalized_vector(planeNormal));
+
       autoc& minPoint = base::box_min_c(box);
       autoc& maxPoint = base::box_max_c(box);
 
@@ -1891,6 +1895,8 @@ namespace OrthoTree
     inline std::vector<entity_id_type> PlaneSearch(
       geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<vector_type const> const& points) const noexcept
     {
+      assert(AD::is_normalized_vector(planeNormal));
+
       auto results = std::vector<entity_id_type>{};
       if constexpr (t_DimensionNo < 3) // under 3 dimension, every boxes will be intersected.
       {
@@ -2593,6 +2599,8 @@ namespace OrthoTree
     std::vector<entity_id_type> PlaneIntersection(
       geometry_type const& distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<box_type const> const& boxes) const noexcept
     {
+      assert(AD::is_normalized_vector(planeNormal));
+
       auto results = std::vector<entity_id_type>{};
       if constexpr (t_DimensionNo < 3) // under 3 dimension, every boxes will be intersected.
       {
