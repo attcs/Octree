@@ -104,8 +104,11 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
   // Octree for bounding boxes (3D)
   using OctreeBoxC = TreeBoxContainerND<3>;
 ```
-
-
+## Attached adapters
+* Default: `std::array` based `PointND`, `BoundingBoxND`
+* {x,y,z}-based `struct` (adaptor.xyz.h)
+* Eigen: `Eigen::OctreePoint3d`, `Eigen::OctreePointC3d`, `Eigen::OctreeBox3d`, `Eigen::OctreeBoxC3d`, etc. (adaptor.eigen.h)
+* Unreal Engine: `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
 ## Basic examples
 
 Usage of Container types
