@@ -802,7 +802,8 @@ namespace OrthoTree
       Node const& Node;
     };
 
-    using DimensionArray = std::array<double, t_DimensionNo>;
+    template<typename T>
+    using DimArray = std::array<T, t_DimensionNo>;
 
     template<typename data_type>
     using UnderlyingContainer =
@@ -816,9 +817,9 @@ namespace OrthoTree
     grid_id_type m_maxRasterID = {};
     max_element_type m_maxElementNo = 11;
     double m_volumeOfOverallSpace = {};
-    DimensionArray m_rasterizerFactors;
-    DimensionArray m_sizeInDimensions;
-    DimensionArray m_minInDimensions;
+    DimArray<double> m_rasterizerFactors;
+    DimArray<double> m_sizeInDimensions;
+    DimArray<double> m_minInDimensions;
 
 
   protected: // Aid functions
@@ -831,26 +832,29 @@ namespace OrthoTree
     static constexpr child_id_type convertMortonIdToChildId(uint64_t morton) noexcept { return morton; }
 
   protected: // Grid functions
-    static constexpr std::tuple<DimensionArray, DimensionArray> getGridRasterizer(
-      vector_type const& minPoint, vector_type const& maxPoint, grid_id_type subDivisionNo) noexcept
+    struct RasterInfo
     {
-      auto ret = std::tuple<DimensionArray, DimensionArray>{};
-      auto& [rasterizerFactors, boxSizes] = ret;
+      DimArray<double> rasterizerFactors;
+      DimArray<double> sizeInDimensions;
+    };
+    static constexpr RasterInfo getGridRasterizer(vector_type const& minPoint, vector_type const& maxPoint, grid_id_type subDivisionNo) noexcept 
+    {
+      auto ri = RasterInfo{};
       autoc subDivisionNoFactor = static_cast<double>(subDivisionNo);
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
-        boxSizes[dimensionID] =
+        ri.sizeInDimensions[dimensionID] =
           static_cast<double>(adaptor_type::point_comp_c(maxPoint, dimensionID) - adaptor_type::point_comp_c(minPoint, dimensionID));
-        rasterizerFactors[dimensionID] = boxSizes[dimensionID] == 0 ? 1.0 : (subDivisionNoFactor / boxSizes[dimensionID]);
+        ri.rasterizerFactors[dimensionID] = ri.sizeInDimensions[dimensionID] == 0 ? 1.0 : (subDivisionNoFactor / ri.sizeInDimensions[dimensionID]);
       }
 
-      return ret;
+      return ri;
     }
 
 
-    constexpr std::array<grid_id_type, t_DimensionNo> getGridIdPoint(vector_type const& point) const noexcept
+    constexpr DimArray<grid_id_type> getGridIdPoint(vector_type const& point) const noexcept
     {
-      auto gridIDs = std::array<grid_id_type, t_DimensionNo>{};
+      auto gridIDs = DimArray<grid_id_type>{};
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
         autoc pointComponent =
@@ -862,11 +866,11 @@ namespace OrthoTree
     }
 
 
-    constexpr std::array<std::array<grid_id_type, t_DimensionNo>, 2> getGridIdBox(box_type const& box) const noexcept
+    constexpr std::array<DimArray<grid_id_type>, 2> getGridIdBox(box_type const& box) const noexcept
     {
       autoc& minPointOfSpace = AD::box_min_c(m_boxSpace);
 
-      auto aid = std::array<std::array<grid_id_type, t_DimensionNo>, 2>{};
+      auto aid = std::array<DimArray<grid_id_type>, 2>{};
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
         autoc minComponentRasterID =
@@ -907,8 +911,8 @@ namespace OrthoTree
       auto& nodeChild = m_nodes[childKey];
       if constexpr (std::is_integral_v<geometry_type>)
       {
-        DimensionArray minNodePoint = this->m_minInDimensions;
-        DimensionArray maxNodePoint;
+        DimArray<double> minNodePoint = this->m_minInDimensions;
+        DimArray<double> maxNodePoint;
 
         autoc nDepth = this->GetDepthID(childKey);
         auto mask = morton_node_id_type{ 1 } << (nDepth * t_DimensionNo - 1);
@@ -1151,7 +1155,7 @@ namespace OrthoTree
     }
 
   public:
-    static inline morton_grid_id_type MortonEncode(std::array<grid_id_type, t_DimensionNo> const& gridID) noexcept
+    static inline morton_grid_id_type MortonEncode(DimArray<grid_id_type> const& gridID) noexcept
     {
       if constexpr (t_DimensionNo == 1)
         return morton_grid_id_type(gridID[0]);
@@ -1183,9 +1187,9 @@ namespace OrthoTree
       }
     }
 
-    static std::array<grid_id_type, t_DimensionNo> MortonDecode(morton_node_id_type_cref nodeKey, depth_type maxDepthNo) noexcept
+    static DimArray<grid_id_type> MortonDecode(morton_node_id_type_cref nodeKey, depth_type maxDepthNo) noexcept
     {
-      auto gridID = std::array<grid_id_type, t_DimensionNo>{};
+      auto gridID = DimArray<grid_id_type>{};
       if constexpr (t_DimensionNo == 1)
         return { RemoveSentinelBit(nodeKey) };
       else
@@ -1240,8 +1244,9 @@ namespace OrthoTree
 
       auto& nodeRoot = this->m_nodes[GetRootKey()];
       nodeRoot.Box = box;
-      tie(this->m_rasterizerFactors, this->m_sizeInDimensions) =
-        this->getGridRasterizer(AD::box_min_c(this->m_boxSpace), AD::box_max_c(this->m_boxSpace), this->m_maxRasterResolution);
+      autoc ri = this->getGridRasterizer(AD::box_min_c(this->m_boxSpace), AD::box_max_c(this->m_boxSpace), this->m_maxRasterResolution);
+      this->m_rasterizerFactors = std::move(ri.rasterizerFactors);
+      this->m_sizeInDimensions = std::move(ri.sizeInDimensions);
 
       LOOPIVDEP
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
@@ -1370,7 +1375,7 @@ namespace OrthoTree
 
       minNodePoint = minSpacePoint;
 
-      auto spaceSizes = std::array<geometry_type, t_DimensionNo>();
+      auto spaceSizes = DimArray<geometry_type>();
       LOOPIVDEP
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
         spaceSizes[dimensionID] = AD::point_comp_c(maxSpacePoint, dimensionID) - AD::point_comp_c(minSpacePoint, dimensionID);
@@ -1457,9 +1462,9 @@ namespace OrthoTree
     template<dim_type t_dimensionID>
     static constexpr void constructGridIDListRecursively(
       grid_id_type gridStepNo,
-      std::array<GridBoundary, t_DimensionNo> const& gridIDBoundaries,
-      std::array<grid_id_type, t_DimensionNo>& currentGridID,
-      std::vector<std::array<grid_id_type, t_DimensionNo>>& allGridID) noexcept
+      DimArray<GridBoundary> const& gridIDBoundaries,
+      DimArray<grid_id_type>& currentGridID,
+      std::vector<DimArray<grid_id_type>>& allGridID) noexcept
     {
       if constexpr (t_dimensionID == 0)
         allGridID.emplace_back(currentGridID);
@@ -2045,6 +2050,8 @@ namespace OrthoTree
     using EntityDistance = typename base::EntityDistance;
     using BoxDistance = typename base::BoxDistance;
     using GridBoundary = typename base::GridBoundary;
+    template<typename T>
+    using DimArray = std::array<T, t_DimensionNo>;
 
   public:
     using AD = typename base::AD;
@@ -2160,7 +2167,7 @@ namespace OrthoTree
 
 
     void split(
-      std::array<std::array<grid_id_type, t_DimensionNo>, 2> const& boxMinMaxGridID,
+      std::array<DimArray<grid_id_type>, 2> const& boxMinMaxGridID,
       size_t entityID,
       LocationContainer& locations,
       LocationContainer* additionalLocations) const noexcept
@@ -2172,7 +2179,7 @@ namespace OrthoTree
       autoc remainingDepthNo = static_cast<depth_type>(this->m_maxDepthNo - depthID);
       autoc gridStepNo = static_cast<grid_id_type>(pow2(remainingDepthNo));
 
-      auto gridBoundaries = std::array<GridBoundary, t_DimensionNo>{};
+      auto gridBoundaries = DimArray<GridBoundary>{};
       uint64_t boxNoByGrid = 1;
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
@@ -2186,9 +2193,9 @@ namespace OrthoTree
         gridBoundaries[dimensionID] = { boxMinMaxGridID[0][dimensionID], firstGridSplit, lastGridSplit + 1 };
       }
 
-      auto gridIDs = std::vector<std::array<grid_id_type, t_DimensionNo>>{};
+      auto gridIDs = std::vector<DimArray<grid_id_type>>{};
       gridIDs.reserve(boxNoByGrid);
-      auto temporaryGridID = std::array<grid_id_type, t_DimensionNo>{};
+      auto temporaryGridID = DimArray<grid_id_type>{};
       base::template constructGridIDListRecursively<t_DimensionNo>(gridStepNo, gridBoundaries, temporaryGridID, gridIDs);
 
       autoc boxNo = gridIDs.size();
@@ -2345,7 +2352,7 @@ namespace OrthoTree
 
   public: // Edit functions
     // Find smallest node which contains the box by grid id description
-    morton_node_id_type FindSmallestNode(std::array<std::array<grid_id_type, t_DimensionNo>, 2> const& entityMinMaxGridID) const noexcept
+    morton_node_id_type FindSmallestNode(std::array<DimArray<grid_id_type>, 2> const& entityMinMaxGridID) const noexcept
     {
       auto minLocationID = base::MortonEncode(entityMinMaxGridID[0]);
       auto maxLocationID = base::MortonEncode(entityMinMaxGridID[1]);
@@ -2502,11 +2509,11 @@ namespace OrthoTree
 
 
   private:
-    constexpr std::array<std::array<grid_id_type, t_DimensionNo>, 2> getGridIdPointEdge(vector_type const& point) const noexcept
+    constexpr std::array<DimArray<grid_id_type>, 2> getGridIdPointEdge(vector_type const& point) const noexcept
     {
       autoc& minSpacePoint = AD::box_min_c(this->m_boxSpace);
 
-      auto pointMinMaxGridID = std::array<std::array<grid_id_type, t_DimensionNo>, 2>{};
+      auto pointMinMaxGridID = std::array<DimArray<grid_id_type>, 2>{};
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
         autoc rasterID = static_cast<double>(adaptor_type::point_comp_c(point, dimensionID) - adaptor_type::point_comp_c(minSpacePoint, dimensionID)) *
@@ -3114,18 +3121,23 @@ namespace OrthoTree
 
 
   template<dim_type t_DimensionNo, typename geometry_type = double>
-  using PointND = std::array<geometry_type, t_DimensionNo>;
+  using VectorND = std::array<geometry_type, t_DimensionNo>;
 
+  template<dim_type t_DimensionNo, typename geometry_type = double>
+  using PointND = VectorND<t_DimensionNo, geometry_type>;
 
   template<dim_type t_DimensionNo, typename geometry_type = double>
   struct BoundingBoxND
   {
-    PointND<t_DimensionNo, geometry_type> Min;
-    PointND<t_DimensionNo, geometry_type> Max;
+    VectorND<t_DimensionNo, geometry_type> Min;
+    VectorND<t_DimensionNo, geometry_type> Max;
   };
 
 
   // Aliases
+  using Vector1D = OrthoTree::VectorND<1>;
+  using Vector2D = OrthoTree::VectorND<2>;
+  using Vector3D = OrthoTree::VectorND<3>;
   using Point1D = OrthoTree::PointND<1>;
   using Point2D = OrthoTree::PointND<2>;
   using Point3D = OrthoTree::PointND<3>;
@@ -3134,13 +3146,13 @@ namespace OrthoTree
   using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
 
   template<size_t t_DimensionNo>
-  using TreePointND = OrthoTree::OrthoTreePoint<t_DimensionNo, OrthoTree::PointND<t_DimensionNo>, OrthoTree::BoundingBoxND<t_DimensionNo>>;
+  using TreePointND = OrthoTree::OrthoTreePoint<t_DimensionNo, OrthoTree::VectorND<t_DimensionNo>, OrthoTree::BoundingBoxND<t_DimensionNo>>;
   template<size_t t_DimensionNo, uint32_t t_AdditionalDepthOfSplitStrategy = 2>
   using TreeBoxND = OrthoTree::OrthoTreeBoundingBox<
     t_DimensionNo,
-    OrthoTree::PointND<t_DimensionNo>,
+    OrthoTree::VectorND<t_DimensionNo>,
     OrthoTree::BoundingBoxND<t_DimensionNo>,
-    AdaptorGeneral<t_DimensionNo, OrthoTree::PointND<t_DimensionNo>, OrthoTree::BoundingBoxND<t_DimensionNo>>,
+    AdaptorGeneral<t_DimensionNo, OrthoTree::VectorND<t_DimensionNo>, OrthoTree::BoundingBoxND<t_DimensionNo>>,
     double,
     t_AdditionalDepthOfSplitStrategy>;
 
