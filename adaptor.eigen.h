@@ -57,9 +57,9 @@ namespace OrthoTree
 
       static_assert(AdaptorBasicsConcept<base, VectorType_, AlignedBox_, Scalar_>);
 
-      static constexpr Scalar_ size2(VectorType_ const& v) noexcept { return v.abs2(); }
+      static constexpr Scalar_ size2(VectorType_ const& v) noexcept { return v.squaredNorm(); }
 
-      static constexpr Scalar_ size(VectorType_ const& point) noexcept { return point.abs(); }
+      static constexpr Scalar_ size(VectorType_ const& v) noexcept { return v.norm(); }
 
       static constexpr VectorType_ add(VectorType_ const& v1, VectorType_ const& v2) noexcept { return v1 + v2; }
 
@@ -102,24 +102,26 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr bool are_boxes_overlapped_strict(AlignedBox_ const& e1, AlignedBox_ const& e2) noexcept { return e1.intersects(e2); }
+      static constexpr bool are_boxes_overlapped_strict(AlignedBox_ const& e1, AlignedBox_ const& e2) noexcept 
+      { 
+        autoc e3 = e1.intersection(e2);
+        autoc sizes = e3.sizes();
+        for (autoc size : sizes)
+          if (size <= 0.0)
+            return false;
+
+        return true;
+      }
 
       static constexpr bool are_boxes_overlapped(
         AlignedBox_ const& e1, AlignedBox_ const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
       {
         if (e1_must_contain_e2)
-        {
           return e1.contains(e2);
-        }
         else if (!fOverlapPtTouchAllowed)
-        {
-          autoc e3 = e1.intersection(e2);
-          return e3.volume() > 0;
-        }
+          return are_boxes_overlapped_strict(e1, e2);
         else
-        {
           return e1.intersects(e2);
-        }
       }
 
       static AlignedBox_ box_of_points(std::span<VectorType_ const> const& points) noexcept
@@ -209,11 +211,6 @@ namespace OrthoTree
       }
     };
 
-
-    template<typename Scalar_, int AmbientDim_>
-    using EigenAdaptorGeneral =
-      AdaptorGeneralBase<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorBasics<Scalar_, AmbientDim_>, Scalar_>;
-
   } // namespace EigenAdaptor
 } // namespace OrthoTree
 
@@ -226,11 +223,11 @@ namespace Eigen
   // Basic OrthoTree types
   template<typename Scalar_, int AmbientDim_>
   using EigenOrthoTreePoint =
-    OrthoTreePoint<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneral<Scalar_, AmbientDim_>, Scalar_>;
+    OrthoTreePoint<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneralBase<Scalar_, AmbientDim_>, Scalar_>;
 
   template<typename Scalar_, int AmbientDim_, uint32_t AdditionalDepthOfSplitStrategy_ = 2>
   using EigenOrthoTreeBox =
-    OrthoTreeBoundingBox<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneral<Scalar_, AmbientDim_>, Scalar_, AdditionalDepthOfSplitStrategy_>;
+    OrthoTreeBoundingBox<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneralBase<Scalar_, AmbientDim_>, Scalar_, AdditionalDepthOfSplitStrategy_>;
 
   template<typename Scalar_, int AmbientDim_>
   using OrthoTreeContainerPointC = OrthoTreeContainerPoint<EigenOrthoTreePoint<Scalar_, AmbientDim_>, Matrix<Scalar_, AmbientDim_, 1>>;
