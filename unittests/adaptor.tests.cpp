@@ -154,13 +154,13 @@ namespace AdaptorTest
         auto searchPoint = Eigen::Vector3d(1.0, 1.0, 1.0);
         auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
         
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5, 6, 7, 8, 9 }, pointsInPlane));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 10, 8 }, entityIDsKNN));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5, 6, 7, 8, 9 }, pointsInPlane));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 10, 8 }, entityIDsKNN));
 
-        Assert::IsTrue(vector<entity_id_type>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
-        Assert::IsTrue(vector<entity_id_type>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
-        Assert::IsTrue(vector<entity_id_type>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
+        Assert::IsTrue(vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
+        Assert::IsTrue(vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
+        Assert::IsTrue(vector<std::size_t>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
       }
  
       TEST_METHOD(BoxGeneral2DC_Example2)
@@ -206,15 +206,15 @@ namespace AdaptorTest
         auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
         auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
 
-        Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<entity_id_type, entity_id_type>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 4}, insideBoxIDs));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 3, 4}, overlappingBoxIDs));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{2, 4}, pickedIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<std::size_t, std::size_t>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 4}, insideBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 3, 4}, overlappingBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{2, 4}, pickedIDs));
         Assert::IsTrue(firstIntersectedBox.has_value());
-        Assert::AreEqual(entity_id_type(4), *firstIntersectedBox);
-        Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == intersectedPoints);
-        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
-        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
+        Assert::AreEqual(std::size_t(4), *firstIntersectedBox);
+        Assert::IsTrue(vector<std::size_t>{ 4, 2, 3 } == intersectedPoints);
+        Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
+        Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
       }
     };
   }
@@ -264,13 +264,13 @@ namespace AdaptorTest
         auto searchPoint = BasicTypesXYZ::Point3D(1.0, 1.0, 1.0);
         auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
         
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 5, 6, 7, 8, 9 }, pointsInPlane));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{ 1, 10, 8 }, entityIDsKNN));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5, 6, 7, 8, 9 }, pointsInPlane));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 10, 8 }, entityIDsKNN));
 
-        Assert::IsTrue(vector<entity_id_type>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
-        Assert::IsTrue(vector<entity_id_type>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
-        Assert::IsTrue(vector<entity_id_type>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
+        Assert::IsTrue(vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
+        Assert::IsTrue(vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
+        Assert::IsTrue(vector<std::size_t>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
       }
  
       TEST_METHOD(BoxGeneral2DC_Example2)
@@ -319,15 +319,15 @@ namespace AdaptorTest
         auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
         auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
 
-        Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<entity_id_type, entity_id_type>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 4}, insideBoxIDs));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{1, 2, 3, 4}, overlappingBoxIDs));
-        Assert::IsTrue(std::ranges::is_permutation(vector<entity_id_type>{2, 4}, pickedIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<std::size_t, std::size_t>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 4}, insideBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 3, 4}, overlappingBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{2, 4}, pickedIDs));
         Assert::IsTrue(firstIntersectedBox.has_value());
-        Assert::AreEqual(entity_id_type(4), *firstIntersectedBox);
-        Assert::IsTrue(vector<entity_id_type>{ 4, 2, 3 } == intersectedPoints);
-        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
-        Assert::IsTrue(vector<entity_id_type>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
+        Assert::AreEqual(std::size_t(4), *firstIntersectedBox);
+        Assert::IsTrue(vector<std::size_t>{ 4, 2, 3 } == intersectedPoints);
+        Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
+        Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
       }
     };
   } // namespace XYZAdaptorTest

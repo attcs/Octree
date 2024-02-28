@@ -86,7 +86,7 @@ namespace OrthoTree
       m_tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
     }
 
-    data_type const& Get(entity_id_type entityID) const noexcept { return m_geometryCollection[entityID]; }
+    data_type const& Get(std::size_t entityID) const noexcept { return m_geometryCollection[entityID]; }
 
     bool Add(data_type const& data, bool doInsertToLeaf = false) noexcept
     {
@@ -100,7 +100,7 @@ namespace OrthoTree
       return false;
     }
 
-    bool Update(entity_id_type id, data_type const& newData, bool doInsertToLeaf = false) noexcept
+    bool Update(std::size_t id, data_type const& newData, bool doInsertToLeaf = false) noexcept
     {
       if (m_tree.Update(id, m_geometryCollection[id], newData, doInsertToLeaf))
       {
@@ -111,7 +111,7 @@ namespace OrthoTree
       return false;
     }
 
-    bool Erase(entity_id_type id) noexcept
+    bool Erase(std::size_t id) noexcept
     {
       if (m_geometryCollection.size() <= id)
         return false;
@@ -137,12 +137,12 @@ namespace OrthoTree
       m_geometryCollection.clear();
     }
 
-    inline std::vector<entity_id_type> CollectAllIdInBFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    inline std::vector<std::size_t> CollectAllIdInBFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllIdInBFS(parentKey);
     }
 
-    inline std::vector<entity_id_type> CollectAllIdInDFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    inline std::vector<std::size_t> CollectAllIdInDFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllIdInDFS(parentKey);
     }
@@ -202,19 +202,19 @@ namespace OrthoTree
   public:
     // Range search
     template<bool t_doesLeafNodeContainElementOnly = false>
-    inline std::vector<entity_id_type> RangeSearch(box_type const& range) const noexcept
+    inline std::vector<std::size_t> RangeSearch(box_type const& range) const noexcept
     {
       return this->m_tree.RangeSearch(range, this->m_geometryCollection);
     }
 
     // Plane search (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
-    inline std::vector<entity_id_type> PlaneSearch(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneSearch(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
     {
       return this->m_tree.PlaneSearch(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
     }
 
     // K Nearest Neighbor
-    inline std::vector<entity_id_type> GetNearestNeighbors(vector_type const& pt, size_t k) const noexcept
+    inline std::vector<std::size_t> GetNearestNeighbors(vector_type const& pt, size_t k) const noexcept
     {
       return this->m_tree.GetNearestNeighbors(pt, k, this->m_geometryCollection);
     }
@@ -275,20 +275,20 @@ namespace OrthoTree
 
   public: // Search functions
     // Pick search
-    inline std::vector<entity_id_type> PickSearch(vector_type const& pickPoint) const noexcept
+    inline std::vector<std::size_t> PickSearch(vector_type const& pickPoint) const noexcept
     {
       return this->m_tree.PickSearch(pickPoint, this->m_geometryCollection);
     }
 
     // Range search
     template<bool isFullyContained = true>
-    inline std::vector<entity_id_type> RangeSearch(box_type const& range) const noexcept
+    inline std::vector<std::size_t> RangeSearch(box_type const& range) const noexcept
     {
       return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_geometryCollection);
     }
 
     // Plane intersection (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
-    inline std::vector<entity_id_type> PlaneIntersection(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneIntersection(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
     {
       return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
     }
@@ -296,19 +296,19 @@ namespace OrthoTree
   public: // Collision detection
     // Collision detection between the contained elements
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    inline std::vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection() const noexcept
+    inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection() const noexcept
     {
       return this->m_tree.template CollisionDetection<execution_policy_type>(this->m_geometryCollection);
     }
 
     // Collision detection with another tree
-    inline std::vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(OrthoTreeContainerBox const& otherTree) const noexcept
+    inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(OrthoTreeContainerBox const& otherTree) const noexcept
     {
       return this->m_tree.CollisionDetection(this->m_tree, this->m_geometryCollection, otherTree.m_tree, otherTree.m_geometryCollection);
     }
 
     // Collision detection between trees
-    static inline std::vector<std::pair<entity_id_type, entity_id_type>> CollisionDetection(
+    static inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(
       OrthoTreeContainerBox const& leftTree, OrthoTreeContainerBox const& rightTree) noexcept
     {
       return leftTree.CollisionDetection(rightTree);
@@ -317,7 +317,7 @@ namespace OrthoTree
 
   public: // Ray intersection
     // Get all Box which is intersected by the ray in order
-    inline std::vector<entity_id_type> RayIntersectedAll(
+    inline std::vector<std::size_t> RayIntersectedAll(
       vector_type const& rayBasePoint,
       vector_type const& rayHeading,
       geometry_type tolerance,
@@ -327,7 +327,7 @@ namespace OrthoTree
     }
 
     // Get first Box which is intersected by the ray
-    inline std::optional<entity_id_type> RayIntersectedFirst(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance) const noexcept
+    inline std::optional<std::size_t> RayIntersectedFirst(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance) const noexcept
     {
       return this->m_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->m_geometryCollection, tolerance);
     }

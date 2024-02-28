@@ -355,10 +355,10 @@ namespace
   }
 
   template <typename vector_type, typename box_type>
-  vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<box_type const> const& vBox)
+  vector<vector<std::size_t>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<box_type const> const& vBox)
   {
     autoc n = vBox.size();
-    auto vElementFound = vector<vector<OrthoTree::entity_id_type>>();
+    auto vElementFound = vector<vector<std::size_t>>();
     vElementFound.reserve(n);
     for (autoc& boxSearch : vSearchBox)
     {
@@ -373,18 +373,18 @@ namespace
   }
 
   template <typename vector_type, typename box_type, typename execution_policy_type = std::execution::unsequenced_policy>
-  vector<std::pair<entity_id_type, entity_id_type>> SelfConflicthNaive(span<box_type const> const& vBox)
+  vector<std::pair<std::size_t, std::size_t>> SelfConflicthNaive(span<box_type const> const& vBox)
   {
     autoc nEntity = vBox.size();
 
-    auto vidCheck = vector<entity_id_type>(nEntity);
+    auto vidCheck = vector<std::size_t>(nEntity);
     std::iota(std::begin(vidCheck), std::end(vidCheck), 0);
 
-    auto vvidCollision = vector<vector<entity_id_type>>(vidCheck.size());
+    auto vvidCollision = vector<vector<std::size_t>>(vidCheck.size());
     auto ep = execution_policy_type{};
-    std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](autoc idCheck) -> vector<entity_id_type>
+    std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](autoc idCheck) -> vector<std::size_t>
     {
-      auto sidFound = vector<entity_id_type>();
+      auto sidFound = vector<std::size_t>();
       for (size_t i = idCheck + 1; i < nEntity; ++i)
         if (AdaptorGeneral<N, vector_type, box_type>::are_boxes_overlapped(vBox[idCheck], vBox[i], false))
           sidFound.emplace_back(i);
@@ -392,7 +392,7 @@ namespace
       return sidFound;
     });
 
-    auto vPair = vector<std::pair<entity_id_type, entity_id_type>>{};
+    auto vPair = vector<std::pair<std::size_t, std::size_t>>{};
     if (nEntity > 10)
       vPair.reserve(nEntity / 10);
 
@@ -405,10 +405,10 @@ namespace
 
 
   template <typename vector_type, typename box_type>
-  vector<vector<OrthoTree::entity_id_type>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<vector_type const> const& vPoint)
+  vector<vector<std::size_t>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<vector_type const> const& vPoint)
   {
     autoc n = vPoint.size();
-    auto vElementFound = vector<vector<OrthoTree::entity_id_type>>();
+    auto vElementFound = vector<vector<OrthoTree::std::size_t>>();
     vElementFound.reserve(n);
     for (autoc& boxSearch : vSearchBox)
     {
