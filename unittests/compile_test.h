@@ -302,6 +302,8 @@ void testCompileBoxC()
 template<typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxBatchDimension()
 {
+  autoce isPlatform64 = sizeof(std::size_t) == 8;
+
   // Core types
   {
     testCompilePoint<2, execution_policy_type>();
@@ -313,9 +315,13 @@ void testCompileBoxBatchDimension()
     testCompilePoint<8, execution_policy_type>();
     testCompilePoint<12, execution_policy_type>();
     testCompilePoint<16, execution_policy_type>();
-    testCompilePoint<32, execution_policy_type>();
-    testCompilePoint<63, execution_policy_type>();
-    
+    testCompilePoint<31, execution_policy_type>();
+    if constexpr (isPlatform64)
+    {
+      testCompilePoint<32, execution_policy_type>();
+      testCompilePoint<63, execution_policy_type>();
+    }
+
     testCompileBox<2, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBox<3, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBox<4, execution_policy_type, nSplitStrategyAdditionalDepth>();
@@ -325,8 +331,12 @@ void testCompileBoxBatchDimension()
     testCompileBox<8, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBox<12, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBox<16, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<32, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<63, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    testCompileBox<31, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    if constexpr (isPlatform64)
+    {
+      testCompileBox<32, execution_policy_type, nSplitStrategyAdditionalDepth>();
+      testCompileBox<63, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    }
   }
   
   // Container types
@@ -340,8 +350,12 @@ void testCompileBoxBatchDimension()
     testCompilePointC<8, execution_policy_type>();
     testCompilePointC<12, execution_policy_type>();
     testCompilePointC<16, execution_policy_type>();
-    testCompilePointC<32, execution_policy_type>();
-    testCompilePointC<63, execution_policy_type>();
+    testCompilePointC<31, execution_policy_type>();
+    if constexpr (isPlatform64)
+    {
+      testCompilePointC<32, execution_policy_type>();
+      testCompilePointC<63, execution_policy_type>();
+    }
 
     testCompileBoxC<2, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBoxC<3, execution_policy_type, nSplitStrategyAdditionalDepth>();
@@ -352,8 +366,13 @@ void testCompileBoxBatchDimension()
     testCompileBoxC<8, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBoxC<12, execution_policy_type, nSplitStrategyAdditionalDepth>();
     testCompileBoxC<16, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<32, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<63, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<31, execution_policy_type, nSplitStrategyAdditionalDepth>();
+
+    if constexpr (isPlatform64)
+    {
+      testCompileBoxC<32, execution_policy_type, nSplitStrategyAdditionalDepth>();
+      testCompileBoxC<63, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    }
   }
 }
 

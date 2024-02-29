@@ -408,7 +408,7 @@ namespace
   vector<vector<std::size_t>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<vector_type const> const& vPoint)
   {
     autoc n = vPoint.size();
-    auto vElementFound = vector<vector<OrthoTree::std::size_t>>();
+    auto vElementFound = vector<vector<std::size_t>>();
     vElementFound.reserve(n);
     for (autoc& boxSearch : vSearchBox)
     {

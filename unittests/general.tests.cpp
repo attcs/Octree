@@ -1873,7 +1873,6 @@ namespace Tree2DTest
       };
 
       //Standard Tree
-      autoc ss = sizeof(TreePointND<6>::morton_grid_id_type);
       auto tree = TreePointND<6>();
       tree.Create(tree, poses, 10, inspection_space);
 
@@ -2323,7 +2322,6 @@ namespace LongIntAdaptor
     TEST_METHOD(RangeSearchBoxAtTheBorder)
     {
       autoce nDim = 1;
-      using Vector = CustomVectorTypeND<nDim>;
       using Box = CustomBoundingBoxND<nDim>;
 
       autoc boxes = array<Box, 5>
@@ -2654,7 +2652,7 @@ namespace LongIntAdaptor
     }
 
 
-    template<int nDim>
+    template<std::size_t nDim>
     vector<std::size_t> brute_force_search(vector<CustomVectorTypeND<nDim>> const& points, CustomBoundingBoxND<nDim> const& searchbox)
     {
       auto Entities = vector<std::size_t>{};

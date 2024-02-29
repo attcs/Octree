@@ -39,7 +39,6 @@ namespace OrthoTree
     using AD = typename OrthoTreeCore::AD;
     using vector_type = typename OrthoTreeCore::vector_type;
     using box_type = typename OrthoTreeCore::box_type;
-    using max_element_type = typename OrthoTreeCore::max_element_type;
     using geometry_type = typename OrthoTreeCore::geometry_type;
 
   protected:
@@ -52,7 +51,7 @@ namespace OrthoTree
       std::span<data_type const> const& geometryCollection,
       depth_type maxDepthNo = 0,
       std::optional<box_type> const& boxSpace = std::nullopt,
-      max_element_type maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
     {
@@ -66,7 +65,7 @@ namespace OrthoTree
       std::vector<data_type>&& geometryCollection,
       depth_type maxDepthNo = 0,
       std::optional<box_type> const& boxSpace = std::nullopt,
-      max_element_type maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(geometryCollection)
     {
@@ -81,7 +80,7 @@ namespace OrthoTree
     constexpr OrthoTreeCore const& GetCore() const noexcept { return m_tree; }
     constexpr std::vector<data_type> const& GetData() const noexcept { return m_geometryCollection; }
 
-    constexpr void Init(box_type const& boxSpace, depth_type maxDepthNo, max_element_type maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+    constexpr void Init(box_type const& boxSpace, depth_type maxDepthNo, std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       m_tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
     }
@@ -159,7 +158,6 @@ namespace OrthoTree
     using geometry_type = typename base::geometry_type;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
-    using max_element_type = typename OrthoTreeCore::max_element_type;
 
     using base::base; // inherits all constructors
 
@@ -169,7 +167,7 @@ namespace OrthoTree
       std::span<data_type const> const& geometryCollection,
       depth_type maxDepthNo = 0,
       std::optional<box_type> const& boxSpace = std::nullopt,
-      max_element_type maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
@@ -182,7 +180,7 @@ namespace OrthoTree
       std::vector<data_type>&& geometryCollection,
       depth_type maxDepthNo = 0,
       std::optional<box_type> const& boxSpace = std::nullopt,
-      max_element_type maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::move(geometryCollection);
@@ -231,7 +229,6 @@ namespace OrthoTree
     using geometry_type = typename base::geometry_type;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
-    using max_element_type = typename OrthoTreeCore::max_element_type;
 
     using base::base; // inherits all constructors
 
@@ -241,7 +238,7 @@ namespace OrthoTree
       std::span<data_type const> const& geometryCollection,
       depth_type maxDepthNo = 0,
       std::optional<box_type> const& boxSpace = std::nullopt,
-      max_element_type maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
@@ -254,7 +251,7 @@ namespace OrthoTree
       std::vector<data_type>&& geometryCollection,
       depth_type maxDepthNo = 0,
       std::optional<box_type> const& boxSpace = std::nullopt,
-      max_element_type maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::move(geometryCollection);

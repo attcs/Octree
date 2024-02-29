@@ -119,10 +119,11 @@ namespace OrthoTree
 #endif
 
   template<uint8_t e>
-  consteval uint64_t pow2_ce()
+  consteval std::size_t pow2_ce()
   {
-    static_assert(e >= 0 && e < 64);
-    return uint64_t(1) << e;
+    constexpr auto bitSize = sizeof(std::size_t) * CHAR_BIT;
+    static_assert(e >= 0 && e < bitSize);
+    return std::size_t{ 1 } << e;
   }
 
   constexpr int32_t pow2(int32_t e)
@@ -702,7 +703,6 @@ namespace OrthoTree
     using morton_node_id_type = morton_grid_id_type; // same as the morton_grid_id_type, but depth is signed by a sentinel bit.
     using morton_grid_id_type_cref = typename std::conditional<IS_LINEAR_TREE, morton_node_id_type, morton_node_id_type const&>::type;
     using morton_node_id_type_cref = morton_grid_id_type_cref;
-    using max_element_type = uint32_t;
     using geometry_type = geometry_type_;
     using vector_type = vector_type_;
     using box_type = box_type_;
@@ -811,7 +811,7 @@ namespace OrthoTree
     depth_type m_maxDepthNo = {};
     grid_id_type m_maxRasterResolution = {};
     grid_id_type m_maxRasterID = {};
-    max_element_type m_maxElementNo = 11;
+    std::size_t m_maxElementNo = 11;
     double m_volumeOfOverallSpace = {};
     DimArray<double> m_rasterizerFactors;
     DimArray<double> m_sizeInDimensions;
@@ -833,7 +833,7 @@ namespace OrthoTree
       DimArray<double> rasterizerFactors;
       DimArray<double> sizeInDimensions;
     };
-    static constexpr RasterInfo getGridRasterizer(vector_type const& minPoint, vector_type const& maxPoint, grid_id_type subDivisionNo) noexcept 
+    static constexpr RasterInfo getGridRasterizer(vector_type const& minPoint, vector_type const& maxPoint, grid_id_type subDivisionNo) noexcept
     {
       auto ri = RasterInfo{};
       autoc subDivisionNoFactor = static_cast<double>(subDivisionNo);
@@ -1032,7 +1032,7 @@ namespace OrthoTree
     };
 
   public: // Static aid functions
-    static constexpr size_t EstimateNodeNumber(size_t elementNo, depth_type maxDepthNo, max_element_type maxElementNo) noexcept
+    static constexpr size_t EstimateNodeNumber(size_t elementNo, depth_type maxDepthNo, std::size_t maxElementNo) noexcept
     {
       assert(maxElementNo > 0);
       assert(maxDepthNo > 0);
@@ -1058,7 +1058,7 @@ namespace OrthoTree
     }
 
 
-    static inline depth_type EstimateMaxDepth(size_t elementNo, max_element_type maxElementNo) noexcept
+    static inline depth_type EstimateMaxDepth(size_t elementNo, std::size_t maxElementNo) noexcept
     {
       if (elementNo < maxElementNo)
         return 2;
@@ -1217,7 +1217,7 @@ namespace OrthoTree
 
   public: // Main service functions
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void Init(box_type const& box, depth_type maxDepthNo, max_element_type maxElementNo = 11) noexcept
+    constexpr void Init(box_type const& box, depth_type maxDepthNo, std::size_t maxElementNo = 11) noexcept
     {
       assert(this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded tree
                                      // is wanted to be reset, use the Reset() function before init.
@@ -1671,12 +1671,11 @@ namespace OrthoTree
     using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
     using morton_node_id_type = typename base::morton_node_id_type;
     using morton_node_id_type_cref = typename base::morton_node_id_type_cref;
-    using max_element_type = typename base::max_element_type;
     using child_id_type = typename base::child_id_type;
 
     using Node = typename base::Node;
 
-    static constexpr max_element_type DEFAULT_MAX_ELEMENT = 21;
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
   private: // Aid functions
     struct Location
@@ -1694,7 +1693,7 @@ namespace OrthoTree
       morton_grid_id_type_cref gridID,
       depth_type remainingDepth) noexcept
     {
-      autoc elementNo = std::distance(locationBeginIterator, locationEndIterator);
+      std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
       if (elementNo < this->m_maxElementNo || remainingDepth == 0)
       {
         parentNode.Entities.resize(elementNo);
@@ -1732,7 +1731,7 @@ namespace OrthoTree
       std::span<vector_type const> const& points,
       depth_type maxDepthNo,
       std::optional<box_type> const& boxSpaceOptional = std::nullopt,
-      max_element_type maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       Create(*this, points, maxDepthNo, boxSpaceOptional, maxElementNoInNode);
     }
@@ -1744,7 +1743,7 @@ namespace OrthoTree
       std::span<vector_type const> const& points,
       depth_type maxDepthNoIn = 0,
       std::optional<box_type> const& boxSpaceOptional = std::nullopt,
-      max_element_type maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::box_of_points(points);
       autoc pointNo = points.size();
@@ -2055,12 +2054,11 @@ namespace OrthoTree
     using morton_grid_id_type_cref = typename base::morton_grid_id_type_cref;
     using morton_node_id_type = typename base::morton_node_id_type;
     using morton_node_id_type_cref = typename base::morton_node_id_type_cref;
-    using max_element_type = typename base::max_element_type;
     using child_id_type = typename base::child_id_type;
 
     using Node = typename base::Node;
 
-    static constexpr max_element_type DEFAULT_MAX_ELEMENT = 21;
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
   private: // Aid functions
     struct Location
@@ -2113,7 +2111,7 @@ namespace OrthoTree
       morton_grid_id_type_cref firstLocationID,
       depth_type remainingDepthNo) noexcept
     {
-      autoc elementNo = std::distance(beginLocationIterator, endLocationIterator);
+      std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
       if (elementNo < this->m_maxElementNo || remainingDepthNo == 0)
       {
         if (elementNo == 0)
@@ -2176,7 +2174,7 @@ namespace OrthoTree
       autoc gridStepNo = static_cast<grid_id_type>(pow2(remainingDepthNo));
 
       auto gridBoundaries = DimArray<GridBoundary>{};
-      uint64_t boxNoByGrid = 1;
+      std::size_t boxNoByGrid = 1;
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
         grid_id_type const firstGridSplit = (boxMinMaxGridID[0][dimensionID] / gridStepNo) + grid_id_type{ 1 };
@@ -2261,7 +2259,7 @@ namespace OrthoTree
       std::span<box_type const> const& boxes,
       depth_type maxDepthNo,
       std::optional<box_type> const& oBoxSpace = std::nullopt,
-      max_element_type nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       Create(*this, boxes, maxDepthNo, oBoxSpace, nElementMaxInNode);
     }
@@ -2273,7 +2271,7 @@ namespace OrthoTree
       std::span<box_type const> const& boxes,
       depth_type maxDepthIn = 0,
       std::optional<box_type> const& boxSpaceOptional = std::nullopt,
-      max_element_type maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::box_of_boxes(boxes);
       autoc entityNo = boxes.size();
@@ -2636,6 +2634,8 @@ namespace OrthoTree
       return results;
     }
 
+    // Client-defined Collision detector (params: id1, e1, id2, e2). It supplemented with the box intersection, the Client should not add.
+    using fnCollisionDetector = std::function<bool(std::size_t, box_type const&, std::size_t, box_type const&)>;
 
     // Collision detection: Returns all overlapping boxes from the source trees.
     static std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(
@@ -2665,12 +2665,11 @@ namespace OrthoTree
       autoc trees = std::array{ &leftTree, &rightTree };
 
       auto nodePairToProceed = std::queue<ParentIteratorArray>{};
-      for (nodePairToProceed.push({
-             NodeIteratorAndStatus{ leftTree.m_nodes.find(rootKey), false},
-             NodeIteratorAndStatus{rightTree.m_nodes.find(rootKey), false}
+      nodePairToProceed.push({
+        NodeIteratorAndStatus{ leftTree.m_nodes.find(rootKey), false},
+        NodeIteratorAndStatus{rightTree.m_nodes.find(rootKey), false}
       });
-           !nodePairToProceed.empty();
-           nodePairToProceed.pop())
+      for (; !nodePairToProceed.empty(); nodePairToProceed.pop())
       {
         autoc& parentNodePair = nodePairToProceed.front();
 
@@ -2731,7 +2730,7 @@ namespace OrthoTree
       return CollisionDetection(*this, boxes, otherTree, otherBoxes);
     }
 
-  public:
+  private:
     // Collision detection between the stored elements from top to bottom logic
     template<typename execution_policy_type = std::execution::unsequenced_policy>
     std::vector<std::pair<std::size_t, std::size_t>> CollisionDetectionObsolete(std::span<box_type const> const& boxes) const noexcept
@@ -2771,10 +2770,10 @@ namespace OrthoTree
       return vPair;
     }
 
-  public:
+
     // Collision detection between the stored elements from bottom to top logic
     template<typename execution_policy_type = std::execution::unsequenced_policy>
-    std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(std::span<box_type const> const& boxes) const noexcept
+    std::vector<std::pair<std::size_t, std::size_t>> collisionDetection(std::span<box_type const> const& boxes, fnCollisionDetector&& collisionDetector) const noexcept
     {
       using CollisionDetectionContainer = std::vector<std::pair<std::size_t, std::size_t>>;
 
@@ -2823,177 +2822,172 @@ namespace OrthoTree
 
       // Collision detection node-by-node without duplication
       auto collidedEntityPairsInsideNodes = std::vector<CollisionDetectionContainer>(this->m_nodes.size());
-      std::transform(
-        ep,
-        this->m_nodes.begin(),
-        this->m_nodes.end(),
-        collidedEntityPairsInsideNodes.begin(),
-        [&boxes, &entityIDNodeMap, &entityIDsInRoot, this](autoc& pairKeyNode) -> CollisionDetectionContainer {
-          auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
-          autoc & [nodeKey, node] = pairKeyNode;
+      std::transform(ep, this->m_nodes.begin(), this->m_nodes.end(), collidedEntityPairsInsideNodes.begin(), [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
+        auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
+        autoc & [nodeKey, node] = pairKeyNode;
 
-          autoc nodeDepthID = this->GetDepthID(nodeKey);
+        autoc nodeDepthID = this->GetDepthID(nodeKey);
 
-          autoc& entityIDs = *(nodeDepthID == 0 ? &entityIDsInRoot : &node.Entities);
-          autoc entityNoInNode = entityIDs.size();
+        autoc& entityIDs = *(nodeDepthID == 0 ? &entityIDsInRoot : &node.Entities);
+        autoc entityNoInNode = entityIDs.size();
 
-          collidedEntityPairsInsideNode.reserve(entityNoInNode);
+        collidedEntityPairsInsideNode.reserve(entityNoInNode);
 
-          // Collision detection with the parents
-          if (nodeDepthID > 0)
+        // Collision detection with the parents
+        if (nodeDepthID > 0)
+        {
+          auto parentDepthID = nodeDepthID - 1;
+          auto depthDifference = depth_type(1);
+          for (auto parentKey = nodeKey >> t_DimensionNo; base::IsValidKey(parentKey); parentKey >>= t_DimensionNo, --parentDepthID, ++depthDifference)
           {
-            auto parentDepthID = nodeDepthID - 1;
-            auto depthDifference = depth_type(1);
-            for (auto parentKey = nodeKey >> t_DimensionNo; base::IsValidKey(parentKey); parentKey >>= t_DimensionNo, --parentDepthID, ++depthDifference)
-            {
-              autoc& parentEntityIDs = *(parentDepthID == 0 ? &entityIDsInRoot : &this->GetNode(parentKey).Entities);
+            autoc& parentEntityIDs = *(parentDepthID == 0 ? &entityIDsInRoot : &this->GetNode(parentKey).Entities);
 
-              if constexpr (t_AdditionalDepthOfSplitStrategy == 0)
+            if constexpr (t_AdditionalDepthOfSplitStrategy == 0)
+            {
+              for (autoc entityID : entityIDs)
+                for (autoc entityIDFromParent : parentEntityIDs)
+                  if (collisionDetector(entityID, boxes[entityID], entityIDFromParent, boxes[entityIDFromParent]))
+                    collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
+            }
+            else
+            {
+              // t_AdditionalDepthOfSplitStrategy: entityID could occur in multiple node. This algorithm aims to check only the first occurrence's parents.
+
+              auto entityIDsToCheckOnOtherBranch = std::vector<std::size_t>{};
+              entityIDsToCheckOnOtherBranch.reserve(entityNoInNode);
+              auto entityIDPairsFromOtherBranch = std::unordered_map<std::size_t, std::set<std::size_t>>{};
+              for (autoc entityID : entityIDs)
               {
-                for (autoc entityID : entityIDs)
+                autoc& currentNodeKeys = entityIDNodeMap[entityID];
+                autoc currentNodeKeysNo = currentNodeKeys.size();
+                if (currentNodeKeysNo == 1)
+                  entityIDsToCheckOnOtherBranch.emplace_back(entityID);
+                else
+                {
+                  if (currentNodeKeys[0] == nodeKey)
+                    entityIDsToCheckOnOtherBranch.emplace_back(entityID);
+                  else if (depthDifference <= t_AdditionalDepthOfSplitStrategy)
+                  {
+                    auto keysOfEntitysDepth = std::vector<morton_node_id_type>();
+                    for (size_t entityKeyID = 1; entityKeyID < currentNodeKeysNo; ++entityKeyID)
+                    {
+                      // An earlier node is already check this level
+                      {
+                        auto& keyOfEntitysDepth = keysOfEntitysDepth.emplace_back(currentNodeKeys[entityKeyID - 1]);
+                        autoc prevDepthID = this->GetDepthID(keyOfEntitysDepth);
+                        if (prevDepthID > parentDepthID)
+                          keyOfEntitysDepth >>= t_DimensionNo * (prevDepthID - parentDepthID);
+
+                        if (keyOfEntitysDepth == parentKey)
+                          break;
+                      }
+
+                      if (currentNodeKeys[entityKeyID] != nodeKey)
+                        continue;
+
+                      // On other branch splitted boxes could conflict already
+                      for (autoc entityIDFromParent : parentEntityIDs)
+                      {
+                        autoc& parentNodeKeys = entityIDNodeMap[entityIDFromParent];
+                        autoc parentNodeKeysNo = parentNodeKeys.size();
+
+                        for (size_t prevEntityKeyID = 0, parentEntityKeyID = 0; prevEntityKeyID < entityKeyID && parentEntityKeyID < parentNodeKeysNo;)
+                        {
+                          if (parentNodeKeys[parentEntityKeyID] == currentNodeKeys[prevEntityKeyID] || (parentNodeKeys[parentEntityKeyID] == keysOfEntitysDepth[prevEntityKeyID]))
+                          {
+                            // Found an earlier common key
+                            entityIDPairsFromOtherBranch[entityID].emplace(entityIDFromParent);
+                            break;
+                          }
+                          else if (parentNodeKeys[parentEntityKeyID] < currentNodeKeys[prevEntityKeyID])
+                            ++parentEntityKeyID;
+                          else
+                            ++prevEntityKeyID;
+                        }
+                      }
+
+                      entityIDsToCheckOnOtherBranch.emplace_back(entityID);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (entityIDPairsFromOtherBranch.empty())
+              {
+                for (autoc entityID : entityIDsToCheckOnOtherBranch)
                   for (autoc entityIDFromParent : parentEntityIDs)
-                    if (AD::are_boxes_overlapped_strict(boxes[entityID], boxes[entityIDFromParent]))
+                    if (collisionDetector(entityID, boxes[entityID], entityIDFromParent, boxes[entityIDFromParent]))
                       collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
               }
               else
               {
-                // t_AdditionalDepthOfSplitStrategy: entityID could occur in multiple node. This algorithm aims to check only the first occurrence's parents.
-
-                auto entityIDsToCheckOnOtherBranch = std::vector<std::size_t>{};
-                entityIDsToCheckOnOtherBranch.reserve(entityNoInNode);
-                auto entityIDPairsFromOtherBranch = std::unordered_map<std::size_t, std::set<std::size_t>>{};
-                for (autoc entityID : entityIDs)
+                for (autoc entityID : entityIDsToCheckOnOtherBranch)
                 {
-                  autoc& currentNodeKeys = entityIDNodeMap[entityID];
-                  autoc currentNodeKeysNo = currentNodeKeys.size();
-                  if (currentNodeKeysNo == 1)
-                    entityIDsToCheckOnOtherBranch.emplace_back(entityID);
-                  else
+                  autoc it = entityIDPairsFromOtherBranch.find(entityID);
+                  autoc areThereAnyFromOtherBranch = it != entityIDPairsFromOtherBranch.end();
+
+                  for (autoc entityIDFromParent : parentEntityIDs)
                   {
-                    if (currentNodeKeys[0] == nodeKey)
-                      entityIDsToCheckOnOtherBranch.emplace_back(entityID);
-                    else if (depthDifference <= t_AdditionalDepthOfSplitStrategy)
-                    {
-                      auto keysOfEntitysDepth = std::vector<morton_node_id_type>();
-                      for (size_t entityKeyID = 1; entityKeyID < currentNodeKeysNo; ++entityKeyID)
-                      {
-                        // An earlier node is already check this level
-                        {
-                          auto& keyOfEntitysDepth = keysOfEntitysDepth.emplace_back(currentNodeKeys[entityKeyID - 1]);
-                          autoc prevDepthID = this->GetDepthID(keyOfEntitysDepth);
-                          if (prevDepthID > parentDepthID)
-                            keyOfEntitysDepth >>= t_DimensionNo * (prevDepthID - parentDepthID);
-
-                          if (keyOfEntitysDepth == parentKey)
-                            break;
-                        }
-
-                        if (currentNodeKeys[entityKeyID] != nodeKey)
-                          continue;
-
-                        // On other branch splitted boxes could conflict already
-                        for (autoc entityIDFromParent : parentEntityIDs)
-                        {
-                          autoc& parentNodeKeys = entityIDNodeMap[entityIDFromParent];
-                          autoc parentNodeKeysNo = parentNodeKeys.size();
-
-                          for (size_t prevEntityKeyID = 0, parentEntityKeyID = 0; prevEntityKeyID < entityKeyID && parentEntityKeyID < parentNodeKeysNo;)
-                          {
-                            if (parentNodeKeys[parentEntityKeyID] == currentNodeKeys[prevEntityKeyID] || (parentNodeKeys[parentEntityKeyID] == keysOfEntitysDepth[prevEntityKeyID]))
-                            {
-                              // Found an earlier common key
-                              entityIDPairsFromOtherBranch[entityID].emplace(entityIDFromParent);
-                              break;
-                            }
-                            else if (parentNodeKeys[parentEntityKeyID] < currentNodeKeys[prevEntityKeyID])
-                              ++parentEntityKeyID;
-                            else
-                              ++prevEntityKeyID;
-                          }
-                        }
-
-                        entityIDsToCheckOnOtherBranch.emplace_back(entityID);
-                        break;
-                      }
-                    }
-                  }
-                }
-
-                if (entityIDPairsFromOtherBranch.empty())
-                {
-                  for (autoc entityID : entityIDsToCheckOnOtherBranch)
-                    for (autoc entityIDFromParent : parentEntityIDs)
-                      if (AD::are_boxes_overlapped_strict(boxes[entityID], boxes[entityIDFromParent]))
-                        collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
-                }
-                else
-                {
-                  for (autoc entityID : entityIDsToCheckOnOtherBranch)
-                  {
-                    autoc it = entityIDPairsFromOtherBranch.find(entityID);
-                    autoc areThereAnyFromOtherBranch = it != entityIDPairsFromOtherBranch.end();
-
-                    for (autoc entityIDFromParent : parentEntityIDs)
-                    {
-                      autoc isAlreadyContained = areThereAnyFromOtherBranch && it->second.contains(entityIDFromParent);
-                      if (!isAlreadyContained && AD::are_boxes_overlapped_strict(boxes[entityID], boxes[entityIDFromParent]))
-                        collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
-                    }
+                    autoc isAlreadyContained = areThereAnyFromOtherBranch && it->second.contains(entityIDFromParent);
+                    if (!isAlreadyContained && collisionDetector(entityID, boxes[entityID], entityIDFromParent, boxes[entityIDFromParent]))
+                      collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
                   }
                 }
               }
             }
           }
+        }
 
 
-          // Collision detection inside the node
-          if (entityNoInNode > 1)
+        // Collision detection inside the node
+        if (entityNoInNode > 1)
+        {
+          for (size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
           {
-            for (size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
+            autoc iEntityID = entityIDs[iEntity];
+            autoc& entityKeys = entityIDNodeMap[iEntityID];
+            autoc entityKeysNo = entityKeys.size();
+
+            for (size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
             {
-              autoc iEntityID = entityIDs[iEntity];
-              autoc& entityKeys = entityIDNodeMap[iEntityID];
-              autoc entityKeysNo = entityKeys.size();
-
-              for (size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
+              autoc jEntityID = entityIDs[jEntity];
+              if constexpr (t_AdditionalDepthOfSplitStrategy == 0)
               {
-                autoc jEntityID = entityIDs[jEntity];
-                if constexpr (t_AdditionalDepthOfSplitStrategy == 0)
+                if (collisionDetector(iEntityID, boxes[iEntityID], jEntityID, boxes[jEntityID]))
+                  collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
+              }
+              else
+              {
+                // Same entities could collide in other nodes, but only the first occurrence should be checked
+                autoc& entityKeysOfJ = entityIDNodeMap[jEntityID];
+                auto isFirstCollisionCheckHappening = entityKeysNo == 1 || entityKeysOfJ.size() == 1;
+                if (!isFirstCollisionCheckHappening)
                 {
-                  if (AD::are_boxes_overlapped_strict(boxes[iEntityID], boxes[jEntityID]))
-                    collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
-                }
-                else
-                {
-                  // Same entities could collide in other nodes, but only the first occurrence should be checked
-                  autoc& entityKeysOfJ = entityIDNodeMap[jEntityID];
-                  auto isFirstCollisionCheckHappening = entityKeysNo == 1 || entityKeysOfJ.size() == 1;
-                  if (!isFirstCollisionCheckHappening)
+                  for (size_t iEntityKey = 0, jEntityKey = 0; iEntityKey < entityKeysNo;)
                   {
-                    for (size_t iEntityKey = 0, jEntityKey = 0; iEntityKey < entityKeysNo;)
+                    if (entityKeysOfJ[jEntityKey] == entityKeys[iEntityKey])
                     {
-                      if (entityKeysOfJ[jEntityKey] == entityKeys[iEntityKey])
-                      {
-                        isFirstCollisionCheckHappening = nodeKey == entityKeys[iEntityKey];
-                        break;
-                      }
-                      else if (entityKeysOfJ[jEntityKey] < entityKeys[iEntityKey])
-                        ++jEntityKey;
-                      else
-                        ++iEntityKey;
+                      isFirstCollisionCheckHappening = nodeKey == entityKeys[iEntityKey];
+                      break;
                     }
+                    else if (entityKeysOfJ[jEntityKey] < entityKeys[iEntityKey])
+                      ++jEntityKey;
+                    else
+                      ++iEntityKey;
                   }
-
-                  if (isFirstCollisionCheckHappening)
-                    if (AD::are_boxes_overlapped_strict(boxes[iEntityID], boxes[jEntityID]))
-                      collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
                 }
+
+                if (isFirstCollisionCheckHappening)
+                  if (collisionDetector(iEntityID, boxes[iEntityID], jEntityID, boxes[jEntityID]))
+                    collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
               }
             }
           }
+        }
 
-          return collidedEntityPairsInsideNode;
-        });
+        return collidedEntityPairsInsideNode;
+      });
 
       for (autoc& vidCollisionNode : collidedEntityPairsInsideNodes)
         collidedEntityPairs.insert(collidedEntityPairs.end(), vidCollisionNode.begin(), vidCollisionNode.end());
@@ -3001,6 +2995,25 @@ namespace OrthoTree
       return collidedEntityPairs;
     }
 
+  public:
+    // Collision detection between the stored elements from bottom to top logic
+    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(std::span<box_type const> const& boxes) const noexcept
+    {
+      return collisionDetection<execution_policy_type>(boxes, [](std::size_t id1, box_type const& e1, std::size_t id2, box_type const& e2) {
+        return AD::are_boxes_overlapped_strict(e1, e2);
+      });
+    }
+
+
+    // Collision detection between the stored elements from bottom to top logic
+    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(std::span<box_type const> const& boxes, fnCollisionDetector&& collisionDetector) const noexcept
+    {
+      return collisionDetection<execution_policy_type>(boxes, [collisionDetector](std::size_t id1, box_type const& e1, std::size_t id2, box_type const& e2) {
+        return AD::are_boxes_overlapped_strict(e1, e2) && collisionDetector(id1, e1, id2, e2);
+      });
+    }
 
   private:
     void getRayIntersectedAll(

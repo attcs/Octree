@@ -102,12 +102,12 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr bool are_boxes_overlapped_strict(AlignedBox_ const& e1, AlignedBox_ const& e2) noexcept 
-      { 
+      static constexpr bool are_boxes_overlapped_strict(AlignedBox_ const& e1, AlignedBox_ const& e2) noexcept
+      {
         autoc e3 = e1.intersection(e2);
         autoc sizes = e3.sizes();
-        for (autoc size : sizes)
-          if (size <= 0.0)
+        for (dim_type dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+          if (sizes[dimensionID] <= 0.0)
             return false;
 
         return true;
