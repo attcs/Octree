@@ -271,7 +271,7 @@ namespace OrthoTree
       return distance2(ptL, ptR) <= rAccuracy * rAccuracy;
     }
 
-    static constexpr bool is_normalized_vector(vector_type const& normal) noexcept { return abs(size2(normal) - 1.0) < 0.000001; }
+    static constexpr bool is_normalized_vector(vector_type const& normal) noexcept { return std::abs(size2(normal) - 1.0) < 0.000001; }
 
     static constexpr bool does_box_contain_point(box_type const& box, vector_type const& point, geometry_type tolerance = 0) noexcept
     {
@@ -472,11 +472,12 @@ namespace OrthoTree
 
       double radiusProjected = 0.0;
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
-        radiusProjected += base::point_comp_c(radius, dimensionID) * abs(base::point_comp_c(planeNormal, dimensionID));
+        radiusProjected += base::point_comp_c(radius, dimensionID) * std::abs(base::point_comp_c(planeNormal, dimensionID));
 
       autoc centerProjected = dot(planeNormal, center);
 
-      return abs(centerProjected - distanceOfOrigo) <= radiusProjected + tolerance;
+      return std::abs(centerProjected - distanceOfOrigo) <= radiusProjected + tolerance;
+    }
     }
   };
 
@@ -819,10 +820,10 @@ namespace OrthoTree
 
 
   protected: // Aid functions
-    template<size_t N>
+    template<std::size_t N>
     static inline child_id_type convertMortonIdToChildId(bitset_arithmetic<N> const& bs) noexcept
     {
-      assert(bs <= bitset_arithmetic<N>(std::numeric_limits<size_t>::max()));
+      assert(bs <= bitset_arithmetic<N>(std::numeric_limits<std::size_t>::max()));
       return bs.to_ullong();
     }
     static constexpr child_id_type convertMortonIdToChildId(uint64_t morton) noexcept { return morton; }
@@ -1023,16 +1024,16 @@ namespace OrthoTree
     }
 
     template<typename data_type = Node>
-    static void reserveContainer(std::map<morton_node_id_type, data_type, bitset_arithmetic_compare>&, size_t) noexcept {};
+    static void reserveContainer(std::map<morton_node_id_type, data_type, bitset_arithmetic_compare>&, std::size_t) noexcept {};
 
     template<typename data_type = Node>
-    static void reserveContainer(std::unordered_map<morton_node_id_type, data_type>& m, size_t n) noexcept
+    static void reserveContainer(std::unordered_map<morton_node_id_type, data_type>& m, std::size_t n) noexcept
     {
       m.reserve(n);
     };
 
   public: // Static aid functions
-    static constexpr size_t EstimateNodeNumber(size_t elementNo, depth_type maxDepthNo, std::size_t maxElementNo) noexcept
+    static constexpr std::size_t EstimateNodeNumber(std::size_t elementNo, depth_type maxDepthNo, std::size_t maxElementNo) noexcept
     {
       assert(maxElementNo > 0);
       assert(maxDepthNo > 0);
@@ -1043,7 +1044,7 @@ namespace OrthoTree
       autoce rMult = 1.5;
       if ((maxDepthNo + 1) * t_DimensionNo < 64)
       {
-        size_t const nMaxChild = size_t{ 1 } << (maxDepthNo * t_DimensionNo);
+        std::size_t const nMaxChild = std::size_t{ 1 } << (maxDepthNo * t_DimensionNo);
         autoc nElementInNode = elementNo / nMaxChild;
         if (nElementInNode > maxElementNo / 2)
           return nMaxChild;
@@ -1052,13 +1053,13 @@ namespace OrthoTree
       autoc nElementInNodeAvg = static_cast<float>(elementNo) / static_cast<float>(maxElementNo);
       autoc nDepthEstimated = std::min(maxDepthNo, static_cast<depth_type>(ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(t_DimensionNo))));
       if (nDepthEstimated * t_DimensionNo < 64)
-        return static_cast<size_t>(rMult * (1 << nDepthEstimated * t_DimensionNo));
+        return static_cast<std::size_t>(rMult * (1 << nDepthEstimated * t_DimensionNo));
 
-      return static_cast<size_t>(rMult * nElementInNodeAvg);
+      return static_cast<std::size_t>(rMult * nElementInNodeAvg);
     }
 
 
-    static inline depth_type EstimateMaxDepth(size_t elementNo, std::size_t maxElementNo) noexcept
+    static inline depth_type EstimateMaxDepth(std::size_t elementNo, std::size_t maxElementNo) noexcept
     {
       if (elementNo < maxElementNo)
         return 2;
@@ -1079,7 +1080,7 @@ namespace OrthoTree
 
     static constexpr bool IsValidKey(uint64_t key) noexcept { return key; }
 
-    template<size_t N>
+    template<std::size_t N>
     static inline bool IsValidKey(bitset_arithmetic<N> const& key) noexcept
     {
       return !key.none();
@@ -1330,7 +1331,7 @@ namespace OrthoTree
     std::vector<std::size_t> CollectAllIdInBFS(morton_node_id_type_cref rootKey = GetRootKey()) const noexcept
     {
       auto entityIDs = std::vector<std::size_t>();
-      entityIDs.reserve(m_nodes.size() * std::max<size_t>(2, m_maxElementNo / 2));
+      entityIDs.reserve(m_nodes.size() * std::max<std::size_t>(2, m_maxElementNo / 2));
 
       VisitNodes(rootKey, [&entityIDs](morton_node_id_type_cref, autoc& node) {
         entityIDs.insert(entityIDs.end(), node.Entities.begin(), node.Entities.end());
@@ -1629,7 +1630,7 @@ namespace OrthoTree
       autoc nodeVolume = this->m_volumeOfOverallSpace / static_cast<double>(1 << (t_DimensionNo * depthNo));
 
       autoc foundEntityNoEstimation =
-        this->m_volumeOfOverallSpace < 0.01 ? 10 : static_cast<size_t>((rangeVolume * entityNo) / this->m_volumeOfOverallSpace);
+        this->m_volumeOfOverallSpace < 0.01 ? 10 : static_cast<std::size_t>((rangeVolume * entityNo) / this->m_volumeOfOverallSpace);
       foundEntities.reserve(foundEntityNoEstimation);
       autoc& node = this->GetNode(smallestNodeKey);
       rangeSearch<data_type, t_doRangeMustFullyContain, t_doCollectOnlyLargerThanMinEntityID>(
@@ -1918,7 +1919,7 @@ namespace OrthoTree
 
       autoc procedure = [&](morton_node_id_type id, Node const& node) {
         for (autoc id : node.Entities)
-          if (abs(AD::dot(points[id], planeNormal) - distanceOfOrigo) <= tolerance)
+          if (std::abs(AD::dot(points[id], planeNormal) - distanceOfOrigo) <= tolerance)
             if (std::find(results.begin(), results.end(), id) == results.end())
               results.emplace_back(id);
       };
@@ -1939,8 +1940,8 @@ namespace OrthoTree
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
       {
         autoc actualDistance = distances.emplace_back(std::min(
-          abs(AD::point_comp_c(point, dimensionID) - AD::point_comp_c(minPoint, dimensionID)),
-          abs(AD::point_comp_c(point, dimensionID) - AD::point_comp_c(maxPoint, dimensionID))));
+          std::abs(AD::point_comp_c(point, dimensionID) - AD::point_comp_c(minPoint, dimensionID)),
+          std::abs(AD::point_comp_c(point, dimensionID) - AD::point_comp_c(maxPoint, dimensionID))));
 
         if (actualDistance == 0)
           return 0.0;
@@ -1957,7 +1958,7 @@ namespace OrthoTree
         neighborEntities.insert({ { AD::distance(searchPoint, points[id]) }, id });
     }
 
-    static geometry_type getFarestDistance(std::multiset<EntityDistance>& neighborEntities, size_t neighborNo) noexcept
+    static geometry_type getFarestDistance(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
     {
       if (neighborEntities.size() < neighborNo)
         return std::numeric_limits<geometry_type>::max();
@@ -1965,7 +1966,7 @@ namespace OrthoTree
       return std::next(neighborEntities.begin(), neighborNo - 1)->Distance;
     }
 
-    static std::vector<std::size_t> convertEntityDistanceToList(std::multiset<EntityDistance>& neighborEntities, size_t neighborNo) noexcept
+    static std::vector<std::size_t> convertEntityDistanceToList(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
     {
       autoc entityNo = std::min(neighborNo, neighborEntities.size());
       auto entityIDs = std::vector<std::size_t>(entityNo);
@@ -1975,7 +1976,7 @@ namespace OrthoTree
 
   public:
     // K Nearest Neighbor
-    std::vector<std::size_t> GetNearestNeighbors(vector_type const& searchPoint, size_t neighborNo, std::span<vector_type const> const& points) const noexcept
+    std::vector<std::size_t> GetNearestNeighbors(vector_type const& searchPoint, std::size_t neighborNo, std::span<vector_type const> const& points) const noexcept
     {
       auto neighborEntities = std::multiset<EntityDistance>();
       autoc smallestNodeKey = FindSmallestNode(searchPoint);
@@ -2005,7 +2006,7 @@ namespace OrthoTree
           autoc dMax = AD::point_comp_c(maxPoint, dimensionID) - AD::point_comp_c(searchPoint, dimensionID);
 
           // If point projection in dimensionID is within min and max the wall distance should be calculated.
-          AD::point_comp(aDist, dimensionID) = dMin * dMax < 0 ? 0 : std::min(abs(dMin), abs(dMax));
+          AD::point_comp(aDist, dimensionID) = dMin * dMax < 0 ? 0 : std::min(std::abs(dMin), std::abs(dMax));
         }
         nodeMinDistances.insert({ { AD::size(aDist) }, key, node });
       });
@@ -2162,7 +2163,7 @@ namespace OrthoTree
 
     void split(
       std::array<DimArray<grid_id_type>, 2> const& boxMinMaxGridID,
-      size_t entityID,
+      std::size_t entityID,
       LocationContainer& locations,
       LocationContainer* additionalLocations) const noexcept
     {
@@ -2200,7 +2201,7 @@ namespace OrthoTree
       locations[entityID].DepthID = depthID;
       locations[entityID].MinGridID = base::MortonEncode(gridIDs[0]) >> shift;
 
-      size_t locationNo = 0;
+      std::size_t locationNo = 0;
       autoc additionalBoxNo = boxNo - 1;
       if (additionalLocations)
       {
@@ -2214,7 +2215,7 @@ namespace OrthoTree
       }
 
       LOOPIVDEP
-      for (size_t iBox = 0; iBox < additionalBoxNo; ++iBox)
+      for (std::size_t iBox = 0; iBox < additionalBoxNo; ++iBox)
       {
         auto& location = additionalLocations->at(locationNo + iBox);
         location.EntityID = entityID;
@@ -2224,7 +2225,7 @@ namespace OrthoTree
     }
 
 
-    void setLocation(box_type const& box, size_t entityID, LocationContainer& locations, std::vector<LocationContainer>* additionalLocations = nullptr) const noexcept
+    void setLocation(box_type const& box, std::size_t entityID, LocationContainer& locations, std::vector<LocationContainer>* additionalLocations = nullptr) const noexcept
     {
       autoc boxMinMaxGridID = this->getGridIdBox(box);
 
@@ -2291,7 +2292,7 @@ namespace OrthoTree
 
       auto epf = execution_policy_type{}; // GCC 11.3
       auto locations = LocationContainer(entityNo);
-      locations.reserve(isNoSplit ? entityNo : (entityNo * std::min<size_t>(10, base::CHILD_NO * t_AdditionalDepthOfSplitStrategy)));
+      locations.reserve(isNoSplit ? entityNo : (entityNo * std::min<std::size_t>(10, base::CHILD_NO * t_AdditionalDepthOfSplitStrategy)));
       if constexpr (isNoSplit || isNonParallel)
       {
         std::for_each(epf, boxes.begin(), boxes.end(), [&tree, &boxes, &locations](autoc& box) {
@@ -2307,10 +2308,10 @@ namespace OrthoTree
           tree.setLocation(box, entityID, locations, &additionalLocations);
         });
 
-        auto additionalLocationSizes = std::vector<size_t>(entityNo);
+        auto additionalLocationSizes = std::vector<std::size_t>(entityNo);
         auto epe = execution_policy_type{};
         std::transform_exclusive_scan(
-          epe, additionalLocations.begin(), additionalLocations.end(), additionalLocationSizes.begin(), entityNo, std::plus<size_t>(), [](autoc& adds) {
+          epe, additionalLocations.begin(), additionalLocations.end(), additionalLocationSizes.begin(), entityNo, std::plus<std::size_t>(), [](autoc& adds) {
             return adds.size();
           });
 
@@ -2869,7 +2870,7 @@ namespace OrthoTree
                   else if (depthDifference <= t_AdditionalDepthOfSplitStrategy)
                   {
                     auto keysOfEntitysDepth = std::vector<morton_node_id_type>();
-                    for (size_t entityKeyID = 1; entityKeyID < currentNodeKeysNo; ++entityKeyID)
+                    for (std::size_t entityKeyID = 1; entityKeyID < currentNodeKeysNo; ++entityKeyID)
                     {
                       // An earlier node is already check this level
                       {
@@ -2891,7 +2892,7 @@ namespace OrthoTree
                         autoc& parentNodeKeys = entityIDNodeMap[entityIDFromParent];
                         autoc parentNodeKeysNo = parentNodeKeys.size();
 
-                        for (size_t prevEntityKeyID = 0, parentEntityKeyID = 0; prevEntityKeyID < entityKeyID && parentEntityKeyID < parentNodeKeysNo;)
+                        for (std::size_t prevEntityKeyID = 0, parentEntityKeyID = 0; prevEntityKeyID < entityKeyID && parentEntityKeyID < parentNodeKeysNo;)
                         {
                           if (parentNodeKeys[parentEntityKeyID] == currentNodeKeys[prevEntityKeyID] || (parentNodeKeys[parentEntityKeyID] == keysOfEntitysDepth[prevEntityKeyID]))
                           {
@@ -2943,13 +2944,13 @@ namespace OrthoTree
         // Collision detection inside the node
         if (entityNoInNode > 1)
         {
-          for (size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
+          for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
           {
             autoc iEntityID = entityIDs[iEntity];
             autoc& entityKeys = entityIDNodeMap[iEntityID];
             autoc entityKeysNo = entityKeys.size();
 
-            for (size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
+            for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
             {
               autoc jEntityID = entityIDs[jEntity];
               if constexpr (t_AdditionalDepthOfSplitStrategy == 0)
@@ -2964,7 +2965,7 @@ namespace OrthoTree
                 auto isFirstCollisionCheckHappening = entityKeysNo == 1 || entityKeysOfJ.size() == 1;
                 if (!isFirstCollisionCheckHappening)
                 {
-                  for (size_t iEntityKey = 0, jEntityKey = 0; iEntityKey < entityKeysNo;)
+                  for (std::size_t iEntityKey = 0, jEntityKey = 0; iEntityKey < entityKeysNo;)
                   {
                     if (entityKeysOfJ[jEntityKey] == entityKeys[iEntityKey])
                     {
@@ -3154,9 +3155,9 @@ namespace OrthoTree
   using BoundingBox2D = OrthoTree::BoundingBoxND<2>;
   using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
 
-  template<size_t t_DimensionNo>
+  template<std::size_t t_DimensionNo>
   using TreePointND = OrthoTree::OrthoTreePoint<t_DimensionNo, OrthoTree::VectorND<t_DimensionNo>, OrthoTree::BoundingBoxND<t_DimensionNo>>;
-  template<size_t t_DimensionNo, uint32_t t_AdditionalDepthOfSplitStrategy = 2>
+  template<std::size_t t_DimensionNo, uint32_t t_AdditionalDepthOfSplitStrategy = 2>
   using TreeBoxND = OrthoTree::OrthoTreeBoundingBox<
     t_DimensionNo,
     OrthoTree::VectorND<t_DimensionNo>,

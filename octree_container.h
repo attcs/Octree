@@ -212,7 +212,7 @@ namespace OrthoTree
     }
 
     // K Nearest Neighbor
-    inline std::vector<std::size_t> GetNearestNeighbors(vector_type const& pt, size_t k) const noexcept
+    inline std::vector<std::size_t> GetNearestNeighbors(vector_type const& pt, std::size_t k) const noexcept
     {
       return this->m_tree.GetNearestNeighbors(pt, k, this->m_geometryCollection);
     }
