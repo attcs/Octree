@@ -15,6 +15,8 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
   * Pick search
   * K - Nearest neighbor search
   * Ray-traced search
+  * Plane intersection
+  * Frustum culling
 * Collision detection
 * Nodes can be accessed in O(1) time
 * Search is accelerated by Morton Z curve based location code
@@ -35,15 +37,16 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
-* Call the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
-* Call `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
-* Call `PlaneSearch()` / `PlaneIntersection()` member functions for plane related searches
-* Call `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
-* Call `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
-* Call `CollisionDetection()` member function for bounding box overlap examination.
-* Call `VisitNodes()` / `VisitNodesInDFS()` to traverse the tree from up to down (former is breadth-first search) with user-defined `selector()` and `procedure()`.
-* Call `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
-* Call `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
+* Use the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
+* Use `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
+* Use `PlaneSearch()` / `PlaneIntersection()` / `PlanePositiveSegmentation()` member functions for hyperplane related searches
+* Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
+* Use `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
+* Use `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
+* Use `CollisionDetection()` member function for bounding box overlap examination.
+* Use `VisitNodes()` / `VisitNodesInDFS()` to traverse the tree from up to down (former is breadth-first search) with user-defined `selector()` and `procedure()`.
+* Use `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
+* Use `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
 
 
 ## Notes
@@ -58,6 +61,12 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Original geometry data is not stored, so any search function needs them as an input.
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
 * Tested compilers: MSVC 2019, Clang 12.0.0, GCC 11.3
+
+## Attached adapters
+* Default: `std::array` based `PointND`, `BoundingBoxND`
+* Eigen: `Eigen::OctreePoint3d`, `::OctreePointC3d`, `::OctreeBox3d`, `::OctreeBoxC3d`, etc. (adaptor.eigen.h)
+* Unreal Engine: `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
+* `struct{x,y,z}`: (adaptor.xyz.h)
 
 ## Major aliases in OrthoTree
 ```C++
@@ -104,11 +113,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
   // Octree for bounding boxes (3D)
   using OctreeBoxC = TreeBoxContainerND<3>;
 ```
-## Attached adapters
-* Default: `std::array` based `PointND`, `BoundingBoxND`
-* {x,y,z}-based `struct` (adaptor.xyz.h)
-* Eigen: `Eigen::OctreePoint3d`, `Eigen::OctreePointC3d`, `Eigen::OctreeBox3d`, `Eigen::OctreeBoxC3d`, etc. (adaptor.eigen.h)
-* Unreal Engine: `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
+
 ## Basic examples
 
 Usage of Container types
