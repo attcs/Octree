@@ -25,7 +25,7 @@ namespace CustomGeometryType
 
   struct AdaptorBasicsCustom
   {
-    static constexpr float& point_comp(Point2DCustom& pt, OrthoTree::dim_type iDimension)
+    static constexpr float& point_comp(Point2DCustom& pt, OrthoTree::dim_t iDimension)
     {
       switch (iDimension)
       {
@@ -35,7 +35,7 @@ namespace CustomGeometryType
       }
     }
 
-    static constexpr float point_comp_c(Point2DCustom const& pt, OrthoTree::dim_type iDimension)
+    static constexpr float point_comp_c(Point2DCustom const& pt, OrthoTree::dim_t iDimension)
     {
       switch (iDimension)
       {
@@ -70,7 +70,7 @@ namespace AdaptorTest
   static bool AreEqualAlmost(BoundingBox2DCustom const& l, BoundingBox2DCustom const& r) noexcept
   {
     for (autoc iMax : { 0, 1 })
-      for (dim_type iD = 0; iD < 2; ++iD)
+      for (dim_t iD = 0; iD < 2; ++iD)
       {
         if (l[iMax].x == r[iMax].x)
           return false;
@@ -186,7 +186,7 @@ namespace AdaptorTest
           Eigen::AlignedBox2d( Eigen::Vector2d( 1.2, 1.2 ), Eigen::Vector2d( 2.8, 2.8 ) )
         };
 
-        auto quadtree = Eigen::QuadtreeBoxC2d(boxes
+        auto quadtree = Eigen::QuadtreeBoxC2d<2>(boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
           , 2            // max element in a node 
@@ -324,7 +324,7 @@ namespace AdaptorTest
           BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 1.2f, 1.2f }, BasicTypesXYZ::Point2D{ 2.8f, 2.8f } }
         };
 
-        auto quadtree = XYZ::QuadtreeBoxC(boxes
+        auto quadtree = XYZ::QuadtreeBoxC<2>(boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
           , 2            // max element in a node 
@@ -444,7 +444,7 @@ namespace AdaptorTest
           FBox2D(FVector2D(1.2, 1.2), FVector2D(2.8, 2.8))
         };
 
-        auto quadtree = FQuadtreeBox2DC(
+        auto quadtree = FQuadtreeBox2DC<2>(
           boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all

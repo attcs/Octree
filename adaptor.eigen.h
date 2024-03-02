@@ -38,9 +38,9 @@ namespace OrthoTree
       using VectorType_ = Matrix<Scalar_, AmbientDim_, 1>;
       using AlignedBox_ = AlignedBox<Scalar_, AmbientDim_>;
 
-      static constexpr Scalar_& point_comp(VectorType_& pt, dim_type dimensionID) { return pt(dimensionID); }
+      static constexpr Scalar_& point_comp(VectorType_& pt, dim_t dimensionID) { return pt(dimensionID); }
 
-      static constexpr Scalar_ point_comp_c(VectorType_ const& pt, dim_type dimensionID) { return pt(dimensionID); }
+      static constexpr Scalar_ point_comp_c(VectorType_ const& pt, dim_t dimensionID) { return pt(dimensionID); }
 
       static constexpr VectorType_& box_min(AlignedBox_& box) { return box.min(); }
       static constexpr VectorType_& box_max(AlignedBox_& box) { return box.max(); }
@@ -84,7 +84,7 @@ namespace OrthoTree
 
       static constexpr bool does_box_contain_point_strict(AlignedBox_ const& box, VectorType_ const& point) noexcept
       {
-        for (dim_type dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           if (!(base::point_comp_c(base::box_min_c(box), dimensionID) < base::point_comp_c(point, dimensionID) &&
                 base::point_comp_c(point, dimensionID) < base::point_comp_c(base::box_max_c(box), dimensionID)))
             return false;
@@ -95,7 +95,7 @@ namespace OrthoTree
 
       static constexpr bool does_point_touch_box(AlignedBox_ const& box, VectorType_ const& point) noexcept
       {
-        for (dim_type dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           if ((base::point_comp_c(base::box_min_c(box), dimensionID) == base::point_comp_c(point, dimensionID)))
             return false;
 
@@ -106,7 +106,7 @@ namespace OrthoTree
       {
         autoc e3 = e1.intersection(e2);
         autoc sizes = e3.sizes();
-        for (dim_type dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           if (sizes[dimensionID] <= 0.0)
             return false;
 
@@ -159,7 +159,7 @@ namespace OrthoTree
 
         auto minDistances = std::array<double, AmbientDim_>{};
         auto maxDistances = std::array<double, AmbientDim_>{};
-        for (dim_type dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
           autoc hComp = base::point_comp_c(rayHeading, dimensionID);
           if (hComp == 0)
@@ -219,7 +219,7 @@ namespace OrthoTree
         autoc radius = subtract(maxPoint, center);
 
         auto radiusProjected = double(tolerance);
-        for (dim_type dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           radiusProjected += base::point_comp_c(radius, dimensionID) * std::abs(base::point_comp_c(planeNormal, dimensionID));
 
         autoc centerProjected = dot(planeNormal, center);
@@ -248,16 +248,16 @@ namespace Eigen
   using EigenOrthoTreePoint =
     OrthoTreePoint<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneralBase<Scalar_, AmbientDim_>, Scalar_>;
 
-  template<typename Scalar_, int AmbientDim_, uint32_t AdditionalDepthOfSplitStrategy_ = 2>
+  template<typename Scalar_, int AmbientDim_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using EigenOrthoTreeBox =
-    OrthoTreeBoundingBox<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneralBase<Scalar_, AmbientDim_>, Scalar_, AdditionalDepthOfSplitStrategy_>;
+    OrthoTreeBoundingBox<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneralBase<Scalar_, AmbientDim_>, Scalar_, SPLIT_DEPTH_INCREASEMENT>;
 
   template<typename Scalar_, int AmbientDim_>
   using OrthoTreeContainerPointC = OrthoTreeContainerPoint<EigenOrthoTreePoint<Scalar_, AmbientDim_>, Matrix<Scalar_, AmbientDim_, 1>>;
 
-  template<typename Scalar_, int AmbientDim_, uint32_t AdditionalDepthOfSplitStrategy_ = 2>
+  template<typename Scalar_, int AmbientDim_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using OrthoTreeContainerBoxC =
-    OrthoTreeContainerBox<EigenOrthoTreeBox<Scalar_, AmbientDim_, AdditionalDepthOfSplitStrategy_>, AlignedBox<Scalar_, AmbientDim_>>;
+    OrthoTreeContainerBox<EigenOrthoTreeBox<Scalar_, AmbientDim_, SPLIT_DEPTH_INCREASEMENT>, AlignedBox<Scalar_, AmbientDim_>>;
 
   // Non-owning types
   using QuadtreePoint2f = EigenOrthoTreePoint<float, 2>;
@@ -268,17 +268,17 @@ namespace Eigen
 
   using OctreePoint3d = EigenOrthoTreePoint<double, 3>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using QuadtreeBox2f = EigenOrthoTreeBox<float, 2, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBox2f = EigenOrthoTreeBox<float, 2, SPLIT_DEPTH_INCREASEMENT>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using QuadtreeBox2d = EigenOrthoTreeBox<double, 2, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBox2d = EigenOrthoTreeBox<double, 2, SPLIT_DEPTH_INCREASEMENT>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using OctreeBox3f = EigenOrthoTreeBox<float, 3, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBox3f = EigenOrthoTreeBox<float, 3, SPLIT_DEPTH_INCREASEMENT>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using OctreeBox3d = EigenOrthoTreeBox<double, 3, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBox3d = EigenOrthoTreeBox<double, 3, SPLIT_DEPTH_INCREASEMENT>;
 
   // Container types
   using QuadtreePointC2f = OrthoTreeContainerPointC<float, 2>;
@@ -289,15 +289,15 @@ namespace Eigen
 
   using OctreePointC3d = OrthoTreeContainerPointC<double, 3>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using QuadtreeBoxC2f = OrthoTreeContainerBoxC<float, 2, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBoxC2f = OrthoTreeContainerBoxC<float, 2, SPLIT_DEPTH_INCREASEMENT>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using QuadtreeBoxC2d = OrthoTreeContainerBoxC<double, 2, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBoxC2d = OrthoTreeContainerBoxC<double, 2, SPLIT_DEPTH_INCREASEMENT>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using OctreeBoxC3f = OrthoTreeContainerBoxC<float, 3, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBoxC3f = OrthoTreeContainerBoxC<float, 3, SPLIT_DEPTH_INCREASEMENT>;
 
-  template<uint32_t AdditionalDepthOfSplitStrategy_ = 2>
-  using OctreeBoxC3d = OrthoTreeContainerBoxC<double, 3, AdditionalDepthOfSplitStrategy_>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBoxC3d = OrthoTreeContainerBoxC<double, 3, SPLIT_DEPTH_INCREASEMENT>;
 } // namespace Eigen

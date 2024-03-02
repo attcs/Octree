@@ -34,10 +34,10 @@ namespace
     return l == r || abs(l - r) < std::numeric_limits<double>::min() * 10; // l and r could be inf.
   }
 
-  template<dim_type nDimension, typename geometry_type = double>
+  template<dim_t nDimension, typename geometry_type = double>
   static bool AreEqualAlmost(BoundingBoxND<nDimension, geometry_type> const& l, BoundingBoxND<nDimension, geometry_type> const& r)
   {
-    for (dim_type iD = 0; iD < nDimension; ++iD)
+    for (dim_t iD = 0; iD < nDimension; ++iD)
     {
       if (!AreEqualAlmost(l.Min[iD], r.Min[iD]))
         return false;
@@ -50,7 +50,7 @@ namespace
   }
 
 
-  template<dim_type N>
+  template<dim_t N>
   static constexpr auto getPointSetNo1()
   {
     using PointXD = PointND<N>;
@@ -121,99 +121,99 @@ namespace GeneralTest
   public:
     TEST_METHOD(M1D_0_0)
     {
-      autoce arr = array<grid_id_type, 1> { 0 };
-      Assert::AreEqual(DualtreePoint::morton_grid_id_type{ 0 }, DualtreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 1> { 0 };
+      Assert::AreEqual(DualtreePoint::MortonGridID{ 0 }, DualtreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M1D_4_4)
     {
-      autoce arr = array<grid_id_type, 1>{ 4 };
-      Assert::AreEqual(DualtreePoint::morton_grid_id_type{ 4 }, DualtreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 1>{ 4 };
+      Assert::AreEqual(DualtreePoint::MortonGridID{ 4 }, DualtreePoint::MortonEncode(arr));
     }
 
 
     TEST_METHOD(M2D_00_0)
     {
-      autoce arr = array<grid_id_type, 2>{ 0, 0 };
-      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 0 }, QuadtreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 2>{ 0, 0 };
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 0 }, QuadtreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M2D_20_4)
     {
-      autoce arr = array<grid_id_type, 2>{ 2, 0 };
-      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 4 }, QuadtreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 2>{ 2, 0 };
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 4 }, QuadtreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M2D_02_8)
     {
-      autoce arr = array<grid_id_type, 2>{ 0, 2 };
-      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 8 }, QuadtreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 2>{ 0, 2 };
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 8 }, QuadtreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M2D_22_12)
     {
-      autoce arr = array<grid_id_type, 2>{ 2, 2 };
-      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 12 }, QuadtreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 2>{ 2, 2 };
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 12 }, QuadtreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M2D_13_11)
     {
-      autoce arr = array<grid_id_type, 2>{ 1, 3 };
-      Assert::AreEqual(QuadtreePoint::morton_grid_id_type{ 11 }, QuadtreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 2>{ 1, 3 };
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 11 }, QuadtreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M3D_000_0)
     {
-      autoce arr = array<grid_id_type, 3>{ 0, 0, 0 };
-      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 0 }, OctreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 3>{ 0, 0, 0 };
+      Assert::AreEqual(OctreePoint::MortonGridID{ 0 }, OctreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M3D_100_1)
     {
-      autoce arr = array<grid_id_type, 3>{ 1, 0, 0 };
-      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 1 }, OctreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 3>{ 1, 0, 0 };
+      Assert::AreEqual(OctreePoint::MortonGridID{ 1 }, OctreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M3D_001_4)
     {
-      autoce arr = array<grid_id_type, 3>{ 0, 0, 1 };
-      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 4 }, OctreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 3>{ 0, 0, 1 };
+      Assert::AreEqual(OctreePoint::MortonGridID{ 4 }, OctreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M3D_111_7)
     {
-      autoce arr = array<grid_id_type, 3>{ 1, 1, 1 };
-      Assert::AreEqual(OctreePoint::morton_grid_id_type{ 7 }, OctreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 3>{ 1, 1, 1 };
+      Assert::AreEqual(OctreePoint::MortonGridID{ 7 }, OctreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M4D_1111_15)
     {
-      autoce arr = array<grid_id_type, 4>{ 1, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::morton_grid_id_type{ 15 }, HexatreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 4>{ 1, 1, 1, 1 };
+      Assert::AreEqual(HexatreePoint::MortonGridID{ 15 }, HexatreePoint::MortonEncode(arr));
     }
 
     TEST_METHOD(M4D_2111_30)
     {
-      autoce arr = array<grid_id_type, 4>{ 2, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::morton_grid_id_type{ 30 }, HexatreePoint::MortonEncode(arr));
+      autoce arr = array<GridID, 4>{ 2, 1, 1, 1 };
+      Assert::AreEqual(HexatreePoint::MortonGridID{ 30 }, HexatreePoint::MortonEncode(arr));
     }
   };
 
   TEST_CLASS(NodeTest)
   {
   private:
-    template<dim_type N>
+    template<dim_t N>
     static void _complex_ND_Only1()
     {
-      using child_id_type_ = typename TreeBoxND<N>::child_id_type;
-      using morton_node_id_type = typename TreeBoxND<N>::morton_node_id_type;
+      using child_id_type_ = typename TreeBoxND<N>::ChildID;
+      using MortonNodeID = typename TreeBoxND<N>::MortonNodeID;
       auto node = typename TreeBoxND<N>::Node();
       Assert::IsFalse(node.IsAnyChildExist());
 
       autoce nChild = 1 << N;
       for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
       {
-        autoc kChild = morton_node_id_type(idChild);
+        autoc kChild = MortonNodeID(idChild);
         node.AddChild(kChild);
         Assert::IsTrue(node.HasChild(kChild));
         Assert::IsTrue(node.IsAnyChildExist());
@@ -239,17 +239,17 @@ namespace GeneralTest
 
 
   private:
-    template<dim_type N>
+    template<dim_t N>
     static void _complex_All_ND()
     {
-      using child_id_type = typename TreeBoxND<N>::child_id_type;
-      using morton_node_id_type = typename TreeBoxND<N>::morton_node_id_type;
+      using ChildID = typename TreeBoxND<N>::ChildID;
+      using MortonNodeID = typename TreeBoxND<N>::MortonNodeID;
       auto node = typename TreeBoxND<N>::Node();
 
-      child_id_type constexpr nChild = 1 << N;
-      for (child_id_type idChild = 0; idChild < nChild; ++idChild)
+      ChildID constexpr nChild = 1 << N;
+      for (ChildID idChild = 0; idChild < nChild; ++idChild)
       {
-        autoc kChild = morton_node_id_type(idChild);
+        autoc kChild = MortonNodeID(idChild);
         node.AddChild(kChild);
         Assert::IsTrue(node.HasChild(kChild));
         Assert::IsTrue(node.IsAnyChildExist());
@@ -258,13 +258,13 @@ namespace GeneralTest
         Assert::AreEqual<size_t>(static_cast<size_t>(idChild) + 1, vChild.size());
       }
 
-      for (child_id_type idChild = 0; idChild < nChild; ++idChild)
+      for (ChildID idChild = 0; idChild < nChild; ++idChild)
       {
-        autoc kChild = morton_node_id_type(idChild);
+        autoc kChild = MortonNodeID(idChild);
 
         node.DisableChild(kChild);
         autoc vChildActual = node.GetChildren();
-        auto vChildExpected = vector<child_id_type>(static_cast<size_t>(nChild - idChild) - 1);
+        auto vChildExpected = vector<ChildID>(static_cast<size_t>(nChild - idChild) - 1);
         std::iota(begin(vChildExpected), end(vChildExpected), idChild + 1);
         Assert::IsTrue(std::ranges::is_permutation(vChildExpected, vChildActual));
       }
@@ -285,7 +285,7 @@ namespace GeneralTest
 
   TEST_CLASS(BasicFunctionsTest)
   {
-    using morton_node_id_type = DualtreePoint::morton_node_id_type;
+    using MortonNodeID = DualtreePoint::MortonNodeID;
 
     TEST_METHOD(Ctor_Point_SameAsCreate__True)
     {
@@ -338,33 +338,33 @@ namespace GeneralTest
 
     TEST_METHOD(GetHash__00_1)
     {
-      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 1 }, DualtreePoint::GetHash(0, 0));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 1 }, DualtreePoint::GetHash(0, 0));
     }
 
     TEST_METHOD(GetHash__11_3)
     {
-      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 3 }, DualtreePoint::GetHash(1, 1));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 3 }, DualtreePoint::GetHash(1, 1));
     }
     TEST_METHOD(GetHash__22_4)
     {
-      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 6 }, DualtreePoint::GetHash(2, 2));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 6 }, DualtreePoint::GetHash(2, 2));
     }
 
     TEST_METHOD(GetHash__37_15)
     {
-      Assert::AreEqual(DualtreePoint::morton_node_id_type{ 15 }, DualtreePoint::GetHash(3, 7));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 15 }, DualtreePoint::GetHash(3, 7));
     }
 
     TEST_METHOD(GetDepth__37_15__3)
     {
       autoc lc = DualtreePoint::GetDepthID(DualtreePoint::GetHash(3, 7));
-      Assert::AreEqual(depth_type{ 3 }, lc);
+      Assert::AreEqual(depth_t{ 3 }, lc);
     }
 
     TEST_METHOD(RemoveSentinelBit__37_15__7)
     {
       autoc lc = DualtreePoint::RemoveSentinelBit(DualtreePoint::GetHash(3, 7));
-      Assert::AreEqual(morton_node_id_type{ 7 }, lc);
+      Assert::AreEqual(MortonNodeID{ 7 }, lc);
     }
 
     TEST_METHOD(Init)
@@ -376,8 +376,8 @@ namespace GeneralTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(1, nodes.size());
-      Assert::AreEqual<depth_type>(3, tree.GetDepthMax());
-      Assert::AreEqual<grid_id_type>(8, tree.GetResolutionMax());
+      Assert::AreEqual<depth_t>(3, tree.GetDepthMax());
+      Assert::AreEqual<GridID>(8, tree.GetResolutionMax());
     }
 
     TEST_METHOD(InitThenInsert)
@@ -664,7 +664,7 @@ namespace GeneralTest
     }
 
   private:
-    template<dim_type N>
+    template<dim_t N>
     bool _isOnePointTreeContains()
     {
       using PointXD = PointND<N>;
@@ -700,7 +700,7 @@ namespace GeneralTest
     }
 
   private:
-    template<dim_type N>
+    template<dim_t N>
     bool _isTreeContainsPointSetNo1()
     {
       autoce vPoint = getPointSetNo1<N>();
@@ -1137,33 +1137,33 @@ namespace Tree1DTest
   {
     TEST_METHOD(FindSmallestNode_At30)
     {
-      using morton_node_id_type = DualtreePoint::morton_node_id_type;
+      using MortonNodeID = DualtreePoint::MortonNodeID;
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode(vpt.back());
-      Assert::AreEqual<morton_node_id_type>(7, kLast);
+      Assert::AreEqual<MortonNodeID>(7, kLast);
     }
 
     TEST_METHOD(FindSmallestNode_At29)
     {
-      using morton_node_id_type = DualtreePoint::morton_node_id_type;
+      using MortonNodeID = DualtreePoint::MortonNodeID;
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode({2.9});
-      Assert::AreEqual<morton_node_id_type>(7, kLast);
+      Assert::AreEqual<MortonNodeID>(7, kLast);
     }
 
 
     TEST_METHOD(FindSmallestNode_At15)
     {
-      using morton_node_id_type = DualtreePoint::morton_node_id_type;
+      using MortonNodeID = DualtreePoint::MortonNodeID;
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
       autoc kLast = tree.FindSmallestNode({ 1.5 });
-      Assert::AreEqual<morton_node_id_type>(6, kLast);
+      Assert::AreEqual<MortonNodeID>(6, kLast);
     }
 
     TEST_METHOD(RangeSearch__EqualAtBorder__12)
@@ -2265,12 +2265,12 @@ namespace LongIntAdaptor
   template <size_t N>
   struct AdaptorBasicsCustom
   {
-    static inline GeometryType& point_comp(CustomVectorTypeND<N>& pt, OrthoTree::dim_type iDimension)
+    static inline GeometryType& point_comp(CustomVectorTypeND<N>& pt, OrthoTree::dim_t iDimension)
     {
       return pt[iDimension];
     }
 
-    static constexpr GeometryType point_comp_c(CustomVectorTypeND<N> const& pt, OrthoTree::dim_type iDimension)
+    static constexpr GeometryType point_comp_c(CustomVectorTypeND<N> const& pt, OrthoTree::dim_t iDimension)
     {
       return pt[iDimension];
     }
@@ -2284,7 +2284,7 @@ namespace LongIntAdaptor
   template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorBasicsCustom<N>, GeometryType>;
   template <size_t N> using OrthoTreePointCustom = OrthoTreePoint<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorCustom<N>, GeometryType>;
   template <size_t N> using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainerPoint<OrthoTreePointCustom<N>, CustomVectorTypeND<N>>;
-  template <size_t N, depth_type nSplit = 2> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorCustom<N>, GeometryType, nSplit>;
+  template <size_t N, depth_t nSplit = 2> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorCustom<N>, GeometryType, nSplit>;
   template <size_t N> using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainerBox<OrthoTreeBoxCustom<N>, CustomBoundingBoxND<N>>;
 
 
@@ -2687,7 +2687,7 @@ namespace LongIntAdaptor
       std::ranges::sort(vidExpected);
       auto missing_ids = vector<std::size_t>{};
       std::ranges::set_difference(vidExpected, vidActual, std::back_inserter(missing_ids));
-      auto missing_nodes = vector<OrthoTreePointCustom<nDim>::morton_node_id_type>(missing_ids.size());
+      auto missing_nodes = vector<OrthoTreePointCustom<nDim>::MortonNodeID>(missing_ids.size());
       std::ranges::transform(missing_ids, missing_nodes.begin(), [&](autoc id) { return tree.GetCore().Find(id); });
       
       Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));

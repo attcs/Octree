@@ -67,7 +67,7 @@ namespace OrthoTree
 
     struct XYAdaptorBasics
     {
-      static constexpr xy_geometry_type& point_comp(XYPoint2D& pt, dim_type dimensionID)
+      static constexpr xy_geometry_type& point_comp(XYPoint2D& pt, dim_t dimensionID)
       {
         switch (dimensionID)
         {
@@ -77,7 +77,7 @@ namespace OrthoTree
         }
       }
 
-      static constexpr xy_geometry_type point_comp_c(XYPoint2D const& pt, dim_type dimensionID)
+      static constexpr xy_geometry_type point_comp_c(XYPoint2D const& pt, dim_t dimensionID)
       {
         switch (dimensionID)
         {
@@ -105,7 +105,7 @@ namespace OrthoTree
 
     struct XYZAdaptorBasics
     {
-      static constexpr xyz_geometry_type& point_comp(XYZPoint3D& pt, dim_type dimensionID)
+      static constexpr xyz_geometry_type& point_comp(XYZPoint3D& pt, dim_t dimensionID)
       {
         switch (dimensionID)
         {
@@ -116,7 +116,7 @@ namespace OrthoTree
         }
       }
 
-      static constexpr xyz_geometry_type point_comp_c(XYZPoint3D const& pt, dim_type dimensionID)
+      static constexpr xyz_geometry_type point_comp_c(XYZPoint3D const& pt, dim_t dimensionID)
       {
         switch (dimensionID)
         {
@@ -147,24 +147,24 @@ namespace XYZ
 
   using QuadtreePoint = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYAdaptorGeneral, xy_geometry_type>;
 
-  template<uint32_t t_AdditionalDepthOfSplitStrategy = 2>
-  using QuadtreeBox = OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYAdaptorGeneral, xy_geometry_type, t_AdditionalDepthOfSplitStrategy>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBox = OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYAdaptorGeneral, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT>;
 
   using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint, XYPoint2D>;
 
-  template<uint32_t t_AdditionalDepthOfSplitStrategy = 2>
-  using QuadtreeBoxC = OrthoTreeContainerBox<QuadtreeBox<t_AdditionalDepthOfSplitStrategy>, XYBoundingBox2D>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBoxC = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYBoundingBox2D>;
 
   
   using OctreePoint = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorGeneral, xyz_geometry_type>;
   
-  template<uint32_t t_AdditionalDepthOfSplitStrategy = 2>
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using OctreeBox =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorGeneral, xyz_geometry_type, t_AdditionalDepthOfSplitStrategy>;
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorGeneral, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT>;
   
 
   using OcreePointC = OrthoTreeContainerPoint<OctreePoint, XYZPoint3D>;
 
-  template<uint32_t t_AdditionalDepthOfSplitStrategy = 2>
-  using OctreeBoxC = OrthoTreeContainerBox<QuadtreeBox<t_AdditionalDepthOfSplitStrategy>, XYZBoundingBox3D>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBoxC = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYZBoundingBox3D>;
 }

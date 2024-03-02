@@ -25,7 +25,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 ## Limitations
 * Maximum number of dimensions is 63.
 * Maximum depth of octree solutions is 10.
-* Abstract classes cannot be used for `vector_type` and `box_type`
+* Abstract classes cannot be used for `TVector` and `TBox`
 
 ## Requirements
 * Language standard: C++20 or above
@@ -54,13 +54,13 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Point and Bounding box-based solution is distinguished.
 * Core types store only the entity ids, use Container types to store. Core types advantages: not copying and managing the entity information; disadvantages: this information may have to be provided again for the member function call.
 * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
-* Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `nSplitStrategyAdditionalDepth` template parameter, these boxes can be splitted then placed on the deeper level of the tree. The `nSplitStrategyAdditionalDepth` default is 2 and this split method is applied by default.
+* Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `SPLIT_DEPTH_INCREASEMENT` template parameter, these boxes can be splitted then placed on the deeper level of the tree. The `SPLIT_DEPTH_INCREASEMENT` default is 2 and this split method is applied by default.
 * Edit functions are available but not recommended to majorly build the tree.
 * If less element is collected in a node than the max element then the child node won't be created.
 * The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
 * Unit tests are attached. (Microsoft Unit Testing Framework for C++)
-* Tested compilers: MSVC 2019, Clang 12.0.0, GCC 11.3
+* Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3
 
 ## Attached adapters
 * Default: `std::array` based `PointND`, `BoundingBoxND`

@@ -24,7 +24,7 @@
 
 // Enforce the compilation of all template function
 
-template<OrthoTree::dim_type N, typename execution_policy_type>
+template<OrthoTree::dim_t N, typename execution_policy_type>
 void testCompilePoint()
 {
   using Point = OrthoTree::PointND<N>;
@@ -113,7 +113,7 @@ void testCompilePoint()
 }
 
 
-template<OrthoTree::dim_type N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBox()
 {
   using Vector = OrthoTree::PointND<N>;
@@ -206,7 +206,7 @@ void testCompileBox()
 }
 
 
-template<OrthoTree::dim_type N, typename execution_policy_type>
+template<OrthoTree::dim_t N, typename execution_policy_type>
 void testCompilePointC()
 {
   using Point = OrthoTree::PointND<N>;
@@ -270,7 +270,7 @@ void testCompilePointC()
 }
 
 
-template<OrthoTree::dim_type N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;

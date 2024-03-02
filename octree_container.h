@@ -32,26 +32,26 @@ SOFTWARE.
 
 namespace OrthoTree
 {
-  template<typename OrthoTreeCore, typename data_type>
+  template<typename OrthoTreeCore, typename TData>
   class OrthoTreeContainerBase
   {
   public:
     using AD = typename OrthoTreeCore::AD;
-    using vector_type = typename OrthoTreeCore::vector_type;
-    using box_type = typename OrthoTreeCore::box_type;
-    using geometry_type = typename OrthoTreeCore::geometry_type;
+    using TVector = typename OrthoTreeCore::TVector;
+    using TBox = typename OrthoTreeCore::TBox;
+    using TGeometry = typename OrthoTreeCore::TGeometry;
     using Plane = typename OrthoTreeCore::Plane;
 
   protected:
     OrthoTreeCore m_tree;
-    std::vector<data_type> m_geometryCollection;
+    std::vector<TData> m_geometryCollection;
 
   public: // Constructors
     OrthoTreeContainerBase() noexcept = default;
     OrthoTreeContainerBase(
-      std::span<data_type const> const& geometryCollection,
-      depth_type maxDepthNo = 0,
-      std::optional<box_type> const& boxSpace = std::nullopt,
+      std::span<TData const> const& geometryCollection,
+      depth_t maxDepthNo = 0,
+      std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
@@ -63,9 +63,9 @@ namespace OrthoTree
     }
 
     OrthoTreeContainerBase(
-      std::vector<data_type>&& geometryCollection,
-      depth_type maxDepthNo = 0,
-      std::optional<box_type> const& boxSpace = std::nullopt,
+      std::vector<TData>&& geometryCollection,
+      depth_t maxDepthNo = 0,
+      std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(geometryCollection)
@@ -79,16 +79,16 @@ namespace OrthoTree
 
   public: // Member functions
     constexpr OrthoTreeCore const& GetCore() const noexcept { return m_tree; }
-    constexpr std::vector<data_type> const& GetData() const noexcept { return m_geometryCollection; }
+    constexpr std::vector<TData> const& GetData() const noexcept { return m_geometryCollection; }
 
-    constexpr void Init(box_type const& boxSpace, depth_type maxDepthNo, std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+    constexpr void Init(TBox const& boxSpace, depth_t maxDepthNo, std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       m_tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
     }
 
-    data_type const& Get(std::size_t entityID) const noexcept { return m_geometryCollection[entityID]; }
+    TData const& Get(std::size_t entityID) const noexcept { return m_geometryCollection[entityID]; }
 
-    bool Add(data_type const& data, bool doInsertToLeaf = false) noexcept
+    bool Add(TData const& data, bool doInsertToLeaf = false) noexcept
     {
       autoc id = m_geometryCollection.size();
       if (m_tree.Insert(id, data, doInsertToLeaf))
@@ -100,7 +100,7 @@ namespace OrthoTree
       return false;
     }
 
-    bool Update(std::size_t id, data_type const& newData, bool doInsertToLeaf = false) noexcept
+    bool Update(std::size_t id, TData const& newData, bool doInsertToLeaf = false) noexcept
     {
       if (m_tree.Update(id, m_geometryCollection[id], newData, doInsertToLeaf))
       {
@@ -137,31 +137,31 @@ namespace OrthoTree
       m_geometryCollection.clear();
     }
 
-    inline std::vector<std::size_t> CollectAllIdInBFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    inline std::vector<std::size_t> CollectAllIdInBFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllIdInBFS(parentKey);
     }
 
-    inline std::vector<std::size_t> CollectAllIdInDFS(OrthoTreeCore::morton_node_id_type_cref parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    inline std::vector<std::size_t> CollectAllIdInDFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllIdInDFS(parentKey);
     }
 
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlanePositiveSegmentation(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlanePositiveSegmentation(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) const noexcept
     {
       return this->m_tree.PlanePositiveSegmentation(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, TGeometry tolerance) const noexcept
     {
       return this->m_tree.PlanePositiveSegmentation(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> FrustumCulling(std::vector<Plane> const& boundaryPlanes, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> FrustumCulling(std::vector<Plane> const& boundaryPlanes, TGeometry tolerance) const noexcept
     {
       return this->m_tree.FrustumCulling(boundaryPlanes, tolerance, this->m_geometryCollection);
     }
@@ -169,78 +169,78 @@ namespace OrthoTree
 
 
   // General OrthoTree container for point types
-  template<typename OrthoTreeCore, typename data_type>
-  class OrthoTreeContainerPoint final : public OrthoTreeContainerBase<OrthoTreeCore, data_type>
+  template<typename OrthoTreeCore, typename TData>
+  class OrthoTreeContainerPoint final : public OrthoTreeContainerBase<OrthoTreeCore, TData>
   {
   public:
-    using base = OrthoTreeContainerBase<OrthoTreeCore, data_type>;
+    using base = OrthoTreeContainerBase<OrthoTreeCore, TData>;
     using AD = typename base::AD;
-    using geometry_type = typename base::geometry_type;
-    using vector_type = typename base::vector_type;
-    using box_type = typename base::box_type;
+    using TGeometry = typename base::TGeometry;
+    using TVector = typename base::TVector;
+    using TBox = typename base::TBox;
     using Plane = typename base::Plane;
 
     using base::base; // inherits all constructors
 
   public: // Edit functions
-    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
     static OrthoTreeContainerPoint Create(
-      std::span<data_type const> const& geometryCollection,
-      depth_type maxDepthNo = 0,
-      std::optional<box_type> const& boxSpace = std::nullopt,
+      std::span<TData const> const& geometryCollection,
+      depth_t maxDepthNo = 0,
+      std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
-      OrthoTreeCore::template Create<execution_policy_type>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
     static OrthoTreeContainerPoint Create(
-      std::vector<data_type>&& geometryCollection,
-      depth_type maxDepthNo = 0,
-      std::optional<box_type> const& boxSpace = std::nullopt,
+      std::vector<TData>&& geometryCollection,
+      depth_t maxDepthNo = 0,
+      std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore::template Create<execution_policy_type>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename execution_policy_type = std::execution::unsequenced_policy>
-    void Move(vector_type const& vMove) noexcept
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    void Move(TVector const& vMove) noexcept
     {
-      this->m_tree.template Move<execution_policy_type>(vMove);
-      auto ep = execution_policy_type{}; // GCC 11.3
+      this->m_tree.template Move<TExecutionPolicy>(vMove);
+      auto ep = TExecutionPolicy{}; // GCC 11.3
       std::for_each(ep, std::begin(this->m_geometryCollection), std::end(this->m_geometryCollection), [&vMove](auto& pt) { pt = AD::add(pt, vMove); });
     }
 
 
   public:
     // Range search
-    template<bool t_doesLeafNodeContainElementOnly = false>
-    inline std::vector<std::size_t> RangeSearch(box_type const& range) const noexcept
+    template<bool DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY = false>
+    inline std::vector<std::size_t> RangeSearch(TBox const& range) const noexcept
     {
-      return this->m_tree.RangeSearch(range, this->m_geometryCollection);
+      return this->m_tree.template RangeSearch<DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY>(range, this->m_geometryCollection);
     }
 
     // K Nearest Neighbor
-    inline std::vector<std::size_t> GetNearestNeighbors(vector_type const& pt, std::size_t k) const noexcept
+    inline std::vector<std::size_t> GetNearestNeighbors(TVector const& pt, std::size_t k) const noexcept
     {
       return this->m_tree.GetNearestNeighbors(pt, k, this->m_geometryCollection);
     }
 
   public: // Plane
     // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlaneSearch(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneSearch(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) const noexcept
     {
       return this->m_tree.PlaneSearch(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneSearch(Plane const& plane, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneSearch(Plane const& plane, TGeometry tolerance) const noexcept
     {
       return this->m_tree.PlaneSearch(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
     }
@@ -248,51 +248,51 @@ namespace OrthoTree
 
 
   // General OrthoTreeCore container for Box types
-  template<typename OrthoTreeCore, typename data_type>
-  class OrthoTreeContainerBox : public OrthoTreeContainerBase<OrthoTreeCore, data_type>
+  template<typename OrthoTreeCore, typename TData>
+  class OrthoTreeContainerBox final : public OrthoTreeContainerBase<OrthoTreeCore, TData>
   {
   public:
-    using base = OrthoTreeContainerBase<OrthoTreeCore, data_type>;
+    using base = OrthoTreeContainerBase<OrthoTreeCore, TData>;
     using AD = typename base::AD;
-    using geometry_type = typename base::geometry_type;
-    using vector_type = typename base::vector_type;
-    using box_type = typename base::box_type;
+    using TGeometry = typename base::TGeometry;
+    using TVector = typename base::TVector;
+    using TBox = typename base::TBox;
     using Plane = typename base::Plane;
 
     using base::base; // inherits all constructors
 
   public: // Edit functions
-    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
     static OrthoTreeContainerBox Create(
-      std::span<data_type const> const& geometryCollection,
-      depth_type maxDepthNo = 0,
-      std::optional<box_type> const& boxSpace = std::nullopt,
+      std::span<TData const> const& geometryCollection,
+      depth_t maxDepthNo = 0,
+      std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
-      OrthoTreeCore::template Create<execution_policy_type>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
     static OrthoTreeContainerBox Create(
-      std::vector<data_type>&& geometryCollection,
-      depth_type maxDepthNo = 0,
-      std::optional<box_type> const& boxSpace = std::nullopt,
+      std::vector<TData>&& geometryCollection,
+      depth_t maxDepthNo = 0,
+      std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore::template Create<execution_policy_type>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename execution_policy_type = std::execution::unsequenced_policy>
-    void Move(vector_type const& moveVector) noexcept
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    void Move(TVector const& moveVector) noexcept
     {
-      this->m_tree.template Move<execution_policy_type>(moveVector);
-      auto ep = execution_policy_type{}; // GCC 11.3
+      this->m_tree.template Move<TExecutionPolicy>(moveVector);
+      auto ep = TExecutionPolicy{}; // GCC 11.3
       std::for_each(ep, std::begin(this->m_geometryCollection), std::end(this->m_geometryCollection), [&moveVector](auto& Box) {
         AD::move_box(Box, moveVector);
       });
@@ -301,24 +301,24 @@ namespace OrthoTree
 
   public: // Search functions
     // Pick search
-    inline std::vector<std::size_t> PickSearch(vector_type const& pickPoint) const noexcept
+    inline std::vector<std::size_t> PickSearch(TVector const& pickPoint) const noexcept
     {
       return this->m_tree.PickSearch(pickPoint, this->m_geometryCollection);
     }
 
     // Range search
     template<bool isFullyContained = true>
-    inline std::vector<std::size_t> RangeSearch(box_type const& range) const noexcept
+    inline std::vector<std::size_t> RangeSearch(TBox const& range) const noexcept
     {
       return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_geometryCollection);
     }
 
   public: // Collision detection
     // Collision detection between the contained elements
-    template<typename execution_policy_type = std::execution::unsequenced_policy>
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
     inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection() const noexcept
     {
-      return this->m_tree.template CollisionDetection<execution_policy_type>(this->m_geometryCollection);
+      return this->m_tree.template CollisionDetection<TExecutionPolicy>(this->m_geometryCollection);
     }
 
     // Collision detection with another tree
@@ -338,39 +338,36 @@ namespace OrthoTree
   public: // Ray intersection
     // Get all Box which is intersected by the ray in order
     inline std::vector<std::size_t> RayIntersectedAll(
-      vector_type const& rayBasePoint,
-      vector_type const& rayHeading,
-      geometry_type tolerance,
-      geometry_type maxDistance = std::numeric_limits<geometry_type>::max()) const noexcept
+      TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance, TGeometry maxDistance = std::numeric_limits<TGeometry>::max()) const noexcept
     {
       return this->m_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->m_geometryCollection, tolerance, maxDistance);
     }
 
     // Get first Box which is intersected by the ray
-    inline std::optional<std::size_t> RayIntersectedFirst(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance) const noexcept
+    inline std::optional<std::size_t> RayIntersectedFirst(TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) const noexcept
     {
       return this->m_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->m_geometryCollection, tolerance);
     }
 
   public: // Plane
     // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlaneIntersection(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneIntersection(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) const noexcept
     {
       return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneIntersection(Plane const& plane, geometry_type tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneIntersection(Plane const& plane, TGeometry tolerance) const noexcept
     {
       return this->m_tree.PlaneIntersection(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
     }
   };
 
-  template<dim_type N>
+  template<dim_t N>
   using TreePointContainerND = OrthoTreeContainerPoint<TreePointND<N>, PointND<N>>;
 
-  template<dim_type N, uint32_t additionalDepthOfSplitStrategy = 2>
-  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<N, additionalDepthOfSplitStrategy>, BoundingBoxND<N>>;
+  template<dim_t N, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<N, SPLIT_DEPTH_INCREASEMENT>, BoundingBoxND<N>>;
 
   // Dualtree for points
   using DualtreePointC = TreePointContainerND<1>;
