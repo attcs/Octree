@@ -40,6 +40,7 @@ namespace OrthoTree
     using vector_type = typename OrthoTreeCore::vector_type;
     using box_type = typename OrthoTreeCore::box_type;
     using geometry_type = typename OrthoTreeCore::geometry_type;
+    using Plane = typename OrthoTreeCore::Plane;
 
   protected:
     OrthoTreeCore m_tree;
@@ -145,6 +146,25 @@ namespace OrthoTree
     {
       return m_tree.CollectAllIdInDFS(parentKey);
     }
+
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlanePositiveSegmentation(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    {
+      return this->m_tree.PlanePositiveSegmentation(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, geometry_type tolerance) const noexcept
+    {
+      return this->m_tree.PlanePositiveSegmentation(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> FrustumCulling(std::vector<Plane> const& boundaryPlanes, geometry_type tolerance) const noexcept
+    {
+      return this->m_tree.FrustumCulling(boundaryPlanes, tolerance, this->m_geometryCollection);
+    }
   };
 
 
@@ -158,6 +178,7 @@ namespace OrthoTree
     using geometry_type = typename base::geometry_type;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
+    using Plane = typename base::Plane;
 
     using base::base; // inherits all constructors
 
@@ -205,23 +226,30 @@ namespace OrthoTree
       return this->m_tree.RangeSearch(range, this->m_geometryCollection);
     }
 
-    // Plane search (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
+    // K Nearest Neighbor
+    inline std::vector<std::size_t> GetNearestNeighbors(vector_type const& pt, std::size_t k) const noexcept
+    {
+      return this->m_tree.GetNearestNeighbors(pt, k, this->m_geometryCollection);
+    }
+
+  public: // Plane
+    // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
     inline std::vector<std::size_t> PlaneSearch(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
     {
       return this->m_tree.PlaneSearch(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
     }
 
-    // K Nearest Neighbor
-    inline std::vector<std::size_t> GetNearestNeighbors(vector_type const& pt, std::size_t k) const noexcept
+    // Hyperplane intersection using built-in plane
+    inline std::vector<std::size_t> PlaneSearch(Plane const& plane, geometry_type tolerance) const noexcept
     {
-      return this->m_tree.GetNearestNeighbors(pt, k, this->m_geometryCollection);
+      return this->m_tree.PlaneSearch(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
     }
   };
 
 
   // General OrthoTreeCore container for Box types
   template<typename OrthoTreeCore, typename data_type>
-  class OrthoTreeContainerBox final : public OrthoTreeContainerBase<OrthoTreeCore, data_type>
+  class OrthoTreeContainerBox : public OrthoTreeContainerBase<OrthoTreeCore, data_type>
   {
   public:
     using base = OrthoTreeContainerBase<OrthoTreeCore, data_type>;
@@ -229,6 +257,7 @@ namespace OrthoTree
     using geometry_type = typename base::geometry_type;
     using vector_type = typename base::vector_type;
     using box_type = typename base::box_type;
+    using Plane = typename base::Plane;
 
     using base::base; // inherits all constructors
 
@@ -284,12 +313,6 @@ namespace OrthoTree
       return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_geometryCollection);
     }
 
-    // Plane intersection (Plane equation: dotProduct(planeNormal, pt) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlaneIntersection(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
-    {
-      return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
-    }
-
   public: // Collision detection
     // Collision detection between the contained elements
     template<typename execution_policy_type = std::execution::unsequenced_policy>
@@ -327,6 +350,19 @@ namespace OrthoTree
     inline std::optional<std::size_t> RayIntersectedFirst(vector_type const& rayBasePoint, vector_type const& rayHeading, geometry_type tolerance) const noexcept
     {
       return this->m_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->m_geometryCollection, tolerance);
+    }
+
+  public: // Plane
+    // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlaneIntersection(geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) const noexcept
+    {
+      return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
+    }
+
+    // Hyperplane intersection using built-in plane
+    inline std::vector<std::size_t> PlaneIntersection(Plane const& plane, geometry_type tolerance) const noexcept
+    {
+      return this->m_tree.PlaneIntersection(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
     }
   };
 

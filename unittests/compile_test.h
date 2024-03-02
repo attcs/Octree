@@ -73,7 +73,17 @@ void testCompilePoint()
     autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
     autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
     autoc aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
-
+    autoc idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    autoc idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0, vpt);
+    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, vpt);
+    using Plane = OT::Plane;
+    autoc idFrustum = tree.FrustumCulling(
+      std::vector{
+        Plane{1.0, { 1.0, 0.0 }}
+      },
+      0.0,
+      vpt);
     autoc kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     auto vListIsAnyChild = std::vector<bool>{};
@@ -106,6 +116,7 @@ void testCompilePoint()
 template<OrthoTree::dim_type N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBox()
 {
+  using Vector = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth>;
 
@@ -155,6 +166,18 @@ void testCompileBox()
 
     autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
     autoc idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
+
+    autoc idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    autoc idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0, boxes);
+    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, boxes);
+    using Plane = OT::Plane;
+    autoc idFrustum = tree.FrustumCulling(
+      std::vector{
+        Plane{1.0, Vector{ 1.0, 0.0 }}
+      },
+      0.0,
+      boxes);
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
@@ -214,6 +237,18 @@ void testCompilePointC()
     autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
     autoc kNN = tree.GetNearestNeighbors({}, 2);
+
+    autoc idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
+    autoc idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0);
+    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    using Plane = OT::Plane;
+    autoc idFrustum = tree.FrustumCulling(
+      std::vector{
+        Plane{1.0, { 1.0, 0.0 }},
+        Plane{1.0, { 0.0, 1.0 }}
+      },
+      0.0);
   }
 
   // non-const member functions
@@ -268,6 +303,19 @@ void testCompileBoxC()
    
     autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
     autoc idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
+
+    autoc idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
+    autoc idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0);
+    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    using Plane = OT::Plane;
+    autoc idFrustum = tree.FrustumCulling(
+      std::vector{
+        Plane{1.0, { 1.0, 0.0 }},
+        Plane{1.0, { 0.0, 1.0 }}
+      },
+      0.0);
+
   }
 
   // non-const member functions

@@ -504,9 +504,26 @@ namespace OrthoTree
         return rMin < 0 ? rMax : rMin;
       }
 
+      // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+      static constexpr PlaneRelation get_point_plane_relation(
+        FVector_ const& point, geometry_type_ distanceOfOrigo, FVector_ const& planeNormal, geometry_type_ tolerance) noexcept
+      {
+        assert(is_normalized_vector(planeNormal));
 
-      // Plane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr bool does_plane_intersect(FBox_ const& box, geometry_type_ distanceOfOrigo, FVector_ const& planeNormal, geometry_type_ tolerance) noexcept
+        autoc pointProjected = dot(planeNormal, point);
+
+        if (pointProjected < distanceOfOrigo - tolerance)
+          return PlaneRelation::Negative;
+
+        if (pointProjected > distanceOfOrigo + tolerance)
+          return PlaneRelation::Positive;
+
+        return PlaneRelation::Hit;
+      }
+
+      // Get box-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+      static constexpr PlaneRelation get_box_plane_relation(
+        FBox_ const& box, geometry_type_ distanceOfOrigo, FVector_ const& planeNormal, geometry_type_ tolerance) noexcept
       {
         assert(is_normalized_vector(planeNormal));
 
@@ -518,11 +535,17 @@ namespace OrthoTree
 
         double radiusProjected = 0.0;
         for (dim_type dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
-          radiusProjected += base::point_comp_c(radius, dimensionID) * abs(base::point_comp_c(planeNormal, dimensionID));
+          radiusProjected += base::point_comp_c(radius, dimensionID) * std::abs(base::point_comp_c(planeNormal, dimensionID));
 
         autoc centerProjected = dot(planeNormal, center);
 
-        return abs(centerProjected - distanceOfOrigo) <= radiusProjected + tolerance;
+        if (centerProjected - radiusProjected < distanceOfOrigo - tolerance)
+          return PlaneRelation::Negative;
+
+        if (centerProjected + radiusProjected > distanceOfOrigo + tolerance)
+          return PlaneRelation::Positive;
+
+        return PlaneRelation::Hit;
       }
     };
 

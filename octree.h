@@ -141,6 +141,14 @@ namespace OrthoTree
   // Type of depth
   using depth_type = int;
 
+  // Enum of relation with Planes
+  enum class PlaneRelation : char
+  {
+    Negative,
+    Hit,
+    Positive
+  };
+
   // Adaptor concepts
 
   template<class adaptor_type, typename vector_type, typename box_type, typename geometry_type = double>
@@ -459,8 +467,26 @@ namespace OrthoTree
     }
 
 
-    // Plane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    static constexpr bool does_plane_intersect(box_type const& box, geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) noexcept
+    // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    static constexpr PlaneRelation get_point_plane_relation(
+      vector_type const& point, geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) noexcept
+    {
+      assert(is_normalized_vector(planeNormal));
+
+      autoc pointProjected = dot(planeNormal, point);
+
+      if (pointProjected < distanceOfOrigo - tolerance)
+        return PlaneRelation::Negative;
+
+      if (pointProjected > distanceOfOrigo + tolerance)
+        return PlaneRelation::Positive;
+
+      return PlaneRelation::Hit;
+    }
+
+    // Get box-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    static constexpr PlaneRelation get_box_plane_relation(
+      box_type const& box, geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance) noexcept
     {
       assert(is_normalized_vector(planeNormal));
 
@@ -470,15 +496,21 @@ namespace OrthoTree
       autoc center = multiply(add(minPoint, maxPoint), 0.5);
       autoc radius = subtract(maxPoint, center);
 
-      double radiusProjected = 0.0;
+      auto radiusProjected = double(tolerance);
       for (dim_type dimensionID = 0; dimensionID < t_DimensionNo; ++dimensionID)
         radiusProjected += base::point_comp_c(radius, dimensionID) * std::abs(base::point_comp_c(planeNormal, dimensionID));
 
       autoc centerProjected = dot(planeNormal, center);
 
-      return std::abs(centerProjected - distanceOfOrigo) <= radiusProjected + tolerance;
+      if (centerProjected + radiusProjected < distanceOfOrigo)
+        return PlaneRelation::Negative;
+
+      if (centerProjected - radiusProjected > distanceOfOrigo)
+        return PlaneRelation::Positive;
+
+      return PlaneRelation::Hit;
     }
-    }
+
   };
 
 
@@ -711,6 +743,12 @@ namespace OrthoTree
     using AD = adaptor_type;
     static_assert(AdaptorConcept<AD, vector_type, box_type, geometry_type>);
     static_assert(0 < t_DimensionNo && t_DimensionNo < 64);
+
+    struct Plane
+    {
+      geometry_type DistanceOfOrigo;
+      vector_type Normal;
+    };
 
   protected:
     // Max number of children
@@ -1339,6 +1377,30 @@ namespace OrthoTree
       return entityIDs;
     }
 
+  private:
+    template<bool t_doCollectOnlyLargerThanMinEntityID = false>
+    void collectAllIdInDFS(Node const& parentNode, std::vector<std::size_t>& foundEntities, std::size_t minEntityID = 0) const noexcept
+    {
+      if constexpr (t_doCollectOnlyLargerThanMinEntityID)
+      {
+        for (autoc entityID : parentNode.Entities)
+          if (entityID > minEntityID)
+            foundEntities.emplace_back(entityID);
+      }
+      else
+        foundEntities.insert(foundEntities.end(), parentNode.Entities.begin(), parentNode.Entities.end());
+
+      for (morton_node_id_type_cref childKey : parentNode.GetChildren())
+        collectAllIdInDFS<t_doCollectOnlyLargerThanMinEntityID>(this->GetNode(childKey), foundEntities, minEntityID);
+    }
+
+  public:
+    std::vector<std::size_t> CollectAllIdInDFS(morton_grid_id_type_cref parentKey = GetRootKey()) const noexcept
+    {
+      auto entityIDs = std::vector<std::size_t>{};
+      collectAllIdInDFS(GetNode(parentKey), entityIDs);
+      return entityIDs;
+    }
 
     // Update all element which are in the given hash-table. Elements will be erased if the replacement id is std::numeric_limits<std::size_t>::max().
     template<bool t_doUniqnessCheckToIndicies = false>
@@ -1478,22 +1540,6 @@ namespace OrthoTree
       }
     }
 
-
-    template<bool t_doCollectOnlyLargerThanMinEntityID = false>
-    void collectAllIdInDFS(Node const& parentNode, std::vector<std::size_t>& foundEntities, std::size_t minEntityID = 0) const noexcept
-    {
-      if constexpr (t_doCollectOnlyLargerThanMinEntityID)
-      {
-        for (autoc entityID : parentNode.Entities)
-          if (entityID > minEntityID)
-            foundEntities.emplace_back(entityID);
-      }
-      else
-        foundEntities.insert(foundEntities.end(), parentNode.Entities.begin(), parentNode.Entities.end());
-
-      for (morton_node_id_type_cref childKey : parentNode.GetChildren())
-        collectAllIdInDFS<t_doCollectOnlyLargerThanMinEntityID>(this->GetNode(childKey), foundEntities, minEntityID);
-    }
 
     template<typename data_type, bool t_doRangeMustFullyContain = false, bool t_doCollectOnlyLargerThanMinEntityID = false>
     constexpr void rangeSearchCopy(
@@ -1645,14 +1691,113 @@ namespace OrthoTree
 
       return true;
     }
-
-
-  public:
-    std::vector<std::size_t> CollectAllIdInDFS(morton_grid_id_type_cref parentKey = GetRootKey()) const noexcept
+    
+    template<typename data_type>
+    static PlaneRelation get_entity_plane_relation(data_type entity, geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance)
     {
-      auto entityIDs = std::vector<std::size_t>{};
-      collectAllIdInDFS(GetNode(parentKey), entityIDs);
-      return entityIDs;
+      if constexpr (std::is_same<data_type, box_type>::value)
+        return AD::get_box_plane_relation(entity, distanceOfOrigo, planeNormal, tolerance);
+      else
+        return AD::get_point_plane_relation(entity, distanceOfOrigo, planeNormal, tolerance);
+    }
+
+    template<typename data_type>
+    std::vector<std::size_t> planeIntersection(
+      geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<data_type const> const& data) const noexcept
+    {
+      assert(AD::is_normalized_vector(planeNormal));
+
+      auto results = std::vector<std::size_t>{};
+      autoc selector = [&](morton_node_id_type_cref, Node const& node) -> bool {
+        return AD::get_box_plane_relation(node.Box, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
+      };
+
+      autoc procedure = [&](morton_node_id_type_cref, Node const& node) {
+        for (autoc entityID : node.Entities)
+          if (get_entity_plane_relation(data[entityID], distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit)
+            if (std::find(results.begin(), results.end(), entityID) == results.end())
+              results.emplace_back(entityID);
+      };
+
+      this->VisitNodesInDFS(GetRootKey(), procedure, selector);
+
+      return results;
+    }
+
+    template<typename data_type>
+    std::vector<std::size_t> planePositiveSegmentation(
+      geometry_type const& distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<data_type const> const& data) const noexcept
+    {
+      assert(AD::is_normalized_vector(planeNormal));
+
+      auto results = std::vector<std::size_t>{};
+      autoc selector = [&](morton_node_id_type_cref, Node const& node) -> bool {
+        autoc relation = AD::get_box_plane_relation(node.Box, distanceOfOrigo, planeNormal, tolerance);
+        return relation != PlaneRelation::Negative;
+      };
+
+      autoc procedure = [&](morton_node_id_type_cref, Node const& node) {
+        for (autoc entityID : node.Entities)
+        {
+          autoc relation = get_entity_plane_relation<data_type>(data[entityID], distanceOfOrigo, planeNormal, tolerance);
+          if (relation == PlaneRelation::Negative)
+            continue;
+
+          if (std::find(results.begin(), results.end(), entityID) == results.end())
+            results.emplace_back(entityID);
+        }
+      };
+
+      this->VisitNodesInDFS(GetRootKey(), procedure, selector);
+
+      return results;
+    }
+
+    // Get all entities which relation is positive or intersected by the given space boundary planes
+    template<typename data_type>
+    std::vector<std::size_t> frustumCulling(std::vector<Plane> const& boundaryPlanes, geometry_type tolerance, std::span<data_type const> const& data) const noexcept
+    {
+      auto results = std::vector<std::size_t>{};
+      if (boundaryPlanes.empty())
+        return results;
+
+      assert(std::all_of(boundaryPlanes.begin(), boundaryPlanes.end(), [](autoc& plane) { return AD::is_normalized_vector(plane.Normal); }));
+
+      autoc selector = [&](morton_node_id_type_cref, Node const& node) -> bool {
+        for (autoc& plane : boundaryPlanes)
+        {
+          autoc relation = AD::get_box_plane_relation(node.Box, plane.DistanceOfOrigo, plane.Normal, tolerance);
+          if (relation == PlaneRelation::Hit)
+            return true;
+
+          if (relation == PlaneRelation::Negative)
+            return false;
+        }
+        return true;
+      };
+
+      autoc procedure = [&](morton_node_id_type_cref, Node const& node) {
+        for (autoc entityID : node.Entities)
+        {
+          auto relation = PlaneRelation::Negative;
+          for (autoc& plane : boundaryPlanes)
+          {
+            relation = get_entity_plane_relation<data_type>(data[entityID], plane.DistanceOfOrigo, plane.Normal, tolerance);
+            if (relation != PlaneRelation::Positive)
+              break;
+          }
+
+          if (relation == PlaneRelation::Negative)
+            continue;
+
+          if (std::find(results.begin(), results.end(), entityID) == results.end())
+            results.emplace_back(entityID);
+        }
+      };
+
+      this->VisitNodesInDFS(GetRootKey(), procedure, selector);
+
+      return results;
     }
   };
 
@@ -1673,6 +1818,7 @@ namespace OrthoTree
     using morton_node_id_type = typename base::morton_node_id_type;
     using morton_node_id_type_cref = typename base::morton_node_id_type_cref;
     using child_id_type = typename base::child_id_type;
+    using Plane = typename base::Plane;
 
     using Node = typename base::Node;
 
@@ -1885,7 +2031,6 @@ namespace OrthoTree
       return std::ranges::any_of(node.Entities, [&](autoc& entityID) { return AD::are_points_equal(searchPoint, points[entityID], tolerance); });
     }
 
-
     // Range search
     template<bool t_doesLeafNodeContainElementOnly = false>
     std::vector<std::size_t> RangeSearch(box_type const& range, std::span<vector_type const> const& points) const noexcept
@@ -1898,36 +2043,39 @@ namespace OrthoTree
       return foundEntityIDs;
     }
 
-
-    // Plane search (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
     inline std::vector<std::size_t> PlaneSearch(
+      geometry_type const& distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<vector_type const> const& points) const noexcept
+    {
+      return this->template planeIntersection<vector_type>(distanceOfOrigo, planeNormal, tolerance, points);
+    }
+
+    // Hyperplane intersection using built-in plane
+    inline std::vector<std::size_t> PlaneSearch(Plane const& plane, geometry_type tolerance, std::span<vector_type const> const& points) const noexcept
+    {
+      return this->template planeIntersection<vector_type>(plane.DistanceOfOrigo, plane.Normal, tolerance, points);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlanePositiveSegmentation(
       geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<vector_type const> const& points) const noexcept
     {
-      assert(AD::is_normalized_vector(planeNormal));
-
-      auto results = std::vector<std::size_t>{};
-      if constexpr (t_DimensionNo < 3) // under 3 dimension, every boxes will be intersected.
-      {
-        results.resize(points.size());
-        std::iota(results.begin(), results.end(), 0);
-        return results;
-      }
-
-      autoc selector = [&](morton_node_id_type id, Node const& node) -> bool {
-        return AD::does_plane_intersect(node.Box, distanceOfOrigo, planeNormal, tolerance);
-      };
-
-      autoc procedure = [&](morton_node_id_type id, Node const& node) {
-        for (autoc id : node.Entities)
-          if (std::abs(AD::dot(points[id], planeNormal) - distanceOfOrigo) <= tolerance)
-            if (std::find(results.begin(), results.end(), id) == results.end())
-              results.emplace_back(id);
-      };
-
-      this->VisitNodesInDFS(base::GetRootKey(), procedure, selector);
-
-      return results;
+      return this->template planePositiveSegmentation<vector_type>(distanceOfOrigo, planeNormal, tolerance, points);
     }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, geometry_type tolerance, std::span<vector_type const> const& points) const noexcept
+    {
+      return this->template planePositiveSegmentation<vector_type>(plane.DistanceOfOrigo, plane.Normal, tolerance, points);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> FrustumCulling(
+      std::vector<Plane> const& boundaryPlanes, geometry_type tolerance, std::span<vector_type const> const& points) const noexcept
+    {
+      return this->template frustumCulling<vector_type>(boundaryPlanes, tolerance, points);
+    }
+
 
   private: // K Nearest Neighbor helpers
     static geometry_type getMinBoxWallDistance(vector_type const& point, box_type const& box) noexcept
@@ -2056,6 +2204,7 @@ namespace OrthoTree
     using morton_node_id_type = typename base::morton_node_id_type;
     using morton_node_id_type_cref = typename base::morton_node_id_type_cref;
     using child_id_type = typename base::child_id_type;
+    using Plane = typename base::Plane;
 
     using Node = typename base::Node;
 
@@ -2604,36 +2753,39 @@ namespace OrthoTree
       return foundEntities;
     }
 
-
-    // Plane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<std::size_t> PlaneIntersection(
+    // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlaneIntersection(
       geometry_type const& distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<box_type const> const& boxes) const noexcept
     {
-      assert(AD::is_normalized_vector(planeNormal));
-
-      auto results = std::vector<std::size_t>{};
-      if constexpr (t_DimensionNo < 3) // under 3 dimension, every boxes will be intersected.
-      {
-        results.resize(boxes.size());
-        std::iota(results.begin(), results.end(), 0);
-        return results;
-      }
-
-      autoc selector = [&](morton_node_id_type_cref, Node const& node) -> bool {
-        return AD::does_plane_intersect(node.Box, distanceOfOrigo, planeNormal, tolerance);
-      };
-
-      autoc procedure = [&](morton_node_id_type_cref, Node const& node) {
-        for (autoc entityID : node.Entities)
-          if (AD::does_plane_intersect(boxes[entityID], distanceOfOrigo, planeNormal, tolerance))
-            if (std::find(results.begin(), results.end(), entityID) == results.end())
-              results.emplace_back(entityID);
-      };
-
-      this->VisitNodesInDFS(base::GetRootKey(), procedure, selector);
-
-      return results;
+      return this->template planeIntersection<box_type>(distanceOfOrigo, planeNormal, tolerance, boxes);
     }
+
+    // Hyperplane intersection using built-in plane
+    inline std::vector<std::size_t> PlaneIntersection(Plane const& plane, geometry_type tolerance, std::span<box_type const> const& boxes) const noexcept
+    {
+      return this->template planeIntersection<box_type>(plane.DistanceOfOrigo, plane.Normal, tolerance, boxes);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlanePositiveSegmentation(
+      geometry_type distanceOfOrigo, vector_type const& planeNormal, geometry_type tolerance, std::span<box_type const> const& boxes) const noexcept
+    {
+      return this->template planePositiveSegmentation<box_type>(distanceOfOrigo, planeNormal, tolerance, boxes);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, geometry_type tolerance, std::span<box_type const> const& boxes) const noexcept
+    {
+      return this->template planePositiveSegmentation<box_type>(plane.DistanceOfOrigo, plane.Normal, tolerance, boxes);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    inline std::vector<std::size_t> FrustumCulling(
+      std::vector<Plane> const& boundaryPlanes, geometry_type tolerance, std::span<box_type const> const& boxes) const noexcept
+    {
+      return this->template frustumCulling<box_type>(boundaryPlanes, tolerance, boxes);
+    }
+
 
     // Client-defined Collision detector (params: id1, e1, id2, e2). It supplemented with the box intersection, the Client should not add.
     using fnCollisionDetector = std::function<bool(std::size_t, box_type const&, std::size_t, box_type const&)>;

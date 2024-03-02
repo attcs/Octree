@@ -144,6 +144,17 @@ namespace AdaptorTest
         
         auto sqrt3Reciproc = 1.0 / sqrt(3.0);
         auto pointsInPlane = tree.PlaneSearch(2.6, Eigen::Vector3d(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), 0.3, vpt);
+        
+        auto sqrt2 = sqrt(2.0);
+        auto sqrt2Reciproc = 1.0 / sqrt2;
+        auto pointsInFrustum = tree.FrustumCulling( // Cross-point of the planes: 2;2;2
+          vector<Eigen::OctreePoint3d::Plane>{
+            {2 * sqrt2, Eigen::Vector3d( sqrt2Reciproc, sqrt2Reciproc, 0.0 )},
+            {2 * sqrt2, Eigen::Vector3d( 0.0, sqrt2Reciproc, sqrt2Reciproc )},
+            {      0.0, Eigen::Vector3d( sqrt2Reciproc, -sqrt2Reciproc, 0.0)}
+        },
+          0.01f,
+          vpt);
 
         autoc n = vpt.size();
         vpt.push_back(Eigen::Vector3d(1.0, 1.0, 1.5));
@@ -157,6 +168,7 @@ namespace AdaptorTest
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5, 6, 7, 8, 9 }, pointsInPlane));
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 10, 8 }, entityIDsKNN));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 2, 3, 4, 6, 7 }, pointsInFrustum));
 
         Assert::IsTrue(vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
         Assert::IsTrue(vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
@@ -202,6 +214,18 @@ namespace AdaptorTest
         auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint, rayHeading, 0.01); //: 4
         auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01); //: { 4, 2, 3 } in distance order!
 
+        // Plane
+        using Plane = Eigen::QuadtreeBoxC2d<2>::Plane;
+        
+        auto sqrt2 = sqrt(2.0);
+        auto sqrt2Reciproc = 1.0 / sqrt2;
+        auto boxesInFrustum = quadtree.FrustumCulling( // Cross-point of the planes: 2;2;2
+          vector<Plane>{
+            {2 * sqrt2, Eigen::Vector2d(sqrt2Reciproc,  sqrt2Reciproc)},
+            {      2.0, Eigen::Vector2d(0, -1.0)}
+        },
+          0.01f);
+          
         // Collect all IDs in breadth/depth first order
         auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
         auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
@@ -212,6 +236,9 @@ namespace AdaptorTest
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{2, 4}, pickedIDs));
         Assert::IsTrue(firstIntersectedBox.has_value());
         Assert::AreEqual(std::size_t(4), *firstIntersectedBox);
+
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 2, 4 }, boxesInFrustum));
+
         Assert::IsTrue(vector<std::size_t>{ 4, 2, 3 } == intersectedPoints);
         Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
         Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
@@ -255,6 +282,18 @@ namespace AdaptorTest
         auto sqrt3Reciproc = BasicTypesXYZ::float_t(1.0 / sqrt(3.0));
         auto pointsInPlane = tree.PlaneSearch(2.6f, BasicTypesXYZ::Point3D{ sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc }, 0.3f, vpt);
 
+        auto sqrt2 = float_t(sqrt(2.0));
+        auto sqrt2Reciproc = float_t(1.0 / sqrt2);
+        
+        auto pointsInFrustum = tree.FrustumCulling( // Cross-point of the planes: 2;2;2
+          vector<XYZ::OctreePoint::Plane>{
+            {2 * sqrt2,  { sqrt2Reciproc, sqrt2Reciproc, 0.0 }},
+            {2 * sqrt2,  { 0.0, sqrt2Reciproc, sqrt2Reciproc }},
+            {      0.0, { sqrt2Reciproc, -sqrt2Reciproc, 0.0 }}
+        },
+          0.01f,
+          vpt);
+
         autoc n = vpt.size();
         vpt.push_back(BasicTypesXYZ::Point3D(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
@@ -267,6 +306,7 @@ namespace AdaptorTest
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 0, 1, 2, 8, 9 }, pointsInSearchBox));
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5, 6, 7, 8, 9 }, pointsInPlane));
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 10, 8 }, entityIDsKNN));
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 2, 3, 4, 6, 7 }, pointsInFrustum));
 
         Assert::IsTrue(vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
         Assert::IsTrue(vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
@@ -315,6 +355,18 @@ namespace AdaptorTest
         auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint, rayHeading, 0.01f); //: 4
         auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01f); //: { 4, 2, 3 } in distance order!
 
+        // Plane
+        using Plane = XYZ::QuadtreeBoxC<2>::Plane;
+
+        auto sqrt2 = sqrtf(2.0);
+        auto sqrt2Reciproc = 1.0f / sqrt2;
+        auto boxesInFrustum = quadtree.FrustumCulling( // Cross-point of the planes: 2;2;2
+          vector<Plane>{
+            {2 * sqrt2, { sqrt2Reciproc, sqrt2Reciproc }},
+            {     2.0f,                  { 0.0f, -1.0f }}
+        },
+          0.01f);
+
         // Collect all IDs in breadth/depth first order
         auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
         auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
@@ -325,6 +377,9 @@ namespace AdaptorTest
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{2, 4}, pickedIDs));
         Assert::IsTrue(firstIntersectedBox.has_value());
         Assert::AreEqual(std::size_t(4), *firstIntersectedBox);
+
+        Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 2, 4 }, boxesInFrustum));
+
         Assert::IsTrue(vector<std::size_t>{ 4, 2, 3 } == intersectedPoints);
         Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
         Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
@@ -420,6 +475,16 @@ namespace AdaptorTest
         auto rayHeading = FVector2D( 1.5, 0.5 );
         auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint, rayHeading, 0.01); //: 4
         auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01); //: { 4, 2, 3 } in distance order!
+
+        using Plane = FQuadtreeBox2DC<2>::Plane;
+        auto sqrt2 = sqrtf(2.0);
+        auto sqrt2Reciproc = 1.0f / sqrt2;
+        auto boxesInFrustum = quadtree.FrustumCulling( // Cross-point of the planes: 2;2;2
+          vector<Plane>{
+            {2 * sqrt2, { sqrt2Reciproc, sqrt2Reciproc }},
+            {     2.0f,                  { 0.0f, -1.0f }}
+        },
+          0.01f);
 
         // Collect all IDs in breadth/depth first order
         auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
