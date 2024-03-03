@@ -778,12 +778,12 @@ namespace GeneralTest
         auto vMoveActualMax = PointND<N>{};
         for (dim_t dimensionID = 0; dimensionID < N; ++dimensionID)
         {
-          AD::point_comp_set(vMoveActualMin, dimensionID, AD::box_min_comp(nodeAfter.Box, dimensionID) - AD::box_min_comp(nodePre.Box, dimensionID));
-          AD::point_comp_set(vMoveActualMax, dimensionID, AD::box_max_comp(nodeAfter.Box, dimensionID) - AD::box_max_comp(nodePre.Box, dimensionID));
+          AD::SetPointC(vMoveActualMin, dimensionID, AD::GetBoxMinC(nodeAfter.Box, dimensionID) - AD::GetBoxMinC(nodePre.Box, dimensionID));
+          AD::SetPointC(vMoveActualMax, dimensionID, AD::GetBoxMaxC(nodeAfter.Box, dimensionID) - AD::GetBoxMaxC(nodePre.Box, dimensionID));
         }
 
-        autoc bMin = AD::are_points_equal(vMoveActualMin, vMoveExpected, rAcc);
-        autoc bMax = AD::are_points_equal(vMoveActualMax, vMoveExpected, rAcc);
+        autoc bMin = AD::ArePointsEqual(vMoveActualMin, vMoveExpected, rAcc);
+        autoc bMax = AD::ArePointsEqual(vMoveActualMax, vMoveExpected, rAcc);
         return bMin && bMax;
       });
 
@@ -1827,7 +1827,7 @@ namespace Tree2DTest
 
       autoce search_point = array<double, 2>{ 43.6406, 57.5691 };
       using AD = OrthoTree::AdaptorGeneral<2, array<double, 2>, OrthoTree::BoundingBox2D>;
-      autoc itMin = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::distance2(lhs, search_point) < AD::distance2(rhs, search_point); });
+      autoc itMin = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::Distance2(lhs, search_point) < AD::Distance2(rhs, search_point); });
 
       std::array<double, 2> inspection_space_min = { 0.0, 0.0 };
       std::array<double, 2> inspection_space_max = { 100.0, 100.0 };
@@ -1873,7 +1873,7 @@ namespace Tree2DTest
 
       autoc search_point = VectorType{ 78.8658, 64.0361, 18.7755, 61.4618, 14.3312, 40.0196 };
       using AD = OrthoTree::AdaptorGeneral<6, VectorType, OrthoTree::BoundingBoxND<6>>;
-      autoc itMinExpected = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::distance2(lhs, search_point) < AD::distance2(rhs, search_point); });
+      autoc itMinExpected = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::Distance2(lhs, search_point) < AD::Distance2(rhs, search_point); });
 
       autoc inspection_space = OrthoTree::BoundingBoxND<6>
       {
@@ -2274,17 +2274,17 @@ namespace LongIntAdaptor
   template <size_t N>
   struct AdaptorBasicsCustom
   {
-    static constexpr GeometryType point_comp_c(CustomVectorTypeND<N> const& pt, OrthoTree::dim_t iDimension) { return pt[iDimension]; }
+    static constexpr GeometryType GetPointC(CustomVectorTypeND<N> const& pt, OrthoTree::dim_t iDimension) { return pt[iDimension]; }
 
-    static constexpr void point_comp_set(CustomVectorTypeND<N>& pt, OrthoTree::dim_t iDimension, GeometryType value)
+    static constexpr void SetPointC(CustomVectorTypeND<N>& pt, OrthoTree::dim_t iDimension, GeometryType value)
     {
       pt[iDimension] = value;
     }
 
-    static constexpr void box_min_comp_set(CustomBoundingBoxND<N>& box, dim_t dimensionID, GeometryType value) { point_comp_set(box[0], dimensionID, value); }
-    static constexpr void box_max_comp_set(CustomBoundingBoxND<N>& box, dim_t dimensionID, GeometryType value) { point_comp_set(box[1], dimensionID, value); }
-    static constexpr GeometryType box_min_comp(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return point_comp_c(box[0], dimensionID); }
-    static constexpr GeometryType box_max_comp(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return point_comp_c(box[1], dimensionID); }
+    static constexpr void SetBoxMinC(CustomBoundingBoxND<N>& box, dim_t dimensionID, GeometryType value) { SetPointC(box[0], dimensionID, value); }
+    static constexpr void SetBoxMaxC(CustomBoundingBoxND<N>& box, dim_t dimensionID, GeometryType value) { SetPointC(box[1], dimensionID, value); }
+    static constexpr GeometryType GetBoxMinC(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return GetPointC(box[0], dimensionID); }
+    static constexpr GeometryType GetBoxMaxC(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return GetPointC(box[1], dimensionID); }
   };
 
   template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorBasicsCustom<N>, GeometryType>;
@@ -2664,7 +2664,7 @@ namespace LongIntAdaptor
       auto Entities = vector<std::size_t>{};
       autoc nid = points.size();
       for (std::size_t id = 0; id < nid; ++id)
-        if (AdaptorCustom<nDim>::does_box_contain_point(searchbox, points[id]))
+        if (AdaptorCustom<nDim>::DoesBoxContainPoint(searchbox, points[id]))
           Entities.emplace_back(id);
 
       return Entities;

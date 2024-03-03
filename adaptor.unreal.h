@@ -262,7 +262,7 @@ namespace OrthoTree
     template<typename FGeometry_, typename FVector2D_, typename FBox2D_>
     struct UnrealAdaptorBasics2D
     {
-      static constexpr FGeometry_ point_comp_c(FVector2D_ const& pt, dim_t dimensionID)
+      static constexpr FGeometry_ GetPointC(FVector2D_ const& pt, dim_t dimensionID)
       {
         switch (dimensionID)
         {
@@ -272,7 +272,7 @@ namespace OrthoTree
         }
       }
       
-      static constexpr void point_comp_set(FVector2D_& pt, dim_t dimensionID, FGeometry_ value)
+      static constexpr void SetPointC(FVector2D_& pt, dim_t dimensionID, FGeometry_ value)
       {
         switch (dimensionID)
         {
@@ -282,17 +282,17 @@ namespace OrthoTree
         }
       }
 
-      static constexpr FGeometry_ box_min_comp(FBox2D_ const& box, dim_t dimensionID) { return point_comp_c(box.Min, dimensionID); }
-      static constexpr FGeometry_ box_max_comp(FBox2D_ const& box, dim_t dimensionID) { return point_comp_c(box.Max, dimensionID); }
-      static constexpr void box_min_comp_set(FBox2D_& box, dim_t dimensionID, FGeometry_ value) { point_comp_set(box.Min, dimensionID, value); }
-      static constexpr void box_max_comp_set(FBox2D_& box, dim_t dimensionID, FGeometry_ value) { point_comp_set(box.Max, dimensionID, value); }
+      static constexpr FGeometry_ GetBoxMinC(FBox2D_ const& box, dim_t dimensionID) { return GetPointC(box.Min, dimensionID); }
+      static constexpr FGeometry_ GetBoxMaxC(FBox2D_ const& box, dim_t dimensionID) { return GetPointC(box.Max, dimensionID); }
+      static constexpr void SetBoxMinC(FBox2D_& box, dim_t dimensionID, FGeometry_ value) { SetPointC(box.Min, dimensionID, value); }
+      static constexpr void SetBoxMaxC(FBox2D_& box, dim_t dimensionID, FGeometry_ value) { SetPointC(box.Max, dimensionID, value); }
     };
 
 
     template<typename FGeometry_, typename FVector_, typename FBox_>
     struct UnrealAdaptorBasics3D
     {
-      static constexpr FGeometry_ point_comp_c(FVector_ const& v, dim_t dimensionID)
+      static constexpr FGeometry_ GetPointC(FVector_ const& v, dim_t dimensionID)
       {
         switch (dimensionID)
         {
@@ -303,7 +303,7 @@ namespace OrthoTree
         }
       }
 
-      static constexpr void point_comp_set(FVector_& v, dim_t dimensionID, FGeometry_ value)
+      static constexpr void SetPointC(FVector_& v, dim_t dimensionID, FGeometry_ value)
       {
         switch (dimensionID)
         {
@@ -314,10 +314,10 @@ namespace OrthoTree
         }
       }
 
-      static constexpr FGeometry_ box_min_comp(FBox_ const& box, dim_t dimensionID) { return point_comp_c(box.Min, dimensionID); }
-      static constexpr FGeometry_ box_max_comp(FBox_ const& box, dim_t dimensionID) { return point_comp_c(box.Max, dimensionID); }
-      static constexpr void box_min_comp_set(FBox_& box, dim_t dimensionID, FGeometry_ value) { point_comp_set(box.Min, dimensionID, value); }
-      static constexpr void box_max_comp_set(FBox_& box, dim_t dimensionID, FGeometry_ value) { point_comp_set(box.Max, dimensionID, value); }
+      static constexpr FGeometry_ GetBoxMinC(FBox_ const& box, dim_t dimensionID) { return GetPointC(box.Min, dimensionID); }
+      static constexpr FGeometry_ GetBoxMaxC(FBox_ const& box, dim_t dimensionID) { return GetPointC(box.Max, dimensionID); }
+      static constexpr void SetBoxMinC(FBox_& box, dim_t dimensionID, FGeometry_ value) { SetPointC(box.Min, dimensionID, value); }
+      static constexpr void SetBoxMaxC(FBox_& box, dim_t dimensionID, FGeometry_ value) { SetPointC(box.Max, dimensionID, value); }
     };
 
     template<int AmbientDim_, typename FGeometry_, typename FVector_, typename FBox_, typename UnrealAdaptorBasics_>
@@ -327,34 +327,34 @@ namespace OrthoTree
 
       static_assert(AdaptorBasicsConcept<Base, FVector_, FBox_, FGeometry_>);
 
-      static constexpr FGeometry_ size2(FVector_ const& v) noexcept { return v.SizeSquared(); }
+      static constexpr FGeometry_ Size2(FVector_ const& v) noexcept { return v.SizeSquared(); }
 
-      static constexpr FGeometry_ size(FVector_ const& point) noexcept { return point.Size(); }
+      static constexpr FGeometry_ Size(FVector_ const& point) noexcept { return point.Size(); }
 
-      static constexpr FVector_ add(FVector_ const& v1, FVector_ const& v2) noexcept { return v1 + v2; }
+      static constexpr FVector_ Add(FVector_ const& v1, FVector_ const& v2) noexcept { return v1 + v2; }
 
-      static constexpr FVector_ subtract(FVector_ const& v1, FVector_ const& v2) noexcept { return v1 - v2; }
+      static constexpr FVector_ Subtract(FVector_ const& v1, FVector_ const& v2) noexcept { return v1 - v2; }
 
-      static constexpr FVector_ multiply(FVector_ const& v, double scalarFactor) noexcept { return v * float(scalarFactor); }
+      static constexpr FVector_ Multiply(FVector_ const& v, double scalarFactor) noexcept { return v * float(scalarFactor); }
 
-      static constexpr FGeometry_ dot(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::DotProduct(v1, v2); }
+      static constexpr FGeometry_ Dot(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::DotProduct(v1, v2); }
 
-      static constexpr FGeometry_ distance(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::Dist(v1, v2); }
+      static constexpr FGeometry_ Distance(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::Dist(v1, v2); }
 
-      static constexpr FGeometry_ distance2(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::DistSquared(v1, v2); }
+      static constexpr FGeometry_ Distance2(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::DistSquared(v1, v2); }
 
-      static constexpr bool are_points_equal(FVector_ const& v1, FVector_ const& v2, FGeometry_ tolerance) noexcept
+      static constexpr bool ArePointsEqual(FVector_ const& v1, FVector_ const& v2, FGeometry_ tolerance) noexcept
       {
-        return distance2(v1, v2) <= tolerance * tolerance;
+        return Distance2(v1, v2) <= tolerance * tolerance;
       }
 
-      static constexpr bool is_normalized_vector(FVector_ const& normal) noexcept { return normal.IsUnit(0.000001f); }
+      static constexpr bool IsNormalizedVector(FVector_ const& normal) noexcept { return normal.IsUnit(0.000001f); }
 
-      static constexpr bool does_box_contain_point(FBox_ const& box, FVector_ const& point) noexcept { return box.IsInsideOrOn(point); }
+      static constexpr bool DoesBoxContainPoint(FBox_ const& box, FVector_ const& point) noexcept { return box.IsInsideOrOn(point); }
 
-      static constexpr bool does_box_contain_point_strict(FBox_ const& box, FVector_ const& point) noexcept { return box.IsInside(point); }
+      static constexpr bool DoesBoxContainPointStrict(FBox_ const& box, FVector_ const& point) noexcept { return box.IsInside(point); }
 
-      static constexpr bool are_boxes_overlapped_strict(FBox_ const& e1, FBox_ const& e2) noexcept { return e1.Intersect(e2); }
+      static constexpr bool AreBoxesOverlappedStrict(FBox_ const& e1, FBox_ const& e2) noexcept { return e1.Intersect(e2); }
 
       enum class EBoxRelation
       {
@@ -362,7 +362,7 @@ namespace OrthoTree
         Adjecent = 0,
         Separated = 1
       };
-      static constexpr EBoxRelation box_relation(FBox_ const& e1, FBox_ const& e2) noexcept
+      static constexpr EBoxRelation GetBoxRelation(FBox_ const& e1, FBox_ const& e2) noexcept
       {
         enum EBoxRelationCandidate : uint8_t
         {
@@ -373,33 +373,33 @@ namespace OrthoTree
         uint8_t rel = 0;
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          if (Base::box_min_comp(e1, dimensionID) < Base::box_max_comp(e2, dimensionID) && Base::box_max_comp(e1, dimensionID) > Base::box_min_comp(e2, dimensionID))
+          if (Base::GetBoxMinC(e1, dimensionID) < Base::GetBoxMaxC(e2, dimensionID) && Base::GetBoxMaxC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID))
             rel |= EBoxRelationCandidate::OverlappedC;
-          else if (Base::box_min_comp(e1, dimensionID) == Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e1, dimensionID) == Base::box_min_comp(e2, dimensionID))
+          else if (Base::GetBoxMinC(e1, dimensionID) == Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e1, dimensionID) == Base::GetBoxMinC(e2, dimensionID))
             rel |= EBoxRelationCandidate::AdjecentC;
-          else if (Base::box_min_comp(e1, dimensionID) > Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e1, dimensionID) < Base::box_min_comp(e2, dimensionID))
+          else if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e1, dimensionID) < Base::GetBoxMinC(e2, dimensionID))
             return EBoxRelation::Separated;
         }
         return (rel & EBoxRelationCandidate::AdjecentC) == EBoxRelationCandidate::AdjecentC ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
       }
 
-      static constexpr bool are_boxes_overlapped(FBox_ const& e1, FBox_ const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
+      static constexpr bool AreBoxesOverlapped(FBox_ const& e1, FBox_ const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
       {
         if (e1_must_contain_e2)
         {
           for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           {
-            if (Base::box_min_comp(e1, dimensionID) > Base::box_min_comp(e2, dimensionID) || Base::box_min_comp(e2, dimensionID) > Base::box_max_comp(e1, dimensionID))
+            if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID) || Base::GetBoxMinC(e2, dimensionID) > Base::GetBoxMaxC(e1, dimensionID))
               return false;
 
-            if (Base::box_min_comp(e1, dimensionID) > Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e2, dimensionID) > Base::box_max_comp(e1, dimensionID))
+            if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e2, dimensionID) > Base::GetBoxMaxC(e1, dimensionID))
               return false;
           }
           return true;
         }
         else
         {
-          autoc rel = box_relation(e1, e2);
+          autoc rel = GetBoxRelation(e1, e2);
           if (fOverlapPtTouchAllowed)
             return rel == EBoxRelation::Adjecent || rel == EBoxRelation::Overlapped;
           else
@@ -407,24 +407,24 @@ namespace OrthoTree
         }
       }
 
-      static FBox_ box_of_points(std::span<FVector_ const> const& points) noexcept
+      static FBox_ GetBoxOfPoints(std::span<FVector_ const> const& points) noexcept
       {
         auto ext = points.size() == 0 ? FBox_{} : FBox_(points[0], points[0]);
         for (autoc& point : points)
         {
           for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           {
-            if (Base::box_min_comp(ext, dimensionID) > Base::point_comp_c(point, dimensionID))
-              Base::box_min_comp_set(ext, dimensionID, Base::point_comp_c(point, dimensionID));
+            if (Base::GetBoxMinC(ext, dimensionID) > Base::GetPointC(point, dimensionID))
+              Base::SetBoxMinC(ext, dimensionID, Base::GetPointC(point, dimensionID));
 
-            if (Base::box_max_comp(ext, dimensionID) < Base::point_comp_c(point, dimensionID))
-              Base::box_max_comp_set(ext, dimensionID, Base::point_comp_c(point, dimensionID));
+            if (Base::GetBoxMaxC(ext, dimensionID) < Base::GetPointC(point, dimensionID))
+              Base::SetBoxMaxC(ext, dimensionID, Base::GetPointC(point, dimensionID));
           }
         }
         return ext;
       }
 
-      static FBox_ box_of_boxes(std::span<FBox_ const> const& extents) noexcept
+      static FBox_ GetBoxOfBoxes(std::span<FBox_ const> const& extents) noexcept
       {
         if (extents.size() == 0)
           return {};
@@ -434,26 +434,26 @@ namespace OrthoTree
         {
           for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           {
-            if (Base::box_min_comp(ext, dimensionID) > Base::box_min_comp(e, dimensionID))
-              Base::box_min_comp_set(ext, dimensionID, Base::box_min_comp(e, dimensionID));
+            if (Base::GetBoxMinC(ext, dimensionID) > Base::GetBoxMinC(e, dimensionID))
+              Base::SetBoxMinC(ext, dimensionID, Base::GetBoxMinC(e, dimensionID));
 
-            if (Base::box_max_comp(ext, dimensionID) < Base::box_max_comp(e, dimensionID))
-              Base::box_max_comp_set(ext, dimensionID, Base::box_max_comp(e, dimensionID));
+            if (Base::GetBoxMaxC(ext, dimensionID) < Base::GetBoxMaxC(e, dimensionID))
+              Base::SetBoxMaxC(ext, dimensionID, Base::GetBoxMaxC(e, dimensionID));
           }
         }
 
         return ext;
       }
 
-      static void move_box(FBox_& box, FVector_ const& moveVector) noexcept { box = box.ShiftBy(moveVector); }
+      static void MoveBox(FBox_& box, FVector_ const& moveVector) noexcept { box = box.ShiftBy(moveVector); }
 
-      static constexpr std::optional<double> is_ray_hit(FBox_ const& box, FVector_ const& rayBasePoint, FVector_ const& rayHeading, FGeometry_ tolerance) noexcept
+      static constexpr std::optional<double> IsRayHit(FBox_ const& box, FVector_ const& rayBasePoint, FVector_ const& rayHeading, FGeometry_ tolerance) noexcept
       {
         auto rayBasePointBox = FBox_();
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          Base::box_min_comp_set(rayBasePointBox, dimensionID, Base::point_comp_c(rayBasePoint, dimensionID) - tolerance);
-          Base::box_max_comp_set(rayBasePointBox, dimensionID, Base::point_comp_c(rayBasePoint, dimensionID) + tolerance);
+          Base::SetBoxMinC(rayBasePointBox, dimensionID, Base::GetPointC(rayBasePoint, dimensionID) - tolerance);
+          Base::SetBoxMaxC(rayBasePointBox, dimensionID, Base::GetPointC(rayBasePoint, dimensionID) + tolerance);
         }
 
         if (box.Intersect(rayBasePointBox))
@@ -465,13 +465,13 @@ namespace OrthoTree
         auto maxDistances = std::array<double, AmbientDim_>{};
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          autoc hComp = Base::point_comp_c(rayHeading, dimensionID);
+          autoc hComp = Base::GetPointC(rayHeading, dimensionID);
           if (hComp == 0)
           {
-            if (Base::box_max_comp(box, dimensionID) + tolerance < Base::point_comp_c(rayBasePoint, dimensionID))
+            if (Base::GetBoxMaxC(box, dimensionID) + tolerance < Base::GetPointC(rayBasePoint, dimensionID))
               return std::nullopt;
 
-            if (Base::box_min_comp(box, dimensionID) - tolerance > Base::point_comp_c(rayBasePoint, dimensionID))
+            if (Base::GetBoxMinC(box, dimensionID) - tolerance > Base::GetPointC(rayBasePoint, dimensionID))
               return std::nullopt;
 
             minDistances[dimensionID] = -inf;
@@ -479,11 +479,11 @@ namespace OrthoTree
             continue;
           }
 
-          minDistances[dimensionID] = ((hComp > 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) - tolerance -
-                                       Base::point_comp_c(rayBasePoint, dimensionID)) /
+          minDistances[dimensionID] = ((hComp > 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) - tolerance -
+                                       Base::GetPointC(rayBasePoint, dimensionID)) /
                                       hComp;
-          maxDistances[dimensionID] = ((hComp < 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) + tolerance -
-                                       Base::point_comp_c(rayBasePoint, dimensionID)) /
+          maxDistances[dimensionID] = ((hComp < 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) + tolerance -
+                                       Base::GetPointC(rayBasePoint, dimensionID)) /
                                       hComp;
         }
 
@@ -496,12 +496,12 @@ namespace OrthoTree
       }
 
       // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr PlaneRelation get_point_plane_relation(
+      static constexpr PlaneRelation GetPointPlaneRelation(
         FVector_ const& point, FGeometry_ distanceOfOrigo, FVector_ const& planeNormal, FGeometry_ tolerance) noexcept
       {
-        assert(is_normalized_vector(planeNormal));
+        assert(IsNormalizedVector(planeNormal));
 
-        autoc pointProjected = dot(planeNormal, point);
+        autoc pointProjected = Dot(planeNormal, point);
 
         if (pointProjected < distanceOfOrigo - tolerance)
           return PlaneRelation::Negative;
@@ -513,26 +513,26 @@ namespace OrthoTree
       }
 
       // Get box-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr PlaneRelation get_box_plane_relation(
+      static constexpr PlaneRelation GetBoxPlaneRelation(
         FBox_ const& box, FGeometry_ distanceOfOrigo, FVector_ const& planeNormal, FGeometry_ tolerance) noexcept
       {
-        assert(is_normalized_vector(planeNormal));
+        assert(IsNormalizedVector(planeNormal));
 
         FVector_ center, radius;
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          autoc minComponent = Base::box_min_comp(box, dimensionID);
-          autoc maxComponent = Base::box_max_comp(box, dimensionID);
+          autoc minComponent = Base::GetBoxMinC(box, dimensionID);
+          autoc maxComponent = Base::GetBoxMaxC(box, dimensionID);
           autoc centerComponent = static_cast<FGeometry_>((minComponent + maxComponent) * 0.5);
-          Base::point_comp_set(center, dimensionID, centerComponent);
-          Base::point_comp_set(radius, dimensionID, centerComponent - minComponent);
+          Base::SetPointC(center, dimensionID, centerComponent);
+          Base::SetPointC(radius, dimensionID, centerComponent - minComponent);
         }
 
         double radiusProjected = 0.0;
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
-          radiusProjected += Base::point_comp_c(radius, dimensionID) * std::abs(Base::point_comp_c(planeNormal, dimensionID));
+          radiusProjected += Base::GetPointC(radius, dimensionID) * std::abs(Base::GetPointC(planeNormal, dimensionID));
 
-        autoc centerProjected = dot(planeNormal, center);
+        autoc centerProjected = Dot(planeNormal, center);
 
         if (centerProjected - radiusProjected < distanceOfOrigo - tolerance)
           return PlaneRelation::Negative;

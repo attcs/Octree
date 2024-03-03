@@ -214,7 +214,7 @@ namespace OrthoTree
     {
       this->m_tree.template Move<TExecutionPolicy>(vMove);
       auto ep = TExecutionPolicy{}; // GCC 11.3
-      std::for_each(ep, std::begin(this->m_geometryCollection), std::end(this->m_geometryCollection), [&vMove](auto& pt) { pt = AD::add(pt, vMove); });
+      std::for_each(ep, std::begin(this->m_geometryCollection), std::end(this->m_geometryCollection), [&vMove](auto& pt) { pt = AD::Add(pt, vMove); });
     }
 
 
@@ -294,7 +294,7 @@ namespace OrthoTree
       this->m_tree.template Move<TExecutionPolicy>(moveVector);
       auto ep = TExecutionPolicy{}; // GCC 11.3
       std::for_each(ep, std::begin(this->m_geometryCollection), std::end(this->m_geometryCollection), [&moveVector](auto& Box) {
-        AD::move_box(Box, moveVector);
+        AD::MoveBox(Box, moveVector);
       });
     }
 

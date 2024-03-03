@@ -21,7 +21,7 @@ public:
   vector<size_t> vid;
 
 private:
-  using _Ad = adaptor_type;
+  using AD = adaptor_type;
 
   struct IdEntityNode { size_t id, idNode; };
 
@@ -39,15 +39,15 @@ private:
 
     auto ptMiddle = vector_type{};
     for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
-      _Ad::point_comp_set(ptMiddle, iDimension, (_Ad::box_max_comp(box, iDimension) + _Ad::box_min_comp(box, iDimension)) * 0.5);
+      AD::SetPointC(ptMiddle, iDimension, (AD::GetBoxMaxC(box, iDimension) + AD::GetBoxMinC(box, iDimension)) * 0.5);
 
     for (auto& [id, idNode] : aid)
     {
       idNode = 0;
       for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
-        idNode |= static_cast<size_t>(_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(vpt[id], iDimension)) << static_cast<size_t>(iDimension);
+        idNode |= static_cast<size_t>(AD::GetPointC(ptMiddle, iDimension) < AD::GetPointC(vpt[id], iDimension)) << static_cast<size_t>(iDimension);
     }
-    sort(begin(aid), end(aid), [&](autoc& idL, autoc& idR) { return idL.idNode < idR.idNode; });
+    std::sort(begin(aid), end(aid), [&](autoc& idL, autoc& idR) { return idL.idNode < idR.idNode; });
 
     autoc itidNodeEnd = end(aid);
     for (auto itidNodeLast = begin(aid); itidNodeLast != itidNodeEnd;)
@@ -58,8 +58,8 @@ private:
       for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
-        _Ad::box_min_comp_set(node.box, iDimension, fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::box_min_comp(box, iDimension));
-        _Ad::box_max_comp_set(node.box, iDimension, !fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + fGreater * _Ad::box_max_comp(box, iDimension));
+        AD::SetBoxMinC(node.box, iDimension, fGreater * AD::GetPointC(ptMiddle, iDimension) + !fGreater * AD::GetBoxMinC(box, iDimension));
+        AD::SetBoxMaxC(node.box, iDimension, !fGreater * AD::GetPointC(ptMiddle, iDimension) + fGreater * AD::GetBoxMaxC(box, iDimension));
       }
 
       autoc itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](autoc& p) { return p.idNode == itidNodeLast->idNode; });
@@ -75,7 +75,7 @@ private:
 public:
   static OrthoTreePointDynamicGeneral Create(span<vector_type const> const& vpt, size_t nDepthMax, std::optional<box_type> const& obox, size_t nElementMax)
   {
-    autoc box = obox.has_value() ? *obox : _Ad::box_of_points(vpt);
+    autoc box = obox.has_value() ? *obox : AD::GetBoxOfPoints(vpt);
 
     autoc npt = vpt.size();
     auto aid = vector<IdEntityNode>(npt, IdEntityNode{});
@@ -108,7 +108,7 @@ public:
   vector<size_t> vid;
 
 private:
-  using _Ad = adaptor_type;
+  using AD = adaptor_type;
 
   struct IdEntityNode { size_t id, idNode; };
 
@@ -126,7 +126,7 @@ private:
 
     auto ptMiddle = vector_type{};
     for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
-      _Ad::point_comp_set(ptMiddle, iDimension, (_Ad::box_max_comp(box, iDimension) + _Ad::box_min_comp(box, iDimension)) * 0.5);
+      AD::SetPointC(ptMiddle, iDimension, (AD::GetBoxMaxC(box, iDimension) + AD::GetBoxMinC(box, iDimension)) * 0.5);
 
     for (auto& [id, idNode] : aid)
     {
@@ -134,8 +134,8 @@ private:
       size_t idNode2 = 0;
       for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
       {
-        idNode1 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::box_min_comp(vBox[id], iDimension)) << iDimension;
-        idNode2 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::box_max_comp(vBox[id], iDimension)) << iDimension;
+        idNode1 |= (AD::GetPointC(ptMiddle, iDimension) < AD::GetBoxMinC(vBox[id], iDimension)) << iDimension;
+        idNode2 |= (AD::GetPointC(ptMiddle, iDimension) < AD::GetBoxMaxC(vBox[id], iDimension)) << iDimension;
       }
 
       idNode = idNode1 == idNode2 ? idNode1 : _nChild;
@@ -164,8 +164,8 @@ private:
         for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
-          _Ad::box_min_comp_set(node.box, iDimension, fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::box_min_comp(box, iDimension));
-          _Ad::box_max_comp_set(node.box, iDimension, !fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + fGreater * _Ad::box_max_comp(box, iDimension));
+          AD::SetBoxMinC(node.box, iDimension, fGreater * AD::GetPointC(ptMiddle, iDimension) + !fGreater * AD::GetBoxMinC(box, iDimension));
+          AD::SetBoxMaxC(node.box, iDimension, !fGreater * AD::GetPointC(ptMiddle, iDimension) + fGreater * AD::GetBoxMaxC(box, iDimension));
         }
 
         autoc itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](autoc& p) { return p.idNode == itidNodeLast->idNode; });
@@ -182,7 +182,7 @@ private:
 public:
   static OrthoTreeBoxDynamicGeneral Create(span<box_type const> const& vBox, size_t nDepthMax, std::optional<box_type> const& obox = std::nullopt, size_t nElementMax = 20)
   {
-    autoc box = obox.has_value() ? *obox : _Ad::box_of_boxes(vBox);
+    autoc box = obox.has_value() ? *obox : AD::GetBoxOfBoxes(vBox);
 
     autoc nEnt = vBox.size();
     auto aid = vector<IdEntityNode>(nEnt, IdEntityNode{});

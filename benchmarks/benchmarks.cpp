@@ -53,7 +53,7 @@ namespace
   {
     auto ptMax = pt;
     for (size_t iDim = 0; iDim < nDim; ++iDim)
-      Adaptor::point_comp_set(ptMax, static_cast<dim_t>(iDim), Adaptor::point_comp_c(pt, static_cast<dim_t>(iDim)) + size);
+      Adaptor::SetPointC(ptMax, static_cast<dim_t>(iDim), Adaptor::GetPointC(pt, static_cast<dim_t>(iDim)) + size);
 
     return ptMax;
   }
@@ -109,9 +109,9 @@ namespace
     g.seed();
     std::shuffle(next(begin(aPoint), nNumberPre), end(aPoint), g);
 
-    autoc box = Adaptor::box_of_points(aPoint);
-    assert(Adaptor::are_points_equal(box.Max, ptMax, 0.0001));
-    assert(Adaptor::are_points_equal(box.Min, PointND<nDim>{}, 0.0001));
+    autoc box = Adaptor::GetBoxOfPoints(aPoint);
+    assert(Adaptor::ArePointsEqual(box.Max, ptMax, 0.0001));
+    assert(Adaptor::ArePointsEqual(box.Min, PointND<nDim>{}, 0.0001));
 
     return aPoint;
   }
@@ -147,9 +147,9 @@ namespace
 
     }
 
-    autoc box = Adaptor::box_of_points(aPoint);
-    assert(Adaptor::are_points_equal(box.Max, ptMax, 0.0001));
-    assert(Adaptor::are_points_equal(box.Min, PointND<nDim>{}, 0.0001));
+    autoc box = Adaptor::GetBoxOfPoints(aPoint);
+    assert(Adaptor::ArePointsEqual(box.Max, ptMax, 0.0001));
+    assert(Adaptor::ArePointsEqual(box.Min, PointND<nDim>{}, 0.0001));
 
     return aPoint;
   }
@@ -190,9 +190,9 @@ namespace
       }
     }
 
-    autoc box = Adaptor::box_of_points(aPoint);
-    assert(Adaptor::are_points_equal(box.Max, ptMax, 0.0001));
-    assert(Adaptor::are_points_equal(box.Min, PointND<nDim>{}, 0.0001));
+    autoc box = Adaptor::GetBoxOfPoints(aPoint);
+    assert(Adaptor::ArePointsEqual(box.Max, ptMax, 0.0001));
+    assert(Adaptor::ArePointsEqual(box.Min, PointND<nDim>{}, 0.0001));
 
     return aPoint;
   }
@@ -366,7 +366,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, vector_type, box_type>::are_boxes_overlapped(boxSearch, vBox[i], false))
+        if (AdaptorGeneral<N, vector_type, box_type>::AreBoxesOverlapped(boxSearch, vBox[i], false))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
@@ -386,7 +386,7 @@ namespace
     {
       auto sidFound = vector<std::size_t>();
       for (size_t i = idCheck + 1; i < nEntity; ++i)
-        if (AdaptorGeneral<N, vector_type, box_type>::are_boxes_overlapped(vBox[idCheck], vBox[i], false))
+        if (AdaptorGeneral<N, vector_type, box_type>::AreBoxesOverlapped(vBox[idCheck], vBox[i], false))
           sidFound.emplace_back(i);
 
       return sidFound;
@@ -416,7 +416,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, vector_type, box_type>::does_box_contain_point(boxSearch, vPoint[i]))
+        if (AdaptorGeneral<N, vector_type, box_type>::DoesBoxContainPoint(boxSearch, vPoint[i]))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;

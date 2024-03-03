@@ -144,46 +144,46 @@ namespace OrthoTree
   template<class TAdapter, typename TVector, typename TBox, typename TGeometry = double>
   concept AdaptorBasicsConcept = requires(TVector& point, dim_t dimensionID, TGeometry value) {
     {
-      TAdapter::point_comp_set(point, dimensionID, value)
+      TAdapter::SetPointC(point, dimensionID, value)
     };
   } && requires(TVector const& point, dim_t dimensionID) {
     {
-      TAdapter::point_comp_c(point, dimensionID)
+      TAdapter::GetPointC(point, dimensionID)
     } -> std::convertible_to<TGeometry>;
   } && requires(TBox& box, dim_t dimensionID, TGeometry value) {
     {
-      TAdapter::box_min_comp_set(box, dimensionID, value)
+      TAdapter::SetBoxMinC(box, dimensionID, value)
     };
   } && requires(TBox& box, dim_t dimensionID, TGeometry value) {
     {
-      TAdapter::box_max_comp_set(box, dimensionID, value)
+      TAdapter::SetBoxMaxC(box, dimensionID, value)
     };
   } && requires(TBox const& box, dim_t dimensionID) {
     {
-      TAdapter::box_min_comp(box, dimensionID)
+      TAdapter::GetBoxMinC(box, dimensionID)
     } -> std::convertible_to<TGeometry>;
   } && requires(TBox const& box, dim_t dimensionID) {
     {
-      TAdapter::box_max_comp(box, dimensionID)
+      TAdapter::GetBoxMaxC(box, dimensionID)
     } -> std::convertible_to<TGeometry>;
   };
 
   template<class TAdapter, typename TVector, typename TBox, typename TGeometry = double>
   concept AdaptorConcept = requires { AdaptorBasicsConcept<TAdapter, TVector, TBox, TGeometry>; } && requires(TBox const& box, TVector const& point) {
     {
-      TAdapter::does_box_contain_point(box, point)
+      TAdapter::DoesBoxContainPoint(box, point)
     } -> std::convertible_to<bool>;
   } && requires(TBox const& e1, TBox const& e2, bool e1_must_contain_e2) {
     {
-      TAdapter::are_boxes_overlapped(e1, e2, e1_must_contain_e2)
+      TAdapter::AreBoxesOverlapped(e1, e2, e1_must_contain_e2)
     } -> std::convertible_to<bool>;
   } && requires(std::span<TVector const> const& points) {
     {
-      TAdapter::box_of_points(points)
+      TAdapter::GetBoxOfPoints(points)
     } -> std::convertible_to<TBox>;
   } && requires(std::span<TBox const> const& boxes) {
     {
-      TAdapter::box_of_boxes(boxes)
+      TAdapter::GetBoxOfBoxes(boxes)
     } -> std::convertible_to<TBox>;
   };
 
@@ -193,13 +193,13 @@ namespace OrthoTree
   template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TGeometry = double>
   struct AdaptorGeneralBasics
   {
-    static constexpr TGeometry const& point_comp_c(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
-    static constexpr void point_comp_set(TVector& point, dim_t dimensionID, TGeometry value) noexcept { point[dimensionID] = value; }
+    static constexpr TGeometry const& GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+    static constexpr void SetPointC(TVector& point, dim_t dimensionID, TGeometry value) noexcept { point[dimensionID] = value; }
 
-    static constexpr TGeometry box_min_comp(TBox const& box, dim_t dimensionID) { return box.Min[dimensionID]; }
-    static constexpr TGeometry box_max_comp(TBox const& box, dim_t dimensionID) { return box.Max[dimensionID]; }
-    static constexpr void box_min_comp_set(TBox& box, dim_t dimensionID, TGeometry value) { box.Min[dimensionID] = value; }
-    static constexpr void box_max_comp_set(TBox& box, dim_t dimensionID, TGeometry value) { box.Max[dimensionID] = value; }
+    static constexpr TGeometry GetBoxMinC(TBox const& box, dim_t dimensionID) { return box.Min[dimensionID]; }
+    static constexpr TGeometry GetBoxMaxC(TBox const& box, dim_t dimensionID) { return box.Max[dimensionID]; }
+    static constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TGeometry value) { box.Min[dimensionID] = value; }
+    static constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TGeometry value) { box.Max[dimensionID] = value; }
   };
 
 
@@ -209,81 +209,81 @@ namespace OrthoTree
     using Base = TAdaptorBasics;
     static_assert(AdaptorBasicsConcept<Base, TVector, TBox, TGeometry>);
 
-    static constexpr TGeometry size2(TVector const& point) noexcept
+    static constexpr TGeometry Size2(TVector const& point) noexcept
     {
       auto d2 = TGeometry{ 0 };
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc d = Base::point_comp_c(point, dimensionID);
+        autoc d = Base::GetPointC(point, dimensionID);
         d2 += d * d;
       }
       return d2;
     }
 
-    static constexpr TGeometry size(TVector const& point) noexcept { return std::sqrt(size2(point)); }
+    static constexpr TGeometry Size(TVector const& point) noexcept { return std::sqrt(Size2(point)); }
 
-    static constexpr TVector add(TVector const& ptL, TVector const& ptR) noexcept
+    static constexpr TVector Add(TVector const& ptL, TVector const& ptR) noexcept
     {
       auto point = TVector{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        Base::point_comp_set(point, dimensionID, Base::point_comp_c(ptL, dimensionID) + Base::point_comp_c(ptR, dimensionID));
+        Base::SetPointC(point, dimensionID, Base::GetPointC(ptL, dimensionID) + Base::GetPointC(ptR, dimensionID));
 
       return point;
     }
 
-    static constexpr TVector subtract(TVector const& ptL, TVector const& ptR) noexcept
+    static constexpr TVector Subtract(TVector const& ptL, TVector const& ptR) noexcept
     {
       auto point = TVector{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        Base::point_comp_set(point, dimensionID, Base::point_comp_c(ptL, dimensionID) - Base::point_comp_c(ptR, dimensionID));
+        Base::SetPointC(point, dimensionID, Base::GetPointC(ptL, dimensionID) - Base::GetPointC(ptR, dimensionID));
 
       return point;
     }
 
-    static constexpr TVector multiply(TVector const& ptL, double rScalarR) noexcept
+    static constexpr TVector Multiply(TVector const& ptL, double rScalarR) noexcept
     {
       auto point = TVector{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        Base::point_comp_set(point, dimensionID, TGeometry(Base::point_comp_c(ptL, dimensionID) * rScalarR));
+        Base::SetPointC(point, dimensionID, TGeometry(Base::GetPointC(ptL, dimensionID) * rScalarR));
 
       return point;
     }
 
-    static constexpr TGeometry dot(TVector const& ptL, TVector const& ptR) noexcept
+    static constexpr TGeometry Dot(TVector const& ptL, TVector const& ptR) noexcept
     {
       auto value = TGeometry{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        value += Base::point_comp_c(ptL, dimensionID) * Base::point_comp_c(ptR, dimensionID);
+        value += Base::GetPointC(ptL, dimensionID) * Base::GetPointC(ptR, dimensionID);
 
       return value;
     }
 
-    static constexpr TGeometry distance(TVector const& ptL, TVector const& ptR) noexcept { return size(subtract(ptL, ptR)); }
+    static constexpr TGeometry Distance(TVector const& ptL, TVector const& ptR) noexcept { return Size(Subtract(ptL, ptR)); }
 
-    static constexpr TGeometry distance2(TVector const& ptL, TVector const& ptR) noexcept { return size2(subtract(ptL, ptR)); }
+    static constexpr TGeometry Distance2(TVector const& ptL, TVector const& ptR) noexcept { return Size2(Subtract(ptL, ptR)); }
 
-    static constexpr bool are_points_equal(TVector const& ptL, TVector const& ptR, TGeometry rAccuracy) noexcept
+    static constexpr bool ArePointsEqual(TVector const& ptL, TVector const& ptR, TGeometry rAccuracy) noexcept
     {
-      return distance2(ptL, ptR) <= rAccuracy * rAccuracy;
+      return Distance2(ptL, ptR) <= rAccuracy * rAccuracy;
     }
 
-    static constexpr bool is_normalized_vector(TVector const& normal) noexcept { return std::abs(size2(normal) - 1.0) < 0.000001; }
+    static constexpr bool IsNormalizedVector(TVector const& normal) noexcept { return std::abs(Size2(normal) - 1.0) < 0.000001; }
 
-    static constexpr bool does_box_contain_point(TBox const& box, TVector const& point, TGeometry tolerance = 0) noexcept
+    static constexpr bool DoesBoxContainPoint(TBox const& box, TVector const& point, TGeometry tolerance = 0) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (!(Base::box_min_comp(box, dimensionID) - tolerance <= Base::point_comp_c(point, dimensionID) &&
-              Base::point_comp_c(point, dimensionID) <= Base::box_max_comp(box, dimensionID) + tolerance))
+        if (!(Base::GetBoxMinC(box, dimensionID) - tolerance <= Base::GetPointC(point, dimensionID) &&
+              Base::GetPointC(point, dimensionID) <= Base::GetBoxMaxC(box, dimensionID) + tolerance))
           return false;
 
       return true;
     }
 
-    static constexpr bool does_box_contain_point_strict(TBox const& box, TVector const& point) noexcept
+    static constexpr bool DoesBoxContainPointStrict(TBox const& box, TVector const& point) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (!(Base::box_min_comp(box, dimensionID) < Base::point_comp_c(point, dimensionID) &&
-              Base::point_comp_c(point, dimensionID) < Base::box_max_comp(box, dimensionID)))
+        if (!(Base::GetBoxMinC(box, dimensionID) < Base::GetPointC(point, dimensionID) &&
+              Base::GetPointC(point, dimensionID) < Base::GetBoxMaxC(box, dimensionID)))
           return false;
 
       return true;
@@ -295,7 +295,7 @@ namespace OrthoTree
       Adjecent = 0,
       Separated = 1
     };
-    static constexpr EBoxRelation box_relation(TBox const& e1, TBox const& e2) noexcept
+    static constexpr EBoxRelation GetBoxRelation(TBox const& e1, TBox const& e2) noexcept
     {
       enum EBoxRelationCandidate : uint8_t
       {
@@ -307,39 +307,39 @@ namespace OrthoTree
 
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        if (Base::box_min_comp(e1, dimensionID) < Base::box_max_comp(e2, dimensionID) && Base::box_max_comp(e1, dimensionID) > Base::box_min_comp(e2, dimensionID))
+        if (Base::GetBoxMinC(e1, dimensionID) < Base::GetBoxMaxC(e2, dimensionID) && Base::GetBoxMaxC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID))
           rel |= EBoxRelationCandidate::OverlappedC;
-        else if (Base::box_min_comp(e1, dimensionID) == Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e1, dimensionID) == Base::box_min_comp(e2, dimensionID))
+        else if (Base::GetBoxMinC(e1, dimensionID) == Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e1, dimensionID) == Base::GetBoxMinC(e2, dimensionID))
           rel |= EBoxRelationCandidate::AdjecentC;
-        else if (Base::box_min_comp(e1, dimensionID) > Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e1, dimensionID) < Base::box_min_comp(e2, dimensionID))
+        else if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e1, dimensionID) < Base::GetBoxMinC(e2, dimensionID))
           return EBoxRelation::Separated;
       }
 
       return (rel & EBoxRelationCandidate::AdjecentC) == EBoxRelationCandidate::AdjecentC ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
     }
 
-    static constexpr bool are_boxes_overlapped_strict(TBox const& e1, TBox const& e2) noexcept
+    static constexpr bool AreBoxesOverlappedStrict(TBox const& e1, TBox const& e2) noexcept
     {
-      return box_relation(e1, e2) == EBoxRelation::Overlapped;
+      return GetBoxRelation(e1, e2) == EBoxRelation::Overlapped;
     }
 
-    static constexpr bool are_boxes_overlapped(TBox const& e1, TBox const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
+    static constexpr bool AreBoxesOverlapped(TBox const& e1, TBox const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
     {
       if (e1_must_contain_e2)
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          if (Base::box_min_comp(e1, dimensionID) > Base::box_min_comp(e2, dimensionID) || Base::box_min_comp(e2, dimensionID) > Base::box_max_comp(e1, dimensionID))
+          if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID) || Base::GetBoxMinC(e2, dimensionID) > Base::GetBoxMaxC(e1, dimensionID))
             return false;
 
-          if (Base::box_min_comp(e1, dimensionID) > Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e2, dimensionID) > Base::box_max_comp(e1, dimensionID))
+          if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e2, dimensionID) > Base::GetBoxMaxC(e1, dimensionID))
             return false;
         }
         return true;
       }
       else
       {
-        autoc rel = box_relation(e1, e2);
+        autoc rel = GetBoxRelation(e1, e2);
         if (fOverlapPtTouchAllowed)
           return rel == EBoxRelation::Adjecent || rel == EBoxRelation::Overlapped;
         else
@@ -347,66 +347,66 @@ namespace OrthoTree
       }
     }
 
-    static inline TBox box_inverted_init() noexcept
+    static inline TBox BoxInvertedInit() noexcept
     {
       auto ext = TBox{};
 
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        Base::box_min_comp_set(ext, dimensionID, std::numeric_limits<TGeometry>::max());
-        Base::box_max_comp_set(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
+        Base::SetBoxMinC(ext, dimensionID, std::numeric_limits<TGeometry>::max());
+        Base::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
       }
 
       return ext;
     }
 
-    static TBox box_of_points(std::span<TVector const> const& points) noexcept
+    static TBox GetBoxOfPoints(std::span<TVector const> const& points) noexcept
     {
-      auto ext = box_inverted_init();
+      auto ext = BoxInvertedInit();
       for (autoc& point : points)
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          if (Base::box_min_comp(ext, dimensionID) > Base::point_comp_c(point, dimensionID))
-            Base::box_min_comp_set(ext, dimensionID, Base::point_comp_c(point, dimensionID));
+          if (Base::GetBoxMinC(ext, dimensionID) > Base::GetPointC(point, dimensionID))
+            Base::SetBoxMinC(ext, dimensionID, Base::GetPointC(point, dimensionID));
 
-          if (Base::box_max_comp(ext, dimensionID) < Base::point_comp_c(point, dimensionID))
-            Base::box_max_comp_set(ext, dimensionID, Base::point_comp_c(point, dimensionID));
+          if (Base::GetBoxMaxC(ext, dimensionID) < Base::GetPointC(point, dimensionID))
+            Base::SetBoxMaxC(ext, dimensionID, Base::GetPointC(point, dimensionID));
         }
 
       return ext;
     }
 
-    static TBox box_of_boxes(std::span<TBox const> const& vExtent) noexcept
+    static TBox GetBoxOfBoxes(std::span<TBox const> const& vExtent) noexcept
     {
-      auto ext = box_inverted_init();
+      auto ext = BoxInvertedInit();
       for (autoc& e : vExtent)
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          if (Base::box_min_comp(ext, dimensionID) > Base::box_min_comp(e, dimensionID))
-            Base::box_min_comp_set(ext, dimensionID, Base::box_min_comp(e, dimensionID));
+          if (Base::GetBoxMinC(ext, dimensionID) > Base::GetBoxMinC(e, dimensionID))
+            Base::SetBoxMinC(ext, dimensionID, Base::GetBoxMinC(e, dimensionID));
 
-          if (Base::box_max_comp(ext, dimensionID) < Base::box_max_comp(e, dimensionID))
-            Base::box_max_comp_set(ext, dimensionID, Base::box_max_comp(e, dimensionID));
+          if (Base::GetBoxMaxC(ext, dimensionID) < Base::GetBoxMaxC(e, dimensionID))
+            Base::SetBoxMaxC(ext, dimensionID, Base::GetBoxMaxC(e, dimensionID));
         }
       }
       return ext;
     }
 
-    static void move_box(TBox& box, TVector const& moveVector) noexcept
+    static void MoveBox(TBox& box, TVector const& moveVector) noexcept
     {
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        Base::box_min_comp_set(box, dimensionID, Base::box_min_comp(box, dimensionID) + Base::point_comp_c(moveVector, dimensionID));
-        Base::box_max_comp_set(box, dimensionID, Base::box_max_comp(box, dimensionID) + Base::point_comp_c(moveVector, dimensionID));
+        Base::SetBoxMinC(box, dimensionID, Base::GetBoxMinC(box, dimensionID) + Base::GetPointC(moveVector, dimensionID));
+        Base::SetBoxMaxC(box, dimensionID, Base::GetBoxMaxC(box, dimensionID) + Base::GetPointC(moveVector, dimensionID));
       }
     }
 
-    static constexpr std::optional<double> is_ray_hit(TBox const& box, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) noexcept
+    static constexpr std::optional<double> IsRayHit(TBox const& box, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) noexcept
     {
-      if (does_box_contain_point(box, rayBasePoint, tolerance))
+      if (DoesBoxContainPoint(box, rayBasePoint, tolerance))
         return 0.0;
 
       autoce inf = std::numeric_limits<double>::infinity();
@@ -415,13 +415,13 @@ namespace OrthoTree
       auto maxDistances = std::array<double, DIMENSION_NO>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc hComp = Base::point_comp_c(rayHeading, dimensionID);
+        autoc hComp = Base::GetPointC(rayHeading, dimensionID);
         if (hComp == 0)
         {
-          if (Base::box_max_comp(box, dimensionID) + tolerance < Base::point_comp_c(rayBasePoint, dimensionID))
+          if (Base::GetBoxMaxC(box, dimensionID) + tolerance < Base::GetPointC(rayBasePoint, dimensionID))
             return std::nullopt;
 
-          if (Base::box_min_comp(box, dimensionID) - tolerance > Base::point_comp_c(rayBasePoint, dimensionID))
+          if (Base::GetBoxMinC(box, dimensionID) - tolerance > Base::GetPointC(rayBasePoint, dimensionID))
             return std::nullopt;
 
           minDistances[dimensionID] = -inf;
@@ -429,11 +429,11 @@ namespace OrthoTree
           continue;
         }
 
-        minDistances[dimensionID] = ((hComp > 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) - tolerance -
-                                     Base::point_comp_c(rayBasePoint, dimensionID)) /
+        minDistances[dimensionID] = ((hComp > 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) - tolerance -
+                                     Base::GetPointC(rayBasePoint, dimensionID)) /
                                     hComp;
-        maxDistances[dimensionID] = ((hComp < 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) + tolerance -
-                                     Base::point_comp_c(rayBasePoint, dimensionID)) /
+        maxDistances[dimensionID] = ((hComp < 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) + tolerance -
+                                     Base::GetPointC(rayBasePoint, dimensionID)) /
                                     hComp;
       }
 
@@ -447,11 +447,11 @@ namespace OrthoTree
 
 
     // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    static constexpr PlaneRelation get_point_plane_relation(TVector const& point, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) noexcept
+    static constexpr PlaneRelation GetPointPlaneRelation(TVector const& point, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) noexcept
     {
-      assert(is_normalized_vector(planeNormal));
+      assert(IsNormalizedVector(planeNormal));
 
-      autoc pointProjected = dot(planeNormal, point);
+      autoc pointProjected = Dot(planeNormal, point);
 
       if (pointProjected < distanceOfOrigo - tolerance)
         return PlaneRelation::Negative;
@@ -463,25 +463,25 @@ namespace OrthoTree
     }
 
     // Get box-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    static constexpr PlaneRelation get_box_plane_relation(TBox const& box, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) noexcept
+    static constexpr PlaneRelation GetBoxPlaneRelation(TBox const& box, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) noexcept
     {
-      assert(is_normalized_vector(planeNormal));
+      assert(IsNormalizedVector(planeNormal));
 
       TVector center, radius;
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc minComponent = Base::box_min_comp(box, dimensionID);
-        autoc maxComponent = Base::box_max_comp(box, dimensionID);
+        autoc minComponent = Base::GetBoxMinC(box, dimensionID);
+        autoc maxComponent = Base::GetBoxMaxC(box, dimensionID);
         autoc centerComponent = static_cast<TGeometry>((minComponent + maxComponent) * 0.5);
-        Base::point_comp_set(center, dimensionID, centerComponent);
-        Base::point_comp_set(radius, dimensionID, centerComponent - minComponent);
+        Base::SetPointC(center, dimensionID, centerComponent);
+        Base::SetPointC(radius, dimensionID, centerComponent - minComponent);
       }
 
       auto radiusProjected = double(tolerance);
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        radiusProjected += Base::point_comp_c(radius, dimensionID) * std::abs(Base::point_comp_c(planeNormal, dimensionID));
+        radiusProjected += Base::GetPointC(radius, dimensionID) * std::abs(Base::GetPointC(planeNormal, dimensionID));
 
-      autoc centerProjected = dot(planeNormal, center);
+      autoc centerProjected = Dot(planeNormal, center);
 
       if (centerProjected + radiusProjected < distanceOfOrigo)
         return PlaneRelation::Negative;
@@ -857,7 +857,7 @@ namespace OrthoTree
       autoc subDivisionNoFactor = static_cast<double>(subDivisionNo);
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        ri.sizeInDimensions[dimensionID] = static_cast<double>(AD::box_max_comp(box, dimensionID) - AD::box_min_comp(box, dimensionID));
+        ri.sizeInDimensions[dimensionID] = static_cast<double>(AD::GetBoxMaxC(box, dimensionID) - AD::GetBoxMinC(box, dimensionID));
         ri.rasterizerFactors[dimensionID] = ri.sizeInDimensions[dimensionID] == 0 ? 1.0 : (subDivisionNoFactor / ri.sizeInDimensions[dimensionID]);
       }
 
@@ -870,7 +870,7 @@ namespace OrthoTree
       auto gridIDs = DimArray<GridID>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc pointComponent = AD::point_comp_c(point, dimensionID) - AD::box_min_comp(this->m_boxSpace, dimensionID);
+        autoc pointComponent = AD::GetPointC(point, dimensionID) - AD::GetBoxMinC(this->m_boxSpace, dimensionID);
         auto rasterID = static_cast<double>(pointComponent) * this->m_rasterizerFactors[dimensionID];
         gridIDs[dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(rasterID));
       }
@@ -884,9 +884,9 @@ namespace OrthoTree
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         autoc minComponentRasterID =
-          static_cast<double>(AD::box_min_comp(box, dimensionID) - AD::box_min_comp(m_boxSpace, dimensionID)) * m_rasterizerFactors[dimensionID];
+          static_cast<double>(AD::GetBoxMinC(box, dimensionID) - AD::GetBoxMinC(m_boxSpace, dimensionID)) * m_rasterizerFactors[dimensionID];
         autoc maxComponentRasterID =
-          static_cast<double>(AD::box_max_comp(box, dimensionID) - AD::box_min_comp(m_boxSpace, dimensionID)) * m_rasterizerFactors[dimensionID];
+          static_cast<double>(AD::GetBoxMaxC(box, dimensionID) - AD::GetBoxMinC(m_boxSpace, dimensionID)) * m_rasterizerFactors[dimensionID];
 
         if constexpr (DO_POINT_LIKE_CLASSIFICATION)
         {
@@ -949,8 +949,8 @@ namespace OrthoTree
         LOOPIVDEP
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          AD::box_min_comp_set(nodeChild.Box, dimensionID, static_cast<TGeometry>(minNodePoint[dimensionID]));
-          AD::box_max_comp_set(nodeChild.Box, dimensionID, static_cast<TGeometry>(maxNodePoint[dimensionID]));
+          AD::SetBoxMinC(nodeChild.Box, dimensionID, static_cast<TGeometry>(minNodePoint[dimensionID]));
+          AD::SetBoxMaxC(nodeChild.Box, dimensionID, static_cast<TGeometry>(maxNodePoint[dimensionID]));
         }
       }
       else
@@ -959,17 +959,17 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           autoc isGreater = ((ChildID{ 1 } << dimensionID) & childID) > 0;
-          AD::box_min_comp_set(
+          AD::SetBoxMinC(
             nodeChild.Box,
             dimensionID,
-            isGreater * (AD::box_max_comp(parentNode.Box, dimensionID) + AD::box_min_comp(parentNode.Box, dimensionID)) * TGeometry{ 0.5 } +
-              (!isGreater) * AD::box_min_comp(parentNode.Box, dimensionID));
+            isGreater * (AD::GetBoxMaxC(parentNode.Box, dimensionID) + AD::GetBoxMinC(parentNode.Box, dimensionID)) * TGeometry{ 0.5 } +
+              (!isGreater) * AD::GetBoxMinC(parentNode.Box, dimensionID));
 
-          AD::box_max_comp_set(
+          AD::SetBoxMaxC(
             nodeChild.Box,
             dimensionID,
-            isGreater * AD::box_max_comp(parentNode.Box, dimensionID) +
-              (!isGreater) * ((AD::box_max_comp(parentNode.Box, dimensionID) + AD::box_min_comp(parentNode.Box, dimensionID)) * TGeometry{ 0.5 }));
+            isGreater * AD::GetBoxMaxC(parentNode.Box, dimensionID) +
+              (!isGreater) * ((AD::GetBoxMaxC(parentNode.Box, dimensionID) + AD::GetBoxMinC(parentNode.Box, dimensionID)) * TGeometry{ 0.5 }));
         }
       }
       return nodeChild;
@@ -1262,7 +1262,7 @@ namespace OrthoTree
 
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        this->m_minInDimensions[dimensionID] = static_cast<double>(AD::box_min_comp(this->m_boxSpace, dimensionID));
+        this->m_minInDimensions[dimensionID] = static_cast<double>(AD::GetBoxMinC(this->m_boxSpace, dimensionID));
     }
 
 
@@ -1402,7 +1402,7 @@ namespace OrthoTree
 
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        AD::box_min_comp_set(nodeBox, dimensionID, AD::box_min_comp(m_boxSpace, dimensionID));
+        AD::SetBoxMinC(nodeBox, dimensionID, AD::GetBoxMinC(m_boxSpace, dimensionID));
 
       autoc depthIDOfNode = GetDepthID(nodeKey);
       autoc rasterResolutionNoAtNodeDepth = pow2(depthIDOfNode);
@@ -1418,20 +1418,20 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           autoc shouldApply = ((examinationKey >> dimensionID) & one) > MortonGridID{};
-          AD::box_min_comp_set(
+          AD::SetBoxMinC(
             nodeBox,
             dimensionID,
-            AD::box_min_comp(nodeBox, dimensionID) + static_cast<TGeometry>((this->m_sizeInDimensions[dimensionID] * rasterFactorAtDepth)) * shouldApply);
+            AD::GetBoxMinC(nodeBox, dimensionID) + static_cast<TGeometry>((this->m_sizeInDimensions[dimensionID] * rasterFactorAtDepth)) * shouldApply);
         }
         examinationKey >>= DIMENSION_NO;
       }
 
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        AD::box_max_comp_set(
+        AD::SetBoxMaxC(
           nodeBox,
           dimensionID,
-          AD::box_min_comp(nodeBox, dimensionID) + static_cast<TGeometry>(this->m_sizeInDimensions[dimensionID] * rasterFactorAtNodeDepth));
+          AD::GetBoxMinC(nodeBox, dimensionID) + static_cast<TGeometry>(this->m_sizeInDimensions[dimensionID] * rasterFactorAtNodeDepth));
 
       return nodeBox;
     }
@@ -1460,8 +1460,8 @@ namespace OrthoTree
     void Move(TVector const& moveVector) noexcept
     {
       auto ep = TExecutionPolicy{}; // GCC 11.3
-      std::for_each(ep, m_nodes.begin(), m_nodes.end(), [&moveVector](auto& pairKeyNode) { AD::move_box(pairKeyNode.second.Box, moveVector); });
-      AD::move_box(this->m_boxSpace, moveVector);
+      std::for_each(ep, m_nodes.begin(), m_nodes.end(), [&moveVector](auto& pairKeyNode) { AD::MoveBox(pairKeyNode.second.Box, moveVector); });
+      AD::MoveBox(this->m_boxSpace, moveVector);
     }
 
 
@@ -1527,9 +1527,9 @@ namespace OrthoTree
 
             bool fAdd = false;
             if constexpr (DO_RANGE_MUST_FULLY_CONTAIN)
-              fAdd = AD::are_boxes_overlapped(range, geometryCollection[entityID], true);
+              fAdd = AD::AreBoxesOverlapped(range, geometryCollection[entityID], true);
             else
-              fAdd = AD::are_boxes_overlapped_strict(range, geometryCollection[entityID]);
+              fAdd = AD::AreBoxesOverlappedStrict(range, geometryCollection[entityID]);
 
             if (fAdd)
               foundEntities.emplace_back(entityID);
@@ -1538,9 +1538,9 @@ namespace OrthoTree
           {
             bool fAdd = false;
             if constexpr (DO_RANGE_MUST_FULLY_CONTAIN)
-              fAdd = AD::are_boxes_overlapped(range, geometryCollection[entityID], DO_RANGE_MUST_FULLY_CONTAIN);
+              fAdd = AD::AreBoxesOverlapped(range, geometryCollection[entityID], DO_RANGE_MUST_FULLY_CONTAIN);
             else
-              fAdd = AD::are_boxes_overlapped_strict(range, geometryCollection[entityID]);
+              fAdd = AD::AreBoxesOverlappedStrict(range, geometryCollection[entityID]);
 
             if (fAdd)
               foundEntities.emplace_back(entityID);
@@ -1548,7 +1548,7 @@ namespace OrthoTree
         }
         else
         {
-          if (AD::does_box_contain_point(range, geometryCollection[entityID]))
+          if (AD::DoesBoxContainPoint(range, geometryCollection[entityID]))
             foundEntities.emplace_back(entityID);
         }
       }
@@ -1578,14 +1578,14 @@ namespace OrthoTree
         {
           autoc isUpperNodeInTheDimension = IsValidKey(keyChild & (MortonNodeID{ 1 } << dimensionID));
           if (isUpperNodeInTheDimension)
-            isOverlapped &= AD::box_min_comp(childNode.Box, dimensionID) <= AD::box_max_comp(range, dimensionID);
+            isOverlapped &= AD::GetBoxMinC(childNode.Box, dimensionID) <= AD::GetBoxMaxC(range, dimensionID);
           else
-            isOverlapped &= AD::box_max_comp(childNode.Box, dimensionID) >= AD::box_min_comp(range, dimensionID);
+            isOverlapped &= AD::GetBoxMaxC(childNode.Box, dimensionID) >= AD::GetBoxMinC(range, dimensionID);
         }
         if (!isOverlapped)
           continue;
 
-        if (rangeVolume >= currentNodeVolume && AD::are_boxes_overlapped(range, childNode.Box))
+        if (rangeVolume >= currentNodeVolume && AD::AreBoxesOverlapped(range, childNode.Box))
           collectAllIdInDFS<DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(childNode, foundEntities, minEntityID);
         else
           rangeSearch<TData, DO_RANGE_MUST_FULLY_CONTAIN, DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(
@@ -1603,7 +1603,7 @@ namespace OrthoTree
       TBox const& range, std::span<TData const> const& geometryCollection, std::vector<std::size_t>& foundEntities, std::size_t minEntityID = 0) const noexcept
     {
       autoc entityNo = geometryCollection.size();
-      if (AD::are_boxes_overlapped(range, this->m_boxSpace))
+      if (AD::AreBoxesOverlapped(range, this->m_boxSpace))
       {
         foundEntities.resize(DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID ? entityNo - minEntityID - 1 : entityNo);
         std::iota(foundEntities.begin(), foundEntities.end(), DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID ? minEntityID + 1 : 0);
@@ -1612,7 +1612,7 @@ namespace OrthoTree
 
       // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (AD::box_min_comp(range, dimensionID) >= AD::box_max_comp(range, dimensionID))
+        if (AD::GetBoxMinC(range, dimensionID) >= AD::GetBoxMaxC(range, dimensionID))
           return false;
 
       autoc[minGridID, maxGridID] = this->getGridIdBox<!IS_BOX_TYPE>(range);
@@ -1630,7 +1630,7 @@ namespace OrthoTree
 
       auto rangeVolume = 1.0;
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        rangeVolume *= AD::box_max_comp(range, dimensionID) - AD::box_min_comp(range, dimensionID);
+        rangeVolume *= AD::GetBoxMaxC(range, dimensionID) - AD::GetBoxMinC(range, dimensionID);
 
       autoc nodeVolume = this->m_volumeOfOverallSpace / static_cast<double>(1 << (DIMENSION_NO * depthNo));
 
@@ -1655,20 +1655,20 @@ namespace OrthoTree
     static PlaneRelation getEntityPlaneRelation(TData entity, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance)
     {
       if constexpr (std::is_same<TData, TBox>::value)
-        return AD::get_box_plane_relation(entity, distanceOfOrigo, planeNormal, tolerance);
+        return AD::GetBoxPlaneRelation(entity, distanceOfOrigo, planeNormal, tolerance);
       else
-        return AD::get_point_plane_relation(entity, distanceOfOrigo, planeNormal, tolerance);
+        return AD::GetPointPlaneRelation(entity, distanceOfOrigo, planeNormal, tolerance);
     }
 
     template<typename TData>
     std::vector<std::size_t> planeIntersection(
       TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TData const> const& data) const noexcept
     {
-      assert(AD::is_normalized_vector(planeNormal));
+      assert(AD::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<std::size_t>{};
       autoc selector = [&](MortonNodeIDCR, Node const& node) -> bool {
-        return AD::get_box_plane_relation(node.Box, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
+        return AD::GetBoxPlaneRelation(node.Box, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
       };
 
       autoc procedure = [&](MortonNodeIDCR, Node const& node) {
@@ -1687,11 +1687,11 @@ namespace OrthoTree
     std::vector<std::size_t> planePositiveSegmentation(
       TGeometry const& distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TData const> const& data) const noexcept
     {
-      assert(AD::is_normalized_vector(planeNormal));
+      assert(AD::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<std::size_t>{};
       autoc selector = [&](MortonNodeIDCR, Node const& node) -> bool {
-        autoc relation = AD::get_box_plane_relation(node.Box, distanceOfOrigo, planeNormal, tolerance);
+        autoc relation = AD::GetBoxPlaneRelation(node.Box, distanceOfOrigo, planeNormal, tolerance);
         return relation != PlaneRelation::Negative;
       };
 
@@ -1720,12 +1720,12 @@ namespace OrthoTree
       if (boundaryPlanes.empty())
         return results;
 
-      assert(std::all_of(boundaryPlanes.begin(), boundaryPlanes.end(), [](autoc& plane) { return AD::is_normalized_vector(plane.Normal); }));
+      assert(std::all_of(boundaryPlanes.begin(), boundaryPlanes.end(), [](autoc& plane) { return AD::IsNormalizedVector(plane.Normal); }));
 
       autoc selector = [&](MortonNodeIDCR, Node const& node) -> bool {
         for (autoc& plane : boundaryPlanes)
         {
-          autoc relation = AD::get_box_plane_relation(node.Box, plane.DistanceOfOrigo, plane.Normal, tolerance);
+          autoc relation = AD::GetBoxPlaneRelation(node.Box, plane.DistanceOfOrigo, plane.Normal, tolerance);
           if (relation == PlaneRelation::Hit)
             return true;
 
@@ -1851,7 +1851,7 @@ namespace OrthoTree
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
-      autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::box_of_points(points);
+      autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::GetBoxOfPoints(points);
       autoc pointNo = points.size();
 
       autoc maxDepthNo = maxDepthNoIn == 0 ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : maxDepthNoIn;
@@ -1884,7 +1884,7 @@ namespace OrthoTree
     // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
     bool Insert(std::size_t entityID, TVector const& point, bool doInsertToLeaf = false) noexcept
     {
-      if (!AD::does_box_contain_point(this->m_boxSpace, point))
+      if (!AD::DoesBoxContainPoint(this->m_boxSpace, point))
         return false;
 
       autoc smallestNodeKey = FindSmallestNode(point);
@@ -1946,7 +1946,7 @@ namespace OrthoTree
     // Update id by the new point information
     bool Update(std::size_t entityID, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
     {
-      if (!AD::does_box_contain_point(this->m_boxSpace, newPoint))
+      if (!AD::DoesBoxContainPoint(this->m_boxSpace, newPoint))
         return false;
 
       if (!this->EraseId<false>(entityID))
@@ -1959,7 +1959,7 @@ namespace OrthoTree
     // Update id by the new point information and the erase part is aided by the old point geometry data
     bool Update(std::size_t entityID, TVector const& oldPoint, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
     {
-      if (!AD::does_box_contain_point(this->m_boxSpace, newPoint))
+      if (!AD::DoesBoxContainPoint(this->m_boxSpace, newPoint))
         return false;
 
       if (!this->Erase<false>(entityID, oldPoint))
@@ -1973,7 +1973,7 @@ namespace OrthoTree
     // Find smallest node which contains the box
     MortonNodeID FindSmallestNode(TVector const& searchPoint) const noexcept
     {
-      if (!AD::does_box_contain_point(this->m_boxSpace, searchPoint))
+      if (!AD::DoesBoxContainPoint(this->m_boxSpace, searchPoint))
         return MortonNodeID{};
 
       autoc locationID = this->getLocationID(searchPoint);
@@ -1987,7 +1987,7 @@ namespace OrthoTree
         return false;
 
       autoc& node = this->GetNode(smallestNodeKey);
-      return std::ranges::any_of(node.Entities, [&](autoc& entityID) { return AD::are_points_equal(searchPoint, points[entityID], tolerance); });
+      return std::ranges::any_of(node.Entities, [&](autoc& entityID) { return AD::ArePointsEqual(searchPoint, points[entityID], tolerance); });
     }
 
     // Range search
@@ -2044,8 +2044,8 @@ namespace OrthoTree
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         autoc actualDistance = distances.emplace_back(std::min(
-          std::abs(AD::point_comp_c(point, dimensionID) - AD::box_min_comp(box, dimensionID)),
-          std::abs(AD::point_comp_c(point, dimensionID) - AD::box_max_comp(box, dimensionID))));
+          std::abs(AD::GetPointC(point, dimensionID) - AD::GetBoxMinC(box, dimensionID)),
+          std::abs(AD::GetPointC(point, dimensionID) - AD::GetBoxMaxC(box, dimensionID))));
 
         if (actualDistance == 0)
           return 0.0;
@@ -2059,7 +2059,7 @@ namespace OrthoTree
       Node const& node, TVector const& searchPoint, std::span<TVector const> const& points, std::multiset<EntityDistance>& neighborEntities) noexcept
     {
       for (autoc id : node.Entities)
-        neighborEntities.insert({ { AD::distance(searchPoint, points[id]) }, id });
+        neighborEntities.insert({ { AD::Distance(searchPoint, points[id]) }, id });
     }
 
     static TGeometry getFarestDistance(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
@@ -2103,13 +2103,13 @@ namespace OrthoTree
         auto aDist = TVector{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          autoc dMin = AD::box_min_comp(node.Box, dimensionID) - AD::point_comp_c(searchPoint, dimensionID);
-          autoc dMax = AD::box_max_comp(node.Box, dimensionID) - AD::point_comp_c(searchPoint, dimensionID);
+          autoc dMin = AD::GetBoxMinC(node.Box, dimensionID) - AD::GetPointC(searchPoint, dimensionID);
+          autoc dMax = AD::GetBoxMaxC(node.Box, dimensionID) - AD::GetPointC(searchPoint, dimensionID);
 
           // If point projection in dimensionID is within min and max the wall distance should be calculated.
-          AD::point_comp_set(aDist, dimensionID, dMin * dMax < 0 ? 0 : std::min(std::abs(dMin), std::abs(dMax)));
+          AD::SetPointC(aDist, dimensionID, dMin * dMax < 0 ? 0 : std::min(std::abs(dMin), std::abs(dMax)));
         }
-        nodeMinDistances.insert({ { AD::size(aDist) }, key, node });
+        nodeMinDistances.insert({ { AD::Size(aDist) }, key, node });
       });
 
       if (!nodeMinDistances.empty())
@@ -2370,7 +2370,7 @@ namespace OrthoTree
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
-      autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::box_of_boxes(boxes);
+      autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::GetBoxOfBoxes(boxes);
       autoc entityNo = boxes.size();
       autoc maxDepthNo = maxDepthIn == 0 ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : maxDepthIn;
       tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
@@ -2464,7 +2464,7 @@ namespace OrthoTree
     // Find smallest node which contains the box
     MortonNodeID FindSmallestNode(TBox const& box) const noexcept
     {
-      if (!AD::are_boxes_overlapped(this->m_boxSpace, box))
+      if (!AD::AreBoxesOverlapped(this->m_boxSpace, box))
         return MortonNodeID{};
 
       return FindSmallestNode(this->getGridIdBox(box));
@@ -2474,7 +2474,7 @@ namespace OrthoTree
     // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
     bool Insert(std::size_t entityID, TBox const& box, bool doInsertToLeaf = false) noexcept
     {
-      if (!AD::are_boxes_overlapped(this->m_boxSpace, box))
+      if (!AD::AreBoxesOverlapped(this->m_boxSpace, box))
         return false;
 
       autoc smallestNodeKey = FindSmallestNode(box);
@@ -2572,7 +2572,7 @@ namespace OrthoTree
     // Update id by the new bounding box information
     bool Update(std::size_t entityID, TBox const& boxNew, bool doInsertToLeaf = false) noexcept
     {
-      if (!AD::are_boxes_overlapped(this->m_boxSpace, boxNew))
+      if (!AD::AreBoxesOverlapped(this->m_boxSpace, boxNew))
         return false;
 
       if (!this->EraseId<false>(entityID))
@@ -2585,7 +2585,7 @@ namespace OrthoTree
     // Update id by the new point information and the erase part is aided by the old bounding box geometry data
     bool Update(std::size_t entityID, TBox const& oldBox, TBox const& newBox, bool doInsertToLeaf = false) noexcept
     {
-      if (!AD::are_boxes_overlapped(this->m_boxSpace, newBox))
+      if (!AD::AreBoxesOverlapped(this->m_boxSpace, newBox))
         return false;
 
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
@@ -2605,7 +2605,7 @@ namespace OrthoTree
       auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc rasterID = static_cast<double>(AD::point_comp_c(point, dimensionID) - AD::box_min_comp(this->m_boxSpace, dimensionID)) *
+        autoc rasterID = static_cast<double>(AD::GetPointC(point, dimensionID) - AD::GetBoxMinC(this->m_boxSpace, dimensionID)) *
                          this->m_rasterizerFactors[dimensionID];
         pointMinMaxGridID[0][dimensionID] = pointMinMaxGridID[1][dimensionID] = static_cast<GridID>(rasterID);
         pointMinMaxGridID[0][dimensionID] -= (pointMinMaxGridID[0][dimensionID] > 0) && (floor(rasterID) == rasterID);
@@ -2617,14 +2617,14 @@ namespace OrthoTree
     void pickSearch(TVector const& pickPoint, std::span<TBox const> const& boxes, Node const& parentNode, std::vector<std::size_t>& foundEntitiyIDs) const noexcept
     {
       std::ranges::copy_if(parentNode.Entities, back_inserter(foundEntitiyIDs), [&](autoc id) {
-        return AD::does_box_contain_point(boxes[id], pickPoint);
+        return AD::DoesBoxContainPoint(boxes[id], pickPoint);
       });
 
       for (MortonNodeIDCR keyChild : parentNode.GetChildren())
       {
         autoc& childNode = this->GetNode(keyChild);
 
-        if (!AD::does_box_contain_point(childNode.Box, pickPoint))
+        if (!AD::DoesBoxContainPoint(childNode.Box, pickPoint))
           continue;
 
         pickSearch(pickPoint, boxes, childNode, foundEntitiyIDs);
@@ -2637,7 +2637,7 @@ namespace OrthoTree
     std::vector<std::size_t> PickSearch(TVector const& pickPoint, std::span<TBox const> const& boxes) const noexcept
     {
       auto foundEntitiyIDs = std::vector<std::size_t>();
-      if (!AD::does_box_contain_point(this->m_boxSpace, pickPoint))
+      if (!AD::DoesBoxContainPoint(this->m_boxSpace, pickPoint))
         return foundEntitiyIDs;
 
       foundEntitiyIDs.reserve(100);
@@ -2670,7 +2670,7 @@ namespace OrthoTree
           continue;
 
         std::ranges::copy_if(nodeIterator->second.Entities, std::back_inserter(foundEntitiyIDs), [&](autoc entityID) {
-          return AD::does_box_contain_point(boxes[entityID], pickPoint);
+          return AD::DoesBoxContainPoint(boxes[entityID], pickPoint);
         });
       }
 
@@ -2773,7 +2773,7 @@ namespace OrthoTree
         {
           for (autoc leftEntityID : parentNodePair[Left].Iterator->second.Entities)
             for (autoc rightEntityID : parentNodePair[Right].Iterator->second.Entities)
-              if (AD::are_boxes_overlapped(leftBoxes[leftEntityID], rightBoxes[rightEntityID], false))
+              if (AD::AreBoxesOverlapped(leftBoxes[leftEntityID], rightBoxes[rightEntityID], false))
                 results.emplace_back(leftEntityID, rightEntityID);
         }
 
@@ -2805,7 +2805,7 @@ namespace OrthoTree
         for (autoc& leftChildNode : childNodes[Left])
           for (autoc& rightChildNode : childNodes[Right])
             if (!(leftChildNode.Iterator == parentNodePair[Left].Iterator && rightChildNode.Iterator == parentNodePair[Right].Iterator))
-              if (AD::are_boxes_overlapped(leftChildNode.Iterator->second.Box, rightChildNode.Iterator->second.Box, false))
+              if (AD::AreBoxesOverlapped(leftChildNode.Iterator->second.Box, rightChildNode.Iterator->second.Box, false))
                 nodePairToProceed.emplace(std::array{ leftChildNode, rightChildNode });
       }
 
@@ -2904,7 +2904,7 @@ namespace OrthoTree
         autoc& nodeRoot = this->GetNode(this->GetRootKey());
         for (autoc entityID : nodeRoot.Entities)
         {
-          if (AD::are_boxes_overlapped(boxes[entityID], this->m_boxSpace))
+          if (AD::AreBoxesOverlapped(boxes[entityID], this->m_boxSpace))
           {
             for (auto entityIDOther = entityID + 1; entityIDOther < entityNo; ++entityIDOther)
               collidedEntityPairs.emplace_back(entityID, entityIDOther);
@@ -3098,7 +3098,7 @@ namespace OrthoTree
     inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(std::span<TBox const> const& boxes) const noexcept
     {
       return collisionDetection<TExecutionPolicy>(boxes, [](std::size_t id1, TBox const& e1, std::size_t id2, TBox const& e2) {
-        return AD::are_boxes_overlapped_strict(e1, e2);
+        return AD::AreBoxesOverlappedStrict(e1, e2);
       });
     }
 
@@ -3109,7 +3109,7 @@ namespace OrthoTree
       std::span<TBox const> const& boxes, FCollisionDetector&& collisionDetector) const noexcept
     {
       return collisionDetection<TExecutionPolicy>(boxes, [collisionDetector](std::size_t id1, TBox const& e1, std::size_t id2, TBox const& e2) {
-        return AD::are_boxes_overlapped_strict(e1, e2) && collisionDetector(id1, e1, id2, e2);
+        return AD::AreBoxesOverlappedStrict(e1, e2) && collisionDetector(id1, e1, id2, e2);
       });
     }
 
@@ -3123,13 +3123,13 @@ namespace OrthoTree
       TGeometry maxExaminationDistance,
       std::vector<EntityDistance>& foundEntities) const noexcept
     {
-      autoc isNodeHit = AD::is_ray_hit(node.Box, rayBasePoint, rayHeading, tolerance);
+      autoc isNodeHit = AD::IsRayHit(node.Box, rayBasePoint, rayHeading, tolerance);
       if (!isNodeHit)
         return;
 
       for (autoc entityID : node.Entities)
       {
-        autoc entityDistance = AD::is_ray_hit(boxes[entityID], rayBasePoint, rayHeading, tolerance);
+        autoc entityDistance = AD::IsRayHit(boxes[entityID], rayBasePoint, rayHeading, tolerance);
         if (entityDistance && (maxExaminationDistance == 0 || entityDistance.value() <= maxExaminationDistance))
           foundEntities.push_back({ { TGeometry(entityDistance.value()) }, entityID });
       }
@@ -3151,7 +3151,7 @@ namespace OrthoTree
         foundEntities.empty() ? std::numeric_limits<double>::infinity() : static_cast<double>(foundEntities.rbegin()->Distance);
       for (autoc entityID : node.Entities)
       {
-        autoc distance = AD::is_ray_hit(boxes[entityID], rayBasePoint, rayHeading, tolerance);
+        autoc distance = AD::IsRayHit(boxes[entityID], rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
 
@@ -3165,7 +3165,7 @@ namespace OrthoTree
       for (autoc childKey : node.GetChildren())
       {
         autoc& nodeChild = this->GetNode(childKey);
-        autoc distance = AD::is_ray_hit(nodeChild.Box, rayBasePoint, rayHeading, tolerance);
+        autoc distance = AD::IsRayHit(nodeChild.Box, rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
 
@@ -3213,7 +3213,7 @@ namespace OrthoTree
       TVector const& rayBasePointPoint, TVector const& rayHeading, std::span<TBox const> const& boxes, TGeometry tolerance) const noexcept
     {
       autoc& node = this->GetNode(this->GetRootKey());
-      autoc distance = AD::is_ray_hit(node.Box, rayBasePointPoint, rayHeading, tolerance);
+      autoc distance = AD::IsRayHit(node.Box, rayBasePointPoint, rayHeading, tolerance);
       if (!distance)
         return std::nullopt;
 

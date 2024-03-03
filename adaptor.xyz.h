@@ -67,7 +67,7 @@ namespace OrthoTree
 
     struct XYAdaptorBasics
     {
-      static constexpr xy_geometry_type point_comp_c(XYPoint2D const& pt, dim_t dimensionID)
+      static constexpr xy_geometry_type GetPointC(XYPoint2D const& pt, dim_t dimensionID)
       {
         switch (dimensionID)
         {
@@ -77,7 +77,7 @@ namespace OrthoTree
         }
       }
 
-      static constexpr void point_comp_set(XYPoint2D& pt, dim_t dimensionID, xy_geometry_type value)
+      static constexpr void SetPointC(XYPoint2D& pt, dim_t dimensionID, xy_geometry_type value)
       {
         switch (dimensionID)
         {
@@ -88,10 +88,10 @@ namespace OrthoTree
       }
 
 
-      static constexpr void box_min_comp_set(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { point_comp_set(box.Min, dimensionID, value); }
-      static constexpr void box_max_comp_set(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { point_comp_set(box.Max, dimensionID, value); }
-      static constexpr xy_geometry_type box_min_comp(XYBoundingBox2D const& box, dim_t dimensionID) { return point_comp_c(box.Min, dimensionID); }
-      static constexpr xy_geometry_type box_max_comp(XYBoundingBox2D const& box, dim_t dimensionID) { return point_comp_c(box.Max, dimensionID); }
+      static constexpr void SetBoxMinC(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { SetPointC(box.Min, dimensionID, value); }
+      static constexpr void SetBoxMaxC(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { SetPointC(box.Max, dimensionID, value); }
+      static constexpr xy_geometry_type GetBoxMinC(XYBoundingBox2D const& box, dim_t dimensionID) { return GetPointC(box.Min, dimensionID); }
+      static constexpr xy_geometry_type GetBoxMaxC(XYBoundingBox2D const& box, dim_t dimensionID) { return GetPointC(box.Max, dimensionID); }
     };
 
     using XYAdaptorGeneral = AdaptorGeneralBase<2, XYPoint2D, XYBoundingBox2D, XYAdaptorBasics, xy_geometry_type>;
@@ -106,7 +106,7 @@ namespace OrthoTree
 
     struct XYZAdaptorBasics
     {
-      static constexpr xyz_geometry_type point_comp_c(XYZPoint3D const& pt, dim_t dimensionID) noexcept
+      static constexpr xyz_geometry_type GetPointC(XYZPoint3D const& pt, dim_t dimensionID) noexcept
       {
         switch (dimensionID)
         {
@@ -117,7 +117,7 @@ namespace OrthoTree
         }
       }
 
-      static constexpr void point_comp_set(XYZPoint3D& pt, dim_t dimensionID, xyz_geometry_type value) noexcept
+      static constexpr void SetPointC(XYZPoint3D& pt, dim_t dimensionID, xyz_geometry_type value) noexcept
       {
         switch (dimensionID)
         {
@@ -128,10 +128,10 @@ namespace OrthoTree
         }
       }
 
-      static constexpr void box_min_comp_set(XYZBoundingBox3D& box, dim_t dimensionID, xyz_geometry_type value) { point_comp_set(box.Min, dimensionID, value); }
-      static constexpr void box_max_comp_set(XYZBoundingBox3D& box, dim_t dimensionID, xyz_geometry_type value) { point_comp_set(box.Max, dimensionID, value); }
-      static constexpr xyz_geometry_type box_min_comp(XYZBoundingBox3D const& box, dim_t dimensionID) { return point_comp_c(box.Min, dimensionID); }
-      static constexpr xyz_geometry_type box_max_comp(XYZBoundingBox3D const& box, dim_t dimensionID) { return point_comp_c(box.Max, dimensionID); }
+      static constexpr void SetBoxMinC(XYZBoundingBox3D& box, dim_t dimensionID, xyz_geometry_type value) { SetPointC(box.Min, dimensionID, value); }
+      static constexpr void SetBoxMaxC(XYZBoundingBox3D& box, dim_t dimensionID, xyz_geometry_type value) { SetPointC(box.Max, dimensionID, value); }
+      static constexpr xyz_geometry_type GetBoxMinC(XYZBoundingBox3D const& box, dim_t dimensionID) { return GetPointC(box.Min, dimensionID); }
+      static constexpr xyz_geometry_type GetBoxMaxC(XYZBoundingBox3D const& box, dim_t dimensionID) { return GetPointC(box.Max, dimensionID); }
     };
 
     using XYZAdaptorGeneral = AdaptorGeneralBase<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorBasics, xyz_geometry_type>;

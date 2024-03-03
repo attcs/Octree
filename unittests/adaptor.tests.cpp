@@ -25,7 +25,7 @@ namespace CustomGeometryType
 
   struct AdaptorBasicsCustom
   {
-    static constexpr float point_comp_c(Point2DCustom const& pt, OrthoTree::dim_t iDimension)
+    static constexpr float GetPointC(Point2DCustom const& pt, OrthoTree::dim_t iDimension)
     {
       switch (iDimension)
       {
@@ -35,7 +35,7 @@ namespace CustomGeometryType
       }
     }
 
-    static constexpr void point_comp_set(Point2DCustom& pt, OrthoTree::dim_t iDimension, float value)
+    static constexpr void SetPointC(Point2DCustom& pt, OrthoTree::dim_t iDimension, float value)
     {
       switch (iDimension)
       {
@@ -45,10 +45,10 @@ namespace CustomGeometryType
       }
     }
 
-    static constexpr void box_min_comp_set(BoundingBox2DCustom& box, dim_t dimensionID, float value) { point_comp_set(box[0], dimensionID, value); }
-    static constexpr void box_max_comp_set(BoundingBox2DCustom& box, dim_t dimensionID, float value) { point_comp_set(box[1], dimensionID, value); }
-    static constexpr float box_min_comp(BoundingBox2DCustom const& box, dim_t dimensionID) { return point_comp_c(box[0], dimensionID); }
-    static constexpr float box_max_comp(BoundingBox2DCustom const& box, dim_t dimensionID) { return point_comp_c(box[1], dimensionID); }
+    static constexpr void SetBoxMinC(BoundingBox2DCustom& box, dim_t dimensionID, float value) { SetPointC(box[0], dimensionID, value); }
+    static constexpr void SetBoxMaxC(BoundingBox2DCustom& box, dim_t dimensionID, float value) { SetPointC(box[1], dimensionID, value); }
+    static constexpr float GetBoxMinC(BoundingBox2DCustom const& box, dim_t dimensionID) { return GetPointC(box[0], dimensionID); }
+    static constexpr float GetBoxMaxC(BoundingBox2DCustom const& box, dim_t dimensionID) { return GetPointC(box[1], dimensionID); }
   };
 
   using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
