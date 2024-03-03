@@ -21,7 +21,7 @@ namespace PerformaceTest
   template<size_t nDim>
   static constexpr BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
   {
-    using Ad = AdaptorGeneral<nDim, PointND<nDim>, BoundingBoxND<nDim>>;
+    using Ad = AdaptorGeneral<nDim, PointND<nDim>, BoundingBoxND<nDim>, RayND<nDim>, PlaneND<nDim>>;
     auto Box = BoundingBoxND<nDim>{ pt, pt };
     for (size_t iDim = 0; iDim < nDim; ++iDim)
       Ad::SetBoxMaxC(Box, static_cast<dim_t>(iDim), Ad::GetBoxMinC(Box, static_cast<dim_t>(iDim)) + size);

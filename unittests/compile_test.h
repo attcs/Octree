@@ -29,6 +29,8 @@ void testCompilePoint()
 {
   using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using Plane = OrthoTree::PlaneND<N>;
+
   using OT = OrthoTree::TreePointND<N>;
 
   autoc key = OT::GetHash(2, 3);
@@ -77,7 +79,6 @@ void testCompilePoint()
     autoc idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0, vpt);
     autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
     autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, vpt);
-    using Plane = OT::Plane;
     autoc idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }}
@@ -116,8 +117,10 @@ void testCompilePoint()
 template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBox()
 {
-  using Vector = OrthoTree::PointND<N>;
+  using Vector = OrthoTree::VectorND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using Plane = OrthoTree::PlaneND<N>;
+
   using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth>;
 
   autoc key = OT::GetHash(2, 3);
@@ -171,7 +174,6 @@ void testCompileBox()
     autoc idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0, boxes);
     autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
     autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, boxes);
-    using Plane = OT::Plane;
     autoc idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, Vector{ 1.0, 0.0 }}
@@ -211,6 +213,7 @@ void testCompilePointC()
 {
   using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using Plane = OrthoTree::PlaneND<N>;
   using OT = OrthoTree::TreePointContainerND<N>;
 
   autoce vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
@@ -242,7 +245,6 @@ void testCompilePointC()
     autoc idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0);
     autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
     autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
-    using Plane = OT::Plane;
     autoc idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
@@ -273,7 +275,9 @@ void testCompilePointC()
 template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxC()
 {
+  using Vector = OrthoTree::VectorND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using Plane = OrthoTree::PlaneND<N>;
   using OT = OrthoTree::TreeBoxContainerND<N, nSplitStrategyAdditionalDepth>;
 
   autoce boxes = std::array
@@ -308,7 +312,6 @@ void testCompileBoxC()
     autoc idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0);
     autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
     autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
-    using Plane = OT::Plane;
     autoc idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},

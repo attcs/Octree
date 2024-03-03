@@ -756,7 +756,7 @@ namespace GeneralTest
     template<typename tree_type, size_t N>
     bool _isMoveOfTwoTreeProper(tree_type const& tPre, tree_type const& tAfter, PointND<N> const& vMoveExpected)
     {
-      using AD = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>>;
+      using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
       autoce rAcc = std::numeric_limits<double>::min();
 
       autoc nodesPre = tPre.GetNodes();
@@ -1826,7 +1826,7 @@ namespace Tree2DTest
 
 
       autoce search_point = array<double, 2>{ 43.6406, 57.5691 };
-      using AD = OrthoTree::AdaptorGeneral<2, array<double, 2>, OrthoTree::BoundingBox2D>;
+      using AD = OrthoTree::AdaptorGeneral<2, array<double, 2>, OrthoTree::BoundingBox2D, OrthoTree::Ray2D, OrthoTree::Plane2D>;
       autoc itMin = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::Distance2(lhs, search_point) < AD::Distance2(rhs, search_point); });
 
       std::array<double, 2> inspection_space_min = { 0.0, 0.0 };
@@ -1872,7 +1872,7 @@ namespace Tree2DTest
       };
 
       autoc search_point = VectorType{ 78.8658, 64.0361, 18.7755, 61.4618, 14.3312, 40.0196 };
-      using AD = OrthoTree::AdaptorGeneral<6, VectorType, OrthoTree::BoundingBoxND<6>>;
+      using AD = OrthoTree::AdaptorGeneral<6, VectorType, OrthoTree::BoundingBoxND<6>, OrthoTree::RayND<6>, OrthoTree::PlaneND<6>>;
       autoc itMinExpected = std::ranges::min_element(poses, [&search_point](autoc& lhs, autoc& rhs) { return AD::Distance2(lhs, search_point) < AD::Distance2(rhs, search_point); });
 
       autoc inspection_space = OrthoTree::BoundingBoxND<6>
@@ -2268,8 +2268,10 @@ namespace LongIntAdaptor
   using namespace OrthoTree;
 
   using GeometryType = long int;
-  template <size_t N> using CustomVectorTypeND = std::array<GeometryType, N>;
-  template <size_t N> using CustomBoundingBoxND = std::array<CustomVectorTypeND<N>, 2>;
+  template<size_t N> using CustomVectorTypeND = std::array<GeometryType, N>;
+  template<size_t N> using CustomBoundingBoxND = std::array<CustomVectorTypeND<N>, 2>;
+  template<size_t N> using CustomRayND = std::array<CustomVectorTypeND<N>, 2>;
+  template<size_t N> using CustomPlaneND = std::tuple<CustomVectorTypeND<N>, GeometryType>;
 
   template <size_t N>
   struct AdaptorBasicsCustom
@@ -2285,12 +2287,19 @@ namespace LongIntAdaptor
     static constexpr void SetBoxMaxC(CustomBoundingBoxND<N>& box, dim_t dimensionID, GeometryType value) { SetPointC(box[1], dimensionID, value); }
     static constexpr GeometryType GetBoxMinC(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return GetPointC(box[0], dimensionID); }
     static constexpr GeometryType GetBoxMaxC(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return GetPointC(box[1], dimensionID); }
+    
+    static constexpr CustomVectorTypeND<N> const& GetRayDirection(CustomRayND<N> const& ray) noexcept { ray[1]; }
+    static constexpr CustomVectorTypeND<N> const& GetRayOrigin(CustomRayND<N> const& ray) noexcept { ray[0]; }
+
+    static constexpr CustomVectorTypeND<N> const& GetPlaneNormal(CustomPlaneND<N> const& plane) noexcept { return std::get<0>(plane); }
+    static constexpr GeometryType GetPlaneOrigoDistance(CustomPlaneND<N> const& plane) noexcept { return std::get<1>(plane); }
+
   };
 
-  template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorBasicsCustom<N>, GeometryType>;
-  template <size_t N> using OrthoTreePointCustom = OrthoTreePoint<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorCustom<N>, GeometryType>;
+  template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorBasicsCustom<N>>;
+  template <size_t N> using OrthoTreePointCustom = OrthoTreePoint<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorCustom<N>>;
   template <size_t N> using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainerPoint<OrthoTreePointCustom<N>, CustomVectorTypeND<N>>;
-  template <size_t N, depth_t nSplit = 2> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorCustom<N>, GeometryType, nSplit>;
+  template <size_t N, depth_t nSplit = 2> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, nSplit, AdaptorCustom<N>>;
   template <size_t N> using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainerBox<OrthoTreeBoxCustom<N>, CustomBoundingBoxND<N>>;
 
 

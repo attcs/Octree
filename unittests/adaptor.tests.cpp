@@ -17,17 +17,19 @@ namespace CustomGeometryType
 {
   // User-defined geometrical objects
 
-  struct Point2DCustom { float x; float y; };
-  using BoundingBox2DCustom = std::array<Point2DCustom, 2>;
+  struct MyPoint2D { float x; float y; };
+  using MyBox2D = std::array<MyPoint2D, 2>;
+  using MyRay2D = std::array<MyPoint2D, 2>;
+  struct MyPlane2D { float OrigoDistance; MyPoint2D Normal; };
 
 
   // Adaptor
 
   struct AdaptorBasicsCustom
   {
-    static constexpr float GetPointC(Point2DCustom const& pt, OrthoTree::dim_t iDimension)
+    static float GetPointC(MyPoint2D const& pt, OrthoTree::dim_t i)
     {
-      switch (iDimension)
+      switch (i)
       {
       case 0: return pt.x;
       case 1: return pt.y;
@@ -35,30 +37,58 @@ namespace CustomGeometryType
       }
     }
 
-    static constexpr void SetPointC(Point2DCustom& pt, OrthoTree::dim_t iDimension, float value)
+    static void SetPointC(MyPoint2D& pt, OrthoTree::dim_t i, float v)
     {
-      switch (iDimension)
+      switch (i)
       {
-        case 0:  pt.x = value; break;
-        case 1:  pt.y = value; break;
+        case 0:  pt.x = v; break;
+        case 1:  pt.y = v; break;
         default: assert(false);
       }
     }
 
-    static constexpr void SetBoxMinC(BoundingBox2DCustom& box, dim_t dimensionID, float value) { SetPointC(box[0], dimensionID, value); }
-    static constexpr void SetBoxMaxC(BoundingBox2DCustom& box, dim_t dimensionID, float value) { SetPointC(box[1], dimensionID, value); }
-    static constexpr float GetBoxMinC(BoundingBox2DCustom const& box, dim_t dimensionID) { return GetPointC(box[0], dimensionID); }
-    static constexpr float GetBoxMaxC(BoundingBox2DCustom const& box, dim_t dimensionID) { return GetPointC(box[1], dimensionID); }
+    static void SetBoxMinC(MyBox2D& box, dim_t i, float v) { SetPointC(box[0], i, v); }
+    static void SetBoxMaxC(MyBox2D& box, dim_t i, float v) { SetPointC(box[1], i, v); }
+    static float GetBoxMinC(MyBox2D const& box, dim_t i) { return GetPointC(box[0], i); }
+    static float GetBoxMaxC(MyBox2D const& box, dim_t i) { return GetPointC(box[1], i); }
+
+    static MyPoint2D const& GetRayDirection(MyRay2D const& ray) { return ray[1]; }
+    static MyPoint2D const& GetRayOrigin(MyRay2D const& ray) { return ray[0]; }
+
+    static MyPoint2D const& GetPlaneNormal(MyPlane2D const& plane) { return plane.Normal; }
+    static float GetPlaneOrigoDistance(MyPlane2D const& plane) { return plane.OrigoDistance; }
   };
 
-  using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
+  using AdaptorCustom = OrthoTree::AdaptorGeneralBase<
+    2, 
+    MyPoint2D, 
+    MyBox2D, 
+    MyRay2D, 
+    MyPlane2D, 
+    float, 
+    AdaptorBasicsCustom>;
 
 
   // Tailored Quadtree objects
 
-  using QuadtreePointCustom = OrthoTree::OrthoTreePoint<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
-  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
+  using QuadtreePointCustom = OrthoTree::OrthoTreePoint<
+    2, 
+    MyPoint2D, 
+    MyBox2D, 
+    MyRay2D, 
+    MyPlane2D, 
+    float, 
+    AdaptorCustom>;
 
+  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<
+    2, 
+    MyPoint2D, 
+    MyBox2D, 
+    MyRay2D, 
+    MyPlane2D, 
+    float, 
+    2, 
+    AdaptorCustom>;
 }
 
 
@@ -67,7 +97,7 @@ namespace AdaptorTest
 {
   using namespace CustomGeometryType;
 
-  static bool AreEqualAlmost(BoundingBox2DCustom const& l, BoundingBox2DCustom const& r) noexcept
+  static bool AreEqualAlmost(MyBox2D const& l, MyBox2D const& r) noexcept
   {
     for (autoc iMax : { 0, 1 })
       for (dim_t iD = 0; iD < 2; ++iD)
@@ -87,19 +117,19 @@ namespace AdaptorTest
   public:
     TEST_METHOD(Empty)
     {
-      autoc tree = QuadtreePointCustom(vector<Point2DCustom>{}, 2);
+      autoc tree = QuadtreePointCustom(vector<MyPoint2D>{}, 2);
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).Entities.empty());
-      Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox2DCustom{}));
+      Assert::IsTrue(AreEqualAlmost(tree.GetBox(), MyBox2D{}));
     }
 
     TEST_METHOD(Insert_NonLeaf_Successful)
     {
-      autoce vpt = array{ Point2DCustom{ 0.0, 0.0 }, Point2DCustom{ 1.0, 1.0 }, Point2DCustom{ 2.0, 2.0 }, Point2DCustom{ 3.0, 3.0 } };
+      autoce vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
       auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 2);
 
-      Assert::IsTrue(tree.Insert(4, Point2DCustom{ 2.5, 2.5 }, false));
+      Assert::IsTrue(tree.Insert(4, MyPoint2D{ 2.5, 2.5 }, false));
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
@@ -108,7 +138,7 @@ namespace AdaptorTest
 
     TEST_METHOD(Contains__1__True)
     {
-      autoce vpt = array{ Point2DCustom{ 0.0, 0.0 }, Point2DCustom{ 1.0, 1.0 }, Point2DCustom{ 2.0, 2.0 }, Point2DCustom{ 3.0, 3.0 } };
+      autoce vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
       auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Contains(vpt[1], vpt, 0));
@@ -147,15 +177,13 @@ namespace AdaptorTest
         
         auto sqrt2 = sqrt(2.0);
         auto sqrt2Reciproc = 1.0 / sqrt2;
-        auto pointsInFrustum = tree.FrustumCulling( // Cross-point of the planes: 2;2;2
-          vector<Eigen::OctreePoint3d::Plane>{
-            {2 * sqrt2, Eigen::Vector3d( sqrt2Reciproc, sqrt2Reciproc, 0.0 )},
-            {2 * sqrt2, Eigen::Vector3d( 0.0, sqrt2Reciproc, sqrt2Reciproc )},
-            {      0.0, Eigen::Vector3d( sqrt2Reciproc, -sqrt2Reciproc, 0.0)}
-        },
-          0.01f,
-          vpt);
+        vector<Eigen::Hyperplane<double, 3>> planes;
+        planes.emplace_back(Eigen::Vector3d(sqrt2Reciproc, sqrt2Reciproc, 0.0), -2 * sqrt2);
+        planes.emplace_back(Eigen::Vector3d(0.0, sqrt2Reciproc, sqrt2Reciproc), -2 * sqrt2);
+        planes.emplace_back(Eigen::Vector3d(sqrt2Reciproc, -sqrt2Reciproc, 0.0), 0);
 
+        auto pointsInFrustum = tree.FrustumCulling(planes, 0.01, vpt);
+          
         autoc n = vpt.size();
         vpt.push_back(Eigen::Vector3d(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
@@ -214,18 +242,16 @@ namespace AdaptorTest
         auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint, rayHeading, 0.01); //: 4
         auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01); //: { 4, 2, 3 } in distance order!
 
-        // Plane
-        using Plane = Eigen::QuadtreeBoxC2d<2>::Plane;
-        
+        // Plane       
         auto sqrt2 = sqrt(2.0);
         auto sqrt2Reciproc = 1.0 / sqrt2;
         auto boxesInFrustum = quadtree.FrustumCulling( // Cross-point of the planes: 2;2;2
-          vector<Plane>{
-            {2 * sqrt2, Eigen::Vector2d(sqrt2Reciproc,  sqrt2Reciproc)},
-            {      2.0, Eigen::Vector2d(0, -1.0)}
+          vector{
+            Eigen::Hyperplane<double, 2>(Eigen::Vector2d(sqrt2Reciproc, sqrt2Reciproc), -2 * sqrt2),
+            Eigen::Hyperplane<double, 2>(Eigen::Vector2d(0, -1.0), -2.0)
         },
           0.01f);
-          
+
         // Collect all IDs in breadth/depth first order
         auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
         auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
@@ -286,7 +312,7 @@ namespace AdaptorTest
         auto sqrt2Reciproc = float_t(1.0 / sqrt2);
         
         auto pointsInFrustum = tree.FrustumCulling( // Cross-point of the planes: 2;2;2
-          vector<XYZ::OctreePoint::Plane>{
+          vector<BasicTypesXYZ::Plane3D>{
             {2 * sqrt2,  { sqrt2Reciproc, sqrt2Reciproc, 0.0 }},
             {2 * sqrt2,  { 0.0, sqrt2Reciproc, sqrt2Reciproc }},
             {      0.0, { sqrt2Reciproc, -sqrt2Reciproc, 0.0 }}
@@ -356,12 +382,10 @@ namespace AdaptorTest
         auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01f); //: { 4, 2, 3 } in distance order!
 
         // Plane
-        using Plane = XYZ::QuadtreeBoxC<2>::Plane;
-
         auto sqrt2 = sqrtf(2.0);
         auto sqrt2Reciproc = 1.0f / sqrt2;
         auto boxesInFrustum = quadtree.FrustumCulling( // Cross-point of the planes: 2;2;2
-          vector<Plane>{
+          vector<BasicTypesXYZ::Plane2D>{
             {2 * sqrt2, { sqrt2Reciproc, sqrt2Reciproc }},
             {     2.0f,                  { 0.0f, -1.0f }}
         },
@@ -444,7 +468,7 @@ namespace AdaptorTest
           FBox2D(FVector2D(1.2, 1.2), FVector2D(2.8, 2.8))
         };
 
-        auto quadtree = FQuadtreeBox2DC<2>(
+        auto quadtree = FQuadtreeBox2DC(
           boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
@@ -476,13 +500,13 @@ namespace AdaptorTest
         auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint, rayHeading, 0.01); //: 4
         auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint, rayHeading, 0.01); //: { 4, 2, 3 } in distance order!
 
-        using Plane = FQuadtreeBox2DC<2>::Plane;
+        using Plane = FQuadtreeBox2DC::TPlane;
         auto sqrt2 = sqrtf(2.0);
         auto sqrt2Reciproc = 1.0f / sqrt2;
         auto boxesInFrustum = quadtree.FrustumCulling( // Cross-point of the planes: 2;2;2
-          vector<Plane>{
-            {2 * sqrt2, { sqrt2Reciproc, sqrt2Reciproc }},
-            {     2.0f,                  { 0.0f, -1.0f }}
+          vector{
+            Plane{FVector2D{ sqrt2Reciproc, sqrt2Reciproc }, FVector2D{ 2.0f, 2.0f }},
+            Plane{                 FVector2D{ 0.0f, -1.0f }, FVector2D{ 0.0f, 2.0f }}
         },
           0.01f);
 

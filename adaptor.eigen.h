@@ -24,6 +24,7 @@ SOFTWARE.
 */
 
 #include "octree.h"
+#include <Eigen/Dense>
 #include <Eigen/Geometry>
 
 namespace OrthoTree
@@ -37,6 +38,8 @@ namespace OrthoTree
     {
       using VectorType_ = Matrix<Scalar_, AmbientDim_, 1>;
       using AlignedBox_ = AlignedBox<Scalar_, AmbientDim_>;
+      using Ray_ = ParametrizedLine<Scalar_, AmbientDim_>;
+      using Plane_ = Hyperplane<Scalar_, AmbientDim_>;
 
       static constexpr Scalar_ GetPointC(VectorType_ const& point, dim_t dimensionID) noexcept { return point(dimensionID); }
       static constexpr void SetPointC(VectorType_& point, dim_t dimensionID, Scalar_ value) noexcept { point(dimensionID) = value; }
@@ -45,6 +48,12 @@ namespace OrthoTree
       static constexpr Scalar_ GetBoxMaxC(AlignedBox_ const& box, dim_t dimensionID) { return box.max()(dimensionID); }
       static constexpr void SetBoxMinC(AlignedBox_& box, dim_t dimensionID, Scalar_ value) { box.min()(dimensionID) = value; }
       static constexpr void SetBoxMaxC(AlignedBox_& box, dim_t dimensionID, Scalar_ value) { box.max()(dimensionID) = value; }
+
+      static constexpr VectorType_ const& GetRayDirection(Ray_ const& ray) noexcept { return ray.direction(); }
+      static constexpr VectorType_ const& GetRayOrigin(Ray_ const& ray) noexcept { return ray.origin(); }
+
+      static constexpr VectorType_ GetPlaneNormal(Plane_ const& plane) noexcept { return plane.normal(); }
+      static constexpr Scalar_ GetPlaneOrigoDistance(Plane_ const& plane) noexcept { return -plane.offset(); }
     };
 
     template<typename Scalar_, int AmbientDim_>
@@ -53,8 +62,10 @@ namespace OrthoTree
       using Base = EigenAdaptorBasics<Scalar_, AmbientDim_>;
       using VectorType_ = Base::VectorType_;
       using AlignedBox_ = Base::AlignedBox_;
+      using Ray_ = ParametrizedLine<Scalar_, AmbientDim_>;
+      using Plane_ = Hyperplane<Scalar_, AmbientDim_>;
 
-      static_assert(AdaptorBasicsConcept<Base, VectorType_, AlignedBox_, Scalar_>);
+      static_assert(AdaptorBasicsConcept<Base, VectorType_, AlignedBox_, Ray_, Plane_, Scalar_>);
 
       static constexpr Scalar_ Size2(VectorType_ const& v) noexcept { return v.squaredNorm(); }
 
@@ -177,6 +188,11 @@ namespace OrthoTree
         return rMin < 0 ? rMax : rMin;
       }
 
+      static constexpr std::optional<double> IsRayHit(AlignedBox_ const& box, Ray_ const& ray, Scalar_ tolerance) noexcept
+      {
+        return IsRayHit(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
+      }
+
       // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
       static constexpr PlaneRelation GetPointPlaneRelation(
         VectorType_ const& point, Scalar_ distanceOfOrigo, VectorType_ const& planeNormal, Scalar_ tolerance) noexcept
@@ -237,12 +253,25 @@ namespace Eigen
 
   // Basic OrthoTree types
   template<typename Scalar_, int AmbientDim_>
-  using EigenOrthoTreePoint =
-    OrthoTreePoint<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneralBase<Scalar_, AmbientDim_>, Scalar_>;
+  using EigenOrthoTreePoint = OrthoTreePoint<
+    AmbientDim_,
+    Matrix<Scalar_, AmbientDim_, 1>,
+    AlignedBox<Scalar_, AmbientDim_>,
+    ParametrizedLine<Scalar_, AmbientDim_>,
+    Hyperplane<Scalar_, AmbientDim_>,
+    Scalar_,
+    EigenAdaptorGeneralBase<Scalar_, AmbientDim_>>;
 
   template<typename Scalar_, int AmbientDim_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using EigenOrthoTreeBox =
-    OrthoTreeBoundingBox<AmbientDim_, Matrix<Scalar_, AmbientDim_, 1>, AlignedBox<Scalar_, AmbientDim_>, EigenAdaptorGeneralBase<Scalar_, AmbientDim_>, Scalar_, SPLIT_DEPTH_INCREASEMENT>;
+  using EigenOrthoTreeBox = OrthoTreeBoundingBox<
+    AmbientDim_,
+    Matrix<Scalar_, AmbientDim_, 1>,
+    AlignedBox<Scalar_, AmbientDim_>,
+    ParametrizedLine<Scalar_, AmbientDim_>,
+    Hyperplane<Scalar_, AmbientDim_>,
+    Scalar_,
+    SPLIT_DEPTH_INCREASEMENT,
+    EigenAdaptorGeneralBase<Scalar_, AmbientDim_>>;
 
   template<typename Scalar_, int AmbientDim_>
   using OrthoTreeContainerPointC = OrthoTreeContainerPoint<EigenOrthoTreePoint<Scalar_, AmbientDim_>, Matrix<Scalar_, AmbientDim_, 1>>;

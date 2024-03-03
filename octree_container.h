@@ -40,7 +40,8 @@ namespace OrthoTree
     using TVector = typename OrthoTreeCore::TVector;
     using TBox = typename OrthoTreeCore::TBox;
     using TGeometry = typename OrthoTreeCore::TGeometry;
-    using Plane = typename OrthoTreeCore::Plane;
+    using TRay = typename OrthoTreeCore::TRay;
+    using TPlane = typename OrthoTreeCore::TPlane;
 
   protected:
     OrthoTreeCore m_tree;
@@ -155,13 +156,13 @@ namespace OrthoTree
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, TGeometry tolerance) const noexcept
+    inline std::vector<std::size_t> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance) const noexcept
     {
-      return this->m_tree.PlanePositiveSegmentation(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
+      return this->m_tree.PlanePositiveSegmentation(plane, tolerance, this->m_geometryCollection);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> FrustumCulling(std::vector<Plane> const& boundaryPlanes, TGeometry tolerance) const noexcept
+    inline std::vector<std::size_t> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance) const noexcept
     {
       return this->m_tree.FrustumCulling(boundaryPlanes, tolerance, this->m_geometryCollection);
     }
@@ -178,7 +179,8 @@ namespace OrthoTree
     using TGeometry = typename base::TGeometry;
     using TVector = typename base::TVector;
     using TBox = typename base::TBox;
-    using Plane = typename base::Plane;
+    using TRay = typename base::TRay;
+    using TPlane = typename base::TPlane;
 
     using base::base; // inherits all constructors
 
@@ -240,9 +242,9 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneSearch(Plane const& plane, TGeometry tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneSearch(TPlane const& plane, TGeometry tolerance) const noexcept
     {
-      return this->m_tree.PlaneSearch(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
+      return this->m_tree.PlaneSearch(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, this->m_geometryCollection);
     }
   };
 
@@ -257,7 +259,8 @@ namespace OrthoTree
     using TGeometry = typename base::TGeometry;
     using TVector = typename base::TVector;
     using TBox = typename base::TBox;
-    using Plane = typename base::Plane;
+    using TRay = typename base::TRay;
+    using TPlane = typename base::TPlane;
 
     using base::base; // inherits all constructors
 
@@ -357,35 +360,42 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneIntersection(Plane const& plane, TGeometry tolerance) const noexcept
+    inline std::vector<std::size_t> PlaneIntersection(TPlane const& plane, TGeometry tolerance) const noexcept
     {
-      return this->m_tree.PlaneIntersection(plane.DistanceOfOrigo, plane.Normal, tolerance, this->m_geometryCollection);
+      return this->m_tree.PlaneIntersection(plane, tolerance, this->m_geometryCollection);
     }
   };
 
-  template<dim_t N>
-  using TreePointContainerND = OrthoTreeContainerPoint<TreePointND<N>, PointND<N>>;
+  template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType>
+  using TreePointContainerND = OrthoTreeContainerPoint<TreePointND<DIMENSION_NO, TGeometry>, VectorND<DIMENSION_NO, TGeometry>>;
 
-  template<dim_t N, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<N, SPLIT_DEPTH_INCREASEMENT>, BoundingBoxND<N>>;
+  template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = BaseGeometryType>
+  using TreeBoxContainerND =
+    OrthoTreeContainerBox<TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>, BoundingBoxND<DIMENSION_NO, TGeometry>>;
 
   // Dualtree for points
-  using DualtreePointC = TreePointContainerND<1>;
+  using DualtreePointC = TreePointContainerND<1, BaseGeometryType>;
 
   // Dualtree for bounding boxes
-  using DualtreeBoxC = TreeBoxContainerND<1>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using DualtreeBoxCs = TreeBoxContainerND<1, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
+  using DualtreeBoxC = TreeBoxContainerND<1, 2, BaseGeometryType>;
 
   // Quadtree for points
-  using QuadtreePointC = TreePointContainerND<2>;
+  using QuadtreePointC = TreePointContainerND<2, BaseGeometryType>;
 
   // Quadtree for bounding boxes
-  using QuadtreeBoxC = TreeBoxContainerND<2>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBoxCs = TreeBoxContainerND<2, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
+  using QuadtreeBoxC = TreeBoxContainerND<2, 2, BaseGeometryType>;
 
   // Octree for points
-  using OctreePointC = TreePointContainerND<3>;
+  using OctreePointC = TreePointContainerND<3, BaseGeometryType>;
 
   // Octree for bounding boxes
-  using OctreeBoxC = TreeBoxContainerND<3>;
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBoxCs = TreeBoxContainerND<3, 2, BaseGeometryType>;
+  using OctreeBoxC = TreeBoxContainerND<3, 2, BaseGeometryType>;
 
 } // namespace OrthoTree
 #endif // ORTHOTREE_CONTAINER_GUARD

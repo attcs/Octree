@@ -63,7 +63,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3
 
 ## Attached adapters
-* Default: `std::array` based `PointND`, `BoundingBoxND`
+* Default: `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
 * Eigen: `Eigen::OctreePoint3d`, `::OctreePointC3d`, `::OctreeBox3d`, `::OctreeBoxC3d`, etc. (adaptor.eigen.h)
 * Unreal Engine: `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
 * `struct{x,y,z}`: (adaptor.xyz.h)
@@ -72,46 +72,64 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 ```C++
   /// Default geometrical base elements
 
-  using Point2D = OrthoTree::PointND<2>;
-  using Point3D = OrthoTree::PointND<3>;
-  using BoundingBox2D = OrthoTree::BoundingBoxND<2>;
-  using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
+  using BaseGeometryType = double;
+  using Vector1D = OrthoTree::VectorND<1, BaseGeometryType>;
+  using Vector2D = OrthoTree::VectorND<2, BaseGeometryType>;
+  using Vector3D = OrthoTree::VectorND<3, BaseGeometryType>;
+  using Point1D = OrthoTree::PointND<1, BaseGeometryType>;
+  using Point2D = OrthoTree::PointND<2, BaseGeometryType>;
+  using Point3D = OrthoTree::PointND<3, BaseGeometryType>;
+  using BoundingBox1D = OrthoTree::BoundingBoxND<1, BaseGeometryType>;
+  using BoundingBox2D = OrthoTree::BoundingBoxND<2, BaseGeometryType>;
+  using BoundingBox3D = OrthoTree::BoundingBoxND<3, BaseGeometryType>;
+  using Ray2D = OrthoTree::RayND<2, BaseGeometryType>;
+  using Ray3D = OrthoTree::RayND<3, BaseGeometryType>;
+  using Plane2D = OrthoTree::PlaneND<2, BaseGeometryType>;
+  using Plane3D = OrthoTree::PlaneND<3, BaseGeometryType>;
 
 
   /// Core types
 
-  // Quadtree for points (2D)
-  using QuadtreePoint = TreePointND<2>;
+  // Quadtree for points
+  using QuadtreePoint = TreePointND<2, BaseGeometryType>;
 
-  // Quadtree for bounding boxes (2D)
-  using QuadtreeBox = TreeBoxND<2>;
+  // Quadtree for bounding boxes
+  using QuadtreeBox = TreeBoxND<2, 2, BaseGeometryType>;
 
-  // Octree for points (3D)
-  using OctreePoint = TreePointND<3>;
+  // Octree for points
+  using OctreePoint = TreePointND<3, BaseGeometryType>;
 
-  // Octree for bounding boxes (3D)
-  using OctreeBox = TreeBoxND<3>;
+  // Octree for bounding boxes
+  using OctreeBox = TreeBoxND<3, 2, BaseGeometryType>;
 
-  // Hexatree for points (4D)
-  using HexatreePoint = TreePointND<4>;
-  
-  // ...
-  using TreePoint16D = TreePointND<16>;
+  // Hexatree for points
+  using HexatreePoint = TreePointND<4, BaseGeometryType>;
+
+  // Hexatree for bounding boxes
+  using HexatreeBox = TreeBoxND<4, 2, BaseGeometryType>;
+
+  // NTrees for higher dimensions
+  using TreePoint16D = TreePointND<16, BaseGeometryType>;
+  using TreeBox16D = TreeBoxND<16, 2, BaseGeometryType>;
 
 
   /// Container types
 
-  // Quadtree for points (2D)
-  using QuadtreePointC = TreePointContainerND<2>;
+  // Quadtree for points
+  using QuadtreePointC = TreePointContainerND<2, BaseGeometryType>;
 
-  // Quadtree for bounding boxes (2D)
-  using QuadtreeBoxC = TreeBoxContainerND<2>;
+  // Quadtree for bounding boxes
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBoxCs = TreeBoxContainerND<2, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
+  using QuadtreeBoxC = TreeBoxContainerND<2, 2, BaseGeometryType>;
 
-  // Octree for points (3D)
-  using OctreePointC = TreePointContainerND<3>;
+  // Octree for points
+  using OctreePointC = TreePointContainerND<3, BaseGeometryType>;
 
-  // Octree for bounding boxes (3D)
-  using OctreeBoxC = TreeBoxContainerND<3>;
+  // Octree for bounding boxes
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBoxCs = TreeBoxContainerND<3, 2, BaseGeometryType>;
+  using OctreeBoxC = TreeBoxContainerND<3, 2, BaseGeometryType>;
 ```
 
 ## Basic examples
@@ -252,49 +270,80 @@ For more examples, see the unit tests.
 
 ## Adapting Octree/Quadtree to user-defined Point / Bounding box objects
 ```C++
-  // User-defined geometrical objects
+// User-defined geometrical objects
 
-  struct Point2DCustom { float x; float y; };
-  using BoundingBox2DCustom = std::array<Point2DCustom, 2>;
+struct MyPoint2D { float x; float y; };
+using MyBox2D = std::array<MyPoint2D, 2>;
+using MyRay2D = std::array<MyPoint2D, 2>;
+struct MyPlane2D { float OrigoDistance; MyPoint2D Normal; };
 
+// Adaptor
 
-  // Adaptor
-
-  struct AdaptorBasicsCustom
+struct AdaptorBasicsCustom
+{
+  static float GetPointC(MyPoint2D const& pt, OrthoTree::dim_t i)
   {
-    static inline float& point_comp(Point2DCustom& pt, OrthoTree::dim_type iDimension)
+    switch (i)
     {
-      switch (iDimension)
-      {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        default: assert(false); return pt.x;
-      }
+    case 0: return pt.x;
+    case 1: return pt.y;
+    default: assert(false); return pt.x;
     }
+  }
 
-    static constexpr float point_comp_c(Point2DCustom const& pt, OrthoTree::dim_type iDimension)
+  static void SetPointC(MyPoint2D& pt, OrthoTree::dim_t i, float v)
+  {
+    switch (i)
     {
-      switch (iDimension)
-      {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        default: assert(false); return pt.x;
-      }
+      case 0:  pt.x = v; break;
+      case 1:  pt.y = v; break;
+      default: assert(false);
     }
+  }
 
-    static inline Point2DCustom& box_min(BoundingBox2DCustom& box) { return box[0]; }
-    static inline Point2DCustom& box_max(BoundingBox2DCustom& box) { return box[1]; }
-    static constexpr Point2DCustom const& box_min_c(BoundingBox2DCustom const& box) { return box[0]; }
-    static constexpr Point2DCustom const& box_max_c(BoundingBox2DCustom const& box) { return box[1]; }
-  };
+  static void SetBoxMinC(MyBox2D& box, dim_t i, float v) { SetPointC(box[0], i, v); }
+  static void SetBoxMaxC(MyBox2D& box, dim_t i, float v) { SetPointC(box[1], i, v); }
+  static float GetBoxMinC(MyBox2D const& box, dim_t i) { return GetPointC(box[0], i); }
+  static float GetBoxMaxC(MyBox2D const& box, dim_t i) { return GetPointC(box[1], i); }
 
-  using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
+  static MyPoint2D const& GetRayDirection(MyRay2D const& ray) { return ray[1]; }
+  static MyPoint2D const& GetRayOrigin(MyRay2D const& ray) { return ray[0]; }
+
+  static MyPoint2D const& GetPlaneNormal(MyPlane2D const& plane) { return plane.Normal; }
+  static float GetPlaneOrigoDistance(MyPlane2D const& plane) { return plane.OrigoDistance; }
+};
+
+
+  using AdaptorCustom = OrthoTree::AdaptorGeneralBase<
+    2, 
+    MyPoint2D, 
+    MyBox2D, 
+    MyRay2D, 
+    MyPlane2D, 
+    float, 
+    AdaptorBasicsCustom>;
 
 
   // Tailored Quadtree objects
 
-  using QuadtreePointCustom = OrthoTree::OrthoTreePoint<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
-  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<2, Point2DCustom, BoundingBox2DCustom, AdaptorCustom, float>;
+  using QuadtreePointCustom = OrthoTree::OrthoTreePoint<
+    2, 
+    MyPoint2D, 
+    MyBox2D, 
+    MyRay2D, 
+    MyPlane2D, 
+    float, 
+    AdaptorCustom>;
+
+  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<
+    2, 
+    MyPoint2D, 
+    MyBox2D, 
+    MyRay2D, 
+    MyPlane2D, 
+    float, 
+    2, 
+    AdaptorCustom>;
 ```
 
 ## Benchmarks

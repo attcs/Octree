@@ -54,7 +54,31 @@ namespace BasicTypesXYZ // Replaceble with simirarly build geometry types
     Point3D Min;
     Point3D Max;
   };
-} // namespace
+
+  struct Ray2D
+  {
+    Point2D BasePoint;
+    Point2D Heading;
+  };
+
+  struct Ray3D
+  {
+    Point3D BasePoint;
+    Point3D Heading;
+  };
+
+  struct Plane2D
+  {
+    float_t OrigoDistance;
+    Point2D Normal;
+  };
+
+  struct Plane3D
+  {
+    float_t OrigoDistance;
+    Point3D Normal;
+  };
+} // namespace BasicTypesXYZ
 
 
 namespace OrthoTree
@@ -64,6 +88,8 @@ namespace OrthoTree
     using xy_geometry_type = BasicTypesXYZ::float_t;
     using XYPoint2D = BasicTypesXYZ::Point2D;
     using XYBoundingBox2D = BasicTypesXYZ::BoundingBox2D;
+    using XYRay2D = BasicTypesXYZ::Ray2D;
+    using XYPlane2D = BasicTypesXYZ::Plane2D;
 
     struct XYAdaptorBasics
     {
@@ -92,9 +118,15 @@ namespace OrthoTree
       static constexpr void SetBoxMaxC(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { SetPointC(box.Max, dimensionID, value); }
       static constexpr xy_geometry_type GetBoxMinC(XYBoundingBox2D const& box, dim_t dimensionID) { return GetPointC(box.Min, dimensionID); }
       static constexpr xy_geometry_type GetBoxMaxC(XYBoundingBox2D const& box, dim_t dimensionID) { return GetPointC(box.Max, dimensionID); }
+
+      static constexpr XYPoint2D const& GetRayDirection(XYRay2D const& ray) noexcept { return ray.Heading; }
+      static constexpr XYPoint2D const& GetRayOrigin(XYRay2D const& ray) noexcept { return ray.BasePoint; }
+
+      static constexpr XYPoint2D const& GetPlaneNormal(XYPlane2D const& plane) noexcept { return plane.Normal; }
+      static constexpr xy_geometry_type GetPlaneOrigoDistance(XYPlane2D const& plane) noexcept { return plane.OrigoDistance; }
     };
 
-    using XYAdaptorGeneral = AdaptorGeneralBase<2, XYPoint2D, XYBoundingBox2D, XYAdaptorBasics, xy_geometry_type>;
+    using XYAdaptorGeneral = AdaptorGeneralBase<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorBasics>;
   } // namespace XYAdaptor2D
 
 
@@ -103,6 +135,8 @@ namespace OrthoTree
     using xyz_geometry_type = BasicTypesXYZ::float_t;
     using XYZPoint3D = BasicTypesXYZ::Point3D;
     using XYZBoundingBox3D = BasicTypesXYZ::BoundingBox3D;
+    using XYZRay3D = BasicTypesXYZ::Ray3D;
+    using XYZPlane3D = BasicTypesXYZ::Plane3D;
 
     struct XYZAdaptorBasics
     {
@@ -132,13 +166,19 @@ namespace OrthoTree
       static constexpr void SetBoxMaxC(XYZBoundingBox3D& box, dim_t dimensionID, xyz_geometry_type value) { SetPointC(box.Max, dimensionID, value); }
       static constexpr xyz_geometry_type GetBoxMinC(XYZBoundingBox3D const& box, dim_t dimensionID) { return GetPointC(box.Min, dimensionID); }
       static constexpr xyz_geometry_type GetBoxMaxC(XYZBoundingBox3D const& box, dim_t dimensionID) { return GetPointC(box.Max, dimensionID); }
+
+      static constexpr XYZPoint3D const& GetRayDirection(XYZRay3D const& ray) noexcept { return ray.Heading; }
+      static constexpr XYZPoint3D const& GetRayOrigin(XYZRay3D const& ray) noexcept { return ray.BasePoint; }
+
+      static constexpr XYZPoint3D const& GetPlaneNormal(XYZPlane3D const& plane) noexcept { return plane.Normal; }
+      static constexpr xyz_geometry_type GetPlaneOrigoDistance(XYZPlane3D const& plane) noexcept { return plane.OrigoDistance; }
     };
 
-    using XYZAdaptorGeneral = AdaptorGeneralBase<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorBasics, xyz_geometry_type>;
+    using XYZAdaptorGeneral = AdaptorGeneralBase<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorBasics>;
 
 
-  } // namespace XYAdaptor2D
-}
+  } // namespace XYZAdaptor3D
+} // namespace OrthoTree
 
 namespace XYZ
 {
@@ -146,26 +186,27 @@ namespace XYZ
   using namespace OrthoTree::XYAdaptor2D;
   using namespace OrthoTree::XYZAdaptor3D;
 
-  using QuadtreePoint = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYAdaptorGeneral, xy_geometry_type>;
+  using QuadtreePoint = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBox = OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYAdaptorGeneral, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBox =
+    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYAdaptorGeneral>;
 
   using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint, XYPoint2D>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using QuadtreeBoxC = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYBoundingBox2D>;
 
-  
-  using OctreePoint = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorGeneral, xyz_geometry_type>;
-  
+
+  using OctreePoint = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral>;
+
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using OctreeBox =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorGeneral, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT>;
-  
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYZAdaptorGeneral>;
+
 
   using OcreePointC = OrthoTreeContainerPoint<OctreePoint, XYZPoint3D>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using OctreeBoxC = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYZBoundingBox3D>;
-}
+} // namespace XYZ

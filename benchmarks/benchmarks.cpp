@@ -44,7 +44,7 @@ namespace
 
   using time_unit = milliseconds;
 
-  using Adaptor = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>>;
+  using Adaptor = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
   autoce degree_to_rad(double degree) { return degree / 180.0 * std::numbers::pi; }
 
 
@@ -109,7 +109,7 @@ namespace
     g.seed();
     std::shuffle(next(begin(aPoint), nNumberPre), end(aPoint), g);
 
-    autoc box = Adaptor::GetBoxOfPoints(aPoint);
+    [[maybe_unused]] autoc box = Adaptor::GetBoxOfPoints(aPoint);
     assert(Adaptor::ArePointsEqual(box.Max, ptMax, 0.0001));
     assert(Adaptor::ArePointsEqual(box.Min, PointND<nDim>{}, 0.0001));
 
@@ -147,7 +147,7 @@ namespace
 
     }
 
-    autoc box = Adaptor::GetBoxOfPoints(aPoint);
+    [[maybe_unused]] autoc box = Adaptor::GetBoxOfPoints(aPoint);
     assert(Adaptor::ArePointsEqual(box.Max, ptMax, 0.0001));
     assert(Adaptor::ArePointsEqual(box.Min, PointND<nDim>{}, 0.0001));
 
@@ -190,7 +190,7 @@ namespace
       }
     }
 
-    autoc box = Adaptor::GetBoxOfPoints(aPoint);
+    [[maybe_unused]] autoc box = Adaptor::GetBoxOfPoints(aPoint);
     assert(Adaptor::ArePointsEqual(box.Max, ptMax, 0.0001));
     assert(Adaptor::ArePointsEqual(box.Min, PointND<nDim>{}, 0.0001));
 
@@ -354,8 +354,8 @@ namespace
     return aBox;
   }
 
-  template <typename vector_type, typename box_type>
-  vector<vector<std::size_t>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<box_type const> const& vBox)
+  template <typename TVector, typename TBox>
+  vector<vector<std::size_t>> RangeSearchNaive(span<TBox const> const& vSearchBox, span<TBox const> const& vBox)
   {
     autoc n = vBox.size();
     auto vElementFound = vector<vector<std::size_t>>();
@@ -366,14 +366,14 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, vector_type, box_type>::AreBoxesOverlapped(boxSearch, vBox[i], false))
+        if (AdaptorGeneral<N, TVector, TBox>::AreBoxesOverlapped(boxSearch, vBox[i], false))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
   }
 
-  template <typename vector_type, typename box_type, typename execution_policy_type = std::execution::unsequenced_policy>
-  vector<std::pair<std::size_t, std::size_t>> SelfConflicthNaive(span<box_type const> const& vBox)
+  template<typename TVector, typename TBox, typename TRay, typename TPlane, typename execution_policy_type = std::execution::unsequenced_policy>
+  vector<std::pair<std::size_t, std::size_t>> SelfConflicthNaive(span<TBox const> const& vBox)
   {
     autoc nEntity = vBox.size();
 
@@ -386,7 +386,7 @@ namespace
     {
       auto sidFound = vector<std::size_t>();
       for (size_t i = idCheck + 1; i < nEntity; ++i)
-        if (AdaptorGeneral<N, vector_type, box_type>::AreBoxesOverlapped(vBox[idCheck], vBox[i], false))
+        if (AdaptorGeneral<N, TVector, TBox, TRay, TPlane>::AreBoxesOverlapped(vBox[idCheck], vBox[i], false))
           sidFound.emplace_back(i);
 
       return sidFound;
@@ -404,8 +404,8 @@ namespace
   }
 
 
-  template <typename vector_type, typename box_type>
-  vector<vector<std::size_t>> RangeSearchNaive(span<box_type const> const& vSearchBox, span<vector_type const> const& vPoint)
+  template <typename TVector, typename TBox>
+  vector<vector<std::size_t>> RangeSearchNaive(span<TBox const> const& vSearchBox, span<TVector const> const& vPoint)
   {
     autoc n = vPoint.size();
     auto vElementFound = vector<vector<std::size_t>>();
@@ -416,7 +416,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, vector_type, box_type>::DoesBoxContainPoint(boxSearch, vPoint[i]))
+        if (AdaptorGeneral<N, TVector, TBox>::DoesBoxContainPoint(boxSearch, vPoint[i]))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
@@ -680,12 +680,12 @@ namespace
     {
       if (!fPar)
       {
-        autoc vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>>(aBox);
+        autoc vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox);
         return vvElem.size();
       }
       else
       {
-        autoc vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, std::execution::parallel_unsequenced_policy>(aBox);
+        autoc vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>, std::execution::parallel_unsequenced_policy>(aBox);
         return vvElem.size();
       }
     }

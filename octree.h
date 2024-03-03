@@ -141,7 +141,7 @@ namespace OrthoTree
 
   // Adaptor concepts
 
-  template<class TAdapter, typename TVector, typename TBox, typename TGeometry = double>
+  template<class TAdapter, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
   concept AdaptorBasicsConcept = requires(TVector& point, dim_t dimensionID, TGeometry value) {
     {
       TAdapter::SetPointC(point, dimensionID, value)
@@ -166,48 +166,90 @@ namespace OrthoTree
     {
       TAdapter::GetBoxMaxC(box, dimensionID)
     } -> std::convertible_to<TGeometry>;
+  } && requires(TRay const& ray) {
+    {
+      TAdapter::GetRayOrigin(ray)
+    } -> std::convertible_to<TVector>;
+  } && requires(TRay const& ray) {
+    {
+      TAdapter::GetRayDirection(ray)
+    } -> std::convertible_to<TVector>;
+  } && requires(TPlane const& plane) {
+    {
+      TAdapter::GetPlaneNormal(plane)
+    } -> std::convertible_to<TVector>;
+  } && requires(TPlane const& plane) {
+    {
+      TAdapter::GetPlaneOrigoDistance(plane)
+    } -> std::convertible_to<TGeometry>;
   };
 
-  template<class TAdapter, typename TVector, typename TBox, typename TGeometry = double>
-  concept AdaptorConcept = requires { AdaptorBasicsConcept<TAdapter, TVector, TBox, TGeometry>; } && requires(TBox const& box, TVector const& point) {
-    {
-      TAdapter::DoesBoxContainPoint(box, point)
-    } -> std::convertible_to<bool>;
-  } && requires(TBox const& e1, TBox const& e2, bool e1_must_contain_e2) {
-    {
-      TAdapter::AreBoxesOverlapped(e1, e2, e1_must_contain_e2)
-    } -> std::convertible_to<bool>;
-  } && requires(std::span<TVector const> const& points) {
-    {
-      TAdapter::GetBoxOfPoints(points)
-    } -> std::convertible_to<TBox>;
-  } && requires(std::span<TBox const> const& boxes) {
-    {
-      TAdapter::GetBoxOfBoxes(boxes)
-    } -> std::convertible_to<TBox>;
-  };
-
+  template<class TAdapter, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
+  concept AdaptorConcept =
+    requires { AdaptorBasicsConcept<TAdapter, TVector, TBox, TRay, TPlane, TGeometry>; } && requires(TBox const& box, TVector const& point) {
+      {
+        TAdapter::DoesBoxContainPoint(box, point)
+      } -> std::convertible_to<bool>;
+    } && requires(TBox const& e1, TBox const& e2, bool e1_must_contain_e2) {
+      {
+        TAdapter::AreBoxesOverlapped(e1, e2, e1_must_contain_e2)
+      } -> std::convertible_to<bool>;
+    } && requires(TBox const& e1, TBox const& e2) {
+      {
+        TAdapter::AreBoxesOverlappedStrict(e1, e2)
+      } -> std::convertible_to<bool>;
+    } && requires(std::span<TVector const> const& points) {
+      {
+        TAdapter::GetBoxOfPoints(points)
+      } -> std::convertible_to<TBox>;
+    } && requires(std::span<TBox const> const& boxes) {
+      {
+        TAdapter::GetBoxOfBoxes(boxes)
+      } -> std::convertible_to<TBox>;
+    } && requires(TVector const& box, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) {
+      {
+        TAdapter::GetPointPlaneRelation(box, distanceOfOrigo, planeNormal, tolerance)
+      } -> std::convertible_to<PlaneRelation>;
+    } && requires(TBox const& box, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) {
+      {
+        TAdapter::GetBoxPlaneRelation(box, distanceOfOrigo, planeNormal, tolerance)
+      } -> std::convertible_to<PlaneRelation>;
+    } && requires(TBox const& box, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) {
+      {
+        TAdapter::IsRayHit(box, rayBasePoint, rayHeading, tolerance)
+      } -> std::convertible_to<std::optional<double>>;
+    } && requires(TBox const& box, TRay const& ray, TGeometry tolerance) {
+      {
+        TAdapter::IsRayHit(box, ray, tolerance)
+      } -> std::convertible_to<std::optional<double>>;
+    };
 
   // Adaptors
 
-  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TGeometry = double>
+  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
   struct AdaptorGeneralBasics
   {
     static constexpr TGeometry const& GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
     static constexpr void SetPointC(TVector& point, dim_t dimensionID, TGeometry value) noexcept { point[dimensionID] = value; }
 
-    static constexpr TGeometry GetBoxMinC(TBox const& box, dim_t dimensionID) { return box.Min[dimensionID]; }
-    static constexpr TGeometry GetBoxMaxC(TBox const& box, dim_t dimensionID) { return box.Max[dimensionID]; }
-    static constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TGeometry value) { box.Min[dimensionID] = value; }
-    static constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TGeometry value) { box.Max[dimensionID] = value; }
+    static constexpr TGeometry GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return box.Min[dimensionID]; }
+    static constexpr TGeometry GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return box.Max[dimensionID]; }
+    static constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { box.Min[dimensionID] = value; }
+    static constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { box.Max[dimensionID] = value; }
+
+    static constexpr TVector const& GetRayDirection(TRay const& ray) noexcept { return ray.Direction; }
+    static constexpr TVector const& GetRayOrigin(TRay const& ray) noexcept { return ray.Origin; }
+
+    static constexpr TVector const& GetPlaneNormal(TPlane const& plane) noexcept { return plane.Normal; }
+    static constexpr TGeometry GetPlaneOrigoDistance(TPlane const& plane) noexcept { return plane.OrigoDistance; }
   };
 
 
-  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TAdaptorBasics, typename TGeometry = double>
+  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry, typename TAdaptorBasics>
   struct AdaptorGeneralBase : TAdaptorBasics
   {
     using Base = TAdaptorBasics;
-    static_assert(AdaptorBasicsConcept<Base, TVector, TBox, TGeometry>);
+    static_assert(AdaptorBasicsConcept<Base, TVector, TBox, TRay, TPlane, TGeometry>);
 
     static constexpr TGeometry Size2(TVector const& point) noexcept
     {
@@ -445,6 +487,10 @@ namespace OrthoTree
       return rMin < 0 ? rMax : rMin;
     }
 
+    static constexpr std::optional<double> IsRayHit(TBox const& box, TRay const& ray, TGeometry tolerance) noexcept
+    {
+      return IsRayHit(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
+    }
 
     // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
     static constexpr PlaneRelation GetPointPlaneRelation(TVector const& point, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) noexcept
@@ -494,8 +540,12 @@ namespace OrthoTree
   };
 
 
-  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TGeometry = double>
-  using AdaptorGeneral = AdaptorGeneralBase<DIMENSION_NO, TVector, TBox, AdaptorGeneralBasics<DIMENSION_NO, TVector, TBox, TGeometry>, TGeometry>;
+  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
+  using AdaptorGeneral =
+    AdaptorGeneralBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, AdaptorGeneralBasics<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>;
+
+
+  // Bitset helpers for higher dimensions
 
 
   template<std::size_t N>
@@ -568,7 +618,6 @@ namespace OrthoTree
   {
     return lhs - bitset_arithmetic<N>(rhs);
   }
-
 
   template<std::size_t N>
   bitset_arithmetic<N> operator*(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
@@ -656,13 +705,11 @@ namespace OrthoTree
     return { quotent, remainder };
   }
 
-
   template<std::size_t N>
   bitset_arithmetic<N> operator/(bitset_arithmetic<N> const& dividend, bitset_arithmetic<N> const& divisor) noexcept
   {
     return std::get<0>(gf2_div(dividend, divisor));
   }
-
 
   template<std::size_t N>
   auto operator<=>(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
@@ -674,7 +721,6 @@ namespace OrthoTree
 
     return R::equal;
   }
-
 
   struct bitset_arithmetic_compare final
   {
@@ -690,7 +736,14 @@ namespace OrthoTree
 
 
   // NTreeLinear: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
-  template<dim_t DIMENSION_NO, typename TVector_, typename TBox_, typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, double>, typename TGeometry_ = double>
+  template<
+    dim_t DIMENSION_NO,
+    typename TVector_,
+    typename TBox_,
+    typename TRay_,
+    typename TPlane_,
+    typename TGeometry_ = double,
+    typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>>
   class OrthoTreeBase
   {
   public:
@@ -718,16 +771,12 @@ namespace OrthoTree
     using TGeometry = TGeometry_;
     using TVector = TVector_;
     using TBox = TBox_;
-
+    using TRay = TRay_;
+    using TPlane = TPlane_;
+    
     using AD = TAdapter;
-    static_assert(AdaptorConcept<AD, TVector, TBox, TGeometry>);
+    static_assert(AdaptorConcept<AD, TVector, TBox, TRay, TPlane, TGeometry>);
     static_assert(0 < DIMENSION_NO && DIMENSION_NO < 64);
-
-    struct Plane
-    {
-      TGeometry DistanceOfOrigo;
-      TVector Normal;
-    };
 
   protected:
     // Max number of children
@@ -1714,18 +1763,18 @@ namespace OrthoTree
 
     // Get all entities which relation is positive or intersected by the given space boundary planes
     template<typename TData>
-    std::vector<std::size_t> frustumCulling(std::vector<Plane> const& boundaryPlanes, TGeometry tolerance, std::span<TData const> const& data) const noexcept
+    std::vector<std::size_t> frustumCulling(std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, std::span<TData const> const& data) const noexcept
     {
       auto results = std::vector<std::size_t>{};
       if (boundaryPlanes.empty())
         return results;
 
-      assert(std::all_of(boundaryPlanes.begin(), boundaryPlanes.end(), [](autoc& plane) { return AD::IsNormalizedVector(plane.Normal); }));
+      assert(std::all_of(boundaryPlanes.begin(), boundaryPlanes.end(), [](autoc& plane) { return AD::IsNormalizedVector(AD::GetPlaneNormal(plane)); }));
 
       autoc selector = [&](MortonNodeIDCR, Node const& node) -> bool {
         for (autoc& plane : boundaryPlanes)
         {
-          autoc relation = AD::GetBoxPlaneRelation(node.Box, plane.DistanceOfOrigo, plane.Normal, tolerance);
+          autoc relation = AD::GetBoxPlaneRelation(node.Box, AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance);
           if (relation == PlaneRelation::Hit)
             return true;
 
@@ -1741,7 +1790,7 @@ namespace OrthoTree
           auto relation = PlaneRelation::Negative;
           for (autoc& plane : boundaryPlanes)
           {
-            relation = getEntityPlaneRelation<TData>(data[entityID], plane.DistanceOfOrigo, plane.Normal, tolerance);
+            relation = getEntityPlaneRelation<TData>(data[entityID], AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance);
             if (relation != PlaneRelation::Positive)
               break;
           }
@@ -1762,11 +1811,18 @@ namespace OrthoTree
 
 
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
-  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector, TBox, double>, typename TGeometry = double>
-  class OrthoTreePoint final : public OrthoTreeBase<DIMENSION_NO, TVector, TBox, TAdapter, TGeometry>
+  template<
+    dim_t DIMENSION_NO,
+    typename TVector,
+    typename TBox,
+    typename TRay,
+    typename TPlane,
+    typename TGeometry = double,
+    typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
+  class OrthoTreePoint final : public OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>
   {
   protected:
-    using Base = OrthoTreeBase<DIMENSION_NO, TVector, TBox, TAdapter, TGeometry>;
+    using Base = OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
 
@@ -1777,7 +1833,6 @@ namespace OrthoTree
     using MortonNodeID = typename Base::MortonNodeID;
     using MortonNodeIDCR = typename Base::MortonNodeIDCR;
     using ChildID = typename Base::ChildID;
-    using Plane = typename Base::Plane;
 
     using Node = typename Base::Node;
 
@@ -2010,9 +2065,9 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneSearch(Plane const& plane, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+    inline std::vector<std::size_t> PlaneSearch(TPlane const& plane, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
     {
-      return this->template planeIntersection<TVector>(plane.DistanceOfOrigo, plane.Normal, tolerance, points);
+      return this->template planeIntersection<TVector>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, points);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
@@ -2023,14 +2078,14 @@ namespace OrthoTree
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+    inline std::vector<std::size_t> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
     {
-      return this->template planePositiveSegmentation<TVector>(plane.DistanceOfOrigo, plane.Normal, tolerance, points);
+      return this->template planePositiveSegmentation<TVector>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, points);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
     inline std::vector<std::size_t> FrustumCulling(
-      std::vector<Plane> const& boundaryPlanes, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+      std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
     {
       return this->template frustumCulling<TVector>(boundaryPlanes, tolerance, points);
     }
@@ -2133,11 +2188,19 @@ namespace OrthoTree
 
   // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
   // SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
-  template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector, TBox, double>, typename TGeometry = double, depth_t SPLIT_DEPTH_INCREASEMENT = 2>
-  class OrthoTreeBoundingBox final : public OrthoTreeBase<DIMENSION_NO, TVector, TBox, TAdapter, TGeometry>
+  template<
+    dim_t DIMENSION_NO,
+    typename TVector,
+    typename TBox,
+    typename TRay,
+    typename TPlane,
+    typename TGeometry = double,
+    depth_t SPLIT_DEPTH_INCREASEMENT = 2,
+    typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
+  class OrthoTreeBoundingBox final : public OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>
   {
   protected:
-    using Base = OrthoTreeBase<DIMENSION_NO, TVector, TBox, TAdapter, TGeometry>;
+    using Base = OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
     using GridBoundary = typename Base::GridBoundary;
@@ -2151,7 +2214,6 @@ namespace OrthoTree
     using MortonNodeID = typename Base::MortonNodeID;
     using MortonNodeIDCR = typename Base::MortonNodeIDCR;
     using ChildID = typename Base::ChildID;
-    using Plane = typename Base::Plane;
 
     using Node = typename Base::Node;
 
@@ -2616,9 +2678,7 @@ namespace OrthoTree
 
     void pickSearch(TVector const& pickPoint, std::span<TBox const> const& boxes, Node const& parentNode, std::vector<std::size_t>& foundEntitiyIDs) const noexcept
     {
-      std::ranges::copy_if(parentNode.Entities, back_inserter(foundEntitiyIDs), [&](autoc id) {
-        return AD::DoesBoxContainPoint(boxes[id], pickPoint);
-      });
+      std::ranges::copy_if(parentNode.Entities, back_inserter(foundEntitiyIDs), [&](autoc id) { return AD::DoesBoxContainPoint(boxes[id], pickPoint); });
 
       for (MortonNodeIDCR keyChild : parentNode.GetChildren())
       {
@@ -2705,9 +2765,9 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneIntersection(Plane const& plane, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+    inline std::vector<std::size_t> PlaneIntersection(TPlane const& plane, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
     {
-      return this->template planeIntersection<TBox>(plane.DistanceOfOrigo, plane.Normal, tolerance, boxes);
+      return this->template planeIntersection<TBox>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, boxes);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
@@ -2718,13 +2778,14 @@ namespace OrthoTree
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlanePositiveSegmentation(Plane const& plane, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+    inline std::vector<std::size_t> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
     {
-      return this->template planePositiveSegmentation<TBox>(plane.DistanceOfOrigo, plane.Normal, tolerance, boxes);
+      return this->template planePositiveSegmentation<TBox>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, boxes);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> FrustumCulling(std::vector<Plane> const& boundaryPlanes, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+    inline std::vector<std::size_t> FrustumCulling(
+      std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
     {
       return this->template frustumCulling<TBox>(boundaryPlanes, tolerance, boxes);
     }
@@ -3210,15 +3271,15 @@ namespace OrthoTree
 
     // Get first box which is intersected by the ray
     std::optional<std::size_t> RayIntersectedFirst(
-      TVector const& rayBasePointPoint, TVector const& rayHeading, std::span<TBox const> const& boxes, TGeometry tolerance) const noexcept
+      TVector const& rayBasePoint, TVector const& rayHeading, std::span<TBox const> const& boxes, TGeometry tolerance) const noexcept
     {
       autoc& node = this->GetNode(this->GetRootKey());
-      autoc distance = AD::IsRayHit(node.Box, rayBasePointPoint, rayHeading, tolerance);
+      autoc distance = AD::IsRayHit(node.Box, rayBasePoint, rayHeading, tolerance);
       if (!distance)
         return std::nullopt;
 
       auto foundEntities = std::multiset<EntityDistance>();
-      getRayIntersectedFirst(node, boxes, rayBasePointPoint, rayHeading, tolerance, foundEntities);
+      getRayIntersectedFirst(node, boxes, rayBasePoint, rayHeading, tolerance, foundEntities);
       if (foundEntities.empty())
         return std::nullopt;
 
@@ -3240,56 +3301,104 @@ namespace OrthoTree
     VectorND<DIMENSION_NO, TGeometry> Max;
   };
 
+  template<dim_t DIMENSION_NO, typename TGeometry = double>
+  struct RayND
+  {
+    VectorND<DIMENSION_NO, TGeometry> Origin;
+    VectorND<DIMENSION_NO, TGeometry> Direction;
+  };
+
+  template<dim_t DIMENSION_NO, typename TGeometry = double>
+  struct PlaneND
+  {
+    TGeometry OrigoDistance;
+    VectorND<DIMENSION_NO, TGeometry> Normal;
+  };
+
 
   // Aliases
-  using Vector1D = OrthoTree::VectorND<1>;
-  using Vector2D = OrthoTree::VectorND<2>;
-  using Vector3D = OrthoTree::VectorND<3>;
-  using Point1D = OrthoTree::PointND<1>;
-  using Point2D = OrthoTree::PointND<2>;
-  using Point3D = OrthoTree::PointND<3>;
-  using BoundingBox1D = OrthoTree::BoundingBoxND<1>;
-  using BoundingBox2D = OrthoTree::BoundingBoxND<2>;
-  using BoundingBox3D = OrthoTree::BoundingBoxND<3>;
+  using BaseGeometryType = double;
+  using Vector1D = OrthoTree::VectorND<1, BaseGeometryType>;
+  using Vector2D = OrthoTree::VectorND<2, BaseGeometryType>;
+  using Vector3D = OrthoTree::VectorND<3, BaseGeometryType>;
+  using Point1D = OrthoTree::PointND<1, BaseGeometryType>;
+  using Point2D = OrthoTree::PointND<2, BaseGeometryType>;
+  using Point3D = OrthoTree::PointND<3, BaseGeometryType>;
+  using BoundingBox1D = OrthoTree::BoundingBoxND<1, BaseGeometryType>;
+  using BoundingBox2D = OrthoTree::BoundingBoxND<2, BaseGeometryType>;
+  using BoundingBox3D = OrthoTree::BoundingBoxND<3, BaseGeometryType>;
+  using Ray2D = OrthoTree::RayND<2, BaseGeometryType>;
+  using Ray3D = OrthoTree::RayND<3, BaseGeometryType>;
+  using Plane2D = OrthoTree::PlaneND<2, BaseGeometryType>;
+  using Plane3D = OrthoTree::PlaneND<3, BaseGeometryType>;
 
-  template<std::size_t DIMENSION_NO>
-  using TreePointND = OrthoTree::OrthoTreePoint<DIMENSION_NO, OrthoTree::VectorND<DIMENSION_NO>, OrthoTree::BoundingBoxND<DIMENSION_NO>>;
-  template<std::size_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  template<std::size_t DIMENSION_NO, typename TGeometry = BaseGeometryType>
+  using TreePointND = OrthoTree::OrthoTreePoint<
+    DIMENSION_NO,
+    OrthoTree::VectorND<DIMENSION_NO, TGeometry>,
+    OrthoTree::BoundingBoxND<DIMENSION_NO, TGeometry>,
+    OrthoTree::RayND<DIMENSION_NO, TGeometry>,
+    OrthoTree::PlaneND<DIMENSION_NO, TGeometry>,
+    TGeometry>;
+
+  template<std::size_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = BaseGeometryType>
   using TreeBoxND = OrthoTree::OrthoTreeBoundingBox<
     DIMENSION_NO,
-    OrthoTree::VectorND<DIMENSION_NO>,
-    OrthoTree::BoundingBoxND<DIMENSION_NO>,
-    AdaptorGeneral<DIMENSION_NO, OrthoTree::VectorND<DIMENSION_NO>, OrthoTree::BoundingBoxND<DIMENSION_NO>>,
-    double,
+    OrthoTree::VectorND<DIMENSION_NO, TGeometry>,
+    OrthoTree::BoundingBoxND<DIMENSION_NO, TGeometry>,
+    OrthoTree::RayND<DIMENSION_NO, TGeometry>,
+    OrthoTree::PlaneND<DIMENSION_NO, TGeometry>,
+    TGeometry,
     SPLIT_DEPTH_INCREASEMENT>;
 
   // Dualtree for points
-  using DualtreePoint = TreePointND<1>;
+  using DualtreePoint = TreePointND<1, BaseGeometryType>;
 
   // Dualtree for bounding boxes
-  using DualtreeBox = TreeBoxND<1>;
+  using DualtreeBox = TreeBoxND<1, 2, BaseGeometryType>;
 
   // Quadtree for points
-  using QuadtreePoint = TreePointND<2>;
+  using QuadtreePoint = TreePointND<2, BaseGeometryType>;
 
   // Quadtree for bounding boxes
-  using QuadtreeBox = TreeBoxND<2>;
+  using QuadtreeBox = TreeBoxND<2, 2, BaseGeometryType>;
 
   // Octree for points
-  using OctreePoint = TreePointND<3>;
+  using OctreePoint = TreePointND<3, BaseGeometryType>;
 
   // Octree for bounding boxes
-  using OctreeBox = TreeBoxND<3>;
+  using OctreeBox = TreeBoxND<3, 2, BaseGeometryType>;
 
   // Hexatree for points
-  using HexatreePoint = TreePointND<4>;
+  using HexatreePoint = TreePointND<4, BaseGeometryType>;
 
   // Hexatree for bounding boxes
-  using HexatreeBox = TreeBoxND<4>;
+  using HexatreeBox = TreeBoxND<4, 2, BaseGeometryType>;
 
   // NTrees for higher dimensions
-  using TreePoint16D = TreePointND<16>;
-  using TreeBox16D = TreeBoxND<16>;
+  using TreePoint16D = TreePointND<16, BaseGeometryType>;
+  using TreeBox16D = TreeBoxND<16, 2, BaseGeometryType>;
+
+
+  // Dualtree for bounding boxes
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT>
+  using DualtreeBoxs = TreeBoxND<1, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
+
+  // Quadtree for bounding boxes
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT>
+  using QuadtreeBoxs = TreeBoxND<2, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
+
+  // Octree for bounding boxes
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT>
+  using OctreeBoxs = TreeBoxND<3, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
+
+  // Hexatree for bounding boxes
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT>
+  using HexatreeBoxs = TreeBoxND<4, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
+
+  // NTrees for higher dimensions
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT>
+  using TreeBox16Ds = TreeBoxND<16, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
 } // namespace OrthoTree
 
 
