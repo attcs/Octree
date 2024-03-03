@@ -23,9 +23,8 @@ namespace PerformaceTest
   {
     using Ad = AdaptorGeneral<nDim, PointND<nDim>, BoundingBoxND<nDim>>;
     auto Box = BoundingBoxND<nDim>{ pt, pt };
-    auto& ptMax = Ad::box_max(Box);
     for (size_t iDim = 0; iDim < nDim; ++iDim)
-      Ad::point_comp(ptMax, static_cast<dim_t>(iDim)) += size;
+      Ad::box_max_comp_set(Box, static_cast<dim_t>(iDim), Ad::box_min_comp(Box, static_cast<dim_t>(iDim)) + size);
 
     return Box;
   }

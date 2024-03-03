@@ -38,24 +38,23 @@ namespace OrthoTree
       using VectorType_ = Matrix<Scalar_, AmbientDim_, 1>;
       using AlignedBox_ = AlignedBox<Scalar_, AmbientDim_>;
 
-      static constexpr Scalar_& point_comp(VectorType_& pt, dim_t dimensionID) { return pt(dimensionID); }
+      static constexpr Scalar_ point_comp_c(VectorType_ const& point, dim_t dimensionID) noexcept { return point(dimensionID); }
+      static constexpr void point_comp_set(VectorType_& point, dim_t dimensionID, Scalar_ value) noexcept { point(dimensionID) = value; }
 
-      static constexpr Scalar_ point_comp_c(VectorType_ const& pt, dim_t dimensionID) { return pt(dimensionID); }
-
-      static constexpr VectorType_& box_min(AlignedBox_& box) { return box.min(); }
-      static constexpr VectorType_& box_max(AlignedBox_& box) { return box.max(); }
-      static constexpr VectorType_ const& box_min_c(AlignedBox_ const& box) { return box.min(); }
-      static constexpr VectorType_ const& box_max_c(AlignedBox_ const& box) { return box.max(); }
+      static constexpr Scalar_ box_min_comp(AlignedBox_ const& box, dim_t dimensionID) { return box.min()(dimensionID); }
+      static constexpr Scalar_ box_max_comp(AlignedBox_ const& box, dim_t dimensionID) { return box.max()(dimensionID); }
+      static constexpr void box_min_comp_set(AlignedBox_& box, dim_t dimensionID, Scalar_ value) { box.min()(dimensionID) = value; }
+      static constexpr void box_max_comp_set(AlignedBox_& box, dim_t dimensionID, Scalar_ value) { box.max()(dimensionID) = value; }
     };
 
     template<typename Scalar_, int AmbientDim_>
     struct EigenAdaptorGeneralBase : EigenAdaptorBasics<Scalar_, AmbientDim_>
     {
-      using base = EigenAdaptorBasics<Scalar_, AmbientDim_>;
-      using VectorType_ = base::VectorType_;
-      using AlignedBox_ = base::AlignedBox_;
+      using Base = EigenAdaptorBasics<Scalar_, AmbientDim_>;
+      using VectorType_ = Base::VectorType_;
+      using AlignedBox_ = Base::AlignedBox_;
 
-      static_assert(AdaptorBasicsConcept<base, VectorType_, AlignedBox_, Scalar_>);
+      static_assert(AdaptorBasicsConcept<Base, VectorType_, AlignedBox_, Scalar_>);
 
       static constexpr Scalar_ size2(VectorType_ const& v) noexcept { return v.squaredNorm(); }
 
@@ -85,18 +84,8 @@ namespace OrthoTree
       static constexpr bool does_box_contain_point_strict(AlignedBox_ const& box, VectorType_ const& point) noexcept
       {
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
-          if (!(base::point_comp_c(base::box_min_c(box), dimensionID) < base::point_comp_c(point, dimensionID) &&
-                base::point_comp_c(point, dimensionID) < base::point_comp_c(base::box_max_c(box), dimensionID)))
-            return false;
-
-        return true;
-      }
-
-
-      static constexpr bool does_point_touch_box(AlignedBox_ const& box, VectorType_ const& point) noexcept
-      {
-        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
-          if ((base::point_comp_c(base::box_min_c(box), dimensionID) == base::point_comp_c(point, dimensionID)))
+          if (!(Base::box_min_comp(box, dimensionID) < Base::point_comp_c(point, dimensionID) &&
+                Base::point_comp_c(point, dimensionID) < Base::box_max_comp(box, dimensionID)))
             return false;
 
         return true;
@@ -152,22 +141,19 @@ namespace OrthoTree
         if (box.intersects(rayBasePointBox))
           return 0.0;
 
-        autoc& minBoxPoint = base::box_min_c(box);
-        autoc& maxBoxPoint = base::box_max_c(box);
-
         autoce inf = std::numeric_limits<double>::infinity();
 
         auto minDistances = std::array<double, AmbientDim_>{};
         auto maxDistances = std::array<double, AmbientDim_>{};
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          autoc hComp = base::point_comp_c(rayHeading, dimensionID);
+          autoc hComp = Base::point_comp_c(rayHeading, dimensionID);
           if (hComp == 0)
           {
-            if (base::point_comp_c(maxBoxPoint, dimensionID) + tolerance < base::point_comp_c(rayBasePoint, dimensionID))
+            if (Base::box_max_comp(box, dimensionID) + tolerance < Base::point_comp_c(rayBasePoint, dimensionID))
               return std::nullopt;
 
-            if (base::point_comp_c(minBoxPoint, dimensionID) - tolerance > base::point_comp_c(rayBasePoint, dimensionID))
+            if (Base::box_min_comp(box, dimensionID) - tolerance > Base::point_comp_c(rayBasePoint, dimensionID))
               return std::nullopt;
 
             minDistances[dimensionID] = -inf;
@@ -175,10 +161,12 @@ namespace OrthoTree
             continue;
           }
 
-          minDistances[dimensionID] =
-            (base::point_comp_c(hComp > 0.0 ? minBoxPoint : maxBoxPoint, dimensionID) - tolerance - base::point_comp_c(rayBasePoint, dimensionID)) / hComp;
-          maxDistances[dimensionID] =
-            (base::point_comp_c(hComp < 0.0 ? minBoxPoint : maxBoxPoint, dimensionID) + tolerance - base::point_comp_c(rayBasePoint, dimensionID)) / hComp;
+          minDistances[dimensionID] = ((hComp > 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) - tolerance -
+                                       Base::point_comp_c(rayBasePoint, dimensionID)) /
+                                      hComp;
+          maxDistances[dimensionID] = ((hComp < 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) + tolerance -
+                                       Base::point_comp_c(rayBasePoint, dimensionID)) /
+                                      hComp;
         }
 
         autoc rMin = *std::ranges::max_element(minDistances);
@@ -212,15 +200,19 @@ namespace OrthoTree
       {
         assert(is_normalized_vector(planeNormal));
 
-        autoc& minPoint = base::box_min_c(box);
-        autoc& maxPoint = base::box_max_c(box);
-
-        autoc center = multiply(add(minPoint, maxPoint), 0.5);
-        autoc radius = subtract(maxPoint, center);
+        VectorType_ center, radius;
+        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        {
+          autoc minComponent = Base::box_min_comp(box, dimensionID);
+          autoc maxComponent = Base::box_max_comp(box, dimensionID);
+          autoc centerComponent = static_cast<Scalar_>((minComponent + maxComponent) * 0.5);
+          Base::point_comp_set(center, dimensionID, centerComponent);
+          Base::point_comp_set(radius, dimensionID, centerComponent - minComponent);
+        }
 
         auto radiusProjected = double(tolerance);
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
-          radiusProjected += base::point_comp_c(radius, dimensionID) * std::abs(base::point_comp_c(planeNormal, dimensionID));
+          radiusProjected += Base::point_comp_c(radius, dimensionID) * std::abs(Base::point_comp_c(planeNormal, dimensionID));
 
         autoc centerProjected = dot(planeNormal, center);
 

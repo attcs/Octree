@@ -142,30 +142,30 @@ namespace OrthoTree
   // Adaptor concepts
 
   template<class TAdapter, typename TVector, typename TBox, typename TGeometry = double>
-  concept AdaptorBasicsConcept = requires(TVector& point, dim_t dimensionID) {
+  concept AdaptorBasicsConcept = requires(TVector& point, dim_t dimensionID, TGeometry value) {
     {
-      TAdapter::point_comp(point, dimensionID)
-    } -> std::convertible_to<TGeometry&>;
+      TAdapter::point_comp_set(point, dimensionID, value)
+    };
   } && requires(TVector const& point, dim_t dimensionID) {
     {
       TAdapter::point_comp_c(point, dimensionID)
     } -> std::convertible_to<TGeometry>;
-  } && requires(TBox& box) {
+  } && requires(TBox& box, dim_t dimensionID, TGeometry value) {
     {
-      TAdapter::box_min(box)
-    } -> std::convertible_to<TVector&>;
-  } && requires(TBox& box) {
+      TAdapter::box_min_comp_set(box, dimensionID, value)
+    };
+  } && requires(TBox& box, dim_t dimensionID, TGeometry value) {
     {
-      TAdapter::box_max(box)
-    } -> std::convertible_to<TVector&>;
-  } && requires(TBox const& box) {
+      TAdapter::box_max_comp_set(box, dimensionID, value)
+    };
+  } && requires(TBox const& box, dim_t dimensionID) {
     {
-      TAdapter::box_min_c(box)
-    } -> std::convertible_to<TVector const&>;
-  } && requires(TBox const& box) {
+      TAdapter::box_min_comp(box, dimensionID)
+    } -> std::convertible_to<TGeometry>;
+  } && requires(TBox const& box, dim_t dimensionID) {
     {
-      TAdapter::box_max_c(box)
-    } -> std::convertible_to<TVector const&>;
+      TAdapter::box_max_comp(box, dimensionID)
+    } -> std::convertible_to<TGeometry>;
   };
 
   template<class TAdapter, typename TVector, typename TBox, typename TGeometry = double>
@@ -193,13 +193,13 @@ namespace OrthoTree
   template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TGeometry = double>
   struct AdaptorGeneralBasics
   {
-    static constexpr TGeometry& point_comp(TVector& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
     static constexpr TGeometry const& point_comp_c(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+    static constexpr void point_comp_set(TVector& point, dim_t dimensionID, TGeometry value) noexcept { point[dimensionID] = value; }
 
-    static constexpr TVector& box_min(TBox& box) noexcept { return box.Min; }
-    static constexpr TVector& box_max(TBox& box) noexcept { return box.Max; }
-    static constexpr TVector const& box_min_c(TBox const& box) noexcept { return box.Min; }
-    static constexpr TVector const& box_max_c(TBox const& box) noexcept { return box.Max; }
+    static constexpr TGeometry box_min_comp(TBox const& box, dim_t dimensionID) { return box.Min[dimensionID]; }
+    static constexpr TGeometry box_max_comp(TBox const& box, dim_t dimensionID) { return box.Max[dimensionID]; }
+    static constexpr void box_min_comp_set(TBox& box, dim_t dimensionID, TGeometry value) { box.Min[dimensionID] = value; }
+    static constexpr void box_max_comp_set(TBox& box, dim_t dimensionID, TGeometry value) { box.Max[dimensionID] = value; }
   };
 
 
@@ -226,7 +226,7 @@ namespace OrthoTree
     {
       auto point = TVector{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        Base::point_comp(point, dimensionID) = Base::point_comp_c(ptL, dimensionID) + Base::point_comp_c(ptR, dimensionID);
+        Base::point_comp_set(point, dimensionID, Base::point_comp_c(ptL, dimensionID) + Base::point_comp_c(ptR, dimensionID));
 
       return point;
     }
@@ -235,7 +235,7 @@ namespace OrthoTree
     {
       auto point = TVector{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        Base::point_comp(point, dimensionID) = Base::point_comp_c(ptL, dimensionID) - Base::point_comp_c(ptR, dimensionID);
+        Base::point_comp_set(point, dimensionID, Base::point_comp_c(ptL, dimensionID) - Base::point_comp_c(ptR, dimensionID));
 
       return point;
     }
@@ -244,7 +244,7 @@ namespace OrthoTree
     {
       auto point = TVector{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        Base::point_comp(point, dimensionID) = TGeometry(Base::point_comp_c(ptL, dimensionID) * rScalarR);
+        Base::point_comp_set(point, dimensionID, TGeometry(Base::point_comp_c(ptL, dimensionID) * rScalarR));
 
       return point;
     }
@@ -272,8 +272,8 @@ namespace OrthoTree
     static constexpr bool does_box_contain_point(TBox const& box, TVector const& point, TGeometry tolerance = 0) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (!(Base::point_comp_c(Base::box_min_c(box), dimensionID) - tolerance <= Base::point_comp_c(point, dimensionID) &&
-              Base::point_comp_c(point, dimensionID) <= Base::point_comp_c(Base::box_max_c(box), dimensionID) + tolerance))
+        if (!(Base::box_min_comp(box, dimensionID) - tolerance <= Base::point_comp_c(point, dimensionID) &&
+              Base::point_comp_c(point, dimensionID) <= Base::box_max_comp(box, dimensionID) + tolerance))
           return false;
 
       return true;
@@ -282,17 +282,8 @@ namespace OrthoTree
     static constexpr bool does_box_contain_point_strict(TBox const& box, TVector const& point) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (!(Base::point_comp_c(Base::box_min_c(box), dimensionID) < Base::point_comp_c(point, dimensionID) &&
-              Base::point_comp_c(point, dimensionID) < Base::point_comp_c(Base::box_max_c(box), dimensionID)))
-          return false;
-
-      return true;
-    }
-
-    static constexpr bool does_point_touch_box(TBox const& box, TVector const& point) noexcept
-    {
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if ((Base::point_comp_c(Base::box_min_c(box), dimensionID) == Base::point_comp_c(point, dimensionID)))
+        if (!(Base::box_min_comp(box, dimensionID) < Base::point_comp_c(point, dimensionID) &&
+              Base::point_comp_c(point, dimensionID) < Base::box_max_comp(box, dimensionID)))
           return false;
 
       return true;
@@ -313,21 +304,17 @@ namespace OrthoTree
         SeparatedC = 0x4
       };
       uint8_t rel = 0;
+
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        if (
-          Base::point_comp_c(Base::box_min_c(e1), dimensionID) < Base::point_comp_c(Base::box_max_c(e2), dimensionID) &&
-          Base::point_comp_c(Base::box_max_c(e1), dimensionID) > Base::point_comp_c(Base::box_min_c(e2), dimensionID))
+        if (Base::box_min_comp(e1, dimensionID) < Base::box_max_comp(e2, dimensionID) && Base::box_max_comp(e1, dimensionID) > Base::box_min_comp(e2, dimensionID))
           rel |= EBoxRelationCandidate::OverlappedC;
-        else if (
-          Base::point_comp_c(Base::box_min_c(e1), dimensionID) == Base::point_comp_c(Base::box_max_c(e2), dimensionID) ||
-          Base::point_comp_c(Base::box_max_c(e1), dimensionID) == Base::point_comp_c(Base::box_min_c(e2), dimensionID))
+        else if (Base::box_min_comp(e1, dimensionID) == Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e1, dimensionID) == Base::box_min_comp(e2, dimensionID))
           rel |= EBoxRelationCandidate::AdjecentC;
-        else if (
-          Base::point_comp_c(Base::box_min_c(e1), dimensionID) > Base::point_comp_c(Base::box_max_c(e2), dimensionID) ||
-          Base::point_comp_c(Base::box_max_c(e1), dimensionID) < Base::point_comp_c(Base::box_min_c(e2), dimensionID))
+        else if (Base::box_min_comp(e1, dimensionID) > Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e1, dimensionID) < Base::box_min_comp(e2, dimensionID))
           return EBoxRelation::Separated;
       }
+
       return (rel & EBoxRelationCandidate::AdjecentC) == EBoxRelationCandidate::AdjecentC ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
     }
 
@@ -340,7 +327,15 @@ namespace OrthoTree
     {
       if (e1_must_contain_e2)
       {
-        return does_box_contain_point(e1, Base::box_min_c(e2)) && does_box_contain_point(e1, Base::box_max_c(e2));
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          if (Base::box_min_comp(e1, dimensionID) > Base::box_min_comp(e2, dimensionID) || Base::box_min_comp(e2, dimensionID) > Base::box_max_comp(e1, dimensionID))
+            return false;
+
+          if (Base::box_min_comp(e1, dimensionID) > Base::box_max_comp(e2, dimensionID) || Base::box_max_comp(e2, dimensionID) > Base::box_max_comp(e1, dimensionID))
+            return false;
+        }
+        return true;
       }
       else
       {
@@ -355,14 +350,12 @@ namespace OrthoTree
     static inline TBox box_inverted_init() noexcept
     {
       auto ext = TBox{};
-      auto& minPoint = Base::box_min(ext);
-      auto& maxPoint = Base::box_max(ext);
 
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        Base::point_comp(minPoint, dimensionID) = std::numeric_limits<TGeometry>::max();
-        Base::point_comp(maxPoint, dimensionID) = std::numeric_limits<TGeometry>::lowest();
+        Base::box_min_comp_set(ext, dimensionID, std::numeric_limits<TGeometry>::max());
+        Base::box_max_comp_set(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
       }
 
       return ext;
@@ -374,11 +367,11 @@ namespace OrthoTree
       for (autoc& point : points)
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          if (Base::point_comp_c(Base::box_min_c(ext), dimensionID) > Base::point_comp_c(point, dimensionID))
-            Base::point_comp(Base::box_min(ext), dimensionID) = Base::point_comp_c(point, dimensionID);
+          if (Base::box_min_comp(ext, dimensionID) > Base::point_comp_c(point, dimensionID))
+            Base::box_min_comp_set(ext, dimensionID, Base::point_comp_c(point, dimensionID));
 
-          if (Base::point_comp_c(Base::box_max_c(ext), dimensionID) < Base::point_comp_c(point, dimensionID))
-            Base::point_comp(Base::box_max(ext), dimensionID) = Base::point_comp_c(point, dimensionID);
+          if (Base::box_max_comp(ext, dimensionID) < Base::point_comp_c(point, dimensionID))
+            Base::box_max_comp_set(ext, dimensionID, Base::point_comp_c(point, dimensionID));
         }
 
       return ext;
@@ -388,15 +381,16 @@ namespace OrthoTree
     {
       auto ext = box_inverted_init();
       for (autoc& e : vExtent)
+      {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          if (Base::point_comp_c(Base::box_min_c(ext), dimensionID) > Base::point_comp_c(Base::box_min_c(e), dimensionID))
-            Base::point_comp(Base::box_min(ext), dimensionID) = Base::point_comp_c(Base::box_min_c(e), dimensionID);
+          if (Base::box_min_comp(ext, dimensionID) > Base::box_min_comp(e, dimensionID))
+            Base::box_min_comp_set(ext, dimensionID, Base::box_min_comp(e, dimensionID));
 
-          if (Base::point_comp_c(Base::box_max_c(ext), dimensionID) < Base::point_comp_c(Base::box_max_c(e), dimensionID))
-            Base::point_comp(Base::box_max(ext), dimensionID) = Base::point_comp_c(Base::box_max_c(e), dimensionID);
+          if (Base::box_max_comp(ext, dimensionID) < Base::box_max_comp(e, dimensionID))
+            Base::box_max_comp_set(ext, dimensionID, Base::box_max_comp(e, dimensionID));
         }
-
+      }
       return ext;
     }
 
@@ -405,8 +399,8 @@ namespace OrthoTree
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        Base::point_comp(Base::box_min(box), dimensionID) += Base::point_comp_c(moveVector, dimensionID);
-        Base::point_comp(Base::box_max(box), dimensionID) += Base::point_comp_c(moveVector, dimensionID);
+        Base::box_min_comp_set(box, dimensionID, Base::box_min_comp(box, dimensionID) + Base::point_comp_c(moveVector, dimensionID));
+        Base::box_max_comp_set(box, dimensionID, Base::box_max_comp(box, dimensionID) + Base::point_comp_c(moveVector, dimensionID));
       }
     }
 
@@ -414,9 +408,6 @@ namespace OrthoTree
     {
       if (does_box_contain_point(box, rayBasePoint, tolerance))
         return 0.0;
-
-      autoc& minBoxPoint = Base::box_min_c(box);
-      autoc& maxBoxPoint = Base::box_max_c(box);
 
       autoce inf = std::numeric_limits<double>::infinity();
 
@@ -427,10 +418,10 @@ namespace OrthoTree
         autoc hComp = Base::point_comp_c(rayHeading, dimensionID);
         if (hComp == 0)
         {
-          if (Base::point_comp_c(maxBoxPoint, dimensionID) + tolerance < Base::point_comp_c(rayBasePoint, dimensionID))
+          if (Base::box_max_comp(box, dimensionID) + tolerance < Base::point_comp_c(rayBasePoint, dimensionID))
             return std::nullopt;
 
-          if (Base::point_comp_c(minBoxPoint, dimensionID) - tolerance > Base::point_comp_c(rayBasePoint, dimensionID))
+          if (Base::box_min_comp(box, dimensionID) - tolerance > Base::point_comp_c(rayBasePoint, dimensionID))
             return std::nullopt;
 
           minDistances[dimensionID] = -inf;
@@ -438,10 +429,12 @@ namespace OrthoTree
           continue;
         }
 
-        minDistances[dimensionID] =
-          (Base::point_comp_c(hComp > 0.0 ? minBoxPoint : maxBoxPoint, dimensionID) - tolerance - Base::point_comp_c(rayBasePoint, dimensionID)) / hComp;
-        maxDistances[dimensionID] =
-          (Base::point_comp_c(hComp < 0.0 ? minBoxPoint : maxBoxPoint, dimensionID) + tolerance - Base::point_comp_c(rayBasePoint, dimensionID)) / hComp;
+        minDistances[dimensionID] = ((hComp > 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) - tolerance -
+                                     Base::point_comp_c(rayBasePoint, dimensionID)) /
+                                    hComp;
+        maxDistances[dimensionID] = ((hComp < 0.0 ? Base::box_min_comp(box, dimensionID) : Base::box_max_comp(box, dimensionID)) + tolerance -
+                                     Base::point_comp_c(rayBasePoint, dimensionID)) /
+                                    hComp;
       }
 
       autoc rMin = *std::ranges::max_element(minDistances);
@@ -474,11 +467,15 @@ namespace OrthoTree
     {
       assert(is_normalized_vector(planeNormal));
 
-      autoc& minPoint = Base::box_min_c(box);
-      autoc& maxPoint = Base::box_max_c(box);
-
-      autoc center = multiply(add(minPoint, maxPoint), 0.5);
-      autoc radius = subtract(maxPoint, center);
+      TVector center, radius;
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+      {
+        autoc minComponent = Base::box_min_comp(box, dimensionID);
+        autoc maxComponent = Base::box_max_comp(box, dimensionID);
+        autoc centerComponent = static_cast<TGeometry>((minComponent + maxComponent) * 0.5);
+        Base::point_comp_set(center, dimensionID, centerComponent);
+        Base::point_comp_set(radius, dimensionID, centerComponent - minComponent);
+      }
 
       auto radiusProjected = double(tolerance);
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -854,14 +851,13 @@ namespace OrthoTree
       DimArray<double> rasterizerFactors;
       DimArray<double> sizeInDimensions;
     };
-    static constexpr RasterInfo getGridRasterizer(TVector const& minPoint, TVector const& maxPoint, GridID subDivisionNo) noexcept
+    static constexpr RasterInfo getGridRasterizer(TBox const& box, GridID subDivisionNo) noexcept
     {
       auto ri = RasterInfo{};
       autoc subDivisionNoFactor = static_cast<double>(subDivisionNo);
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        ri.sizeInDimensions[dimensionID] =
-          static_cast<double>(TAdapter::point_comp_c(maxPoint, dimensionID) - TAdapter::point_comp_c(minPoint, dimensionID));
+        ri.sizeInDimensions[dimensionID] = static_cast<double>(AD::box_max_comp(box, dimensionID) - AD::box_min_comp(box, dimensionID));
         ri.rasterizerFactors[dimensionID] = ri.sizeInDimensions[dimensionID] == 0 ? 1.0 : (subDivisionNoFactor / ri.sizeInDimensions[dimensionID]);
       }
 
@@ -874,44 +870,47 @@ namespace OrthoTree
       auto gridIDs = DimArray<GridID>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc pointComponent = TAdapter::point_comp_c(point, dimensionID) - TAdapter::point_comp_c(TAdapter::box_min_c(this->m_boxSpace), dimensionID);
+        autoc pointComponent = AD::point_comp_c(point, dimensionID) - AD::box_min_comp(this->m_boxSpace, dimensionID);
         auto rasterID = static_cast<double>(pointComponent) * this->m_rasterizerFactors[dimensionID];
         gridIDs[dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(rasterID));
       }
       return gridIDs;
     }
 
-
+    template<bool DO_POINT_LIKE_CLASSIFICATION = false>
     constexpr std::array<DimArray<GridID>, 2> getGridIdBox(TBox const& box) const noexcept
     {
-      autoc& minPointOfSpace = AD::box_min_c(m_boxSpace);
-
       auto aid = std::array<DimArray<GridID>, 2>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         autoc minComponentRasterID =
-          static_cast<double>(TAdapter::point_comp_c(TAdapter::box_min_c(box), dimensionID) - TAdapter::point_comp_c(minPointOfSpace, dimensionID)) *
-          m_rasterizerFactors[dimensionID];
+          static_cast<double>(AD::box_min_comp(box, dimensionID) - AD::box_min_comp(m_boxSpace, dimensionID)) * m_rasterizerFactors[dimensionID];
         autoc maxComponentRasterID =
-          static_cast<double>(TAdapter::point_comp_c(TAdapter::box_max_c(box), dimensionID) - TAdapter::point_comp_c(minPointOfSpace, dimensionID)) *
-          m_rasterizerFactors[dimensionID];
+          static_cast<double>(AD::box_max_comp(box, dimensionID) - AD::box_min_comp(m_boxSpace, dimensionID)) * m_rasterizerFactors[dimensionID];
 
-        if (minComponentRasterID < 1.0)
-          aid[0][dimensionID] = 0;
-        else if (minComponentRasterID > m_maxRasterID)
-          aid[0][dimensionID] = m_maxRasterID;
+        if constexpr (DO_POINT_LIKE_CLASSIFICATION)
+        {
+          aid[0][dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(minComponentRasterID));
+          aid[1][dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(maxComponentRasterID));
+        }
         else
-          aid[0][dimensionID] = static_cast<GridID>(minComponentRasterID);
+        {
+          if (minComponentRasterID < 1.0)
+            aid[0][dimensionID] = 0;
+          else if (minComponentRasterID > m_maxRasterID)
+            aid[0][dimensionID] = m_maxRasterID;
+          else
+            aid[0][dimensionID] = static_cast<GridID>(minComponentRasterID);
 
-
-        if (maxComponentRasterID < 1.0)
-          aid[1][dimensionID] = 0;
-        else if (maxComponentRasterID > m_maxRasterID)
-          aid[1][dimensionID] = m_maxRasterID;
-        else if (minComponentRasterID != maxComponentRasterID && std::floor(maxComponentRasterID) == maxComponentRasterID)
-          aid[1][dimensionID] = static_cast<GridID>(maxComponentRasterID) - 1;
-        else
-          aid[1][dimensionID] = static_cast<GridID>(maxComponentRasterID);
+          if (maxComponentRasterID < 1.0)
+            aid[1][dimensionID] = 0;
+          else if (maxComponentRasterID > m_maxRasterID)
+            aid[1][dimensionID] = m_maxRasterID;
+          else if (minComponentRasterID != maxComponentRasterID && std::floor(maxComponentRasterID) == maxComponentRasterID)
+            aid[1][dimensionID] = static_cast<GridID>(maxComponentRasterID) - 1;
+          else
+            aid[1][dimensionID] = static_cast<GridID>(maxComponentRasterID);
+        }
       }
       return aid;
     }
@@ -950,8 +949,8 @@ namespace OrthoTree
         LOOPIVDEP
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          AD::point_comp(AD::box_min(nodeChild.Box), dimensionID) = static_cast<TGeometry>(minNodePoint[dimensionID]);
-          AD::point_comp(AD::box_max(nodeChild.Box), dimensionID) = static_cast<TGeometry>(maxNodePoint[dimensionID]);
+          AD::box_min_comp_set(nodeChild.Box, dimensionID, static_cast<TGeometry>(minNodePoint[dimensionID]));
+          AD::box_max_comp_set(nodeChild.Box, dimensionID, static_cast<TGeometry>(maxNodePoint[dimensionID]));
         }
       }
       else
@@ -960,16 +959,17 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           autoc isGreater = ((ChildID{ 1 } << dimensionID) & childID) > 0;
-          AD::point_comp(AD::box_min(nodeChild.Box), dimensionID) =
-            isGreater * (AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
-              TGeometry{ 0.5 } +
-            (!isGreater) * AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID);
+          AD::box_min_comp_set(
+            nodeChild.Box,
+            dimensionID,
+            isGreater * (AD::box_max_comp(parentNode.Box, dimensionID) + AD::box_min_comp(parentNode.Box, dimensionID)) * TGeometry{ 0.5 } +
+              (!isGreater) * AD::box_min_comp(parentNode.Box, dimensionID));
 
-          AD::point_comp(AD::box_max(nodeChild.Box), dimensionID) =
-            isGreater * AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) +
-            (!isGreater) *
-              ((AD::point_comp_c(AD::box_max_c(parentNode.Box), dimensionID) + AD::point_comp_c(AD::box_min_c(parentNode.Box), dimensionID)) *
-               TGeometry{ 0.5 });
+          AD::box_max_comp_set(
+            nodeChild.Box,
+            dimensionID,
+            isGreater * AD::box_max_comp(parentNode.Box, dimensionID) +
+              (!isGreater) * ((AD::box_max_comp(parentNode.Box, dimensionID) + AD::box_min_comp(parentNode.Box, dimensionID)) * TGeometry{ 0.5 }));
         }
       }
       return nodeChild;
@@ -1246,11 +1246,6 @@ namespace OrthoTree
       assert(CHAR_BIT * sizeof(GridID) >= m_maxDepthNo);
 
       this->m_boxSpace = box;
-      this->m_volumeOfOverallSpace = 1.0;
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        this->m_volumeOfOverallSpace *=
-          AD::point_comp_c(AD::box_max_c(this->m_boxSpace), dimensionID) - AD::point_comp_c(AD::box_min_c(this->m_boxSpace), dimensionID);
-
       this->m_maxDepthNo = maxDepthNo;
       this->m_maxRasterResolution = static_cast<GridID>(pow2(maxDepthNo));
       this->m_maxRasterID = this->m_maxRasterResolution - 1;
@@ -1258,13 +1253,16 @@ namespace OrthoTree
 
       auto& nodeRoot = this->m_nodes[GetRootKey()];
       nodeRoot.Box = box;
-      autoc ri = this->getGridRasterizer(AD::box_min_c(this->m_boxSpace), AD::box_max_c(this->m_boxSpace), this->m_maxRasterResolution);
+      autoc ri = this->getGridRasterizer(this->m_boxSpace, this->m_maxRasterResolution);
       this->m_rasterizerFactors = std::move(ri.rasterizerFactors);
       this->m_sizeInDimensions = std::move(ri.sizeInDimensions);
+      this->m_volumeOfOverallSpace = 1.0;
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        this->m_volumeOfOverallSpace *= this->m_sizeInDimensions[dimensionID];
 
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        this->m_minInDimensions[dimensionID] = static_cast<double>(AD::point_comp_c(AD::box_min_c(this->m_boxSpace), dimensionID));
+        this->m_minInDimensions[dimensionID] = static_cast<double>(AD::box_min_comp(this->m_boxSpace, dimensionID));
     }
 
 
@@ -1401,17 +1399,10 @@ namespace OrthoTree
     TBox CalculateExtent(MortonNodeIDCR nodeKey) const noexcept
     {
       auto nodeBox = TBox();
-      auto& minNodePoint = AD::box_min(nodeBox);
-      auto& maxNodePoint = AD::box_max(nodeBox);
-      autoc& minSpacePoint = AD::box_min_c(m_boxSpace);
-      autoc& maxSpacePoint = AD::box_max_c(m_boxSpace);
 
-      minNodePoint = minSpacePoint;
-
-      auto spaceSizes = DimArray<TGeometry>();
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        spaceSizes[dimensionID] = AD::point_comp_c(maxSpacePoint, dimensionID) - AD::point_comp_c(minSpacePoint, dimensionID);
+        AD::box_min_comp_set(nodeBox, dimensionID, AD::box_min_comp(m_boxSpace, dimensionID));
 
       autoc depthIDOfNode = GetDepthID(nodeKey);
       autoc rasterResolutionNoAtNodeDepth = pow2(depthIDOfNode);
@@ -1427,15 +1418,20 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           autoc shouldApply = ((examinationKey >> dimensionID) & one) > MortonGridID{};
-          AD::point_comp(minNodePoint, dimensionID) += static_cast<TGeometry>((spaceSizes[dimensionID] * rasterFactorAtDepth)) * shouldApply;
+          AD::box_min_comp_set(
+            nodeBox,
+            dimensionID,
+            AD::box_min_comp(nodeBox, dimensionID) + static_cast<TGeometry>((this->m_sizeInDimensions[dimensionID] * rasterFactorAtDepth)) * shouldApply);
         }
         examinationKey >>= DIMENSION_NO;
       }
 
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        AD::point_comp(maxNodePoint, dimensionID) =
-          AD::point_comp_c(minNodePoint, dimensionID) + static_cast<TGeometry>(spaceSizes[dimensionID] * rasterFactorAtNodeDepth);
+        AD::box_max_comp_set(
+          nodeBox,
+          dimensionID,
+          AD::box_min_comp(nodeBox, dimensionID) + static_cast<TGeometry>(this->m_sizeInDimensions[dimensionID] * rasterFactorAtNodeDepth));
 
       return nodeBox;
     }
@@ -1582,9 +1578,9 @@ namespace OrthoTree
         {
           autoc isUpperNodeInTheDimension = IsValidKey(keyChild & (MortonNodeID{ 1 } << dimensionID));
           if (isUpperNodeInTheDimension)
-            isOverlapped &= AD::point_comp_c(AD::box_min_c(childNode.Box), dimensionID) <= AD::point_comp_c(AD::box_max_c(range), dimensionID);
+            isOverlapped &= AD::box_min_comp(childNode.Box, dimensionID) <= AD::box_max_comp(range, dimensionID);
           else
-            isOverlapped &= AD::point_comp_c(AD::box_max_c(childNode.Box), dimensionID) >= AD::point_comp_c(AD::box_min_c(range), dimensionID);
+            isOverlapped &= AD::box_max_comp(childNode.Box, dimensionID) >= AD::box_min_comp(range, dimensionID);
         }
         if (!isOverlapped)
           continue;
@@ -1616,22 +1612,12 @@ namespace OrthoTree
 
       // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (AD::point_comp_c(AD::box_min_c(range), dimensionID) >= AD::point_comp_c(AD::box_max_c(range), dimensionID))
+        if (AD::box_min_comp(range, dimensionID) >= AD::box_max_comp(range, dimensionID))
           return false;
 
-      auto minLocationID = MortonGridID{};
-      auto maxLocationID = MortonGridID{};
-      if constexpr (IS_BOX_TYPE)
-      {
-        autoc[minGridID, maxGridID] = this->getGridIdBox(range);
-        minLocationID = MortonEncode(minGridID);
-        maxLocationID = MortonEncode(maxGridID);
-      }
-      else
-      {
-        minLocationID = MortonEncode(getGridIdPoint(AD::box_min_c(range)));
-        maxLocationID = MortonEncode(getGridIdPoint(AD::box_max_c(range)));
-      }
+      autoc[minGridID, maxGridID] = this->getGridIdBox<!IS_BOX_TYPE>(range);
+      auto minLocationID = MortonEncode(minGridID);
+      autoc maxLocationID = MortonEncode(maxGridID);
 
       auto depthNo = this->m_maxDepthNo;
       for (auto diffLocationFlag = minLocationID ^ maxLocationID; IsValidKey(diffLocationFlag); diffLocationFlag >>= DIMENSION_NO, --depthNo)
@@ -1644,7 +1630,7 @@ namespace OrthoTree
 
       auto rangeVolume = 1.0;
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        rangeVolume *= AD::point_comp_c(AD::box_max_c(range), dimensionID) - AD::point_comp_c(AD::box_min_c(range), dimensionID);
+        rangeVolume *= AD::box_max_comp(range, dimensionID) - AD::box_min_comp(range, dimensionID);
 
       autoc nodeVolume = this->m_volumeOfOverallSpace / static_cast<double>(1 << (DIMENSION_NO * depthNo));
 
@@ -2053,16 +2039,13 @@ namespace OrthoTree
   private: // K Nearest Neighbor helpers
     static TGeometry getMinBoxWallDistance(TVector const& point, TBox const& box) noexcept
     {
-      autoc& minPoint = AD::box_min_c(box);
-      autoc& maxPoint = AD::box_max_c(box);
-
       auto distances = std::vector<TGeometry>();
       distances.reserve(DIMENSION_NO);
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         autoc actualDistance = distances.emplace_back(std::min(
-          std::abs(AD::point_comp_c(point, dimensionID) - AD::point_comp_c(minPoint, dimensionID)),
-          std::abs(AD::point_comp_c(point, dimensionID) - AD::point_comp_c(maxPoint, dimensionID))));
+          std::abs(AD::point_comp_c(point, dimensionID) - AD::box_min_comp(box, dimensionID)),
+          std::abs(AD::point_comp_c(point, dimensionID) - AD::box_max_comp(box, dimensionID))));
 
         if (actualDistance == 0)
           return 0.0;
@@ -2117,17 +2100,14 @@ namespace OrthoTree
         if (node.Entities.empty() || key == smallestNodeKey)
           return;
 
-        autoc& minPoint = AD::box_min_c(node.Box);
-        autoc& maxPoint = AD::box_max_c(node.Box);
-
         auto aDist = TVector{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          autoc dMin = AD::point_comp_c(minPoint, dimensionID) - AD::point_comp_c(searchPoint, dimensionID);
-          autoc dMax = AD::point_comp_c(maxPoint, dimensionID) - AD::point_comp_c(searchPoint, dimensionID);
+          autoc dMin = AD::box_min_comp(node.Box, dimensionID) - AD::point_comp_c(searchPoint, dimensionID);
+          autoc dMax = AD::box_max_comp(node.Box, dimensionID) - AD::point_comp_c(searchPoint, dimensionID);
 
           // If point projection in dimensionID is within min and max the wall distance should be calculated.
-          AD::point_comp(aDist, dimensionID) = dMin * dMax < 0 ? 0 : std::min(std::abs(dMin), std::abs(dMax));
+          AD::point_comp_set(aDist, dimensionID, dMin * dMax < 0 ? 0 : std::min(std::abs(dMin), std::abs(dMax)));
         }
         nodeMinDistances.insert({ { AD::size(aDist) }, key, node });
       });
@@ -2622,12 +2602,10 @@ namespace OrthoTree
   private:
     constexpr std::array<DimArray<GridID>, 2> getGridIdPointEdge(TVector const& point) const noexcept
     {
-      autoc& minSpacePoint = AD::box_min_c(this->m_boxSpace);
-
       auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc rasterID = static_cast<double>(TAdapter::point_comp_c(point, dimensionID) - TAdapter::point_comp_c(minSpacePoint, dimensionID)) *
+        autoc rasterID = static_cast<double>(AD::point_comp_c(point, dimensionID) - AD::box_min_comp(this->m_boxSpace, dimensionID)) *
                          this->m_rasterizerFactors[dimensionID];
         pointMinMaxGridID[0][dimensionID] = pointMinMaxGridID[1][dimensionID] = static_cast<GridID>(rasterID);
         pointMinMaxGridID[0][dimensionID] -= (pointMinMaxGridID[0][dimensionID] > 0) && (floor(rasterID) == rasterID);

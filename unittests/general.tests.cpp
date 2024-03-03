@@ -756,7 +756,7 @@ namespace GeneralTest
     template<typename tree_type, size_t N>
     bool _isMoveOfTwoTreeProper(tree_type const& tPre, tree_type const& tAfter, PointND<N> const& vMoveExpected)
     {
-      using Ad = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>>;
+      using AD = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>>;
       autoce rAcc = std::numeric_limits<double>::min();
 
       autoc nodesPre = tPre.GetNodes();
@@ -773,8 +773,17 @@ namespace GeneralTest
 
         autoc& nodePre = pairPre.second;
         autoc& nodeAfter = pairAfter.second;
-        autoc bMin = Ad::are_points_equal(Ad::subtract(Ad::box_min_c(nodeAfter.Box), Ad::box_min_c(nodePre.Box)), vMoveExpected, rAcc);
-        autoc bMax = Ad::are_points_equal(Ad::subtract(Ad::box_max_c(nodeAfter.Box), Ad::box_max_c(nodePre.Box)), vMoveExpected, rAcc);
+
+        auto vMoveActualMin = PointND<N>{};
+        auto vMoveActualMax = PointND<N>{};
+        for (dim_t dimensionID = 0; dimensionID < N; ++dimensionID)
+        {
+          AD::point_comp_set(vMoveActualMin, dimensionID, AD::box_min_comp(nodeAfter.Box, dimensionID) - AD::box_min_comp(nodePre.Box, dimensionID));
+          AD::point_comp_set(vMoveActualMax, dimensionID, AD::box_max_comp(nodeAfter.Box, dimensionID) - AD::box_max_comp(nodePre.Box, dimensionID));
+        }
+
+        autoc bMin = AD::are_points_equal(vMoveActualMin, vMoveExpected, rAcc);
+        autoc bMax = AD::are_points_equal(vMoveActualMax, vMoveExpected, rAcc);
         return bMin && bMax;
       });
 
@@ -2265,20 +2274,17 @@ namespace LongIntAdaptor
   template <size_t N>
   struct AdaptorBasicsCustom
   {
-    static inline GeometryType& point_comp(CustomVectorTypeND<N>& pt, OrthoTree::dim_t iDimension)
+    static constexpr GeometryType point_comp_c(CustomVectorTypeND<N> const& pt, OrthoTree::dim_t iDimension) { return pt[iDimension]; }
+
+    static constexpr void point_comp_set(CustomVectorTypeND<N>& pt, OrthoTree::dim_t iDimension, GeometryType value)
     {
-      return pt[iDimension];
+      pt[iDimension] = value;
     }
 
-    static constexpr GeometryType point_comp_c(CustomVectorTypeND<N> const& pt, OrthoTree::dim_t iDimension)
-    {
-      return pt[iDimension];
-    }
-
-    static inline CustomVectorTypeND<N>& box_min(CustomBoundingBoxND<N>& Box) { return Box[0]; }
-    static inline CustomVectorTypeND<N>& box_max(CustomBoundingBoxND<N>& Box) { return Box[1]; }
-    static constexpr CustomVectorTypeND<N> const& box_min_c(CustomBoundingBoxND<N> const& Box) { return Box[0]; }
-    static constexpr CustomVectorTypeND<N> const& box_max_c(CustomBoundingBoxND<N> const& Box) { return Box[1]; }
+    static constexpr void box_min_comp_set(CustomBoundingBoxND<N>& box, dim_t dimensionID, GeometryType value) { point_comp_set(box[0], dimensionID, value); }
+    static constexpr void box_max_comp_set(CustomBoundingBoxND<N>& box, dim_t dimensionID, GeometryType value) { point_comp_set(box[1], dimensionID, value); }
+    static constexpr GeometryType box_min_comp(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return point_comp_c(box[0], dimensionID); }
+    static constexpr GeometryType box_max_comp(CustomBoundingBoxND<N> const& box, dim_t dimensionID) { return point_comp_c(box[1], dimensionID); }
   };
 
   template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, AdaptorBasicsCustom<N>, GeometryType>;

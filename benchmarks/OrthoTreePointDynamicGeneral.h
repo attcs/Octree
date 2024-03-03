@@ -37,7 +37,10 @@ private:
       return;
     }
 
-    autoc ptMiddle = _Ad::multiply(_Ad::add(_Ad::box_max_c(box), _Ad::box_min_c(box)), 0.5);
+    auto ptMiddle = vector_type{};
+    for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
+      _Ad::point_comp_set(ptMiddle, iDimension, (_Ad::box_max_comp(box, iDimension) + _Ad::box_min_comp(box, iDimension)) * 0.5);
+
     for (auto& [id, idNode] : aid)
     {
       idNode = 0;
@@ -55,8 +58,8 @@ private:
       for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
       {
         autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
-        _Ad::point_comp(_Ad::box_min(node.box), iDimension) = fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::point_comp_c(_Ad::box_min_c(box), iDimension);
-        _Ad::point_comp(_Ad::box_max(node.box), iDimension) = !fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + fGreater * _Ad::point_comp_c(_Ad::box_max_c(box), iDimension);
+        _Ad::box_min_comp_set(node.box, iDimension, fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::box_min_comp(box, iDimension));
+        _Ad::box_max_comp_set(node.box, iDimension, !fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + fGreater * _Ad::box_max_comp(box, iDimension));
       }
 
       autoc itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](autoc& p) { return p.idNode == itidNodeLast->idNode; });
@@ -121,15 +124,18 @@ private:
       return;
     }
 
-    autoc ptMiddle = _Ad::multiply(_Ad::add(_Ad::box_max_c(box), _Ad::box_min_c(box)), 0.5);
+    auto ptMiddle = vector_type{};
+    for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
+      _Ad::point_comp_set(ptMiddle, iDimension, (_Ad::box_max_comp(box, iDimension) + _Ad::box_min_comp(box, iDimension)) * 0.5);
+
     for (auto& [id, idNode] : aid)
     {
       size_t idNode1 = 0;
       size_t idNode2 = 0;
       for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
       {
-        idNode1 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(_Ad::box_min_c(vBox[id]), iDimension)) << iDimension;
-        idNode2 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::point_comp_c(_Ad::box_max_c(vBox[id]), iDimension)) << iDimension;
+        idNode1 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::box_min_comp(vBox[id], iDimension)) << iDimension;
+        idNode2 |= (_Ad::point_comp_c(ptMiddle, iDimension) < _Ad::box_max_comp(vBox[id], iDimension)) << iDimension;
       }
 
       idNode = idNode1 == idNode2 ? idNode1 : _nChild;
@@ -158,8 +164,8 @@ private:
         for (dim_t iDimension = 0; iDimension < nDimension; ++iDimension)
         {
           autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
-          _Ad::point_comp(_Ad::box_min(node.box), iDimension) = fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::point_comp_c(_Ad::box_min_c(box), iDimension);
-          _Ad::point_comp(_Ad::box_max(node.box), iDimension) = !fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + fGreater * _Ad::point_comp_c(_Ad::box_max_c(box), iDimension);
+          _Ad::box_min_comp_set(node.box, iDimension, fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + !fGreater * _Ad::box_min_comp(box, iDimension));
+          _Ad::box_max_comp_set(node.box, iDimension, !fGreater * _Ad::point_comp_c(ptMiddle, iDimension) + fGreater * _Ad::box_max_comp(box, iDimension));
         }
 
         autoc itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](autoc& p) { return p.idNode == itidNodeLast->idNode; });

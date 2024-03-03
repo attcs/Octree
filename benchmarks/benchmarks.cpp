@@ -53,7 +53,7 @@ namespace
   {
     auto ptMax = pt;
     for (size_t iDim = 0; iDim < nDim; ++iDim)
-      Adaptor::point_comp(ptMax, static_cast<dim_t>(iDim)) += size;
+      Adaptor::point_comp_set(ptMax, static_cast<dim_t>(iDim), Adaptor::point_comp_c(pt, static_cast<dim_t>(iDim)) + size);
 
     return ptMax;
   }
@@ -619,7 +619,7 @@ namespace
           {
             TreeBoxND<N, nSplit>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth, boxMax);
             autoc vPair = nt.template CollisionDetection<std::execution::parallel_unsequenced_policy>(aBox);
-            return vPair.size();
+            return size_t{};
             //return nt.GetNodes().size();
           }
           else
@@ -753,7 +753,7 @@ int main()
 
   ofstream report;
   report.open("report.csv");
-
+  
   autoce nDepth = depth_t{ 5 };
   {
     autoc szName = string("Diagonally placed points");

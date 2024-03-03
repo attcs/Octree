@@ -67,30 +67,31 @@ namespace OrthoTree
 
     struct XYAdaptorBasics
     {
-      static constexpr xy_geometry_type& point_comp(XYPoint2D& pt, dim_t dimensionID)
-      {
-        switch (dimensionID)
-        {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        default: std::terminate();
-        }
-      }
-
       static constexpr xy_geometry_type point_comp_c(XYPoint2D const& pt, dim_t dimensionID)
       {
         switch (dimensionID)
         {
         case 0: return pt.x;
         case 1: return pt.y;
-        default: std::terminate();
+        default: assert(false); std::terminate();
         }
       }
 
-      static constexpr XYPoint2D& box_min(XYBoundingBox2D& box) { return box.Min; }
-      static constexpr XYPoint2D& box_max(XYBoundingBox2D& box) { return box.Max; }
-      static constexpr XYPoint2D const& box_min_c(XYBoundingBox2D const& box) { return box.Min; }
-      static constexpr XYPoint2D const& box_max_c(XYBoundingBox2D const& box) { return box.Max; }
+      static constexpr void point_comp_set(XYPoint2D& pt, dim_t dimensionID, xy_geometry_type value)
+      {
+        switch (dimensionID)
+        {
+        case 0: pt.x = value; break;
+        case 1: pt.y = value; break;
+        default: assert(false); std::terminate();
+        }
+      }
+
+
+      static constexpr void box_min_comp_set(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { point_comp_set(box.Min, dimensionID, value); }
+      static constexpr void box_max_comp_set(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { point_comp_set(box.Max, dimensionID, value); }
+      static constexpr xy_geometry_type box_min_comp(XYBoundingBox2D const& box, dim_t dimensionID) { return point_comp_c(box.Min, dimensionID); }
+      static constexpr xy_geometry_type box_max_comp(XYBoundingBox2D const& box, dim_t dimensionID) { return point_comp_c(box.Max, dimensionID); }
     };
 
     using XYAdaptorGeneral = AdaptorGeneralBase<2, XYPoint2D, XYBoundingBox2D, XYAdaptorBasics, xy_geometry_type>;
@@ -105,32 +106,32 @@ namespace OrthoTree
 
     struct XYZAdaptorBasics
     {
-      static constexpr xyz_geometry_type& point_comp(XYZPoint3D& pt, dim_t dimensionID)
+      static constexpr xyz_geometry_type point_comp_c(XYZPoint3D const& pt, dim_t dimensionID) noexcept
       {
         switch (dimensionID)
         {
         case 0: return pt.x;
         case 1: return pt.y;
         case 2: return pt.z;
-        default: std::terminate();
+        default: assert(false); std::terminate();
         }
       }
 
-      static constexpr xyz_geometry_type point_comp_c(XYZPoint3D const& pt, dim_t dimensionID)
+      static constexpr void point_comp_set(XYZPoint3D& pt, dim_t dimensionID, xyz_geometry_type value) noexcept
       {
         switch (dimensionID)
         {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        case 2: return pt.z;
-        default: std::terminate();
+        case 0: pt.x = value; break;
+        case 1: pt.y = value; break;
+        case 2: pt.z = value; break;
+        default: assert(false); std::terminate();
         }
       }
 
-      static constexpr XYZPoint3D& box_min(XYZBoundingBox3D& box) { return box.Min; }
-      static constexpr XYZPoint3D& box_max(XYZBoundingBox3D& box) { return box.Max; }
-      static constexpr XYZPoint3D const& box_min_c(XYZBoundingBox3D const& box) { return box.Min; }
-      static constexpr XYZPoint3D const& box_max_c(XYZBoundingBox3D const& box) { return box.Max; }
+      static constexpr void box_min_comp_set(XYZBoundingBox3D& box, dim_t dimensionID, xyz_geometry_type value) { point_comp_set(box.Min, dimensionID, value); }
+      static constexpr void box_max_comp_set(XYZBoundingBox3D& box, dim_t dimensionID, xyz_geometry_type value) { point_comp_set(box.Max, dimensionID, value); }
+      static constexpr xyz_geometry_type box_min_comp(XYZBoundingBox3D const& box, dim_t dimensionID) { return point_comp_c(box.Min, dimensionID); }
+      static constexpr xyz_geometry_type box_max_comp(XYZBoundingBox3D const& box, dim_t dimensionID) { return point_comp_c(box.Max, dimensionID); }
     };
 
     using XYZAdaptorGeneral = AdaptorGeneralBase<3, XYZPoint3D, XYZBoundingBox3D, XYZAdaptorBasics, xyz_geometry_type>;

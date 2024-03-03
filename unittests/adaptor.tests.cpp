@@ -25,30 +25,30 @@ namespace CustomGeometryType
 
   struct AdaptorBasicsCustom
   {
-    static constexpr float& point_comp(Point2DCustom& pt, OrthoTree::dim_t iDimension)
-    {
-      switch (iDimension)
-      {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        default: return pt.x;
-      }
-    }
-
     static constexpr float point_comp_c(Point2DCustom const& pt, OrthoTree::dim_t iDimension)
     {
       switch (iDimension)
       {
-        case 0: return pt.x;
-        case 1: return pt.y;
-        default: assert(false); return pt.x;
+      case 0: return pt.x;
+      case 1: return pt.y;
+      default: assert(false); return pt.x;
       }
     }
 
-    static constexpr Point2DCustom& box_min(BoundingBox2DCustom& Box) { return Box[0]; }
-    static constexpr Point2DCustom& box_max(BoundingBox2DCustom& Box) { return Box[1]; }
-    static constexpr Point2DCustom const& box_min_c(BoundingBox2DCustom const& Box) { return Box[0]; }
-    static constexpr Point2DCustom const& box_max_c(BoundingBox2DCustom const& Box) { return Box[1]; }
+    static constexpr void point_comp_set(Point2DCustom& pt, OrthoTree::dim_t iDimension, float value)
+    {
+      switch (iDimension)
+      {
+        case 0:  pt.x = value; break;
+        case 1:  pt.y = value; break;
+        default: assert(false);
+      }
+    }
+
+    static constexpr void box_min_comp_set(BoundingBox2DCustom& box, dim_t dimensionID, float value) { point_comp_set(box[0], dimensionID, value); }
+    static constexpr void box_max_comp_set(BoundingBox2DCustom& box, dim_t dimensionID, float value) { point_comp_set(box[1], dimensionID, value); }
+    static constexpr float box_min_comp(BoundingBox2DCustom const& box, dim_t dimensionID) { return point_comp_c(box[0], dimensionID); }
+    static constexpr float box_max_comp(BoundingBox2DCustom const& box, dim_t dimensionID) { return point_comp_c(box[1], dimensionID); }
   };
 
   using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, Point2DCustom, BoundingBox2DCustom, AdaptorBasicsCustom, float>;
