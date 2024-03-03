@@ -56,6 +56,9 @@
     <ClInclude Include="..\adaptor.unreal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\adaptor.boost.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

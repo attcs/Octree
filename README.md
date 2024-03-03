@@ -66,6 +66,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Default: `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
 * Eigen: `Eigen::OctreePoint3d`, `::OctreePointC3d`, `::OctreeBox3d`, `::OctreeBoxC3d`, etc. (adaptor.eigen.h)
 * Unreal Engine: `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
+* Boost: `boost::geometry::octree_point`, `::geometry::octree_box`, etc. (adaptor.boost.h)
 * `struct{x,y,z}`: (adaptor.xyz.h)
 
 ## Major aliases in OrthoTree
@@ -314,36 +315,36 @@ struct AdaptorBasicsCustom
 };
 
 
-  using AdaptorCustom = OrthoTree::AdaptorGeneralBase<
-    2, 
-    MyPoint2D, 
-    MyBox2D, 
-    MyRay2D, 
-    MyPlane2D, 
-    float, 
-    AdaptorBasicsCustom>;
+using AdaptorCustom = OrthoTree::AdaptorGeneralBase<
+  2, 
+  MyPoint2D, 
+  MyBox2D, 
+  MyRay2D, 
+  MyPlane2D, 
+  float, 
+  AdaptorBasicsCustom>;
 
 
-  // Tailored Quadtree objects
+// Tailored Quadtree objects
 
-  using QuadtreePointCustom = OrthoTree::OrthoTreePoint<
-    2, 
-    MyPoint2D, 
-    MyBox2D, 
-    MyRay2D, 
-    MyPlane2D, 
-    float, 
-    AdaptorCustom>;
+using QuadtreePointCustom = OrthoTree::OrthoTreePoint<
+  2, 
+  MyPoint2D, 
+  MyBox2D, 
+  MyRay2D, 
+  MyPlane2D, 
+  float, 
+  AdaptorCustom>;
 
-  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<
-    2, 
-    MyPoint2D, 
-    MyBox2D, 
-    MyRay2D, 
-    MyPlane2D, 
-    float, 
-    2, 
-    AdaptorCustom>;
+using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<
+  2, 
+  MyPoint2D, 
+  MyBox2D, 
+  MyRay2D, 
+  MyPlane2D, 
+  float, 
+  2, 
+  AdaptorCustom>;
 ```
 
 ## Benchmarks

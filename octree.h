@@ -229,7 +229,7 @@ namespace OrthoTree
   template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
   struct AdaptorGeneralBasics
   {
-    static constexpr TGeometry const& GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+    static constexpr TGeometry GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
     static constexpr void SetPointC(TVector& point, dim_t dimensionID, TGeometry value) noexcept { point[dimensionID] = value; }
 
     static constexpr TGeometry GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return box.Min[dimensionID]; }
