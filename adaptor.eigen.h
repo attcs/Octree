@@ -102,8 +102,8 @@ namespace OrthoTree
 
       static constexpr bool AreBoxesOverlappedStrict(AlignedBox_ const& e1, AlignedBox_ const& e2) noexcept
       {
-        autoc e3 = e1.intersection(e2);
-        autoc sizes = e3.sizes();
+        auto const e3 = e1.intersection(e2);
+        auto const sizes = e3.sizes();
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           if (sizes[dimensionID] <= 0.0)
             return false;
@@ -125,7 +125,7 @@ namespace OrthoTree
       static AlignedBox_ GetBoxOfPoints(std::span<VectorType_ const> const& points) noexcept
       {
         auto ext = points.size() == 0 ? AlignedBox_{} : AlignedBox_(points[0]);
-        for (autoc& point : points)
+        for (auto const& point : points)
           ext.extend(point);
 
         return ext;
@@ -134,7 +134,7 @@ namespace OrthoTree
       static AlignedBox_ GetBoxOfBoxes(std::span<AlignedBox_ const> const& extents) noexcept
       {
         auto ext = extents.size() == 0 ? AlignedBox_{} : extents[0];
-        for (autoc& extent : extents)
+        for (auto const& extent : extents)
           ext.extend(extent);
 
         return ext;
@@ -145,18 +145,18 @@ namespace OrthoTree
       static constexpr std::optional<double> IsRayHit(
         AlignedBox_ const& box, VectorType_ const& rayBasePoint, VectorType_ const& rayHeading, Scalar_ tolerance) noexcept
       {
-        autoc toleranceVector = VectorType_::Ones() * tolerance;
-        autoc rayBasePointBox = AlignedBox_(rayBasePoint - toleranceVector, rayBasePoint + toleranceVector);
+        auto const toleranceVector = VectorType_::Ones() * tolerance;
+        auto const rayBasePointBox = AlignedBox_(rayBasePoint - toleranceVector, rayBasePoint + toleranceVector);
         if (box.intersects(rayBasePointBox))
           return 0.0;
 
-        autoce inf = std::numeric_limits<double>::infinity();
+        auto constexpr inf = std::numeric_limits<double>::infinity();
 
         auto minDistances = std::array<double, AmbientDim_>{};
         auto maxDistances = std::array<double, AmbientDim_>{};
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          autoc hComp = Base::GetPointC(rayHeading, dimensionID);
+          auto const hComp = Base::GetPointC(rayHeading, dimensionID);
           if (hComp == 0)
           {
             if (Base::GetBoxMaxC(box, dimensionID) + tolerance < Base::GetPointC(rayBasePoint, dimensionID))
@@ -178,8 +178,8 @@ namespace OrthoTree
                                       hComp;
         }
 
-        autoc rMin = *std::ranges::max_element(minDistances);
-        autoc rMax = *std::ranges::min_element(maxDistances);
+        auto const rMin = *std::ranges::max_element(minDistances);
+        auto const rMax = *std::ranges::min_element(maxDistances);
         if (rMin > rMax || rMax < 0.0)
           return std::nullopt;
 
@@ -197,7 +197,7 @@ namespace OrthoTree
       {
         assert(IsNormalizedVector(planeNormal));
 
-        autoc pointProjected = Dot(planeNormal, point);
+        auto const pointProjected = Dot(planeNormal, point);
 
         if (pointProjected < distanceOfOrigo - tolerance)
           return PlaneRelation::Negative;
@@ -217,9 +217,9 @@ namespace OrthoTree
         VectorType_ center, radius;
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          autoc minComponent = Base::GetBoxMinC(box, dimensionID);
-          autoc maxComponent = Base::GetBoxMaxC(box, dimensionID);
-          autoc centerComponent = static_cast<Scalar_>((minComponent + maxComponent) * 0.5);
+          auto const minComponent = Base::GetBoxMinC(box, dimensionID);
+          auto const maxComponent = Base::GetBoxMaxC(box, dimensionID);
+          auto const centerComponent = static_cast<Scalar_>((minComponent + maxComponent) * 0.5);
           Base::SetPointC(center, dimensionID, centerComponent);
           Base::SetPointC(radius, dimensionID, centerComponent - minComponent);
         }
@@ -228,7 +228,7 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           radiusProjected += Base::GetPointC(radius, dimensionID) * std::abs(Base::GetPointC(planeNormal, dimensionID));
 
-        autoc centerProjected = Dot(planeNormal, center);
+        auto const centerProjected = Dot(planeNormal, center);
 
         if (centerProjected + radiusProjected < distanceOfOrigo)
           return PlaneRelation::Negative;

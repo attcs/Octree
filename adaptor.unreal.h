@@ -436,7 +436,7 @@ namespace OrthoTree
         }
         else
         {
-          autoc rel = GetBoxRelation(e1, e2);
+          auto const rel = GetBoxRelation(e1, e2);
           if (fOverlapPtTouchAllowed)
             return rel == EBoxRelation::Adjecent || rel == EBoxRelation::Overlapped;
           else
@@ -447,7 +447,7 @@ namespace OrthoTree
       static FBox_ GetBoxOfPoints(std::span<FVector_ const> const& points) noexcept
       {
         auto ext = points.size() == 0 ? FBox_{} : FBox_(points[0], points[0]);
-        for (autoc& point : points)
+        for (auto const& point : points)
         {
           for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           {
@@ -467,7 +467,7 @@ namespace OrthoTree
           return {};
 
         auto ext = extents[0];
-        for (autoc& e : extents)
+        for (auto const& e : extents)
         {
           for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           {
@@ -496,13 +496,13 @@ namespace OrthoTree
         if (box.Intersect(rayBasePointBox))
           return 0.0;
 
-        autoce inf = std::numeric_limits<double>::infinity();
+        auto constexpr inf = std::numeric_limits<double>::infinity();
 
         auto minDistances = std::array<double, AmbientDim_>{};
         auto maxDistances = std::array<double, AmbientDim_>{};
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          autoc hComp = Base::GetPointC(rayHeading, dimensionID);
+          auto const hComp = Base::GetPointC(rayHeading, dimensionID);
           if (hComp == 0)
           {
             if (Base::GetBoxMaxC(box, dimensionID) + tolerance < Base::GetPointC(rayBasePoint, dimensionID))
@@ -524,8 +524,8 @@ namespace OrthoTree
                                       hComp;
         }
 
-        autoc rMin = *std::ranges::max_element(minDistances);
-        autoc rMax = *std::ranges::min_element(maxDistances);
+        auto const rMin = *std::ranges::max_element(minDistances);
+        auto const rMax = *std::ranges::min_element(maxDistances);
         if (rMin > rMax || rMax < 0.0)
           return std::nullopt;
 
@@ -543,7 +543,7 @@ namespace OrthoTree
       {
         assert(IsNormalizedVector(planeNormal));
 
-        autoc pointProjected = Dot(planeNormal, point);
+        auto const pointProjected = Dot(planeNormal, point);
 
         if (pointProjected < distanceOfOrigo - tolerance)
           return PlaneRelation::Negative;
@@ -562,9 +562,9 @@ namespace OrthoTree
         FVector_ center, radius;
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          autoc minComponent = Base::GetBoxMinC(box, dimensionID);
-          autoc maxComponent = Base::GetBoxMaxC(box, dimensionID);
-          autoc centerComponent = static_cast<FGeometry_>((minComponent + maxComponent) * 0.5);
+          auto const minComponent = Base::GetBoxMinC(box, dimensionID);
+          auto const maxComponent = Base::GetBoxMaxC(box, dimensionID);
+          auto const centerComponent = static_cast<FGeometry_>((minComponent + maxComponent) * 0.5);
           Base::SetPointC(center, dimensionID, centerComponent);
           Base::SetPointC(radius, dimensionID, centerComponent - minComponent);
         }
@@ -573,7 +573,7 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
           radiusProjected += Base::GetPointC(radius, dimensionID) * std::abs(Base::GetPointC(planeNormal, dimensionID));
 
-        autoc centerProjected = Dot(planeNormal, center);
+        auto const centerProjected = Dot(planeNormal, center);
 
         if (centerProjected - radiusProjected < distanceOfOrigo - tolerance)
           return PlaneRelation::Negative;
