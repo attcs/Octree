@@ -1,12 +1,24 @@
 #include "pch.h"
 
-#include <Eigen/Geometry>
+#include <boost/geometry.hpp>
 #include "../adaptor.boost.h"
+
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include "../adaptor.eigen.h"
+
 #include "../adaptor.xyz.h"
 
 #define UNREAL_DUMMY_TYPES
 #define UNREAL_DUMMY_TYPES__SUPPRESS_ASSERTS
+#ifndef UNREAL_DUMMY_TYPES
+#include "Math/Box.h"
+#include "Math/Box2D.h"
+#include "Math/Plane.h"
+#include "Math/Ray.h"
+#include "Math/Vector.h"
+#include "Math/Vector2D.h"
+#endif // !UNREAL_DUMMY_TYPES
 #include "../adaptor.unreal.h"
 
 using namespace OrthoTree;

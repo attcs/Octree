@@ -263,13 +263,6 @@ namespace UnrealDummyTypes
   using FPlane2D = FPlaneTemplate<FVector2D>;
   using FPlane = FPlaneTemplate<FVector>;
 } // namespace UnrealDummyTypes
-#else
-#include "Math/Box.h"
-#include "Math/Box2D.h"
-#include "Math/Plane.h"
-#include "Math/Ray.h"
-#include "Math/Vector.h"
-#include "Math/Vector2D.h"
 #endif
 
 #ifdef UNREAL_DUMMY_TYPES

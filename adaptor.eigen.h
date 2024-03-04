@@ -24,8 +24,6 @@ SOFTWARE.
 */
 
 #include "octree.h"
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
 
 namespace OrthoTree
 {

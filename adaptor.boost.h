@@ -24,7 +24,6 @@ SOFTWARE.
 */
 
 #include "octree.h"
-#include <boost/geometry.hpp>
 
 namespace boost::geometry::model
 {
