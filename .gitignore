@@ -192,6 +192,9 @@ publish/
 # in these scripts will be unencrypted
 PublishScripts/
 
+# vcpkg
+**/vcpkg_installed/*
+
 # NuGet Packages
 *.nupkg
 # NuGet Symbol Packages

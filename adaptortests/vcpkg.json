@@ -1,0 +1,7 @@
+{
+  "dependencies": [
+    "boost",
+    "gtest",
+    "eigen3"
+  ]
+}
