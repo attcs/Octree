@@ -24,6 +24,7 @@ SOFTWARE.
 */
 
 #include "octree.h"
+// #include <Eigen/Geometry>
 
 namespace OrthoTree
 {
