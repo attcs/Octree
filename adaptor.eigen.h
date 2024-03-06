@@ -246,12 +246,11 @@ namespace OrthoTree
 
 namespace Eigen
 {
-  using namespace OrthoTree;
   using namespace OrthoTree::EigenAdaptor;
 
   // Basic OrthoTree types
   template<typename Scalar_, int AmbientDim_>
-  using EigenOrthoTreePoint = OrthoTreePoint<
+  using EigenOrthoTreePoint = OrthoTree::OrthoTreePoint<
     AmbientDim_,
     Matrix<Scalar_, AmbientDim_, 1>,
     AlignedBox<Scalar_, AmbientDim_>,
@@ -261,7 +260,7 @@ namespace Eigen
     EigenAdaptorGeneralBase<Scalar_, AmbientDim_>>;
 
   template<typename Scalar_, int AmbientDim_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using EigenOrthoTreeBox = OrthoTreeBoundingBox<
+  using EigenOrthoTreeBox = OrthoTree::OrthoTreeBoundingBox<
     AmbientDim_,
     Matrix<Scalar_, AmbientDim_, 1>,
     AlignedBox<Scalar_, AmbientDim_>,
@@ -272,11 +271,11 @@ namespace Eigen
     EigenAdaptorGeneralBase<Scalar_, AmbientDim_>>;
 
   template<typename Scalar_, int AmbientDim_>
-  using OrthoTreeContainerPointC = OrthoTreeContainerPoint<EigenOrthoTreePoint<Scalar_, AmbientDim_>, Matrix<Scalar_, AmbientDim_, 1>>;
+  using OrthoTreeContainerPointC = OrthoTree::OrthoTreeContainerPoint<EigenOrthoTreePoint<Scalar_, AmbientDim_>, Matrix<Scalar_, AmbientDim_, 1>>;
 
   template<typename Scalar_, int AmbientDim_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using OrthoTreeContainerBoxC =
-    OrthoTreeContainerBox<EigenOrthoTreeBox<Scalar_, AmbientDim_, SPLIT_DEPTH_INCREASEMENT>, AlignedBox<Scalar_, AmbientDim_>>;
+    OrthoTree::OrthoTreeContainerBox<EigenOrthoTreeBox<Scalar_, AmbientDim_, SPLIT_DEPTH_INCREASEMENT>, AlignedBox<Scalar_, AmbientDim_>>;
 
   // Non-owning types
   using QuadtreePoint2f = EigenOrthoTreePoint<float, 2>;
@@ -288,16 +287,20 @@ namespace Eigen
   using OctreePoint3d = EigenOrthoTreePoint<double, 3>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBox2f = EigenOrthoTreeBox<float, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBox2fs = EigenOrthoTreeBox<float, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBox2f = QuadtreeBox2fs<2>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBox2d = EigenOrthoTreeBox<double, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBox2ds = EigenOrthoTreeBox<double, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBox2d = QuadtreeBox2ds<2>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBox3f = EigenOrthoTreeBox<float, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBox3fs = EigenOrthoTreeBox<float, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBox3f = OctreeBox3fs<2>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBox3d = EigenOrthoTreeBox<double, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBox3ds = EigenOrthoTreeBox<double, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBox3d = OctreeBox3ds<2>;
 
   // Container types
   using QuadtreePointC2f = OrthoTreeContainerPointC<float, 2>;
@@ -309,14 +312,19 @@ namespace Eigen
   using OctreePointC3d = OrthoTreeContainerPointC<double, 3>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxC2f = OrthoTreeContainerBoxC<float, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBoxC2fs = OrthoTreeContainerBoxC<float, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBoxC2f = QuadtreeBoxC2fs<2>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxC2d = OrthoTreeContainerBoxC<double, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBoxC2ds = OrthoTreeContainerBoxC<double, 2, SPLIT_DEPTH_INCREASEMENT>;
+  using QuadtreeBoxC2d = QuadtreeBoxC2ds<2>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxC3f = OrthoTreeContainerBoxC<float, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBoxC3fs = OrthoTreeContainerBoxC<float, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBoxC3f = OctreeBoxC3fs<2>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxC3d = OrthoTreeContainerBoxC<double, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBoxC3ds = OrthoTreeContainerBoxC<double, 3, SPLIT_DEPTH_INCREASEMENT>;
+  using OctreeBoxC3d = OctreeBoxC3ds<2>;
+
 } // namespace Eigen

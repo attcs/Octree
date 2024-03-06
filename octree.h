@@ -773,7 +773,7 @@ namespace OrthoTree
     using TBox = TBox_;
     using TRay = TRay_;
     using TPlane = TPlane_;
-    
+
     using AD = TAdapter;
     static_assert(AdaptorConcept<AD, TVector, TBox, TRay, TPlane, TGeometry>);
     static_assert(0 < DIMENSION_NO && DIMENSION_NO < 64);
@@ -1813,16 +1813,16 @@ namespace OrthoTree
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<
     dim_t DIMENSION_NO,
-    typename TVector,
-    typename TBox,
-    typename TRay,
-    typename TPlane,
-    typename TGeometry = double,
-    typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
-  class OrthoTreePoint final : public OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>
+    typename TVector_,
+    typename TBox_,
+    typename TRay_,
+    typename TPlane_,
+    typename TGeometry_ = double,
+    typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>>
+  class OrthoTreePoint final : public OrthoTreeBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter>
   {
   protected:
-    using Base = OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>;
+    using Base = OrthoTreeBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
 
@@ -1835,6 +1835,12 @@ namespace OrthoTree
     using ChildID = typename Base::ChildID;
 
     using Node = typename Base::Node;
+
+    using TGeometry = typename TGeometry_;
+    using TVector = typename TVector_;
+    using TBox = typename TBox_;
+    using TRay = typename TRay_;
+    using TPlane = typename TPlane_;
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
@@ -2190,17 +2196,17 @@ namespace OrthoTree
   // SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
   template<
     dim_t DIMENSION_NO,
-    typename TVector,
-    typename TBox,
-    typename TRay,
-    typename TPlane,
-    typename TGeometry = double,
+    typename TVector_,
+    typename TBox_,
+    typename TRay_,
+    typename TPlane_,
+    typename TGeometry_ = double,
     depth_t SPLIT_DEPTH_INCREASEMENT = 2,
-    typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
-  class OrthoTreeBoundingBox final : public OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>
+    typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>>
+  class OrthoTreeBoundingBox final : public OrthoTreeBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter>
   {
   protected:
-    using Base = OrthoTreeBase<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry, TAdapter>;
+    using Base = OrthoTreeBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
     using GridBoundary = typename Base::GridBoundary;
@@ -2216,6 +2222,12 @@ namespace OrthoTree
     using ChildID = typename Base::ChildID;
 
     using Node = typename Base::Node;
+
+    using TGeometry = typename TGeometry_;
+    using TVector = typename TVector_;
+    using TBox = typename TBox_;
+    using TRay = typename TRay_;
+    using TPlane = typename TPlane_;
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 

@@ -227,7 +227,7 @@ namespace AdaptorTest
           Eigen::AlignedBox2d( Eigen::Vector2d( 1.2, 1.2 ), Eigen::Vector2d( 2.8, 2.8 ) )
         };
 
-        auto quadtree = Eigen::QuadtreeBoxC2d<2>(boxes
+        auto quadtree = Eigen::QuadtreeBoxC2d(boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
           , 2            // max element in a node 
@@ -363,7 +363,7 @@ namespace AdaptorTest
           BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 1.2f, 1.2f }, BasicTypesXYZ::Point2D{ 2.8f, 2.8f } }
         };
 
-        auto quadtree = XYZ::QuadtreeBoxC<2>(boxes
+        auto quadtree = XYZ::QuadtreeBoxC(boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
           , 2            // max element in a node 
@@ -560,8 +560,7 @@ namespace AdaptorTest
         auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
         auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
 
-        auto searchBox = box_t(point_t(0.0, 0.0, 0.0), point_t(2.0, 2.0, 2.0)
-        );
+        auto searchBox = box_t(point_t(0.0, 0.0, 0.0), point_t(2.0, 2.0, 2.0));
         auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
         
         auto sqrt3Reciproc = 1.0 / sqrt(3.0);

@@ -37,9 +37,10 @@ namespace OrthoTree
   {
   public:
     using AD = typename OrthoTreeCore::AD;
+
+    using TGeometry = typename OrthoTreeCore::TGeometry;
     using TVector = typename OrthoTreeCore::TVector;
     using TBox = typename OrthoTreeCore::TBox;
-    using TGeometry = typename OrthoTreeCore::TGeometry;
     using TRay = typename OrthoTreeCore::TRay;
     using TPlane = typename OrthoTreeCore::TPlane;
 
@@ -176,6 +177,7 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTreeCore, TData>;
     using AD = typename base::AD;
+
     using TGeometry = typename base::TGeometry;
     using TVector = typename base::TVector;
     using TBox = typename base::TBox;
@@ -256,6 +258,7 @@ namespace OrthoTree
   public:
     using base = OrthoTreeContainerBase<OrthoTreeCore, TData>;
     using AD = typename base::AD;
+
     using TGeometry = typename base::TGeometry;
     using TVector = typename base::TVector;
     using TBox = typename base::TBox;

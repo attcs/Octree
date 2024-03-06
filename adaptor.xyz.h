@@ -195,8 +195,8 @@ namespace XYZ
   using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint, XYPoint2D>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxC = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYBoundingBox2D>;
-
+  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYBoundingBox2D>;
+  using QuadtreeBoxC = QuadtreeBoxCs<2>;
 
   using OctreePoint = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral>;
 
@@ -208,5 +208,7 @@ namespace XYZ
   using OcreePointC = OrthoTreeContainerPoint<OctreePoint, XYZPoint3D>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxC = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYZBoundingBox3D>;
+  using OctreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYZBoundingBox3D>;
+  using OctreeBoxC = OctreeBoxCs<2>;
+
 } // namespace XYZ
