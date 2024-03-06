@@ -193,6 +193,7 @@
   <ItemGroup>
     <ClInclude Include="..\adaptor.boost.h" />
     <ClInclude Include="..\adaptor.eigen.h" />
+    <ClInclude Include="..\adaptor.glm.h" />
     <ClInclude Include="..\adaptor.unreal.h" />
     <ClInclude Include="..\adaptor.xyz.h" />
     <ClInclude Include="..\octree.h" />

@@ -1,7 +1,8 @@
 {
   "dependencies": [
     "boost",
+    "eigen3",
     "gtest",
-    "eigen3"
+    "glm"
   ]
 }

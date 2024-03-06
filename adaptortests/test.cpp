@@ -13,6 +13,10 @@
 #include <Eigen/Geometry>
 #include "../adaptor.eigen.h"
 
+// glm
+#include <glm/glm.hpp>
+#include "../adaptor.glm.h"
+
 // XYZ
 #include "../adaptor.xyz.h"
 
@@ -62,6 +66,7 @@ namespace
     }
   }
 
+  // Boost
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, typename boost::geometry::model::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& rayA)
@@ -77,6 +82,8 @@ namespace
     planeA.origo_distance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
   }
 
+
+  // Eigen
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, Eigen::ParametrizedLine<typename TOrthoTreeA::TGeometry, DIMENSION_NO>& rayA)
@@ -94,12 +101,32 @@ namespace
   }
 
 
+  // glm
+
+  template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
+  void rayConv(TRay const& rayO, typename glm::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& rayA)
+  {
+    vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Origin, rayA.origin);
+    vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Direction, rayA.direction);
+  }
+
+  template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
+  void planeConv(TPlane const& planeO, typename glm::planeNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& planeA)
+  {
+    vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, planeA.normal);
+    planeA.origo_distance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
+  }
+
+
+  // Unreal
+
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, FQuadtreePoint::TRay& rayA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Origin, rayA.Origin);
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Direction, rayA.Direction);
   }
+
   template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
   void planeConv(TPlane const& planeO, FQuadtreePoint::TPlane& planeA)
   {
@@ -122,6 +149,8 @@ namespace
     planeA.W = float(planeO.OrigoDistance);
   }
 
+
+  // XYZ
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, BasicTypesXYZ::Ray2D& rayA)
@@ -485,6 +514,20 @@ namespace EigenAdapter
     containerBoxTest2D<Eigen::QuadtreeBoxC2d>();
   }
 } // namespace EigenAdapter
+
+
+namespace glmAdapter
+{
+  TEST(glm_CoreTest, Point3D)
+  {
+    corePointTest3D<glm::octree_point>();
+  }
+
+  TEST(glm_ContainerTest, Box2D)
+  {
+    containerBoxTest2D<glm::quadtree_box_c>();
+  }
+} // namespace glmAdapter
 
 namespace UnrealAdapter
 {
