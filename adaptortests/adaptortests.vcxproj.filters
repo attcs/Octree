@@ -9,6 +9,9 @@
     <ClInclude Include="..\adaptor.glm.h">
       <Filter>Adapters</Filter>
     </ClInclude>
+    <ClInclude Include="..\adaptor.cgal.h">
+      <Filter>Adapters</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

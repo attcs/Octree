@@ -107,6 +107,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\adaptor.cgal.h" />
     <ClInclude Include="..\adaptor.glm.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

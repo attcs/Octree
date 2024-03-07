@@ -8,6 +8,20 @@
 #include <boost/geometry.hpp>
 #include "../adaptor.boost.h"
 
+// CGAL
+#include <CGAL/Bbox_2.h>
+#include <CGAL/Bbox_3.h>
+#include <CGAL/Cartesian.h>
+#include <CGAL/Origin.h>
+#include <CGAL/Plane_3.h>
+#include <CGAL/Point_2.h>
+#include <CGAL/Point_3.h>
+#include <CGAL/Ray_2.h>
+#include <CGAL/Ray_3.h>
+#include <CGAL/basic.h>
+#include <CGAL/cartesian.h>
+#include "../adaptor.cgal.h"
+
 // Eigen
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -66,6 +80,7 @@ namespace
     }
   }
 
+
   // Boost
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
@@ -82,6 +97,41 @@ namespace
     planeA.origo_distance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
   }
 
+  
+  // CGAL
+
+  template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
+  void rayConv(TRay const& rayO, CGAL::Ray_2<CGAL::Cartesian<double>>& rayA)
+  {
+    using namespace CGAL;
+
+    auto const s = Point_2<Cartesian<double>>(rayO.Origin[0], rayO.Origin[1]);
+    auto const v = Vector_2<Cartesian<double>>(rayO.Direction[0], rayO.Direction[1]);
+    rayA = Ray_2<Cartesian<double>>(s, v);
+  }
+
+  template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
+  void planeConv(TPlane const& planeO, CGAL::Plane_2& planeA)
+  {
+    vectorConv<2, TVector, TOrthoTreeA>(planeO.Normal, planeA.normal);
+    planeA.offset = -typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
+  }
+
+  template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
+  void rayConv(TRay const& rayO, CGAL::Ray_3<CGAL::Cartesian<double>>& rayA)
+  {
+    using namespace CGAL;
+
+    auto const s = Point_3<Cartesian<double>>(rayO.origin[0], rayO.origin[1], rayO.origin[2]);
+    auto const v = Vector_3<Cartesian<double>>(rayO.direction[0], rayO.direction[1], rayO.direction[2]);
+    rayA = Ray_2<Cartesian<double>>(s, v);
+  }
+
+  template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
+  void planeConv(TPlane const& planeO, CGAL::Plane_3<CGAL::Cartesian<double>>& planeA)
+  {
+    planeA = CGAL::Plane_3<CGAL::Cartesian<double>>(planeO.Normal[0], planeO.Normal[1], planeO.Normal[2], -planeO.OrigoDistance);
+  }
 
   // Eigen
 
@@ -501,6 +551,19 @@ namespace BoostAdapter
     containerBoxTest2D<boost::geometry::quadtree_box_c>();
   }
 } // namespace BoostAdapter
+
+namespace CGALAdapter
+{
+  TEST(CGAL_CoreTest, Point3D)
+  {
+    corePointTest3D<CGAL::OctreePoint>();
+  }
+
+  TEST(CGAL_ContainerTest, Box2D)
+  {
+    containerBoxTest2D<CGAL::QuadtreeBoxC>();
+  }
+} // namespace CGALAdapter
 
 namespace EigenAdapter
 {
