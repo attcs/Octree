@@ -5,6 +5,7 @@ on: [push]
 env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: ./unittests/unittests.sln
+  CMAKE_FILE_PATH: gcc
 
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
@@ -12,7 +13,34 @@ env:
   BUILD_CONFIGURATION: Release
 
 jobs:
-  build:
+  gcc_build:
+      runs-on: ubuntu-latest
+      
+      steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies on ubuntu
+        run: |
+          sudo apt-get update
+          sudo apt install libtbb-dev
+          sudo apt-get install ninja-build cmake
+          ninja --version
+          cmake --version
+          gcc --version
+      - name: Configure
+        shell: bash
+        run: |
+          mkdir build
+          mkdir instdir
+          cmake ${{env.CMAKE_FILE_PATH}} -B build
+      - name: Build
+        shell: bash
+        run: |
+          make -C build
+      - name: Run
+        shell: bash
+        run: |
+          ./build/octree
+  msvc_build_and_test:
     strategy:
       matrix:
         targetplatform: [x86, x64]
@@ -20,7 +48,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
