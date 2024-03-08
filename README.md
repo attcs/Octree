@@ -63,11 +63,13 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3
 
 ## Attached adapters
-* Default: `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
-* Eigen: `Eigen::OctreePoint3d`, `::OctreePointC3d`, `::OctreeBox3d`, `::OctreeBoxC3d`, etc. (adaptor.eigen.h)
-* Unreal Engine: `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
-* Boost: `boost::geometry::octree_point`, `::geometry::octree_box`, etc. (adaptor.boost.h)
-* `struct{x,y,z}`: (adaptor.xyz.h)
+* Default: 2D, 3D...63D; `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
+* CGAL: 2D, 3D; `CGAL::OctreePoint`, `OctreeBox`, `OctreePointC`, `OctreeBoxC`, etc. (adaptor.cgal.h)
+* Eigen: 2D, 3D; `Eigen::OctreePoint3d`, `OctreePointC3d`, `OctreeBox3d`, `OctreeBoxC3d`, etc. (adaptor.eigen.h)
+* glm: 2D, 3D, 4D; `glm::octree_point`, `octree_box`, `octree_point_c`, `octree_box_c`, etc. (adaptor.glm.h)
+* Unreal Engine: 2D, 3D; `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
+* Boost: 2D, 3D; `boost::geometry::octree_point`, `octree_box`, etc. (adaptor.boost.h)
+* `struct{x,y,z}`: 2D, 3D; (adaptor.xyz.h)
 
 ## Major aliases in OrthoTree
 ```C++
