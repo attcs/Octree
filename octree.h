@@ -862,7 +862,7 @@ namespace OrthoTree
     struct BoxDistance : ItemDistance
     {
       MortonNodeID NodeKey;
-      Node const& Node;
+      Node const& NodeReference;
     };
 
     template<typename T>
@@ -1836,11 +1836,11 @@ namespace OrthoTree
 
     using Node = typename Base::Node;
 
-    using TGeometry = typename TGeometry_;
-    using TVector = typename TVector_;
-    using TBox = typename TBox_;
-    using TRay = typename TRay_;
-    using TPlane = typename TPlane_;
+    using TGeometry = TGeometry_;
+    using TVector = TVector_;
+    using TBox = TBox_;
+    using TRay = TRay_;
+    using TPlane = TPlane_;
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
@@ -2182,7 +2182,7 @@ namespace OrthoTree
           if (neighborNo <= n && rLatestNodeDist < nodeDist.Distance)
             break;
 
-          createEntityDistance(nodeDist.Node, searchPoint, points, neighborEntities);
+          createEntityDistance(nodeDist.NodeReference, searchPoint, points, neighborEntities);
           rLatestNodeDist = getFarestDistance(neighborEntities, neighborNo);
         }
       }
@@ -2223,11 +2223,11 @@ namespace OrthoTree
 
     using Node = typename Base::Node;
 
-    using TGeometry = typename TGeometry_;
-    using TVector = typename TVector_;
-    using TBox = typename TBox_;
-    using TRay = typename TRay_;
-    using TPlane = typename TPlane_;
+    using TGeometry = TGeometry_;
+    using TVector = TVector_;
+    using TBox = TBox_;
+    using TRay = TRay_;
+    using TPlane = TPlane_;
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
@@ -3249,7 +3249,7 @@ namespace OrthoTree
       }
 
       for (autoc& nodeDistance : nodeDistances)
-        getRayIntersectedFirst(nodeDistance.Node, boxes, rayBasePoint, rayHeading, tolerance, foundEntities);
+        getRayIntersectedFirst(nodeDistance.NodeReference, boxes, rayBasePoint, rayHeading, tolerance, foundEntities);
     }
 
 
