@@ -977,17 +977,37 @@ namespace OrthoTree
         DimArray<double> maxNodePoint;
 
         autoc nDepth = this->GetDepthID(childKey);
-        auto mask = MortonNodeID{ 1 } << (nDepth * DIMENSION_NO - 1);
 
         auto scaleFactor = 1.0;
-        for (depth_t iDepth = 0; iDepth < nDepth; ++iDepth)
+        if constexpr (IS_LINEAR_TREE)
         {
-          scaleFactor *= 0.5;
-          for (dim_t dimensionID = DIMENSION_NO; dimensionID > 0; --dimensionID)
+          auto mask = MortonNodeID{ 1 } << (nDepth * DIMENSION_NO - 1);
+          for (depth_t iDepth = 0; iDepth < nDepth; ++iDepth)
           {
-            bool const isGreater = (childKey & mask);
-            minNodePoint[dimensionID - 1] += isGreater * this->m_sizeInDimensions[dimensionID - 1] * scaleFactor;
-            mask >>= 1;
+            scaleFactor *= 0.5;
+            for (dim_t dimensionID = DIMENSION_NO; dimensionID > 0; --dimensionID)
+            {
+              bool isGreater;
+              if constexpr (IS_LINEAR_TREE)
+                isGreater = (childKey & mask);
+              else
+                isGreater = (childKey & mask).any();
+              minNodePoint[dimensionID - 1] += isGreater * this->m_sizeInDimensions[dimensionID - 1] * scaleFactor;
+              mask >>= 1;
+            }
+          }
+        }
+        else
+        {
+          auto bitID = (nDepth * DIMENSION_NO - 1);
+          for (depth_t iDepth = 0; iDepth < nDepth; ++iDepth)
+          {
+            scaleFactor *= 0.5;
+            for (dim_t dimensionID = DIMENSION_NO; dimensionID > 0; --dimensionID)
+            {
+              minNodePoint[dimensionID - 1] += childKey[bitID] * this->m_sizeInDimensions[dimensionID - 1] * scaleFactor;
+              --bitID;
+            }
           }
         }
 
