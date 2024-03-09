@@ -1896,11 +1896,11 @@ namespace OrthoTree
     OrthoTreePoint() = default;
     OrthoTreePoint(
       std::span<TVector const> const& points,
-      depth_t maxDepthNo,
+      std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
-      Create(*this, points, maxDepthNo, boxSpaceOptional, maxElementNoInNode);
+      Create(*this, points, maxDepthNoIn, boxSpaceOptional, maxElementNoInNode);
     }
 
     // Create
@@ -1908,14 +1908,14 @@ namespace OrthoTree
     static void Create(
       OrthoTreePoint& tree,
       std::span<TVector const> const& points,
-      depth_t maxDepthNoIn = 0,
+      std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::GetBoxOfPoints(points);
       autoc pointNo = points.size();
 
-      autoc maxDepthNo = maxDepthNoIn == 0 ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : maxDepthNoIn;
+      autoc maxDepthNo = (!maxDepthNoIn || maxDepthNoIn == 0) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthNoIn;
       tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
       Base::reserveContainer(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthNo, maxElementNoInNode));
       if (points.empty())
@@ -2428,7 +2428,7 @@ namespace OrthoTree
     OrthoTreeBoundingBox() = default;
     OrthoTreeBoundingBox(
       std::span<TBox const> const& boxes,
-      depth_t maxDepthNo,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> const& oBoxSpace = std::nullopt,
       std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
@@ -2440,13 +2440,13 @@ namespace OrthoTree
     static void Create(
       OrthoTreeBoundingBox& tree,
       std::span<TBox const> const& boxes,
-      depth_t maxDepthIn = 0,
+      std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       autoc boxSpace = boxSpaceOptional.has_value() ? *boxSpaceOptional : AD::GetBoxOfBoxes(boxes);
       autoc entityNo = boxes.size();
-      autoc maxDepthNo = maxDepthIn == 0 ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : maxDepthIn;
+      autoc maxDepthNo = (!maxDepthIn || maxDepthIn == 0) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
       tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
 
       Base::reserveContainer(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));

@@ -52,7 +52,7 @@ namespace OrthoTree
     OrthoTreeContainerBase() noexcept = default;
     OrthoTreeContainerBase(
       std::span<TData const> const& geometryCollection,
-      depth_t maxDepthNo = 0,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
@@ -66,7 +66,7 @@ namespace OrthoTree
 
     OrthoTreeContainerBase(
       std::vector<TData>&& geometryCollection,
-      depth_t maxDepthNo = 0,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
@@ -271,7 +271,7 @@ namespace OrthoTree
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
     static OrthoTreeContainerBox Create(
       std::span<TData const> const& geometryCollection,
-      depth_t maxDepthNo = 0,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
@@ -284,7 +284,7 @@ namespace OrthoTree
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
     static OrthoTreeContainerBox Create(
       std::vector<TData>&& geometryCollection,
-      depth_t maxDepthNo = 0,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> const& boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
