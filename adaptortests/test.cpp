@@ -253,12 +253,7 @@ namespace
     using namespace OrthoTree;
     auto constexpr DIMENSION_NO = 3;
 
-    using AD = typename TOrthoTreeA::AD;
     using GeometryA = typename TOrthoTreeA::TGeometry;
-    using VectorA = typename TOrthoTreeA::TVector;
-    using BoxA = typename TOrthoTreeA::TBox;
-    using RayA = typename TOrthoTreeA::TRay;
-    using PlaneA = typename TOrthoTreeA::TPlane;
 
     using Vector = VectorND<DIMENSION_NO, GeometryA>;
     using Box = BoundingBoxND<DIMENSION_NO, GeometryA>;
@@ -343,7 +338,7 @@ namespace
     auto const pointsInFrustumExpected = std::vector<std::size_t>{ 2, 3, 4, 6, 7 };
 
     tree.Insert(pointNo - 1, points.back());
-    tree.Erase<false>(0, points[0]);
+    tree.template Erase<false>(0, points[0]);
     auto const entityIDsInDFS_AfterErase_Actual = tree.CollectAllIdInDFS();
     auto const entityIDsInDFS_AfterErase_Expected = std::vector<std::size_t>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 };
 
@@ -395,19 +390,13 @@ namespace
     using namespace OrthoTree;
     auto constexpr DIMENSION_NO = 2;
 
-    using AD = typename TOrthoTreeA::AD;
     using GeometryA = typename TOrthoTreeA::TGeometry;
-    using VectorA = typename TOrthoTreeA::TVector;
-    using BoxA = typename TOrthoTreeA::TBox;
-    using RayA = typename TOrthoTreeA::TRay;
-    using PlaneA = typename TOrthoTreeA::TPlane;
 
     using Vector = VectorND<DIMENSION_NO, GeometryA>;
     using Box = BoundingBoxND<DIMENSION_NO, GeometryA>;
     using Ray = RayND<DIMENSION_NO, GeometryA>;
     using Plane = PlaneND<DIMENSION_NO, GeometryA>;
 
-    auto const sqrt3Reciproc = GeometryA(1.0 / sqrt(3.0));
     auto const sqrt2 = GeometryA(sqrt(2.0));
     auto const sqrt2Reciproc = GeometryA(1.0 / sqrt2);
 
@@ -476,7 +465,7 @@ namespace
 
     // Overlapping Boxes with the range
     constexpr bool shouldFullyContain = false;                                                // overlap is enough
-    auto const overlappingBoxIDsActual = quadtree.RangeSearch<shouldFullyContain>(searchBox); //: { 1, 2, 3, 4 }
+    auto const overlappingBoxIDsActual = quadtree.template RangeSearch<shouldFullyContain>(searchBox); //: { 1, 2, 3, 4 }
     auto const overlappingBoxIDsExpected = std::vector<std::size_t>{ 1, 2, 3, 4 };
 
     auto const pickedIDsActual = quadtree.PickSearch(pickPoint); //: { 2, 4 }

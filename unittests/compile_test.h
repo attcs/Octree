@@ -275,7 +275,6 @@ void testCompilePointC()
 template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxC()
 {
-  using Vector = OrthoTree::VectorND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using OT = OrthoTree::TreeBoxContainerND<N, nSplitStrategyAdditionalDepth>;

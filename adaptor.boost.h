@@ -72,44 +72,44 @@ namespace OrthoTree
 
         if constexpr (DIMENSION_NO == 1)
         {
-          return point.get<0>();
+          return point.template get<0>();
         }
         else if constexpr (DIMENSION_NO == 2)
         {
           switch (dimensionID)
           {
-          case 0: return point.get<0>();
-          case 1: return point.get<1>();
+          case 0: return point.template get<0>();
+          case 1: return point.template get<1>();
           }
         }
         else if constexpr (DIMENSION_NO == 3)
         {
           switch (dimensionID)
           {
-          case 0: return point.get<0>();
-          case 1: return point.get<1>();
-          case 2: return point.get<2>();
+          case 0: return point.template get<0>();
+          case 1: return point.template get<1>();
+          case 2: return point.template get<2>();
           }
         }
         else if constexpr (DIMENSION_NO == 4)
         {
           switch (dimensionID)
           {
-          case 0: return point.get<0>();
-          case 1: return point.get<1>();
-          case 2: return point.get<2>();
-          case 3: return point.get<3>();
+          case 0: return point.template get<0>();
+          case 1: return point.template get<1>();
+          case 2: return point.template get<2>();
+          case 3: return point.template get<3>();
           }
         }
         else
         {
           switch (dimensionID)
           {
-          case 0: return point.get<0>();
-          case 1: return point.get<1>();
-          case 2: return point.get<2>();
-          case 3: return point.get<3>();
-          case 4: return point.get<4>();
+          case 0: return point.template get<0>();
+          case 1: return point.template get<1>();
+          case 2: return point.template get<2>();
+          case 3: return point.template get<3>();
+          case 4: return point.template get<4>();
           }
         }
 
@@ -130,38 +130,38 @@ namespace OrthoTree
         {
           switch (dimensionID)
           {
-          case 0: point.set<0>(value); return;
-          case 1: point.set<1>(value); return;
+          case 0: point.template set<0>(value); return;
+          case 1: point.template set<1>(value); return;
           }
         }
         else if constexpr (DIMENSION_NO == 3)
         {
           switch (dimensionID)
           {
-          case 0: point.set<0>(value); return;
-          case 1: point.set<1>(value); return;
-          case 2: point.set<2>(value); return;
+          case 0: point.template set<0>(value); return;
+          case 1: point.template set<1>(value); return;
+          case 2: point.template set<2>(value); return;
           }
         }
         else if constexpr (DIMENSION_NO == 4)
         {
           switch (dimensionID)
           {
-          case 0: point.set<0>(value); return;
-          case 1: point.set<1>(value); return;
-          case 2: point.set<2>(value); return;
-          case 3: point.set<3>(value); return;
+          case 0: point.template set<0>(value); return;
+          case 1: point.template set<1>(value); return;
+          case 2: point.template set<2>(value); return;
+          case 3: point.template set<3>(value); return;
           }
         }
         else
         {
           switch (dimensionID)
           {
-          case 0: point.set<0>(value); return;
-          case 1: point.set<1>(value); return;
-          case 2: point.set<2>(value); return;
-          case 3: point.set<3>(value); return;
-          case 4: point.set<4>(value); return;
+          case 0: point.template set<0>(value); return;
+          case 1: point.template set<1>(value); return;
+          case 2: point.template set<2>(value); return;
+          case 3: point.template set<3>(value); return;
+          case 4: point.template set<4>(value); return;
           }
         }
 
