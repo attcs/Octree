@@ -1164,7 +1164,7 @@ namespace OrthoTree
 
     static constexpr MortonNodeID GetRootKey() noexcept { return MortonNodeID{ 1 }; }
 
-    static constexpr bool IsValidKey(uint64_t key) noexcept { return key; }
+    static constexpr bool IsValidKey(uint64_t key) noexcept { return key > 0; }
 
     template<std::size_t N>
     static inline bool IsValidKey(bitset_arithmetic<N> const& key) noexcept
@@ -1676,7 +1676,7 @@ namespace OrthoTree
       {
         foundEntities.resize(DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID ? entityNo - minEntityID - 1 : entityNo);
         std::iota(foundEntities.begin(), foundEntities.end(), DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID ? minEntityID + 1 : 0);
-        return entityNo;
+        return entityNo > 0;
       }
 
       // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
