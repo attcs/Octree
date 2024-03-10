@@ -638,6 +638,7 @@ namespace OrthoTree
 
 
 // Orthotree Core Types
+using FLargeWorldCoordinatesReal = double;
 
 using FQuadtreePoint = OrthoTree::UnrealAdaptor::QuadtreePointTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D>;
 using FQuadtreePoint2D = FQuadtreePoint;
