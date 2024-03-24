@@ -1059,12 +1059,19 @@ namespace OrthoTree
       return itEndUnique == ids.end();
     }
 
-    template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
-    bool insert(MortonNodeIDCR nodeKey, MortonNodeIDCR smallestNodeKey, std::size_t entityID, bool doInsertToLeaf) noexcept
+    static constexpr ChildID getChildIDByDepth(depth_t parentDepth, depth_t childDepth, MortonNodeIDCR childNodeKey)
     {
-      if (nodeKey == smallestNodeKey)
+      autoc depthDifference = childDepth - parentDepth;
+      assert(depthDifference > 0);
+      return getChildPartOfLocation(childNodeKey >> (DIMENSION_NO * (depthDifference - 1)));
+    }
+
+    template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
+    bool insertWithoutRebalancing(MortonNodeIDCR parentNodeKey, MortonNodeIDCR entityNodeKey, std::size_t entityID, bool doInsertToLeaf) noexcept
+    {
+      if (entityNodeKey == parentNodeKey)
       {
-        cont_at(this->m_nodes, nodeKey).Entities.emplace_back(entityID);
+        cont_at(this->m_nodes, entityNodeKey).Entities.emplace_back(entityID);
         if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
           assert(this->isEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
         return true;
@@ -1072,35 +1079,38 @@ namespace OrthoTree
 
       if (doInsertToLeaf)
       {
-        auto& newNode = this->m_nodes[nodeKey];
+        auto& newNode = this->m_nodes[entityNodeKey];
         newNode.Entities.emplace_back(entityID);
-        newNode.Box = this->CalculateExtent(nodeKey);
+        newNode.Box = this->CalculateExtent(entityNodeKey);
 
-        // Create all child between the new (nodeKey) and the smallest existing one (smallestNodeKey)
-        auto parentNodeKey = nodeKey;
+        // Create all child between the new (entityNodeKey) and the smallest existing one (parentNodeKey)
+        auto newParentNodeKey = entityNodeKey;
         do
         {
-          auto childNodeKey = parentNodeKey;
-          parentNodeKey >>= DIMENSION_NO;
+          auto childNodeKey = newParentNodeKey;
+          newParentNodeKey >>= DIMENSION_NO;
           assert(IsValidKey(parentNodeKey));
-          auto& parentNode = this->m_nodes[parentNodeKey];
-          parentNode.AddChildInOrder(childNodeKey);
-          parentNode.Box = this->CalculateExtent(parentNodeKey);
-        } while (parentNodeKey != smallestNodeKey);
+          auto& newParentNode = this->m_nodes[newParentNodeKey];
+          newParentNode.AddChildInOrder(childNodeKey);
+          newParentNode.Box = this->CalculateExtent(newParentNodeKey);
+        } while (newParentNodeKey != parentNodeKey);
       }
       else
       {
-        autoc nodeIterator = this->m_nodes.find(smallestNodeKey);
-        if (nodeIterator->second.IsAnyChildExist())
+        auto& parentNode = this->m_nodes.at(parentNodeKey);
+        if (parentNode.IsAnyChildExist())
         {
-          autoc nDepth = this->GetDepthID(smallestNodeKey);
-          autoc childNodeKey = nodeKey << (DIMENSION_NO * (this->m_maxDepthNo - nDepth - 1));
-          autoc childID = getChildPartOfLocation(childNodeKey);
-          auto& nodeChild = this->createChild(nodeIterator->second, childID, childNodeKey);
+          autoc parentDepth = this->GetDepthID(parentNodeKey);
+          autoc parentFlag = parentNodeKey << DIMENSION_NO;
+
+          autoc childID = getChildIDByDepth(parentDepth, this->GetDepthID(entityNodeKey), entityNodeKey);
+          autoc childNodeKey = parentFlag | MortonGridID(childID);
+
+          auto& nodeChild = this->createChild(parentNode, childID, childNodeKey);
           nodeChild.Entities.emplace_back(entityID);
         }
         else
-          nodeIterator->second.Entities.emplace_back(entityID);
+          parentNode.Entities.emplace_back(entityID);
       }
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
@@ -1975,7 +1985,7 @@ namespace OrthoTree
       autoc idLocation = this->getLocationID(point);
       autoc nodeKey = this->GetHash(this->m_maxDepthNo, idLocation);
 
-      return this->template insert<true>(nodeKey, smallestNodeKey, entityID, doInsertToLeaf);
+      return this->template insertWithoutRebalancing<true>(smallestNodeKey, nodeKey, entityID, doInsertToLeaf);
     }
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
@@ -2581,7 +2591,7 @@ namespace OrthoTree
       for (autoc& location : locations)
       {
         autoc nodeKey = this->GetHash(location.DepthID, location.MinGridID);
-        if (!this->template insert<SPLIT_DEPTH_INCREASEMENT == 0>(nodeKey, smallestNodeKey, entityID, doInsertToLeaf))
+        if (!this->template insertWithoutRebalancing<SPLIT_DEPTH_INCREASEMENT == 0>(smallestNodeKey, nodeKey, entityID, doInsertToLeaf))
           return false;
       }
 
