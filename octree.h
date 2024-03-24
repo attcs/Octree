@@ -1638,8 +1638,6 @@ namespace OrthoTree
     void rangeSearch(
       TBox const& range,
       std::span<TData const> const& geometryCollection,
-      double rangeVolume,
-      double parentNodeVolume,
       Node const& currentNode,
       std::vector<std::size_t>& foundEntities,
       std::size_t minEntityID = 0) const noexcept
@@ -1647,7 +1645,6 @@ namespace OrthoTree
       rangeSearchCopy<TData, DO_RANGE_MUST_FULLY_CONTAIN, DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(
         range, geometryCollection, currentNode, foundEntities, minEntityID);
 
-      autoc currentNodeVolume = parentNodeVolume / this->CHILD_NO;
       for (MortonNodeIDCR keyChild : currentNode.GetChildren())
       {
         autoc& childNode = this->GetNode(keyChild);
@@ -1664,11 +1661,11 @@ namespace OrthoTree
         if (!isOverlapped)
           continue;
 
-        if (rangeVolume >= currentNodeVolume && AD::AreBoxesOverlapped(range, childNode.Box))
+        if (AD::AreBoxesOverlapped(range, childNode.Box))
           collectAllIdInDFS<DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(childNode, foundEntities, minEntityID);
         else
           rangeSearch<TData, DO_RANGE_MUST_FULLY_CONTAIN, DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(
-            range, geometryCollection, rangeVolume, currentNodeVolume, childNode, foundEntities, minEntityID);
+            range, geometryCollection, childNode, foundEntities, minEntityID);
       }
     }
 
@@ -1711,14 +1708,11 @@ namespace OrthoTree
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         rangeVolume *= AD::GetBoxMaxC(range, dimensionID) - AD::GetBoxMinC(range, dimensionID);
 
-      autoc nodeVolume = this->m_volumeOfOverallSpace / static_cast<double>(1 << (DIMENSION_NO * depthNo));
-
       autoc foundEntityNoEstimation =
         this->m_volumeOfOverallSpace < 0.01 ? 10 : static_cast<std::size_t>((rangeVolume * entityNo) / this->m_volumeOfOverallSpace);
       foundEntities.reserve(foundEntityNoEstimation);
       autoc& node = this->GetNode(smallestNodeKey);
-      rangeSearch<TData, DO_RANGE_MUST_FULLY_CONTAIN, DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(
-        range, geometryCollection, rangeVolume, nodeVolume, node, foundEntities, minEntityID);
+      rangeSearch<TData, DO_RANGE_MUST_FULLY_CONTAIN, DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(range, geometryCollection, node, foundEntities, minEntityID);
 
       if constexpr (!DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY)
       {
