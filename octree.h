@@ -1306,11 +1306,19 @@ namespace OrthoTree
 
   public: // Getters
     inline auto const& GetNodes() const noexcept { return m_nodes; }
+    inline bool HasNode(MortonNodeIDCR key) const noexcept { return m_nodes.contains(key); }
     inline auto const& GetNode(MortonNodeIDCR key) const noexcept { return m_nodes.at(key); }
     inline auto const& GetBox() const noexcept { return m_boxSpace; }
     inline auto GetDepthMax() const noexcept { return m_maxDepthNo; }
     inline auto GetResolutionMax() const noexcept { return m_maxRasterResolution; }
+    inline auto GetNodeIDByEntity(std::size_t entityID) const noexcept
+    {
+      autoc it = std::ranges::find_if(m_nodes, [&](autoc& keyAndValue) {
+        return std::ranges::find(keyAndValue.second.Entities, entityID) != keyAndValue.second.Entities.end();
+      });
 
+      return it == m_nodes.end() ? MortonNodeID{} : it->first;
+    }
 
   public: // Main service functions
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
