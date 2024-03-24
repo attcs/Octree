@@ -758,12 +758,12 @@ namespace OrthoTree
     static autoce IS_LINEAR_TREE = DIMENSION_NO < 15;
 
     // Max value: 2 ^ DIMENSION_NO
-    using ChildID = uint64_t;
+    using ChildID = std::conditional < DIMENSION_NO<4, uint32_t, uint64_t>::type;
 
     // Max value: 2 ^ nDepth ^ DIMENSION_NO * 2 (signal bit)
-    using MortonGridID =
-      typename std::conditional <
-      DIMENSION_NO<4, uint32_t, typename std::conditional<IS_LINEAR_TREE, uint64_t, bitset_arithmetic<DIMENSION_NO * 4 + 1>>::type>::type;
+    using LinearMortonGridID = ChildID;
+    using NonLinearMortonGridID = bitset_arithmetic<DIMENSION_NO * 4 + 1>;
+    using MortonGridID = typename std::conditional<IS_LINEAR_TREE, LinearMortonGridID, NonLinearMortonGridID>::type;
 
     using MortonNodeID = MortonGridID; // same as the MortonGridID, but depth is signed by a sentinel bit.
     using MortonGridIDCR = typename std::conditional<IS_LINEAR_TREE, MortonNodeID const, MortonNodeID const&>::type;
@@ -869,8 +869,13 @@ namespace OrthoTree
     using DimArray = std::array<T, DIMENSION_NO>;
 
     template<typename TData>
-    using UnderlyingContainer =
-      typename std::conditional<IS_LINEAR_TREE, std::unordered_map<MortonNodeID, TData>, std::map<MortonNodeID, TData, bitset_arithmetic_compare>>::type;
+    using LinearUnderlyingContainer = std::unordered_map<MortonNodeID, TData>;
+
+    template<typename TData>
+    using NonLinearUnderlyingContainer = std::map<MortonNodeID, TData, bitset_arithmetic_compare>;
+
+    template<typename TData>
+    using UnderlyingContainer = typename std::conditional<IS_LINEAR_TREE, LinearUnderlyingContainer<TData>, NonLinearUnderlyingContainer<TData>>::type;
 
   protected: // Member variables
     UnderlyingContainer<Node> m_nodes;
@@ -886,13 +891,12 @@ namespace OrthoTree
 
 
   protected: // Aid functions
-    template<std::size_t N>
-    static inline ChildID convertMortonIdToChildId(bitset_arithmetic<N> const& bs) noexcept
+    static inline ChildID castMortonIdToChildId(NonLinearMortonGridID const& bs) noexcept
     {
-      assert(bs <= bitset_arithmetic<N>(std::numeric_limits<std::size_t>::max()));
+      assert(bs <= NonLinearMortonGridID(std::numeric_limits<std::size_t>::max()));
       return bs.to_ullong();
     }
-    static constexpr ChildID convertMortonIdToChildId(uint64_t morton) noexcept { return morton; }
+    static constexpr ChildID castMortonIdToChildId(LinearMortonGridID morton) noexcept { return morton; }
 
   protected: // Grid functions
     struct RasterInfo
@@ -1119,11 +1123,11 @@ namespace OrthoTree
       return true;
     }
 
-    template<typename TData = Node>
-    static void reserveContainer(std::map<MortonNodeID, TData, bitset_arithmetic_compare>&, std::size_t) noexcept {};
+    template<typename TData>
+    static void reserveContainer(NonLinearUnderlyingContainer<TData>&, std::size_t) noexcept {};
 
-    template<typename TData = Node>
-    static void reserveContainer(std::unordered_map<MortonNodeID, TData>& m, std::size_t n) noexcept
+    template<typename TData>
+    static void reserveContainer(LinearUnderlyingContainer<TData>& m, std::size_t n) noexcept
     {
       m.reserve(n);
     };
@@ -1174,13 +1178,9 @@ namespace OrthoTree
 
     static constexpr MortonNodeID GetRootKey() noexcept { return MortonNodeID{ 1 }; }
 
-    static constexpr bool IsValidKey(uint64_t key) noexcept { return key > 0; }
+    static constexpr bool IsValidKey(LinearMortonGridID key) noexcept { return key > 0; }
 
-    template<std::size_t N>
-    static inline bool IsValidKey(bitset_arithmetic<N> const& key) noexcept
-    {
-      return !key.none();
-    }
+    static inline bool IsValidKey(NonLinearMortonGridID const& key) noexcept { return key.any(); }
 
     static depth_t GetDepthID(MortonNodeID key) noexcept
     {
@@ -1206,7 +1206,7 @@ namespace OrthoTree
       if constexpr (IS_LINEAR_TREE)
       {
         autoce maskLastBits1 = (MortonNodeID{ 1 } << DIMENSION_NO) - 1;
-        return convertMortonIdToChildId(key & maskLastBits1);
+        return castMortonIdToChildId(key & maskLastBits1);
       }
       else
       {
@@ -1214,7 +1214,7 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           childID[dimensionID] = key[dimensionID];
 
-        return convertMortonIdToChildId(childID);
+        return castMortonIdToChildId(childID);
       }
     }
 
@@ -1900,9 +1900,9 @@ namespace OrthoTree
 
       while (locationBeginIterator != locationEndIterator)
       {
-        autoc actualChildID = Base::convertMortonIdToChildId((locationBeginIterator->GridID - gridID) >> shift);
+        autoc actualChildID = Base::castMortonIdToChildId((locationBeginIterator->GridID - gridID) >> shift);
         autoc actualEndIterator = std::partition_point(locationBeginIterator, locationEndIterator, [&](autoc& location) {
-          return actualChildID == Base::convertMortonIdToChildId((location.GridID - gridID) >> shift);
+          return actualChildID == Base::castMortonIdToChildId((location.GridID - gridID) >> shift);
         });
 
         autoc actualChildGridID = MortonGridID(actualChildID);
@@ -2294,7 +2294,7 @@ namespace OrthoTree
     {
       assert(depthID <= location.DepthID);
       autoc gridIDOnCurrentDepth = location.MinGridID >> ((location.DepthID - depthID) * DIMENSION_NO);
-      return Base::convertMortonIdToChildId(gridIDOnCurrentDepth - nodeIDOnCurrentDepth);
+      return Base::castMortonIdToChildId(gridIDOnCurrentDepth - nodeIDOnCurrentDepth);
     }
 
 
