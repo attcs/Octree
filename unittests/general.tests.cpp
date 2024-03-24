@@ -1160,7 +1160,7 @@ namespace Tree1DTest
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
-      autoc kLast = tree.FindSmallestNode({2.9});
+      autoc kLast = tree.FindSmallestNode(Point1D{ 2.9 });
       Assert::AreEqual<MortonNodeID>(7, kLast);
     }
 
@@ -1171,7 +1171,7 @@ namespace Tree1DTest
 
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
-      autoc kLast = tree.FindSmallestNode({ 1.5 });
+      autoc kLast = tree.FindSmallestNode(Point1D{ 1.5 });
       Assert::AreEqual<MortonNodeID>(6, kLast);
     }
 
@@ -2258,6 +2258,171 @@ namespace Tree3DTest
       }
       tree.UpdateIndexes<false>({});
     }
+
+    TEST_METHOD(CreateWithDataThenInsert)
+    {
+      // This gives a tree with 9 nodes.
+      std::vector<BoundingBox3D> treeData = {
+        {{ -2.0, -2.0, -2.0 }, { -1.0, -1.0, +2.0 }}, // split to 8 and 12
+        {{ +2.0, +2.0, +2.0 }, { +4.0, +1.0, +1.0 }}, // 127
+        {{ +2.0, +2.0, +2.0 }, { +3.1, +3.1, +3.1 }}, // 127
+      };
+      auto boxNo = treeData.size();
+
+      OctreeBox tree(
+        treeData,
+        8,
+        BoundingBox3D{
+          {-4, -4, -4},
+          {+4, +4, +4}
+        },
+        2);
+      tree.UpdateIndexes<false>({});
+
+      treeData.emplace_back(BoundingBox3D{
+        {+3.0, +3.0, +3.0},
+        {+4.0, +4.0, +4.0}
+      });
+      tree.Insert(boxNo, treeData.back(), false);
+      autoc nodeID127 = tree.GetNodeIDByEntity(boxNo);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID127, 127); // It should stuck on a parent level
+      ++boxNo;
+
+      treeData.emplace_back(BoundingBox3D{
+        {+2.0, +2.0, +2.0},
+        {+3.0, +3.0, +3.0}
+      });
+      tree.Insert(boxNo, treeData.back(), true);
+      autoc nodeID1016 = tree.GetNodeIDByEntity(boxNo);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1016, 1016); // It should place in the leaf node
+      ++boxNo;
+
+      treeData.emplace_back(BoundingBox3D{
+        {+3.0, +3.0, +3.0},
+        {+4.0, +4.0, +4.0}
+      });
+      tree.Insert(boxNo, treeData.back(), false);
+      autoc nodeID1023 = tree.GetNodeIDByEntity(boxNo);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1023, 1023); // Parent has a child, another child should be added.
+      ++boxNo;
+
+      // InsertWithRebalancing
+      {
+        treeData.emplace_back(BoundingBox3D{
+          {+3.0, +3.0, +3.0},
+          {+3.5, +3.5, +3.5}
+        });
+        tree.Insert(boxNo, treeData.back(), false); // 6
+        autoc nodeID1023_1 = tree.GetNodeIDByEntity(boxNo);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1023_1, 1023); // It should stuck on a parent level
+        ++boxNo;
+
+        treeData.emplace_back(BoundingBox3D{
+          {+3.0, +3.0, +3.5},
+          {+3.5, +3.5, +4.0}
+        });
+        tree.Insert(boxNo, treeData.back(), false); // 7
+        autoc nodeID1023_2 = tree.GetNodeIDByEntity(boxNo);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1023_2, 1023); // It should stuck on a parent level
+        ++boxNo;
+
+        treeData.emplace_back(BoundingBox3D{
+          {+3.0, +3.0, +3.1},
+          {+3.5, +3.5, +3.2}
+        });
+        tree.Insert(boxNo, treeData.back(), false); // 8
+        autoc nodeID1023_3 = tree.GetNodeIDByEntity(boxNo);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1023_3, 1023); // It should stuck on a parent level
+        ++boxNo;
+
+        treeData.emplace_back(BoundingBox3D{
+          {+3.75, +3.75, +3.75},
+          {+4.0, +4.0, +4.0}
+        });
+        tree.InsertWithRebalancing(boxNo, treeData.back(), treeData); // 9
+        autoc nodeID8191 = tree.GetNodeIDByEntity(boxNo);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8191, 8191); // It should reoder the elements
+        ++boxNo;
+
+        // It should reoder the elements
+        autoc nodeID8184_6 = tree.GetNodeIDByEntity(6);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8184_6, 8184); 
+        autoc nodeID8188_7 = tree.GetNodeIDByEntity(7);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8188_7, 8188);
+        autoc nodeID8184_8 = tree.GetNodeIDByEntity(8);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8184_8, 8184); 
+
+        treeData.emplace_back(BoundingBox3D{
+          { -2.0, -2.0, -2.0},
+          { -1.0, -1.0, -1.0}
+        });
+        tree.InsertWithRebalancing(boxNo, treeData.back(), treeData); // 10
+        autoc nodeID_10 = tree.GetNodeIDByEntity(boxNo);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_10, 71); // It should reoder the elements
+        ++boxNo;
+
+        // Splitted box is not reordered
+        autoc nodeID_0 = tree.GetNodeIDByEntity(0);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_0, 8);
+      }
+
+      tree.Update(
+        2,
+        {
+          {+2.0, +2.0, +2.0},
+          {+3.2, +3.2, +3.1}
+      });
+      autoc nodeID_2_u1 = tree.GetNodeIDByEntity(2);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_2_u1, 127); // It should remain
+
+      treeData[2] = {
+        {+2.0, +2.0, +2.0},
+        {+2.6, +2.6, +2.2}
+      };
+      tree.Update(2, treeData[2]); // 1016
+      autoc nodeID_2_u2 = tree.GetNodeIDByEntity(2);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_2_u2, 1016); // It should move
+
+      treeData[6] = {
+        {-2.0, -2.0, -2.0},
+        {+2.0, +2.0, +2.0}
+      };
+      tree.Update(6, treeData[6]); // 1
+      autoc nodeID_6_u1 = tree.GetNodeIDByEntity(6);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_6_u1, 1); // It should move
+
+      autoc oldbox2 = treeData[2];
+      treeData[2] = {
+        {-2.0, -2.0, -2.0},
+        {+0.0, +0.0, +0.0}
+      };
+      tree.Update(2, oldbox2, treeData[2]);
+      autoc nodeID_2_u3 = tree.GetNodeIDByEntity(2);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_2_u3, 71); // It should move
+
+      autoc oldbox4 = treeData[4];
+      treeData[4] = {
+        {+3.50, +3.50, +3.50},
+        {+3.75, +3.75, +3.75}
+      };
+      tree.Update(4, oldbox4, treeData[4], treeData); // It should move and erase 1016
+      autoc nodeID_4_u1 = tree.GetNodeIDByEntity(4);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_4_u1, 65528); // It should move 4 and 9 down with a level
+      autoc nodeID_9_u1 = tree.GetNodeIDByEntity(9);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_9_u1, 65535); 
+
+      Assert::IsFalse(tree.HasNode(1016));
+
+      treeData[8] = {
+        {+3.0, +3.0, +3.75},
+        {+3.25, +3.25, +4.0}
+      };
+      tree.Update(8, treeData[8], treeData);
+      autoc nodeID_8_u1 = tree.GetNodeIDByEntity(8);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_8_u1, 65508); // It should move
+    }
+
+
   };
 
 }
