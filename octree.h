@@ -827,7 +827,7 @@ namespace OrthoTree
         });
       }
 
-      constexpr void DisableChild(MortonNodeIDCR childKey) noexcept
+      constexpr void RemoveChild(MortonNodeIDCR childKey) noexcept
       {
         auto it = std::end(m_children);
         if constexpr (IS_LINEAR_TREE)
@@ -1210,6 +1210,20 @@ namespace OrthoTree
     {
       m.reserve(n);
     };
+
+    void removeNodeIfPossible(MortonNodeIDCR nodeKey, Node const& node) noexcept
+    {
+      if (nodeKey == GetRootKey())
+        return;
+
+      if (node.IsAnyChildExist() || !node.Entities.empty())
+        return;
+
+      autoc parentKey = nodeKey >> DIMENSION_NO;
+      auto& parentNode = this->m_nodes.at(parentKey);
+      parentNode.RemoveChild(nodeKey);
+      this->m_nodes.erase(nodeKey);
+    }
 
   public: // Static aid functions
     static constexpr std::size_t EstimateNodeNumber(std::size_t elementNo, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
@@ -2115,7 +2129,17 @@ namespace OrthoTree
     template<bool DO_UPDATE_ENTITY_IDS = true>
     constexpr bool EraseId(std::size_t entityID) noexcept
     {
-      autoc isErased = std::ranges::any_of(this->m_nodes, [&](auto& pairNode) { return erase(pairNode.second.Entities, entityID); });
+      bool isErased = false;
+      for (auto&[nodeKey, node] : this->m_nodes)
+      {
+        if (std::erase(node.Entities, entityID))
+        {
+          this->removeNodeIfPossible(nodeKey, node);
+          isErased = true;
+          break;
+        }
+      }
+      
       if (!isErased)
         return false;
 
@@ -2134,16 +2158,16 @@ namespace OrthoTree
     template<bool DO_UPDATE_ENTITY_IDS = true>
     bool Erase(std::size_t entitiyID, TVector const& entityOriginalPoint) noexcept
     {
-      autoc oldKey = this->FindSmallestNode(entityOriginalPoint);
-      if (!Base::IsValidKey(oldKey))
+      autoc nodeKey = this->FindSmallestNode(entityOriginalPoint);
+      if (!Base::IsValidKey(nodeKey))
         return false; // old box is not in the handled space domain
 
-      auto& idList = cont_at(this->m_nodes, oldKey).Entities;
-      autoc endIteratorAfterRemove = std::remove(idList.begin(), idList.end(), entitiyID);
-      if (endIteratorAfterRemove == idList.end())
+      auto& node = this->m_nodes.at(nodeKey);
+      autoc endIteratorAfterRemove = std::remove(node.Entities.begin(), node.Entities.end(), entitiyID);
+      if (endIteratorAfterRemove == node.Entities.end())
         return false; // id was not registered previously.
 
-      idList.erase(endIteratorAfterRemove, idList.end());
+      node.Entities.erase(endIteratorAfterRemove, node.Entities.end());
 
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
@@ -2152,6 +2176,8 @@ namespace OrthoTree
             id -= entitiyID < id;
         });
       }
+
+      this->removeNodeIfPossible(nodeKey, node);
 
       return true;
     }
@@ -2744,7 +2770,7 @@ namespace OrthoTree
     template<depth_t REMAINING_DEPTH>
     bool doEraseRec(MortonNodeIDCR nodeKey, std::size_t entityID) noexcept
     {
-      auto& node = cont_at(this->m_nodes, nodeKey);
+      auto& node = this->m_nodes.at(nodeKey);
       auto ret = this->doErase(node, entityID);
       if constexpr (REMAINING_DEPTH > 0)
       {
@@ -2752,6 +2778,8 @@ namespace OrthoTree
         for (MortonNodeIDCR childKey : children)
           ret |= doEraseRec<REMAINING_DEPTH - 1>(childKey, entityID);
       }
+
+      this->removeNodeIfPossible(nodeKey, node);
 
       return ret;
     }
@@ -2785,13 +2813,36 @@ namespace OrthoTree
     template<bool DO_UPDATE_ENTITY_IDS = true>
     constexpr bool EraseId(std::size_t idErase) noexcept
     {
-      bool bErased = false;
+      bool isErased = false;
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
-        bErased = std::ranges::any_of(this->m_nodes, [&](auto& pairNode) { return erase(pairNode.second.Entities, idErase); });
+      {
+        for (auto&[nodeKey, node] : this->m_nodes)
+        {
+          if (std::erase(node.Entities, idErase) > 0)
+          {
+            this->removeNodeIfPossible(nodeKey, node);
+            isErased = true;
+            break;
+          }
+        }
+      }
       else
-        std::ranges::for_each(this->m_nodes, [&](auto& pairNode) { bErased |= erase(pairNode.second.Entities, idErase) > 0; });
+      {
+        auto erasableNodes = std::vector<MortonNodeID>{};
+        for (auto&[nodeKey, node] : this->m_nodes)
+        {
+          autoc isErasedInCurrent = std::erase(node.Entities, idErase) > 0;
+          if (isErasedInCurrent)
+            erasableNodes.emplace_back(nodeKey);
 
-      if (!bErased)
+          isErased |= isErasedInCurrent;
+        }
+
+        for (MortonNodeIDCR nodeKey : erasableNodes)
+          this->removeNodeIfPossible(nodeKey, this->GetNode(nodeKey));
+      }
+
+      if (!isErased)
         return false;
 
       if constexpr (DO_UPDATE_ENTITY_IDS)

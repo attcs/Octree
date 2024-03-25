@@ -222,7 +222,7 @@ namespace GeneralTest
         Assert::AreEqual<size_t>(1, vChild.size());
         Assert::AreEqual(kChild, vChild[0]);
 
-        node.DisableChild(kChild);
+        node.RemoveChild(kChild);
         autoc vChild2 = node.GetChildren();
         Assert::AreEqual<size_t>(0, vChild2.size());
       }
@@ -262,7 +262,7 @@ namespace GeneralTest
       {
         autoc kChild = MortonNodeID(idChild);
 
-        node.DisableChild(kChild);
+        node.RemoveChild(kChild);
         autoc vChildActual = node.GetChildren();
         auto vChildExpected = vector<ChildID>(static_cast<size_t>(nChild - idChild) - 1);
         std::iota(begin(vChildExpected), end(vChildExpected), idChild + 1);
