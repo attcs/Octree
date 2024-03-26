@@ -213,7 +213,7 @@ namespace AdaptorTest
 
         Assert::IsTrue(vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
         Assert::IsTrue(vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
-        Assert::IsTrue(vector<std::size_t>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
+        Assert::IsTrue(vector<std::size_t>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
       }
  
       TEST_METHOD(BoxGeneral2DC_Example2)
@@ -349,7 +349,7 @@ namespace AdaptorTest
 
         Assert::IsTrue(vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
         Assert::IsTrue(vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
-        Assert::IsTrue(vector<std::size_t>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
+        Assert::IsTrue(vector<std::size_t>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
       }
  
       TEST_METHOD(BoxGeneral2DC_Example2)
@@ -594,7 +594,7 @@ namespace AdaptorTest
 
         Assert::IsTrue(vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 } == entityIDsInBFS);
         Assert::IsTrue(vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS);
-        Assert::IsTrue(vector<std::size_t>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
+        Assert::IsTrue(vector<std::size_t>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 } == entityIDsInDFS_AfterErase);
       }
  
       TEST_METHOD(BoxGeneral2DC_Example2)

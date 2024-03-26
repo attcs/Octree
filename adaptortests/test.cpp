@@ -340,7 +340,7 @@ namespace
     tree.Insert(pointNo - 1, points.back());
     tree.template Erase<false>(0, points[0]);
     auto const entityIDsInDFS_AfterErase_Actual = tree.CollectAllIdInDFS();
-    auto const entityIDsInDFS_AfterErase_Expected = std::vector<std::size_t>{ 1, 8, 9, 10, 7, 6, 5, 2, 3, 4 };
+    auto const entityIDsInDFS_AfterErase_Expected = std::vector<std::size_t>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 };
 
     auto const entityIDsKNNActual = tree.GetNearestNeighbors(pointOfkNN, 3, points);
     auto const entityIDsKNNExpected = std::vector<std::size_t>{ 1, 10, 8 };

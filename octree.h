@@ -971,7 +971,6 @@ namespace OrthoTree
     inline Node& createChild(Node& parentNode, ChildID childID, MortonNodeIDCR childKey) noexcept
     {
       assert(childID < this->CHILD_NO);
-      parentNode.AddChild(childKey);
 
       auto& nodeChild = m_nodes[childKey];
       if constexpr (std::is_integral_v<TGeometry>)
@@ -1110,7 +1109,10 @@ namespace OrthoTree
           if (parentNode.HasChild(childNodeKey))
             return childNodesCache.emplace_back(childNodeKey, this->m_nodes.at(childNodeKey)).second;
           else
+          {
+            parentNode.AddChildInOrder(childNodeKey);
             return childNodesCache.emplace_back(childNodeKey, this->createChild(parentNode, childID, childNodeKey)).second;
+          }
         };
 
         autoce isPointSolution = std::is_same_v<TVector, TData>;
@@ -1189,6 +1191,7 @@ namespace OrthoTree
           autoc childID = getChildIDByDepth(parentDepth, this->GetDepthID(entityNodeKey), entityNodeKey);
           autoc childNodeKey = parentFlag | MortonGridID(childID);
 
+          parentNode.AddChildInOrder(childNodeKey);
           auto& nodeChild = this->createChild(parentNode, childID, childNodeKey);
           nodeChild.Entities.emplace_back(entityID);
         }
@@ -2042,6 +2045,7 @@ namespace OrthoTree
         MortonGridID const childKey = parentKeyFlag | actualChildGridID;
         MortonGridID const beginChildGridID = gridID + actualChildGridID * stepNo;
 
+        parentNode.AddChild(childKey);
         auto& childNode = this->createChild(parentNode, actualChildID, childKey);
         this->addNodes(childNode, childKey, locationBeginIterator, actualEndIterator, beginChildGridID, remainingDepth);
       }
@@ -2519,6 +2523,7 @@ namespace OrthoTree
         MortonGridID const childKey = parentFlag | actualChildID_;
         MortonGridID const firstChildLocationID = firstLocationID + actualChildID_ * locationStepNo;
 
+        parentNode.AddChild(childKey);
         auto& nodeChild = this->createChild(parentNode, actualChildID, childKey);
         this->addNodes(nodeChild, childKey, beginLocationIterator, actualEndLocationIterator, firstChildLocationID, remainingDepthNo);
       }
