@@ -471,10 +471,10 @@ namespace OrthoTree
           continue;
         }
 
-        minDistances[dimensionID] = ((hComp > 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) - tolerance -
+        minDistances[dimensionID] = ((hComp > 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
                                      Base::GetPointC(rayBasePoint, dimensionID)) /
                                     hComp;
-        maxDistances[dimensionID] = ((hComp < 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) + tolerance -
+        maxDistances[dimensionID] = ((hComp < 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
                                      Base::GetPointC(rayBasePoint, dimensionID)) /
                                     hComp;
       }

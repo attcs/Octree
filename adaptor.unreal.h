@@ -117,7 +117,7 @@ namespace UnrealDummyTypes
   };
 
   template<typename geometry_type>
-  struct FVectorTemplate2 : FVectorTemplate < FVectorTemplate2<geometry_type>>
+  struct FVectorTemplate2 : FVectorTemplate<FVectorTemplate2<geometry_type>>
   {
     geometry_type X;
     geometry_type Y;
@@ -126,7 +126,8 @@ namespace UnrealDummyTypes
     FVectorTemplate2(geometry_type X, geometry_type Y)
     : X(X)
     , Y(Y)
-    {}
+    {
+    }
   };
 
   template<typename geometry_type>
@@ -141,7 +142,8 @@ namespace UnrealDummyTypes
     : X(X)
     , Y(Y)
     , Z(Z)
-    {}
+    {
+    }
   };
 
   template<typename FVector_>
@@ -152,15 +154,17 @@ namespace UnrealDummyTypes
     bool IsValid;
 
     FBoxTemplate() = default;
-    FBoxTemplate(FVector_ && Min, FVector_ && Max)
+    FBoxTemplate(FVector_&& Min, FVector_&& Max)
     : Min(Min)
     , Max(Max)
-    {}
+    {
+    }
 
     FBoxTemplate(FVector_ const& Min, FVector_ const& Max)
     : Min(Min)
     , Max(Max)
-    {}
+    {
+    }
 
     FVector_ GetCenter() const
     {
@@ -316,7 +320,10 @@ namespace OrthoTree
       static constexpr FVector2D_ const& GetRayOrigin(FRay2D_ const& ray) noexcept { return ray.Origin; }
 
       static constexpr FVector2D_ const& GetPlaneNormal(FPlane2D_ const& plane) noexcept { return plane.Direction; }
-      static constexpr FGeometry_ GetPlaneOrigoDistance(FPlane2D_ const& plane) noexcept { return FVector2D_::DotProduct(plane.Origin, plane.Direction); }
+      static constexpr FGeometry_ GetPlaneOrigoDistance(FPlane2D_ const& plane) noexcept
+      {
+        return FVector2D_::DotProduct(plane.Origin, plane.Direction);
+      }
     };
 
 
@@ -516,12 +523,14 @@ namespace OrthoTree
             continue;
           }
 
-          minDistances[dimensionID] = ((hComp > 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) - tolerance -
-                                       Base::GetPointC(rayBasePoint, dimensionID)) /
-                                      hComp;
-          maxDistances[dimensionID] = ((hComp < 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) + tolerance -
-                                       Base::GetPointC(rayBasePoint, dimensionID)) /
-                                      hComp;
+          minDistances[dimensionID] =
+            ((hComp > 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
+             Base::GetPointC(rayBasePoint, dimensionID)) /
+            hComp;
+          maxDistances[dimensionID] =
+            ((hComp < 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
+             Base::GetPointC(rayBasePoint, dimensionID)) /
+            hComp;
         }
 
         auto const rMin = *std::ranges::max_element(minDistances);
@@ -614,7 +623,8 @@ namespace OrthoTree
       UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>>;
 
     template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_>
-    using OctreePointTemplate = OrthoTreePoint<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>>;
+    using OctreePointTemplate =
+      OrthoTreePoint<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>>;
 
 
     // Templates for box types

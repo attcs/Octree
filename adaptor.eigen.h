@@ -171,12 +171,14 @@ namespace OrthoTree
             continue;
           }
 
-          minDistances[dimensionID] = ((hComp > 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) - tolerance -
-                                       Base::GetPointC(rayBasePoint, dimensionID)) /
-                                      hComp;
-          maxDistances[dimensionID] = ((hComp < 0.0 ? Base::GetBoxMinC(box, dimensionID) : Base::GetBoxMaxC(box, dimensionID)) + tolerance -
-                                       Base::GetPointC(rayBasePoint, dimensionID)) /
-                                      hComp;
+          minDistances[dimensionID] =
+            ((hComp > 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
+             Base::GetPointC(rayBasePoint, dimensionID)) /
+            hComp;
+          maxDistances[dimensionID] =
+            ((hComp < 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
+             Base::GetPointC(rayBasePoint, dimensionID)) /
+            hComp;
         }
 
         auto const rMin = *std::ranges::max_element(minDistances);
@@ -210,8 +212,7 @@ namespace OrthoTree
       }
 
       // Get box-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr PlaneRelation GetBoxPlaneRelation(
-        AlignedBox_ const& box, Scalar_ distanceOfOrigo, VectorType_ const& planeNormal, Scalar_ tolerance) noexcept
+      static constexpr PlaneRelation GetBoxPlaneRelation(AlignedBox_ const& box, Scalar_ distanceOfOrigo, VectorType_ const& planeNormal, Scalar_ tolerance) noexcept
       {
         assert(IsNormalizedVector(planeNormal));
 

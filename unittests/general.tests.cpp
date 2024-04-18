@@ -2787,6 +2787,7 @@ namespace LongIntAdaptor
       }
     }
 
+
     TEST_METHOD(PickSearch_Issue8)
     {
       autoce nDim = 3;
@@ -3020,6 +3021,102 @@ namespace LongIntAdaptor
       Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
     }
 
+    template<int nDim, typename TGeometry>
+    vector<BoundingBoxND<nDim, TGeometry>> readBoxCloud(std::filesystem::path const& path)
+    {
+      auto boxes = vector<BoundingBoxND<nDim, TGeometry>>{};
+      auto file = std::ifstream(path, std::ios::in);
+      if (file.fail())
+        return boxes;
+
+      auto line = std::string{};
+      while (std::getline(file, line))
+      {
+        if (file.fail())
+          return boxes;
+
+        //  LOG__DEBUG   min: { -446.75, 60.0322, -182.431 }, max: { -442.374, 60.0322, -180.318 }
+        auto& box = boxes.emplace_back();
+        auto sw = std::string_view(line).substr(22);
+        for (int iDim = 0; iDim < nDim; ++iDim)
+        {
+          autoc[ptr, ec] = std::from_chars(sw.data(), sw.data() + sw.length(), box.Min[iDim]);
+          if (ec != std::errc{})
+            return boxes;
+
+          sw.remove_prefix(ptr - sw.data());
+          if (!sw.empty())
+            sw.remove_prefix(2); // space
+        }
+
+        sw.remove_prefix(9);
+        for (int iDim = 0; iDim < nDim; ++iDim)
+        {
+          autoc[ptr, ec] = std::from_chars(sw.data(), sw.data() + sw.length(), box.Max[iDim]);
+          if (ec != std::errc{})
+            return boxes;
+
+          sw.remove_prefix(ptr - sw.data());
+          if (!sw.empty())
+            sw.remove_prefix(2); // space
+        }
+      }
+
+      return boxes;
+    }
+
+
+    TEST_METHOD(Issue26)
+    {
+      const auto boxes = readBoxCloud<3, float>("../../../bbox_output.txt");
+      if (boxes.empty())
+        return;
+
+      using Tree = TreeBoxContainerND<3, 2, float>;
+
+      autoc tree = Tree(boxes, 4, std::nullopt, 21, false);
+
+      srand(0);
+      const auto boxOfTree = tree.GetCore().GetBox();
+      const float rayIntersectTolerance = 0.1f;
+      for (int iTry = 0; iTry < 100; ++iTry)
+      {
+        constexpr int mod = 1000;
+        constexpr auto modr = 0.0011f; // it ensures a little bit bigger space, to make possible out of tree test
+
+        const float searchSizeY = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
+        const auto x = float(rand() % mod) * modr * (boxOfTree.Max[0] - boxOfTree.Min[0]);
+        const auto y = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
+        const auto z = float(rand() % mod) * modr * (boxOfTree.Max[2] - boxOfTree.Min[2]);
+        const auto pos = Tree::TVector{ x, y, z };
+        const auto searchBox = Tree::TBox{
+          {pos[0] - rayIntersectTolerance, pos[1] - searchSizeY, pos[2] - rayIntersectTolerance},
+          {pos[0] + rayIntersectTolerance,               pos[1], pos[2] + rayIntersectTolerance}
+        };
+
+        
+        auto resultOfBruteForce = vector<std::size_t>{};
+        autoc boxNo = boxes.size();
+        for (std::size_t id = 0; id < boxNo; ++id)
+        {
+          if (Tree::AD::AreBoxesOverlapped(searchBox, boxes[id], false, false))
+            resultOfBruteForce.emplace_back(id);
+        }
+
+        auto resultOfSearchBox = tree.RangeSearch<false>(searchBox);
+        std::ranges::sort(resultOfSearchBox);
+
+        std::vector<OctreeBox::MortonNodeID> nodeIDs;
+        for (auto entityID : resultOfBruteForce)
+          nodeIDs.emplace_back(tree.GetCore().GetNodeIDByEntity(entityID));
+
+        auto resultOfRay = tree.RayIntersectedAll(pos, { 0.0, -1.0, 0.0 }, rayIntersectTolerance, searchSizeY);
+        std::ranges::sort(resultOfRay);
+
+        Assert::IsTrue(resultOfBruteForce == resultOfSearchBox);
+        Assert::IsTrue(resultOfBruteForce == resultOfRay);
+      }
+    }
 
   };
 }
