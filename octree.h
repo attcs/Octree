@@ -313,11 +313,21 @@ namespace OrthoTree
 
     static constexpr bool DoesBoxContainPoint(TBox const& box, TVector const& point, TGeometry tolerance = 0) noexcept
     {
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (!(Base::GetBoxMinC(box, dimensionID) - tolerance <= Base::GetPointC(point, dimensionID) &&
-              Base::GetPointC(point, dimensionID) <= Base::GetBoxMaxC(box, dimensionID) + tolerance))
-          return false;
-
+      if (tolerance != 0.0)
+      {
+        assert(tolerance > 0);
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          if (!(Base::GetBoxMinC(box, dimensionID) - tolerance < Base::GetPointC(point, dimensionID) &&
+                Base::GetPointC(point, dimensionID) < Base::GetBoxMaxC(box, dimensionID) + tolerance))
+            return false;
+      }
+      else
+      {
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          if (!(Base::GetBoxMinC(box, dimensionID) <= Base::GetPointC(point, dimensionID) &&
+                Base::GetPointC(point, dimensionID) <= Base::GetBoxMaxC(box, dimensionID)))
+            return false;
+      }
       return true;
     }
 
@@ -460,11 +470,24 @@ namespace OrthoTree
         autoc hComp = Base::GetPointC(rayHeading, dimensionID);
         if (hComp == 0)
         {
-          if (Base::GetBoxMaxC(box, dimensionID) + tolerance < Base::GetPointC(rayBasePoint, dimensionID))
-            return std::nullopt;
+          if (tolerance != 0.0)
+          {
+            assert(tolerance > 0);
+            if (Base::GetBoxMaxC(box, dimensionID) + tolerance <= Base::GetPointC(rayBasePoint, dimensionID))
+              return std::nullopt;
 
-          if (Base::GetBoxMinC(box, dimensionID) - tolerance > Base::GetPointC(rayBasePoint, dimensionID))
-            return std::nullopt;
+            if (Base::GetBoxMinC(box, dimensionID) - tolerance >= Base::GetPointC(rayBasePoint, dimensionID))
+              return std::nullopt;
+
+          }
+          else
+          {
+            if (Base::GetBoxMaxC(box, dimensionID) < Base::GetPointC(rayBasePoint, dimensionID))
+              return std::nullopt;
+
+            if (Base::GetBoxMinC(box, dimensionID) > Base::GetPointC(rayBasePoint, dimensionID))
+              return std::nullopt;
+          }
 
           minDistances[dimensionID] = -inf;
           maxDistances[dimensionID] = +inf;
