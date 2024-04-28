@@ -30,11 +30,6 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 ## Requirements
 * Language standard: C++20 or above
 
-## Time complexity
-* Creation: O(n)
-* Range search: O(log{2^N}(n)) (where N is the number of the dimension)
-* Access any node: O(1)
-
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
 * Use the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
