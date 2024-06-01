@@ -189,6 +189,7 @@
     <ClCompile Include="general.tests.cpp" />
     <ClCompile Include="adaptor.tests.cpp" />
     <ClCompile Include="performance.tests.cpp" />
+    <ClCompile Include="random.tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\adaptor.boost.h" />
