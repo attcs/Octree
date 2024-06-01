@@ -1082,7 +1082,65 @@ namespace GeneralTest
       Assert::IsTrue(std::ranges::is_permutation(vector{ 3, 4 }, Entities));
     }
 
+    TEST_METHOD(RayIntersectedAll_ToleranceTest)
+    {
+      autoc boxes = vector{
+        BoundingBox2D{{ 0.0, 0.0 }, { 1.0, 1.0 }},
+        BoundingBox2D{{ 1.0, 1.0 }, { 2.0, 2.0 }},
+        BoundingBox2D{{ 2.0, 2.0 }, { 3.0, 3.0 }},
+        BoundingBox2D{{ 3.0, 3.0 }, { 4.0, 4.0 }},
+        BoundingBox2D{{ 1.2, 1.2 }, { 2.8, 2.8 }}
+      };
 
+      autoc qt = QuadtreeBox(
+        boxes,
+        3 // max depth
+        ,
+        std::nullopt // user-provided bounding Box for all
+        ,
+        2 // max element in a node
+      );
+
+      // Horizontal
+
+      autoc raySearchWithTolerance__0_000 = qt.RayIntersectedAll(
+        { 1.1, 2.0 }, // origin
+        { 1.0, 0.0 }, // dir
+        boxes,
+        0.0); // it is on the edge of 1, inside 4, and hit 2
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 1, 2, 4 }, raySearchWithTolerance__0_000));
+
+      autoc raySearchWithTolerance__0_001 = qt.RayIntersectedAll(
+        { 0.000, 2.001 }, // origin
+        { 1.0, 0.0 },    // dir
+        boxes,
+        0.001); // ray hits 2,4
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 2, 4 }, raySearchWithTolerance__0_001));
+
+      autoc raySearchWithTolerance__0_001_2 = qt.RayIntersectedAll(
+        { 2.0005, 2.0 }, // origin
+        { 1.0, 0.0 }, // dir
+        boxes,
+        0.001);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 1, 2, 4 }, raySearchWithTolerance__0_001_2));
+
+      autoc raySearchWithTolerance__0_900 = qt.RayIntersectedAll(
+        { 1.000, 1.9 }, // origin
+        { 1.0, 0.0 }, // dir
+        boxes,
+        0.9);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 1, 2, 4 }, raySearchWithTolerance__0_900));
+
+      autoc raySearchWithTolerance__0_901 = qt.RayIntersectedAll(
+        { 1.000, 1.9 }, // origin
+        { 1.0, 0.0 },   // dir
+        boxes,
+        0.901);
+      Assert::IsTrue(std::ranges::is_permutation(vector{ 0, 1, 2, 4 }, raySearchWithTolerance__0_901));
+
+      // TODO: Vertical
+      // TODO: Diagonal
+    }
   };
 }
 
@@ -3066,6 +3124,37 @@ namespace LongIntAdaptor
     }
 
 
+    template<int nDim, typename TGeometry>
+    vector<PointND<nDim, TGeometry>> readPointCloud(std::filesystem::path const& path)
+    {
+      auto points = vector<PointND<nDim, TGeometry>>{};
+      auto file = std::ifstream(path, std::ios::in);
+      if (file.fail())
+        return points;
+
+      auto line = std::string{};
+      while (std::getline(file, line))
+      {
+        if (file.fail())
+          return points;
+
+        auto& point = points.emplace_back();
+        auto sw = std::string_view(line).substr(18);
+        for (int iDim = 0; iDim < nDim; ++iDim)
+        {
+          autoc[ptr, ec] = std::from_chars(sw.data(), sw.data() + sw.length(), point[iDim]);
+          if (ec != std::errc{})
+            return points;
+
+          sw.remove_prefix(ptr - sw.data());
+          if (iDim < nDim - 1)
+            sw.remove_prefix(3); // space
+        }
+      }
+
+      return points;
+    }
+
     TEST_METHOD(Issue26)
     {
       const auto boxes = readBoxCloud<3, float>("../../../bbox_output.txt");
@@ -3073,28 +3162,38 @@ namespace LongIntAdaptor
         return;
 
       using Tree = TreeBoxContainerND<3, 2, float>;
-
       autoc tree = Tree(boxes, 4, std::nullopt, 21, false);
 
-      srand(0);
       const auto boxOfTree = tree.GetCore().GetBox();
       const float rayIntersectTolerance = 0.1f;
-      for (int iTry = 0; iTry < 100; ++iTry)
+
+      auto points = readPointCloud<3, float>("../../../pos_input.txt");
+      auto searchSizeYs = vector(points.size(), 100.0f);
+      if (points.empty())
       {
-        constexpr int mod = 1000;
-        constexpr auto modr = 0.0011f; // it ensures a little bit bigger space, to make possible out of tree test
+        srand(0);
+        for (int iTry = 0; iTry < 100; ++iTry)
+        {
+          constexpr int mod = 1000;
+          constexpr auto modr = 0.0011f; // it ensures a little bit bigger space, to make possible out of tree test
+          const float searchSizeY = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
+          searchSizeYs.emplace_back(searchSizeY);
 
-        const float searchSizeY = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
-        const auto x = float(rand() % mod) * modr * (boxOfTree.Max[0] - boxOfTree.Min[0]);
-        const auto y = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
-        const auto z = float(rand() % mod) * modr * (boxOfTree.Max[2] - boxOfTree.Min[2]);
-        const auto pos = Tree::TVector{ x, y, z };
+          const auto x = float(rand() % mod) * modr * (boxOfTree.Max[0] - boxOfTree.Min[0]);
+          const auto y = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
+          const auto z = float(rand() % mod) * modr * (boxOfTree.Max[2] - boxOfTree.Min[2]);
+          points.emplace_back(Tree::TVector{ x, y, z });
+        }
+      }
+
+
+      for (int pointID = 0; pointID < points.size(); ++pointID)
+      {
         const auto searchBox = Tree::TBox{
-          {pos[0] - rayIntersectTolerance, pos[1] - searchSizeY, pos[2] - rayIntersectTolerance},
-          {pos[0] + rayIntersectTolerance,               pos[1], pos[2] + rayIntersectTolerance}
+          {points[pointID][0] - rayIntersectTolerance, points[pointID][1] - searchSizeYs[pointID], points[pointID][2] - rayIntersectTolerance},
+          {points[pointID][0] + rayIntersectTolerance, points[pointID][1] + rayIntersectTolerance, points[pointID][2] + rayIntersectTolerance}
         };
-
-        
+      
         auto resultOfBruteForce = vector<std::size_t>{};
         autoc boxNo = boxes.size();
         for (std::size_t id = 0; id < boxNo; ++id)
@@ -3110,8 +3209,11 @@ namespace LongIntAdaptor
         for (auto entityID : resultOfBruteForce)
           nodeIDs.emplace_back(tree.GetCore().GetNodeIDByEntity(entityID));
 
-        auto resultOfRay = tree.RayIntersectedAll(pos, { 0.0, -1.0, 0.0 }, rayIntersectTolerance, searchSizeY);
+        auto resultOfRay = tree.RayIntersectedAll(points[pointID], { 0.0, -1.0, 0.0 }, rayIntersectTolerance, searchSizeYs[pointID]);
         std::ranges::sort(resultOfRay);
+        std::vector<OctreeBox::MortonNodeID> nodeIDRs;
+        for (auto entityID : resultOfRay)
+          nodeIDRs.emplace_back(tree.GetCore().GetNodeIDByEntity(entityID));
 
         Assert::IsTrue(resultOfBruteForce == resultOfSearchBox);
         Assert::IsTrue(resultOfBruteForce == resultOfRay);
