@@ -778,8 +778,10 @@ namespace GeneralTest
         auto vMoveActualMax = PointND<N>{};
         for (dim_t dimensionID = 0; dimensionID < N; ++dimensionID)
         {
-          AD::SetPointC(vMoveActualMin, dimensionID, AD::GetBoxMinC(nodeAfter.Box, dimensionID) - AD::GetBoxMinC(nodePre.Box, dimensionID));
-          AD::SetPointC(vMoveActualMax, dimensionID, AD::GetBoxMaxC(nodeAfter.Box, dimensionID) - AD::GetBoxMaxC(nodePre.Box, dimensionID));
+          AD::SetPointC(
+            vMoveActualMin, dimensionID, AD::GetBoxMinC(nodeAfter.GetBox(), dimensionID) - AD::GetBoxMinC(nodePre.GetBox(), dimensionID));
+          AD::SetPointC(
+            vMoveActualMax, dimensionID, AD::GetBoxMaxC(nodeAfter.GetBox(), dimensionID) - AD::GetBoxMaxC(nodePre.GetBox(), dimensionID));
         }
 
         autoc bMin = AD::ArePointsEqual(vMoveActualMin, vMoveExpected, rAcc);

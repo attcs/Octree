@@ -822,12 +822,17 @@ namespace OrthoTree
     {
     private:
       std::vector<MortonNodeID> m_children;
+      TBox m_box = {};
 
     public: // Public members
       std::vector<std::size_t> Entities = {};
-      TBox Box = {};
 
     public:
+      constexpr void SetBox(TBox const& box) noexcept { m_box = box; }
+      constexpr void SetBox(TBox && box) noexcept { m_box = std::move(box); }
+      constexpr TBox const& GetBoxInternal() const noexcept { return m_box; }
+      constexpr TBox const& GetBox() const noexcept { return m_box; }
+
       constexpr void AddChild(MortonNodeIDCR childKey) noexcept { m_children.emplace_back(childKey); }
 
       constexpr void AddChildInOrder(MortonNodeIDCR childKey) noexcept
@@ -1050,31 +1055,38 @@ namespace OrthoTree
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           maxNodePoint[dimensionID] = minNodePoint[dimensionID] + this->m_sizeInDimensions[dimensionID] * scaleFactor;
 
+        TBox childBox;
         LOOPIVDEP
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          AD::SetBoxMinC(nodeChild.Box, dimensionID, static_cast<TGeometry>(minNodePoint[dimensionID]));
-          AD::SetBoxMaxC(nodeChild.Box, dimensionID, static_cast<TGeometry>(maxNodePoint[dimensionID]));
+          AD::SetBoxMinC(childBox, dimensionID, static_cast<TGeometry>(minNodePoint[dimensionID]));
+          AD::SetBoxMaxC(childBox, dimensionID, static_cast<TGeometry>(maxNodePoint[dimensionID]));
         }
+
+        nodeChild.SetBox(std::move(childBox));
       }
       else
       {
+        TBox childBox;
         LOOPIVDEP
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           autoc isGreater = ((ChildID{ 1 } << dimensionID) & childID) > 0;
           AD::SetBoxMinC(
-            nodeChild.Box,
+            childBox,
             dimensionID,
-            isGreater * (AD::GetBoxMaxC(parentNode.Box, dimensionID) + AD::GetBoxMinC(parentNode.Box, dimensionID)) * TGeometry{ 0.5 } +
-              (!isGreater) * AD::GetBoxMinC(parentNode.Box, dimensionID));
+            isGreater * (AD::GetBoxMaxC(parentNode.GetBoxInternal(), dimensionID) + AD::GetBoxMinC(parentNode.GetBoxInternal(), dimensionID)) *
+                TGeometry{ 0.5 } +
+              (!isGreater) * AD::GetBoxMinC(parentNode.GetBoxInternal(), dimensionID));
 
           AD::SetBoxMaxC(
-            nodeChild.Box,
+            childBox,
             dimensionID,
-            isGreater * AD::GetBoxMaxC(parentNode.Box, dimensionID) +
-              (!isGreater) * ((AD::GetBoxMaxC(parentNode.Box, dimensionID) + AD::GetBoxMinC(parentNode.Box, dimensionID)) * TGeometry{ 0.5 }));
+            isGreater * AD::GetBoxMaxC(parentNode.GetBoxInternal(), dimensionID) +
+              (!isGreater) * ((AD::GetBoxMaxC(parentNode.GetBoxInternal(), dimensionID) + AD::GetBoxMinC(parentNode.GetBoxInternal(), dimensionID)) *
+                              TGeometry{ 0.5 }));
         }
+        nodeChild.SetBox(std::move(childBox));
       }
       return nodeChild;
     }
@@ -1255,7 +1267,7 @@ namespace OrthoTree
       {
         auto& newNode = this->m_nodes[entityNodeKey];
         newNode.Entities.emplace_back(entityID);
-        newNode.Box = this->CalculateExtent(entityNodeKey);
+        newNode.SetBox(this->CalculateExtent(entityNodeKey));
 
         // Create all child between the new (entityNodeKey) and the smallest existing one (parentNodeKey)
         auto newParentNodeKey = entityNodeKey;
@@ -1266,7 +1278,7 @@ namespace OrthoTree
           assert(IsValidKey(parentNodeKey));
           auto& newParentNode = this->m_nodes[newParentNodeKey];
           newParentNode.AddChildInOrder(childNodeKey);
-          newParentNode.Box = this->CalculateExtent(newParentNodeKey);
+          newParentNode.SetBox(this->CalculateExtent(newParentNodeKey));
         } while (newParentNodeKey != parentNodeKey);
       }
       else
@@ -1524,7 +1536,7 @@ namespace OrthoTree
       this->m_maxElementNo = maxElementNo;
 
       auto& nodeRoot = this->m_nodes[GetRootKey()];
-      nodeRoot.Box = box;
+      nodeRoot.SetBox(box);
       autoc ri = this->getGridRasterizer(this->m_boxSpace, this->m_maxRasterResolution);
       this->m_rasterizerFactors = std::move(ri.rasterizerFactors);
       this->m_sizeInDimensions = std::move(ri.sizeInDimensions);
@@ -1731,7 +1743,11 @@ namespace OrthoTree
     void Move(TVector const& moveVector) noexcept
     {
       auto ep = TExecutionPolicy{}; // GCC 11.3
-      std::for_each(ep, m_nodes.begin(), m_nodes.end(), [&moveVector](auto& pairKeyNode) { AD::MoveBox(pairKeyNode.second.Box, moveVector); });
+      std::for_each(ep, m_nodes.begin(), m_nodes.end(), [&moveVector](auto& pairKeyNode) {
+        auto box = pairKeyNode.second.GetBoxInternal();
+        AD::MoveBox(box, moveVector);
+        pairKeyNode.second.SetBox(std::move(box));
+      });
       AD::MoveBox(this->m_boxSpace, moveVector);
     }
 
@@ -1886,14 +1902,14 @@ namespace OrthoTree
         {
           autoc isUpperNodeInTheDimension = IsValidKey(keyChild & (MortonNodeID{ 1 } << dimensionID));
           if (isUpperNodeInTheDimension)
-            isOverlapped &= AD::GetBoxMinC(childNode.Box, dimensionID) <= AD::GetBoxMaxC(range, dimensionID);
+            isOverlapped &= AD::GetBoxMinC(childNode.GetBoxInternal(), dimensionID) <= AD::GetBoxMaxC(range, dimensionID);
           else
-            isOverlapped &= AD::GetBoxMaxC(childNode.Box, dimensionID) >= AD::GetBoxMinC(range, dimensionID);
+            isOverlapped &= AD::GetBoxMaxC(childNode.GetBoxInternal(), dimensionID) >= AD::GetBoxMinC(range, dimensionID);
         }
         if (!isOverlapped)
           continue;
 
-        if (AD::AreBoxesOverlapped(range, childNode.Box))
+        if (AD::AreBoxesOverlapped(range, childNode.GetBoxInternal()))
           collectAllIdInDFS<DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(childNode, foundEntities, minEntityID);
         else
           rangeSearch<TData, DO_RANGE_MUST_FULLY_CONTAIN, DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(
@@ -1973,7 +1989,7 @@ namespace OrthoTree
 
       auto results = std::vector<std::size_t>{};
       autoc selector = [&](MortonNodeIDCR, Node const& node) -> bool {
-        return AD::GetBoxPlaneRelation(node.Box, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
+        return AD::GetBoxPlaneRelation(node.GetBoxInternal(), distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
       };
 
       autoc procedure = [&](MortonNodeIDCR, Node const& node) {
@@ -1996,7 +2012,7 @@ namespace OrthoTree
 
       auto results = std::vector<std::size_t>{};
       autoc selector = [&](MortonNodeIDCR, Node const& node) -> bool {
-        autoc relation = AD::GetBoxPlaneRelation(node.Box, distanceOfOrigo, planeNormal, tolerance);
+        autoc relation = AD::GetBoxPlaneRelation(node.GetBoxInternal(), distanceOfOrigo, planeNormal, tolerance);
         return relation != PlaneRelation::Negative;
       };
 
@@ -2030,7 +2046,7 @@ namespace OrthoTree
       autoc selector = [&](MortonNodeIDCR, Node const& node) -> bool {
         for (autoc& plane : boundaryPlanes)
         {
-          autoc relation = AD::GetBoxPlaneRelation(node.Box, AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance);
+          autoc relation = AD::GetBoxPlaneRelation(node.GetBoxInternal(), AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance);
           if (relation == PlaneRelation::Hit)
             return true;
 
@@ -2443,7 +2459,7 @@ namespace OrthoTree
       if (Base::IsValidKey(smallestNodeKey))
       {
         autoc& smallestNode = this->GetNode(smallestNodeKey);
-        autoc wallDistance = getMinBoxWallDistance(searchPoint, smallestNode.Box);
+        autoc wallDistance = getMinBoxWallDistance(searchPoint, smallestNode.GetBoxInternal());
         createEntityDistance(smallestNode, searchPoint, points, neighborEntities);
         if (!smallestNode.IsAnyChildExist())
           if (getFarestDistance(neighborEntities, neighborNo) < wallDistance)
@@ -2459,8 +2475,8 @@ namespace OrthoTree
         auto aDist = TVector{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          autoc dMin = AD::GetBoxMinC(node.Box, dimensionID) - AD::GetPointC(searchPoint, dimensionID);
-          autoc dMax = AD::GetBoxMaxC(node.Box, dimensionID) - AD::GetPointC(searchPoint, dimensionID);
+          autoc dMin = AD::GetBoxMinC(node.GetBoxInternal(), dimensionID) - AD::GetPointC(searchPoint, dimensionID);
+          autoc dMax = AD::GetBoxMaxC(node.GetBoxInternal(), dimensionID) - AD::GetPointC(searchPoint, dimensionID);
 
           // If point projection in dimensionID is within min and max the wall distance should be calculated.
           AD::SetPointC(aDist, dimensionID, dMin * dMax < 0 ? 0 : std::min(std::abs(dMin), std::abs(dMax)));
@@ -3040,8 +3056,7 @@ namespace OrthoTree
       for (MortonNodeIDCR keyChild : parentNode.GetChildren())
       {
         autoc& childNode = this->GetNode(keyChild);
-
-        if (!AD::DoesBoxContainPoint(childNode.Box, pickPoint))
+        if (!AD::DoesBoxContainPoint(childNode.GetBoxInternal(), pickPoint))
           continue;
 
         pickSearch(pickPoint, boxes, childNode, foundEntitiyIDs);
@@ -3223,7 +3238,7 @@ namespace OrthoTree
         for (autoc& leftChildNode : childNodes[Left])
           for (autoc& rightChildNode : childNodes[Right])
             if (!(leftChildNode.Iterator == parentNodePair[Left].Iterator && rightChildNode.Iterator == parentNodePair[Right].Iterator))
-              if (AD::AreBoxesOverlapped(leftChildNode.Iterator->second.Box, rightChildNode.Iterator->second.Box, false))
+              if (AD::AreBoxesOverlapped(leftChildNode.Iterator->second.GetBoxInternal(), rightChildNode.Iterator->second.GetBoxInternal(), false))
                 nodePairToProceed.emplace(std::array{ leftChildNode, rightChildNode });
       }
 
@@ -3541,7 +3556,7 @@ namespace OrthoTree
       TGeometry maxExaminationDistance,
       std::vector<EntityDistance>& foundEntities) const noexcept
     {
-      autoc isNodeHit = AD::GetRayBoxDistance(node.Box, rayBasePoint, rayHeading, tolerance);
+      autoc isNodeHit = AD::GetRayBoxDistance(node.GetBoxInternal(), rayBasePoint, rayHeading, tolerance);
       if (!isNodeHit)
         return;
 
@@ -3583,7 +3598,7 @@ namespace OrthoTree
       for (autoc childKey : node.GetChildren())
       {
         autoc& nodeChild = this->GetNode(childKey);
-        autoc distance = AD::GetRayBoxDistance(nodeChild.Box, rayBasePoint, rayHeading, tolerance);
+        autoc distance = AD::GetRayBoxDistance(nodeChild.GetBoxInternal(), rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
 
@@ -3631,7 +3646,7 @@ namespace OrthoTree
       TVector const& rayBasePoint, TVector const& rayHeading, std::span<TBox const> const& boxes, TGeometry tolerance) const noexcept
     {
       autoc& node = this->GetNode(this->GetRootKey());
-      autoc distance = AD::GetRayBoxDistance(node.Box, rayBasePoint, rayHeading, tolerance);
+      autoc distance = AD::GetRayBoxDistance(node.GetBoxInternal(), rayBasePoint, rayHeading, tolerance);
       if (!distance)
         return std::nullopt;
 
