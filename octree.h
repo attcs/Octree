@@ -216,11 +216,11 @@ namespace OrthoTree
       } -> std::convertible_to<PlaneRelation>;
     } && requires(TBox const& box, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) {
       {
-        TAdapter::IsRayHit(box, rayBasePoint, rayHeading, tolerance)
+        TAdapter::GetRayBoxDistance(box, rayBasePoint, rayHeading, tolerance)
       } -> std::convertible_to<std::optional<double>>;
     } && requires(TBox const& box, TRay const& ray, TGeometry tolerance) {
       {
-        TAdapter::IsRayHit(box, ray, tolerance)
+        TAdapter::GetRayBoxDistance(box, ray, tolerance)
       } -> std::convertible_to<std::optional<double>>;
     };
 
@@ -456,29 +456,30 @@ namespace OrthoTree
       }
     }
 
-    static constexpr std::optional<double> IsRayHit(TBox const& box, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) noexcept
+    static constexpr std::optional<double> GetRayBoxDistance(TBox const& box, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) noexcept
     {
       if (DoesBoxContainPoint(box, rayBasePoint, tolerance))
         return 0.0;
 
       autoce inf = std::numeric_limits<double>::infinity();
 
-      auto minDistances = std::array<double, DIMENSION_NO>{};
-      auto maxDistances = std::array<double, DIMENSION_NO>{};
+      auto minBoxDistances = std::array<double, DIMENSION_NO>{};
+      auto maxBoxDistances = std::array<double, DIMENSION_NO>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc hComp = Base::GetPointC(rayHeading, dimensionID);
-        if (hComp == 0)
+        autoc dirComp = Base::GetPointC(rayHeading, dimensionID);
+        if (dirComp == 0)
         {
           if (tolerance != 0.0)
           {
+            // Box should be within tolerance (<, not <=)
+
             assert(tolerance > 0);
             if (Base::GetBoxMaxC(box, dimensionID) + tolerance <= Base::GetPointC(rayBasePoint, dimensionID))
               return std::nullopt;
 
             if (Base::GetBoxMinC(box, dimensionID) - tolerance >= Base::GetPointC(rayBasePoint, dimensionID))
               return std::nullopt;
-
           }
           else
           {
@@ -489,30 +490,39 @@ namespace OrthoTree
               return std::nullopt;
           }
 
-          minDistances[dimensionID] = -inf;
-          maxDistances[dimensionID] = +inf;
-          continue;
+          minBoxDistances[dimensionID] = -inf;
+          maxBoxDistances[dimensionID] = +inf;
         }
-
-        minDistances[dimensionID] = ((hComp > 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
-                                     Base::GetPointC(rayBasePoint, dimensionID)) /
-                                    hComp;
-        maxDistances[dimensionID] = ((hComp < 0.0 ? (Base::GetBoxMinC(box, dimensionID) - tolerance) : (Base::GetBoxMaxC(box, dimensionID) + tolerance)) -
-                                     Base::GetPointC(rayBasePoint, dimensionID)) /
-                                    hComp;
+        else
+        {
+          autoc minBox = Base::GetBoxMinC(box, dimensionID) - tolerance;
+          autoc maxBox = Base::GetBoxMaxC(box, dimensionID) + tolerance;
+          autoc pointComp = Base::GetPointC(rayBasePoint, dimensionID);
+          autoc dirCompRecip = 1.0 / dirComp;
+          if (dirComp < 0.0)
+          {
+            minBoxDistances[dimensionID] = (maxBox - pointComp) * dirCompRecip;
+            maxBoxDistances[dimensionID] = (minBox - pointComp) * dirCompRecip;
+          }
+          else
+          {
+            minBoxDistances[dimensionID] = (minBox - pointComp) * dirCompRecip;
+            maxBoxDistances[dimensionID] = (maxBox - pointComp) * dirCompRecip;
+          }
+        }
       }
 
-      autoc rMin = *std::ranges::max_element(minDistances);
-      autoc rMax = *std::ranges::min_element(maxDistances);
-      if (rMin > rMax || rMax < 0.0)
+      autoc minBoxDistance = *std::ranges::max_element(minBoxDistances);
+      autoc maxBoxDistance = *std::ranges::min_element(maxBoxDistances);
+      if (minBoxDistance > maxBoxDistance || maxBoxDistance < 0.0)
         return std::nullopt;
-
-      return rMin < 0 ? rMax : rMin;
+      else
+        return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
     }
 
-    static constexpr std::optional<double> IsRayHit(TBox const& box, TRay const& ray, TGeometry tolerance) noexcept
+    static constexpr std::optional<double> GetRayBoxDistance(TBox const& box, TRay const& ray, TGeometry tolerance) noexcept
     {
-      return IsRayHit(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
+      return GetRayBoxDistance(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
     }
 
     // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
@@ -3531,13 +3541,13 @@ namespace OrthoTree
       TGeometry maxExaminationDistance,
       std::vector<EntityDistance>& foundEntities) const noexcept
     {
-      autoc isNodeHit = AD::IsRayHit(node.Box, rayBasePoint, rayHeading, tolerance);
+      autoc isNodeHit = AD::GetRayBoxDistance(node.Box, rayBasePoint, rayHeading, tolerance);
       if (!isNodeHit)
         return;
 
       for (autoc entityID : node.Entities)
       {
-        autoc entityDistance = AD::IsRayHit(boxes[entityID], rayBasePoint, rayHeading, tolerance);
+        autoc entityDistance = AD::GetRayBoxDistance(boxes[entityID], rayBasePoint, rayHeading, tolerance);
         if (entityDistance && (maxExaminationDistance == 0 || entityDistance.value() <= maxExaminationDistance))
           foundEntities.push_back({ { TGeometry(entityDistance.value()) }, entityID });
       }
@@ -3559,7 +3569,7 @@ namespace OrthoTree
         foundEntities.empty() ? std::numeric_limits<double>::infinity() : static_cast<double>(foundEntities.rbegin()->Distance);
       for (autoc entityID : node.Entities)
       {
-        autoc distance = AD::IsRayHit(boxes[entityID], rayBasePoint, rayHeading, tolerance);
+        autoc distance = AD::GetRayBoxDistance(boxes[entityID], rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
 
@@ -3573,7 +3583,7 @@ namespace OrthoTree
       for (autoc childKey : node.GetChildren())
       {
         autoc& nodeChild = this->GetNode(childKey);
-        autoc distance = AD::IsRayHit(nodeChild.Box, rayBasePoint, rayHeading, tolerance);
+        autoc distance = AD::GetRayBoxDistance(nodeChild.Box, rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
 
@@ -3621,7 +3631,7 @@ namespace OrthoTree
       TVector const& rayBasePoint, TVector const& rayHeading, std::span<TBox const> const& boxes, TGeometry tolerance) const noexcept
     {
       autoc& node = this->GetNode(this->GetRootKey());
-      autoc distance = AD::IsRayHit(node.Box, rayBasePoint, rayHeading, tolerance);
+      autoc distance = AD::GetRayBoxDistance(node.Box, rayBasePoint, rayHeading, tolerance);
       if (!distance)
         return std::nullopt;
 
