@@ -3118,6 +3118,100 @@ namespace LongIntAdaptor
       }
     }
 
+    TEST_METHOD(Issue29)
+    {
+      using BoxType = BoundingBoxND<3, float>;
+      using EcsMap = std::unordered_map<std::size_t, BoxType>;
+      using Tree = TreeBoxND<3, 2, float>;
+
+      struct EcsAccessor
+      {
+        using value_type = EcsMap::mapped_type;
+
+        EcsAccessor(const EcsMap& entities)
+        : entities(entities)
+        {
+        }
+
+        size_t size() const noexcept { return entities.size(); }
+        const value_type& operator[](size_t entIdx) const { return entities.at(entIdx); }
+
+      private:
+        const EcsMap& entities;
+      };
+
+      EcsMap entities;
+      Tree tree;
+      {
+        const auto boxes = readBoxCloud<3, float>("../../../bbox_output.txt");
+        if (boxes.empty())
+          return;
+
+        BoxType boxSpace = Tree::AD::BoxInvertedInit();
+        for (size_t i = 0; i < boxes.size(); i++)
+        {
+          entities[i] = boxes[i];
+
+          boxSpace.Min[0] = std::min(boxSpace.Min[0], boxes[i].Min[0]);
+          boxSpace.Min[1] = std::min(boxSpace.Min[1], boxes[i].Min[1]);
+          boxSpace.Min[2] = std::min(boxSpace.Min[2], boxes[i].Min[2]);
+
+          boxSpace.Max[0] = std::max(boxSpace.Max[0], boxes[i].Max[0]);
+          boxSpace.Max[1] = std::max(boxSpace.Max[1], boxes[i].Max[1]);
+          boxSpace.Max[2] = std::max(boxSpace.Max[2], boxes[i].Max[2]);
+        }
+
+        Tree::Create(tree, {}, 4, std::nullopt, 21);
+        for (auto& [k, v] : entities)
+        {
+          tree.Insert(k, v);
+        }
+      }
+
+
+      srand(0);
+      const auto boxOfTree = tree.GetBox();
+      const float rayIntersectTolerance = 0.1f;
+      for (int iTry = 0; iTry < 100; ++iTry)
+      {
+        constexpr int mod = 1000;
+        constexpr auto modr = 0.0011f; // it ensures a little bit bigger space, to make possible out of tree test
+
+        const float searchSizeY = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
+        const auto x = float(rand() % mod) * modr * (boxOfTree.Max[0] - boxOfTree.Min[0]);
+        const auto y = float(rand() % mod) * modr * (boxOfTree.Max[1] - boxOfTree.Min[1]);
+        const auto z = float(rand() % mod) * modr * (boxOfTree.Max[2] - boxOfTree.Min[2]);
+        const auto pos = Tree::TVector{ x, y, z };
+        const auto searchBox = Tree::TBox{
+          {pos[0] - rayIntersectTolerance, pos[1] - searchSizeY, pos[2] - rayIntersectTolerance},
+          {pos[0] + rayIntersectTolerance,               pos[1], pos[2] + rayIntersectTolerance}
+        };
+
+
+        auto resultOfBruteForce = vector<std::size_t>{};
+        autoc boxNo = entities.size();
+        for (auto& iter : entities)
+        {
+          if (Tree::AD::AreBoxesOverlapped(searchBox, iter.second, false, false))
+            resultOfBruteForce.emplace_back(iter.first);
+        }
+
+        EcsAccessor accessor(entities);
+        auto resultOfSearchBox = tree.RangeSearch<false>(searchBox, accessor);
+        std::ranges::sort(resultOfSearchBox);
+
+        std::vector<OctreeBox::MortonNodeID> nodeIDs;
+        for (auto entityID : resultOfBruteForce)
+          nodeIDs.emplace_back(tree.GetNodeIDByEntity(entityID));
+
+        auto resultOfRay = tree.RayIntersectedAll(pos, { 0.0, -1.0, 0.0 }, accessor, rayIntersectTolerance, searchSizeY);
+        std::ranges::sort(resultOfRay);
+
+        Assert::IsTrue(resultOfBruteForce == resultOfSearchBox);
+        Assert::IsTrue(resultOfBruteForce == resultOfRay);
+      }
+    }
+
   };
 }
 

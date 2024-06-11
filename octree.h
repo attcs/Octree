@@ -141,6 +141,17 @@ namespace OrthoTree
 
   // Adaptor concepts
 
+  template<typename TAccessor>
+  concept AccessorConcept = requires(TAccessor accessor, size_t index) {
+    typename TAccessor::value_type;
+    {
+      accessor[index]
+    } -> std::convertible_to<const typename TAccessor::value_type>;
+    {
+      accessor.size()
+    } -> std::convertible_to<size_t>;
+  };
+
   template<class TAdapter, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
   concept AdaptorBasicsConcept = requires(TVector& point, dim_t dimensionID, TGeometry value) {
     {
@@ -478,7 +489,6 @@ namespace OrthoTree
 
             if (Base::GetBoxMinC(box, dimensionID) - tolerance >= Base::GetPointC(rayBasePoint, dimensionID))
               return std::nullopt;
-
           }
           else
           {
@@ -1108,14 +1118,14 @@ namespace OrthoTree
       return getChildPartOfLocation(childNodeKey >> (DIMENSION_NO * (depthDifference - 1)));
     }
 
-    template<typename TData, bool DO_UNIQUENESS_CHECK_TO_INDICIES>
+    template<typename TData, bool DO_UNIQUENESS_CHECK_TO_INDICIES, AccessorConcept TAccessor = std::span<const TBox>>
     bool insertWithRebalancing(
       MortonNodeIDCR parentNodeKey,
       depth_t parentDepth,
       MortonNodeIDCR entitiyNodeKey,
       depth_t entityDepth,
       std::size_t newEntityID,
-      std::span<TData const> const& geometryCollection) noexcept
+      TAccessor const& geometryCollection) noexcept
     {
       auto& parentNode = this->m_nodes.at(parentNodeKey);
       autoc shouldInsertInParentNode = entitiyNodeKey == parentNodeKey;
@@ -1809,10 +1819,10 @@ namespace OrthoTree
     }
 
 
-    template<typename TData, bool DO_RANGE_MUST_FULLY_CONTAIN = false, bool DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID = false>
+    template<typename TData, bool DO_RANGE_MUST_FULLY_CONTAIN = false, bool DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID = false, AccessorConcept TAccessor = std::span<const TData>>
     constexpr void rangeSearchCopy(
       TBox const& range,
-      std::span<TData const> const& geometryCollection,
+      TAccessor const& geometryCollection,
       Node const& parentNode,
       std::vector<std::size_t>& foundEntities,
       std::size_t minEntityID = 0) const noexcept
@@ -1856,10 +1866,10 @@ namespace OrthoTree
     }
 
 
-    template<typename TData, bool DO_RANGE_MUST_FULLY_CONTAIN = false, bool DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID = false>
+    template<typename TData, bool DO_RANGE_MUST_FULLY_CONTAIN = false, bool DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID = false, AccessorConcept TAccessor = std::span<const TData>>
     void rangeSearch(
       TBox const& range,
-      std::span<TData const> const& geometryCollection,
+      TAccessor const& geometryCollection,
       Node const& currentNode,
       std::vector<std::size_t>& foundEntities,
       std::size_t minEntityID = 0) const noexcept
@@ -1896,9 +1906,9 @@ namespace OrthoTree
       bool DO_RANGE_MUST_FULLY_CONTAIN = false,
       bool DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID = false,
       bool DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY = true,
-      bool IS_BOX_TYPE = false>
-    bool rangeSearchRoot(
-      TBox const& range, std::span<TData const> const& geometryCollection, std::vector<std::size_t>& foundEntities, std::size_t minEntityID = 0) const noexcept
+      bool IS_BOX_TYPE = false,
+      AccessorConcept TAccessor = std::span<const TData>>
+    bool rangeSearchRoot(TBox const& range, TAccessor const& geometryCollection, std::vector<std::size_t>& foundEntities, std::size_t minEntityID = 0) const noexcept
     {
       autoc entityNo = geometryCollection.size();
       if (AD::AreBoxesOverlapped(range, this->m_boxSpace))
@@ -1955,9 +1965,8 @@ namespace OrthoTree
         return AD::GetPointPlaneRelation(entity, distanceOfOrigo, planeNormal, tolerance);
     }
 
-    template<typename TData>
-    std::vector<std::size_t> planeIntersection(
-      TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TData const> const& data) const noexcept
+    template<typename TData, AccessorConcept TAccessor = std::span<const TData>>
+    std::vector<std::size_t> planeIntersection(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TAccessor const& data) const noexcept
     {
       assert(AD::IsNormalizedVector(planeNormal));
 
@@ -1978,9 +1987,9 @@ namespace OrthoTree
       return results;
     }
 
-    template<typename TData>
+    template<typename TData, AccessorConcept TAccessor = std::span<const TData>>
     std::vector<std::size_t> planePositiveSegmentation(
-      TGeometry const& distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TData const> const& data) const noexcept
+      TGeometry const& distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TAccessor const& data) const noexcept
     {
       assert(AD::IsNormalizedVector(planeNormal));
 
@@ -2008,8 +2017,8 @@ namespace OrthoTree
     }
 
     // Get all entities which relation is positive or intersected by the given space boundary planes
-    template<typename TData>
-    std::vector<std::size_t> frustumCulling(std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, std::span<TData const> const& data) const noexcept
+    template<typename TData, AccessorConcept TAccessor = std::span<const TData>>
+    std::vector<std::size_t> frustumCulling(std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, TAccessor const& data) const noexcept
     {
       auto results = std::vector<std::size_t>{};
       if (boundaryPlanes.empty())
@@ -2141,8 +2150,9 @@ namespace OrthoTree
   public: // Create
     // Ctors
     OrthoTreePoint() = default;
+    template<AccessorConcept TAccessor = std::span<const TVector>>
     OrthoTreePoint(
-      std::span<TVector const> const& points,
+      TAccessor const& points,
       std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
@@ -2151,10 +2161,10 @@ namespace OrthoTree
     }
 
     // Create
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy, AccessorConcept TAccessor = std::span<const TVector>>
     static void Create(
       OrthoTreePoint& tree,
-      std::span<TVector const> const& points,
+      TAccessor const& points,
       std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
@@ -2188,7 +2198,8 @@ namespace OrthoTree
     }
 
   public: // Edit functions
-    bool InsertWithRebalancing(std::size_t newEntityID, TVector const& newPoint, std::span<TVector const> const& points) noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    bool InsertWithRebalancing(std::size_t newEntityID, TVector const& newPoint, TAccessor const& points) noexcept
     {
       if (!AD::DoesBoxContainPoint(this->m_boxSpace, newPoint))
         return false;
@@ -2301,7 +2312,8 @@ namespace OrthoTree
 
 
     // Update id with rebalancing by the new point information
-    bool Update(std::size_t entityID, TVector const& newPoint, std::span<TVector const> const& points) noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    bool Update(std::size_t entityID, TVector const& newPoint, TAccessor const& points) noexcept
     {
       if (!AD::DoesBoxContainPoint(this->m_boxSpace, newPoint))
         return false;
@@ -2314,7 +2326,8 @@ namespace OrthoTree
 
 
     // Update id with rebalacing by the new point information and the erase part is aided by the old point geometry data
-    bool Update(std::size_t entityID, TVector const& oldPoint, TVector const& newPoint, std::span<TVector const> const& points) noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    bool Update(std::size_t entityID, TVector const& oldPoint, TVector const& newPoint, TAccessor const& points) noexcept
     {
       if (!AD::DoesBoxContainPoint(this->m_boxSpace, newPoint))
         return false;
@@ -2326,7 +2339,8 @@ namespace OrthoTree
     }
 
   public: // Search functions
-    bool Contains(TVector const& searchPoint, std::span<TVector const> const& points, TGeometry tolerance) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    bool Contains(TVector const& searchPoint, TAccessor const& points, TGeometry tolerance) const noexcept
     {
       autoc smallestNodeKey = this->FindSmallestNode(searchPoint);
       if (!Base::IsValidKey(smallestNodeKey))
@@ -2337,8 +2351,8 @@ namespace OrthoTree
     }
 
     // Range search
-    template<bool DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY = false>
-    std::vector<std::size_t> RangeSearch(TBox const& range, std::span<TVector const> const& points) const noexcept
+    template<bool DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY = false, AccessorConcept TAccessor = std::span<const TVector>>
+    std::vector<std::size_t> RangeSearch(TBox const& range, TAccessor const& points) const noexcept
     {
       auto foundEntityIDs = std::vector<std::size_t>();
 
@@ -2349,34 +2363,38 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    template<AccessorConcept TAccessor = std::span<const TVector>>
     inline std::vector<std::size_t> PlaneSearch(
-      TGeometry const& distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+      TGeometry const& distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TAccessor const& points) const noexcept
     {
       return this->template planeIntersection<TVector>(distanceOfOrigo, planeNormal, tolerance, points);
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneSearch(TPlane const& plane, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    inline std::vector<std::size_t> PlaneSearch(TPlane const& plane, TGeometry tolerance, TAccessor const& points) const noexcept
     {
       return this->template planeIntersection<TVector>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, points);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    template<AccessorConcept TAccessor = std::span<const TVector>>
     inline std::vector<std::size_t> PlanePositiveSegmentation(
-      TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+      TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TAccessor const& points) const noexcept
     {
       return this->template planePositiveSegmentation<TVector>(distanceOfOrigo, planeNormal, tolerance, points);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    inline std::vector<std::size_t> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance, TAccessor const& points) const noexcept
     {
       return this->template planePositiveSegmentation<TVector>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, points);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> FrustumCulling(
-      std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, std::span<TVector const> const& points) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    inline std::vector<std::size_t> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, TAccessor const& points) const noexcept
     {
       return this->template frustumCulling<TVector>(boundaryPlanes, tolerance, points);
     }
@@ -2401,8 +2419,8 @@ namespace OrthoTree
     }
 
 
-    static void createEntityDistance(
-      Node const& node, TVector const& searchPoint, std::span<TVector const> const& points, std::multiset<EntityDistance>& neighborEntities) noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    static void createEntityDistance(Node const& node, TVector const& searchPoint, TAccessor const& points, std::multiset<EntityDistance>& neighborEntities) noexcept
     {
       for (autoc id : node.Entities)
         neighborEntities.insert({ { AD::Distance(searchPoint, points[id]) }, id });
@@ -2426,7 +2444,8 @@ namespace OrthoTree
 
   public:
     // K Nearest Neighbor
-    std::vector<std::size_t> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, std::span<TVector const> const& points) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TVector>>
+    std::vector<std::size_t> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, TAccessor const& points) const noexcept
     {
       auto neighborEntities = std::multiset<EntityDistance>();
       autoc smallestNodeKey = this->FindSmallestNode(searchPoint);
@@ -2712,8 +2731,9 @@ namespace OrthoTree
   public: // Create
     // Ctors
     OrthoTreeBoundingBox() = default;
+    template<AccessorConcept TAccessor = std::span<const TBox>>
     OrthoTreeBoundingBox(
-      std::span<TBox const> const& boxes,
+      TAccessor const& boxes,
       std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> const& oBoxSpace = std::nullopt,
       std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
@@ -2722,10 +2742,10 @@ namespace OrthoTree
     }
 
     // Create
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy, AccessorConcept TAccessor = std::span<const TBox>>
     static void Create(
       OrthoTreeBoundingBox& tree,
-      std::span<TBox const> const& boxes,
+      TAccessor const& boxes,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
@@ -2801,7 +2821,8 @@ namespace OrthoTree
     }
 
   public: // Edit functions
-    bool InsertWithRebalancing(std::size_t newEntityID, TBox const& newBox, std::span<TBox const> const& boxes) noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    bool InsertWithRebalancing(std::size_t newEntityID, TBox const& newBox, TAccessor const& boxes) noexcept
     {
       if (!AD::AreBoxesOverlapped(this->m_boxSpace, newBox))
         return false;
@@ -2979,7 +3000,8 @@ namespace OrthoTree
 
 
     // Update id with rebalancing by the new bounding box information
-    bool Update(std::size_t entityID, TBox const& boxNew, std::span<TBox const> const& boxes) noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    bool Update(std::size_t entityID, TBox const& boxNew, TAccessor const& boxes) noexcept
     {
       if (!AD::AreBoxesOverlapped(this->m_boxSpace, boxNew))
         return false;
@@ -2992,7 +3014,8 @@ namespace OrthoTree
 
 
     // Update id with rebalancing by the new bounding box information and the erase part is aided by the old bounding box geometry data
-    bool Update(std::size_t entityID, TBox const& oldBox, TBox const& newBox, std::span<TBox const> const& boxes) noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    bool Update(std::size_t entityID, TBox const& oldBox, TBox const& newBox, TAccessor const& boxes) noexcept
     {
       if (!AD::AreBoxesOverlapped(this->m_boxSpace, newBox))
         return false;
@@ -3023,7 +3046,8 @@ namespace OrthoTree
     }
 
 
-    void pickSearch(TVector const& pickPoint, std::span<TBox const> const& boxes, Node const& parentNode, std::vector<std::size_t>& foundEntitiyIDs) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    void pickSearch(TVector const& pickPoint, TAccessor const& boxes, Node const& parentNode, std::vector<std::size_t>& foundEntitiyIDs) const noexcept
     {
       std::ranges::copy_if(parentNode.Entities, back_inserter(foundEntitiyIDs), [&](autoc id) { return AD::DoesBoxContainPoint(boxes[id], pickPoint); });
 
@@ -3041,7 +3065,8 @@ namespace OrthoTree
 
   public: // Search functions
     // Pick search
-    std::vector<std::size_t> PickSearch(TVector const& pickPoint, std::span<TBox const> const& boxes) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    std::vector<std::size_t> PickSearch(TVector const& pickPoint, TAccessor const& boxes) const noexcept
     {
       auto foundEntitiyIDs = std::vector<std::size_t>();
       if (!AD::DoesBoxContainPoint(this->m_boxSpace, pickPoint))
@@ -3086,8 +3111,8 @@ namespace OrthoTree
 
 
     // Range search
-    template<bool DO_MUST_FULLY_CONTAIN = true>
-    std::vector<std::size_t> RangeSearch(TBox const& range, std::span<TBox const> const& boxes) const noexcept
+    template<bool DO_MUST_FULLY_CONTAIN = true, AccessorConcept TAccessor = std::span<const TBox>>
+    std::vector<std::size_t> RangeSearch(TBox const& range, TAccessor const& boxes) const noexcept
     {
       auto foundEntities = std::vector<std::size_t>();
 
@@ -3105,34 +3130,38 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    template<AccessorConcept TAccessor = std::span<const TBox>>
     inline std::vector<std::size_t> PlaneIntersection(
-      TGeometry const& distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+      TGeometry const& distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TAccessor const& boxes) const noexcept
     {
       return this->template planeIntersection<TBox>(distanceOfOrigo, planeNormal, tolerance, boxes);
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<std::size_t> PlaneIntersection(TPlane const& plane, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    inline std::vector<std::size_t> PlaneIntersection(TPlane const& plane, TGeometry tolerance, TAccessor const& boxes) const noexcept
     {
       return this->template planeIntersection<TBox>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, boxes);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    template<AccessorConcept TAccessor = std::span<const TBox>>
     inline std::vector<std::size_t> PlanePositiveSegmentation(
-      TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+      TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TAccessor const& boxes) const noexcept
     {
       return this->template planePositiveSegmentation<TBox>(distanceOfOrigo, planeNormal, tolerance, boxes);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    inline std::vector<std::size_t> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance, TAccessor const& boxes) const noexcept
     {
       return this->template planePositiveSegmentation<TBox>(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, boxes);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<std::size_t> FrustumCulling(
-      std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, std::span<TBox const> const& boxes) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    inline std::vector<std::size_t> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance, TAccessor const& boxes) const noexcept
     {
       return this->template frustumCulling<TBox>(boundaryPlanes, tolerance, boxes);
     }
@@ -3142,11 +3171,9 @@ namespace OrthoTree
     using FCollisionDetector = std::function<bool(std::size_t, TBox const&, std::size_t, TBox const&)>;
 
     // Collision detection: Returns all overlapping boxes from the source trees.
+    template<AccessorConcept TLeftAccesor = std::span<const TBox>, AccessorConcept TRightAccesor = std::span<const TBox>>
     static std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(
-      OrthoTreeBoundingBox const& leftTree,
-      std::span<TBox const> const& leftBoxes,
-      OrthoTreeBoundingBox const& rightTree,
-      std::span<TBox const> const& rightBoxes) noexcept
+      OrthoTreeBoundingBox const& leftTree, TLeftAccesor const& leftBoxes, OrthoTreeBoundingBox const& rightTree, TRightAccesor const& rightBoxes) noexcept
     {
       using NodeIterator = typename Base::template UnderlyingContainer<Node>::const_iterator;
       struct NodeIteratorAndStatus
@@ -3228,16 +3255,17 @@ namespace OrthoTree
 
 
     // Collision detection: Returns all overlapping boxes from the source trees.
+    template<AccessorConcept TLeftAccesor = std::span<const TBox>, AccessorConcept TRightAccesor = std::span<const TBox>>
     inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(
-      std::span<TBox const> const& boxes, OrthoTreeBoundingBox const& otherTree, std::span<TBox const> const& otherBoxes) const noexcept
+      TLeftAccesor const& boxes, OrthoTreeBoundingBox const& otherTree, TRightAccesor const& otherBoxes) const noexcept
     {
       return CollisionDetection(*this, boxes, otherTree, otherBoxes);
     }
 
   private:
     // Collision detection between the stored elements from top to bottom logic
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
-    std::vector<std::pair<std::size_t, std::size_t>> CollisionDetectionObsolete(std::span<TBox const> const& boxes) const noexcept
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy, AccessorConcept TAccessor = std::span<const TBox>>
+    std::vector<std::pair<std::size_t, std::size_t>> CollisionDetectionObsolete(TAccessor const& boxes) const noexcept
     {
       autoc entityNo = boxes.size();
 
@@ -3276,8 +3304,8 @@ namespace OrthoTree
 
 
     // Collision detection between the stored elements from bottom to top logic
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
-    std::vector<std::pair<std::size_t, std::size_t>> collisionDetection(std::span<TBox const> const& boxes, FCollisionDetector&& collisionDetector) const noexcept
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy, AccessorConcept TAccessor = std::span<const TBox>>
+    std::vector<std::pair<std::size_t, std::size_t>> collisionDetection(TAccessor const& boxes, FCollisionDetector&& collisionDetector) const noexcept
     {
       using CollisionDetectionContainer = std::vector<std::pair<std::size_t, std::size_t>>;
 
@@ -3502,8 +3530,8 @@ namespace OrthoTree
 
   public:
     // Collision detection between the stored elements from bottom to top logic
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
-    inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(std::span<TBox const> const& boxes) const noexcept
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy, AccessorConcept TAccessor = std::span<const TBox>>
+    inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(TAccessor const& boxes) const noexcept
     {
       return collisionDetection<TExecutionPolicy>(boxes, [](std::size_t id1, TBox const& e1, std::size_t id2, TBox const& e2) {
         return AD::AreBoxesOverlappedStrict(e1, e2);
@@ -3512,9 +3540,8 @@ namespace OrthoTree
 
 
     // Collision detection between the stored elements from bottom to top logic
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
-    inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(
-      std::span<TBox const> const& boxes, FCollisionDetector&& collisionDetector) const noexcept
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy, AccessorConcept TAccessor = std::span<const TBox>>
+    inline std::vector<std::pair<std::size_t, std::size_t>> CollisionDetection(TAccessor const& boxes, FCollisionDetector&& collisionDetector) const noexcept
     {
       return collisionDetection<TExecutionPolicy>(boxes, [collisionDetector](std::size_t id1, TBox const& e1, std::size_t id2, TBox const& e2) {
         return AD::AreBoxesOverlappedStrict(e1, e2) && collisionDetector(id1, e1, id2, e2);
@@ -3522,9 +3549,10 @@ namespace OrthoTree
     }
 
   private:
+    template<AccessorConcept TAccessor = std::span<const TBox>>
     void getRayIntersectedAll(
       Node const& node,
-      std::span<TBox const> const& boxes,
+      TAccessor const& boxes,
       TVector const& rayBasePoint,
       TVector const& rayHeading,
       TGeometry tolerance,
@@ -3547,9 +3575,10 @@ namespace OrthoTree
     }
 
 
+    template<AccessorConcept TAccessor = std::span<const TBox>>
     void getRayIntersectedFirst(
       Node const& node,
-      std::span<TBox const> const& boxes,
+      TAccessor const& boxes,
       TVector const& rayBasePoint,
       TVector const& rayHeading,
       TGeometry tolerance,
@@ -3590,12 +3619,9 @@ namespace OrthoTree
 
   public:
     // Get all box which is intersected by the ray in order
+    template<AccessorConcept TAccessor = std::span<const TBox>>
     std::vector<std::size_t> RayIntersectedAll(
-      TVector const& rayBasePointPoint,
-      TVector const& rayHeading,
-      std::span<TBox const> const& boxes,
-      TGeometry tolerance,
-      TGeometry maxExaminationDistance = 0) const noexcept
+      TVector const& rayBasePointPoint, TVector const& rayHeading, TAccessor const& boxes, TGeometry tolerance, TGeometry maxExaminationDistance = 0) const noexcept
     {
       auto foundEntities = std::vector<EntityDistance>();
       foundEntities.reserve(20);
@@ -3617,8 +3643,8 @@ namespace OrthoTree
 
 
     // Get first box which is intersected by the ray
-    std::optional<std::size_t> RayIntersectedFirst(
-      TVector const& rayBasePoint, TVector const& rayHeading, std::span<TBox const> const& boxes, TGeometry tolerance) const noexcept
+    template<AccessorConcept TAccessor = std::span<const TBox>>
+    std::optional<std::size_t> RayIntersectedFirst(TVector const& rayBasePoint, TVector const& rayHeading, TAccessor const& boxes, TGeometry tolerance) const noexcept
     {
       autoc& node = this->GetNode(this->GetRootKey());
       autoc distance = AD::IsRayHit(node.Box, rayBasePoint, rayHeading, tolerance);
