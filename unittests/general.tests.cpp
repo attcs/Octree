@@ -546,7 +546,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 4.0 }
       };
       auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
-      tree.UpdateIndexes({ { 2, DualtreeBox::UpdateID::ERASE } });
+      tree.UpdateIndexes({ { 2, std::nullopt } });
 
       auto ids = vector<size_t>();
       tree.VisitNodes(tree.GetRootKey()
@@ -622,7 +622,7 @@ namespace GeneralTest
           { 3, 6 },
           { 4, 5 },
           { 5, 1 },
-          { 1, DualtreeBox::UpdateID::ERASE },
+          { 1, std::nullopt },
         }
       );
 
@@ -2301,7 +2301,7 @@ namespace Tree3DTest
           {+4, +4, +4}
       },
         2);
-      tree.UpdateIndexes<false>({});
+      tree.UpdateIndexes<std::execution::parallel_policy, false>({});
 
       autoc isOutsiderInserted = tree.Insert(pointNo, Point3D{ +5.0, +4.0, +4.0}, false);
       Assert::IsFalse(isOutsiderInserted);
@@ -2420,7 +2420,7 @@ namespace Tree3DTest
       };
 
       OctreeBox tree(boxes, 8, BoundingBox3D{ { -10, -10, -10 }, { +10, +10, +10 } }, 2);
-      tree.UpdateIndexes<false>({});
+      tree.UpdateIndexes({});
     }
 
 
@@ -2450,7 +2450,7 @@ namespace Tree3DTest
         boxes0.emplace_back(boxes[i]);
 
       }
-      tree.UpdateIndexes<false>({});
+      tree.UpdateIndexes({});
     }
 
     TEST_METHOD(CreateWithDataThenInsert)
@@ -2471,7 +2471,7 @@ namespace Tree3DTest
           {+4, +4, +4}
         },
         2);
-      tree.UpdateIndexes<false>({});
+      tree.UpdateIndexes({});
 
       autoc isOutsiderInserted = tree.Insert(
         boxNo,

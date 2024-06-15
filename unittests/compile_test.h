@@ -101,7 +101,7 @@ void testCompilePoint()
     tree.Insert(3, vpt[3]);
     tree.Update(2, vpt[2], vpt[3]);
     tree.Update(3, vpt[4]);
-    tree.UpdateIndexes({ {1, OT::UpdateID::ERASE }, {3, 4} });
+    tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
     tree.template Move<execution_policy_type>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
@@ -195,7 +195,7 @@ void testCompileBox()
     tree.Insert(3, boxes[3]);
     tree.Update(2, boxes[2], boxes[3]);
     tree.Update(3, boxes[4]);
-    tree.UpdateIndexes({ {1, OT::UpdateID::ERASE }, {3, 4} });
+    tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
     tree.template Move<execution_policy_type>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();

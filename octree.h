@@ -780,14 +780,6 @@ namespace OrthoTree
   class OrthoTreeBase
   {
   public:
-    struct UpdateID
-    {
-      enum : std::size_t
-      {
-        ERASE = std::numeric_limits<std::size_t>::max()
-      };
-    };
-
     static autoce IS_LINEAR_TREE = DIMENSION_NO < 15;
 
     // Max value: 2 ^ DIMENSION_NO
@@ -1657,22 +1649,27 @@ namespace OrthoTree
       return entityIDs;
     }
 
-    // Update all element which are in the given hash-table. Elements will be erased if the replacement id is std::numeric_limits<std::size_t>::max().
-    template<bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
-    void UpdateIndexes(std::unordered_map<std::size_t, std::size_t> const& indexUpdateMap) noexcept
+    // Update all element which are in the given hash-table.
+    template<typename TExecutionPolicy = std::execution::unsequenced_policy, bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
+    void UpdateIndexes(std::unordered_map<std::size_t, std::optional<std::size_t>> const& updateMap) noexcept
     {
-      autoc mapEndIterator = indexUpdateMap.end();
-      std::ranges::for_each(m_nodes, [&](auto& node) {
-        auto idList = std::vector<std::size_t>(node.second.Entities.size());
-        std::ranges::transform(node.second.Entities, idList.begin(), [&](autoc& id) {
-          autoc it = indexUpdateMap.find(id);
-          return it == mapEndIterator ? id : it->second;
-        });
+      autoc updateMapEndIterator = updateMap.end();
 
-        std::erase_if(idList, [](autoc id) { return id == UpdateID::ERASE; });
-        node.second.Entities.swap(idList);
+      autoce ep = TExecutionPolicy{};
+      std::for_each(ep, m_nodes.begin(), m_nodes.end(), [&](auto& node) {
+        decltype(Node::Entities) entitiesNew;
+        for (autoc& id : node.second.Entities)
+        {
+          autoc it = updateMap.find(id);
+          if (it == updateMapEndIterator)
+            entitiesNew.emplace_back(id);
+          else if (it->second)
+            entitiesNew.emplace_back(*it->second);
+        }
+
+        node.second.Entities = std::move(entitiesNew);
       });
-
+      
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
         assert(isEveryItemIdUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
     }
