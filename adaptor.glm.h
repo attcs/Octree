@@ -103,7 +103,7 @@ namespace OrthoTree
       TGeometry,
       AdaptorGeneralBasics<DIMENSION_NO, TGeometry>>;
 
-    template<dim_t DIMENSION_NO, typename TGeometry>
+    template<dim_t DIMENSION_NO, typename TGeometry, typename TContainer = std::span<glm::vec<DIMENSION_NO, TGeometry> const>>
     using GlmOrthoTreePoint = OrthoTreePoint<
       DIMENSION_NO,
       glm::vec<DIMENSION_NO, TGeometry>,
@@ -111,9 +111,10 @@ namespace OrthoTree
       glm::rayNd_t<DIMENSION_NO, TGeometry>,
       glm::planeNd_t<DIMENSION_NO, TGeometry>,
       TGeometry,
-      GlmAdaptorGeneral<DIMENSION_NO, TGeometry>>;
+      GlmAdaptorGeneral<DIMENSION_NO, TGeometry>,
+      TContainer>;
 
-    template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT, typename TGeometry>
+    template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT, typename TGeometry, typename TContainer = std::span<glm::boxNd_t<DIMENSION_NO, TGeometry> const>>
     using GlmOrthoTreeBoundingBox = OrthoTreeBoundingBox<
       DIMENSION_NO,
       glm::vec<DIMENSION_NO, TGeometry>,
@@ -122,8 +123,9 @@ namespace OrthoTree
       glm::planeNd_t<DIMENSION_NO, TGeometry>,
       TGeometry,
       SPLIT_DEPTH_INCREASEMENT,
-      GlmAdaptorGeneral<DIMENSION_NO, TGeometry>>;
-  } // namespace GlmAdapter
+      GlmAdaptorGeneral<DIMENSION_NO, TGeometry>,
+      TContainer>;
+  } // namespace GlmAdaptor
 } // namespace OrthoTree
 
 namespace glm
@@ -132,8 +134,8 @@ namespace glm
 
   // Core types
 
-  template<int DIMENSION_NO, typename TGeometry = double>
-  using orthotree_point_t = GlmOrthoTreePoint<DIMENSION_NO, TGeometry>;
+  template<int DIMENSION_NO, typename TGeometry = double, typename TContainer = std::span<glm::vec<DIMENSION_NO, TGeometry> const>>
+  using orthotree_point_t = GlmOrthoTreePoint<DIMENSION_NO, TGeometry, TContainer>;
 
   using quadtree_point_d = GlmOrthoTreePoint<2, double>;
   using quadtree_point_f = GlmOrthoTreePoint<2, float>;
@@ -150,8 +152,8 @@ namespace glm
   using hextree_point_i = GlmOrthoTreePoint<4, int>;
   using hextree_point = hextree_point_f;
 
-  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double>
-  using orthotree_box_t = GlmOrthoTreeBoundingBox<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>;
+  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double, typename TContainer = std::span<glm::boxNd_t<DIMENSION_NO, TGeometry> const>>
+  using orthotree_box_t = GlmOrthoTreeBoundingBox<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, TContainer>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using quadtree_box_ds = GlmOrthoTreeBoundingBox<2, SPLIT_DEPTH_INCREASEMENT, double>;
@@ -177,7 +179,7 @@ namespace glm
   // Container types
 
   template<int DIMENSION_NO, typename TGeometry = double>
-  using orthotree_point_c_t = OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TGeometry>, vec<DIMENSION_NO, TGeometry>>;
+  using orthotree_point_c_t = OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TGeometry>>;
 
   using quadtree_point_c_d = orthotree_point_c_t<2, double>;
   using quadtree_point_c_f = orthotree_point_c_t<2, float>;
@@ -196,8 +198,7 @@ namespace glm
 
 
   template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double>
-  using orthotree_box_c_t =
-    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>, boxNd_t<DIMENSION_NO, TGeometry>>;
+  using orthotree_box_c_t = OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using quadtree_box_c_ds = orthotree_box_c_t<2, SPLIT_DEPTH_INCREASEMENT, double>;
@@ -219,4 +220,101 @@ namespace glm
   using hextree_box_c_f = orthotree_box_c_t<4, 2, float>;
   using hextree_box_c_i = orthotree_box_c_t<4, 2, int>;
   using hextree_box_c = hextree_box_c_f;
-} // namespace boost::geometry
+
+
+  // Map types
+
+  template<typename T>
+  using GlmContainer = std::unordered_map<int, T>;
+
+  //  Core types
+
+  template<int DIMENSION_NO, typename TGeometry = double>
+  using orthotree_point_map_t = GlmOrthoTreePoint<DIMENSION_NO, TGeometry, GlmContainer<glm::vec<DIMENSION_NO, TGeometry>>>;
+
+  using quadtree_point_map_d = GlmOrthoTreePoint<2, double, GlmContainer<glm::vec<2, double>>>;
+  using quadtree_point_map_f = GlmOrthoTreePoint<2, float, GlmContainer<glm::vec<2, float>>>;
+  using quadtree_point_map_i = GlmOrthoTreePoint<2, int, GlmContainer<glm::vec<2, int>>>;
+  using quadtree_point_map = quadtree_point_map_f;
+
+  using octree_point_map_d = GlmOrthoTreePoint<3, double, GlmContainer<glm::vec<3, double>>>;
+  using octree_point_map_f = GlmOrthoTreePoint<3, float, GlmContainer<glm::vec<3, float>>>;
+  using octree_point_map_i = GlmOrthoTreePoint<3, int, GlmContainer<glm::vec<3, int>>>;
+  using octree_point_map = octree_point_map_f;
+
+  using hextree_point_map_d = GlmOrthoTreePoint<4, double, GlmContainer<glm::vec<4, double>>>;
+  using hextree_point_map_f = GlmOrthoTreePoint<4, float, GlmContainer<glm::vec<4, float>>>;
+  using hextree_point_map_i = GlmOrthoTreePoint<4, int, GlmContainer<glm::vec<4, int>>>;
+  using hextree_point_map = hextree_point_map_f;
+
+  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double, typename TContainer = GlmContainer<glm::boxNd_t<DIMENSION_NO, TGeometry>>>
+  using orthotree_box_map_t = GlmOrthoTreeBoundingBox<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, TContainer>;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using quadtree_box_map_ds = GlmOrthoTreeBoundingBox<2, SPLIT_DEPTH_INCREASEMENT, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using quadtree_box_map_d = GlmOrthoTreeBoundingBox<2, 2, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using quadtree_box_map_f = GlmOrthoTreeBoundingBox<2, 2, float, GlmContainer<glm::boxNd_t<2, float>>>;
+  using quadtree_box_map_i = GlmOrthoTreeBoundingBox<2, 2, int, GlmContainer<glm::boxNd_t<2, int>>>;
+  using quadtree_box_map = quadtree_box_f;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using octree_box_map_ds = GlmOrthoTreeBoundingBox<3, SPLIT_DEPTH_INCREASEMENT, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map_d = GlmOrthoTreeBoundingBox<3, 2, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map_f = GlmOrthoTreeBoundingBox<3, 2, float, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map_i = GlmOrthoTreeBoundingBox<3, 2, int, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map = octree_box_f;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using hextree_box_map_ds = GlmOrthoTreeBoundingBox<4, SPLIT_DEPTH_INCREASEMENT, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_d = GlmOrthoTreeBoundingBox<4, 2, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_f = GlmOrthoTreeBoundingBox<4, 2, float, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_i = GlmOrthoTreeBoundingBox<4, 2, int, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map = hextree_box_map_f;
+
+  // Container types
+
+  template<int DIMENSION_NO, typename TGeometry = double>
+  using orthotree_point_map_c_t =
+    OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TGeometry, GlmContainer<glm::vec<DIMENSION_NO, TGeometry>>>>;
+
+  using quadtree_point_map_c_d = orthotree_point_map_c_t<2, double>;
+  using quadtree_point_map_c_f = orthotree_point_map_c_t<2, float>;
+  using quadtree_point_map_c_i = orthotree_point_map_c_t<2, int>;
+  using quadtree_point_map_c = quadtree_point_map_c_d;
+
+  using octree_point_map_c_d = orthotree_point_map_c_t<3, double>;
+  using octree_point_map_c_f = orthotree_point_map_c_t<3, float>;
+  using octree_point_map_c_i = orthotree_point_map_c_t<3, int>;
+  using octree_point_map_c = octree_point_map_c_f;
+
+  using hextree_point_map_c_d = orthotree_point_map_c_t<4, double>;
+  using hextree_point_map_c_f = orthotree_point_map_c_t<4, float>;
+  using hextree_point_map_c_i = orthotree_point_map_c_t<4, int>;
+  using hextree_point_map_c = hextree_point_map_c_f;
+
+
+  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double>
+  using orthotree_box_map_c_t =
+    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, GlmContainer<glm::boxNd_t<DIMENSION_NO, TGeometry>>>>;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, SPLIT_DEPTH_INCREASEMENT, double>;
+  using quadtree_box_map_c_d = orthotree_box_map_c_t<2, 2, double>;
+  using quadtree_box_map_c_f = orthotree_box_map_c_t<2, 2, float>;
+  using quadtree_box_map_c_i = orthotree_box_map_c_t<2, 2, int>;
+  using quadtree_box_map_c = quadtree_box_c_f;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using octree_box_map_c_ds = orthotree_box_map_c_t<3, SPLIT_DEPTH_INCREASEMENT, double>;
+  using octree_box_map_c_d = orthotree_box_map_c_t<3, 2, double>;
+  using octree_box_map_c_f = orthotree_box_map_c_t<3, 2, float>;
+  using octree_box_map_c_i = orthotree_box_map_c_t<3, 2, int>;
+  using octree_box_map_c = octree_box_c_f;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using hextree_box_map_c_ds = orthotree_box_map_c_t<4, SPLIT_DEPTH_INCREASEMENT, double>;
+  using hextree_box_map_c_d = orthotree_box_map_c_t<4, 2, double>;
+  using hextree_box_map_c_f = orthotree_box_map_c_t<4, 2, float>;
+  using hextree_box_map_c_i = orthotree_box_map_c_t<4, 2, int>;
+  using hextree_box_map_c = hextree_box_map_c_f;
+} // namespace glm

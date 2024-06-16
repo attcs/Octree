@@ -186,29 +186,60 @@ namespace XYZ
   using namespace OrthoTree::XYAdaptor2D;
   using namespace OrthoTree::XYZAdaptor3D;
 
-  using QuadtreePoint = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral>;
+
+  using QuadtreePoint =
+    OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, std::span<XYPoint2D const>>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using QuadtreeBox =
-    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYAdaptorGeneral>;
+    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYAdaptorGeneral, std::span<XYBoundingBox2D const>>;
 
-  using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint, XYPoint2D>;
+  using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYBoundingBox2D>;
+  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>>;
   using QuadtreeBoxC = QuadtreeBoxCs<2>;
 
-  using OctreePoint = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral>;
+  using OctreePoint =
+    OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using OctreeBox =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYZAdaptorGeneral>;
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
 
 
-  using OcreePointC = OrthoTreeContainerPoint<OctreePoint, XYZPoint3D>;
+  using OcreePointC = OrthoTreeContainerPoint<OctreePoint>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>, XYZBoundingBox3D>;
+  using OctreeBoxCs = OrthoTreeContainerBox<OctreeBox<SPLIT_DEPTH_INCREASEMENT>>;
   using OctreeBoxC = OctreeBoxCs<2>;
 
+
+  // Map types
+  template<typename TEntity>
+  using Map = std::unordered_map<int, TEntity>;
+
+  using QuadtreePointMap = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, Map<XYPoint2D>>;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBoxMap =
+    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYAdaptorGeneral, Map<XYBoundingBox2D>>;
+
+  using QuadtreePointMapC = OrthoTreeContainerPoint<QuadtreePointMap>;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using QuadtreeBoxMapCs = OrthoTreeContainerBox<QuadtreeBoxMap<SPLIT_DEPTH_INCREASEMENT>>;
+  using QuadtreeBoxMapC = QuadtreeBoxMapCs<2>;
+
+  using OctreePointMap = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, Map<XYZPoint3D>>;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBoxMap =
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYZAdaptorGeneral, Map<XYZBoundingBox3D>>;
+
+  using OcreePointMapC = OrthoTreeContainerPoint<OctreePointMap>;
+
+  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  using OctreeBoxMapCs = OrthoTreeContainerBox<OctreeBoxMap<SPLIT_DEPTH_INCREASEMENT>>;
+  using OctreeBoxMapC = OctreeBoxMapCs<2>;
 } // namespace XYZ

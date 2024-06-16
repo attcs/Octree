@@ -7,6 +7,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Features
 * Adaptable to any existing geometric system
+* Adaptable to the original container of geometrical entities
 * Arbitrary number of dimensions for other scientific usages
 * Support of `std::execution` policies (so it is parallelizable)
 * Edit functions to Insert/Update/Erase entities
@@ -32,7 +33,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
-* Use the static member function `Create()` for a contiguous container (any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
+* Use the static member function `Create()` for a container (`std::unordered_map` or any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
 * Use `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Use `PlaneSearch()` / `PlaneIntersection()` / `PlanePositiveSegmentation()` member functions for hyperplane related searches
 * Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
@@ -46,9 +47,13 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 
 ## Notes
 * Header only implementation.
-* Point and Bounding box-based solution is distinguished.
+* Point and Bounding box-based solutions are distinguished.
 * Core types store only the entity ids, use Container types to store. Core types advantages: not copying and managing the entity information; disadvantages: this information may have to be provided again for the member function call.
-* Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
+* Naming
+  * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
+  * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapC`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contigous container.
+  * `s` means adjustable `SPLIT_DEPTH_INCREASEMENT` for box-types.
+* If `int` is preferred for indexig instead of `std::size_t`, declare `#define ORTHOTREE_INDEX_T__INT`.
 * Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `SPLIT_DEPTH_INCREASEMENT` template parameter, these boxes can be splitted then placed on the deeper level of the tree. The `SPLIT_DEPTH_INCREASEMENT` default is 2 and this split method is applied by default.
 * Edit functions are available but not recommended to majorly build the tree.
 * If less element is collected in a node than the max element then the child node won't be created.
@@ -204,6 +209,25 @@ Usage of Container types
       using namespace std::execution;
       auto octreeUsingCreate = OctreeBoxC::Create<parallel_unsequenced_policy>(boxes
         , 3
+      );
+    }
+
+    
+    // Example #4: Using std::unordered_map-based container
+    {
+      auto boxes = std::unordered_map<OrthoTree::index_t, BoundingBox2D>{
+        { 10, BoundingBox2D{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
+        { 13, BoundingBox2D{{ 3.0, 3.0 }, { 4.0, 4.0 }}},
+        { 11, BoundingBox2D{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
+        { 14, BoundingBox2D{{ 1.2, 1.2 }, { 2.8, 2.8 }}},
+        { 12, BoundingBox2D{{ 2.0, 2.0 }, { 3.0, 3.0 }}}
+      };
+
+      auto qt = QuadtreeBoxMap(
+        boxes,
+        3, // max depth
+        std::nullopt, // user-provided bounding Box for all
+        2 // max element in a node
       );
     }
 ```

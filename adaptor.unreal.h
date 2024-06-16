@@ -491,7 +491,8 @@ namespace OrthoTree
 
       static void MoveBox(FBox_& box, FVector_ const& moveVector) noexcept { box = box.ShiftBy(moveVector); }
 
-      static constexpr std::optional<double> GetRayBoxDistance(FBox_ const& box, FVector_ const& rayBasePoint, FVector_ const& rayHeading, FGeometry_ tolerance) noexcept
+      static constexpr std::optional<double> GetRayBoxDistance(
+        FBox_ const& box, FVector_ const& rayBasePoint, FVector_ const& rayHeading, FGeometry_ tolerance) noexcept
       {
         auto rayBasePointBox = FBox_();
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
@@ -633,7 +634,7 @@ namespace OrthoTree
 
     // Templates for point types
 
-    template<typename FGeometry_, typename FVector_, typename FBox_>
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename TContainer_ = std::span<FVector_ const>>
     using QuadtreePointTemplate = OrthoTreePoint<
       2,
       FVector_,
@@ -641,16 +642,17 @@ namespace OrthoTree
       typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FRay2D_,
       typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FPlane2D_,
       FGeometry_,
-      UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>>;
+      UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>,
+      TContainer_>;
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_>
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, typename TContainer_ = std::span<FVector_ const>>
     using OctreePointTemplate =
-      OrthoTreePoint<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>>;
+      OrthoTreePoint<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, TContainer_>;
 
 
     // Templates for box types
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+    template<typename FGeometry_, typename FVector_, typename FBox_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TContainer_ = std::span<FBox_ const>>
     using QuadtreeBoxTemplate = OrthoTreeBoundingBox<
       2,
       FVector_,
@@ -659,11 +661,12 @@ namespace OrthoTree
       typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FPlane2D_,
       FGeometry_,
       SPLIT_DEPTH_INCREASEMENT,
-      UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>>;
+      UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>,
+      TContainer_>;
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TContainer_ = std::span<FBox_ const>>
     using OctreeBoxTemplate =
-      OrthoTreeBoundingBox<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, SPLIT_DEPTH_INCREASEMENT, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FPlane_, FGeometry_>>;
+      OrthoTreeBoundingBox<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, SPLIT_DEPTH_INCREASEMENT, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FPlane_, FGeometry_>, TContainer_>;
   } // namespace UnrealAdaptor
 } // namespace OrthoTree
 
@@ -707,34 +710,108 @@ using FOctreeBox3f = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3
 
 // Orthotree Container Types
 
-using FQuadtreePointC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePoint, FVector2D>;
+using FQuadtreePointC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePoint>;
 using FQuadtreePoint2DC = FQuadtreePointC;
-using FQuadtreePoint2fC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePoint2f, FVector2f>;
+using FQuadtreePoint2fC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePoint2f>;
 
-using FOctreePointC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint, FVector>;
-using FOctreePoint3dC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3d, FVector3d>;
-using FOctreePoint3fC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3f, FVector3f>;
+using FOctreePointC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint>;
+using FOctreePoint3dC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3d>;
+using FOctreePoint3fC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3f>;
 
 template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-using FQuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxs<SPLIT_DEPTH_INCREASEMENT>, FBox2D>;
+using FQuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxs<SPLIT_DEPTH_INCREASEMENT>>;
 using FQuadtreeBoxC = FQuadtreeBoxCs<2>;
 
 template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-using FQuadtreeBox2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2Ds<SPLIT_DEPTH_INCREASEMENT>, FBox2D>;
+using FQuadtreeBox2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2Ds<SPLIT_DEPTH_INCREASEMENT>>;
 using FQuadtreeBox2DC = FQuadtreeBox2DCs<2>;
 
 template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-using FQuadtreeBox2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2fs<SPLIT_DEPTH_INCREASEMENT>, FBox2f>;
+using FQuadtreeBox2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2fs<SPLIT_DEPTH_INCREASEMENT>>;
 using FQuadtreeBox2fC = FQuadtreeBox2fCs<2>;
 
 template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-using FOctreeBoxCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxs<SPLIT_DEPTH_INCREASEMENT>, FBox>;
+using FOctreeBoxCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxs<SPLIT_DEPTH_INCREASEMENT>>;
 using FOctreeBoxC = FOctreeBoxCs<2>;
 
 template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-using FOctreeBox3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3ds<SPLIT_DEPTH_INCREASEMENT>, FBox3d>;
+using FOctreeBox3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3ds<SPLIT_DEPTH_INCREASEMENT>>;
 using FOctreeBox3dC = FOctreeBox3dCs<2>;
 
 template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-using FOctreeBox3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3fs<SPLIT_DEPTH_INCREASEMENT>, FBox3f>;
+using FOctreeBox3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3fs<SPLIT_DEPTH_INCREASEMENT>>;
 using FOctreeBox3fC = FOctreeBox3fCs<2>;
+
+
+template<typename T>
+using FContainer = std::unordered_map<int, T>;
+
+using FQuadtreePointMap = OrthoTree::UnrealAdaptor::QuadtreePointTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, FContainer<FVector2D>>;
+using FQuadtreePointMap2D = FQuadtreePointMap;
+using FQuadtreePointMap2f = OrthoTree::UnrealAdaptor::QuadtreePointTemplate<float, FVector2f, FBox2f, FContainer<FVector2f>>;
+
+using FOctreePointMap = OrthoTree::UnrealAdaptor::OctreePointTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, FContainer<FVector>>;
+using FOctreePointMap3d = OrthoTree::UnrealAdaptor::OctreePointTemplate<double, FVector3d, FBox3d, FRay, FPlane, FContainer<FVector3d>>;
+using FOctreePointMap3f = OrthoTree::UnrealAdaptor::OctreePointTemplate<float, FVector3f, FBox3f, FRay, FPlane, FContainer<FVector3f>>;
+
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FQuadtreeBoxsMap =
+  OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, SPLIT_DEPTH_INCREASEMENT, FContainer<FBox2D>>;
+using FQuadtreeBoxMap = FQuadtreeBoxsMap<2>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FQuadtreeBoxMap2Ds = FQuadtreeBoxsMap<SPLIT_DEPTH_INCREASEMENT>;
+using FQuadtreeBoxMap2D = FQuadtreeBoxMap;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FQuadtreeBoxMap2fs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, SPLIT_DEPTH_INCREASEMENT, FContainer<FBox2f>>;
+using FQuadtreeBoxMap2f = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, 2, FContainer<FBox2f>>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FOctreeBoxsMap =
+  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, SPLIT_DEPTH_INCREASEMENT, FContainer<FBox>>;
+using FOctreeBoxMap = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, 2, FContainer<FBox>>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FOctreeBoxMap3ds =
+  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, SPLIT_DEPTH_INCREASEMENT, FContainer<FBox3d>>;
+using FOctreeBoxMap3d = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, 2, FContainer<FBox3d>>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FOctreeBoxMap3fs =
+  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, SPLIT_DEPTH_INCREASEMENT, FContainer<FBox3f>>;
+using FOctreeBoxMap3f = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, 2, FContainer<FBox3f>>;
+
+
+using FQuadtreePointMapC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePointMap>;
+using FQuadtreePointMap2DC = FQuadtreePointMapC;
+using FQuadtreePointMap2fC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePointMap2f>;
+
+using FOctreePointMapC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap>;
+using FOctreePointMap3dC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap3d>;
+using FOctreePointMap3fC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap3f>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FQuadtreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxsMap<SPLIT_DEPTH_INCREASEMENT>>;
+using FQuadtreeBoxMapC = FQuadtreeBoxMapCs<2>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FQuadtreeBoxMap2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2Ds<SPLIT_DEPTH_INCREASEMENT>>;
+using FQuadtreeBoxMap2DC = FQuadtreeBoxMap2DCs<2>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FQuadtreeBoxMap2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2fs<SPLIT_DEPTH_INCREASEMENT>>;
+using FQuadtreeBoxMap2fC = FQuadtreeBoxMap2fCs<2>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FOctreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxsMap<SPLIT_DEPTH_INCREASEMENT>>;
+using FOctreeBoxMapC = FOctreeBoxMapCs<2>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FOctreeBoxMap3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3ds<SPLIT_DEPTH_INCREASEMENT>>;
+using FOctreeBoxMap3dC = FOctreeBoxMap3dCs<2>;
+
+template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+using FOctreeBoxMap3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3fs<SPLIT_DEPTH_INCREASEMENT>>;
+using FOctreeBoxMap3fC = FOctreeBoxMap3fCs<2>;
