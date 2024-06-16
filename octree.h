@@ -3430,12 +3430,19 @@ namespace OrthoTree
       auto entityIDsInRoot = std::vector<TEntityID>();
       {
         autoc& nodeRoot = this->GetNode(this->GetRootKey());
+        std::set<TEntityID> largeEntities;
         for (autoc entityID : nodeRoot.Entities)
         {
           if (AD::AreBoxesOverlapped(detail::at(boxes, entityID), this->m_boxSpace))
           {
-            for (auto entityIDOther = entityID + 1; entityIDOther < entityNo; ++entityIDOther)
-              collidedEntityPairs.emplace_back(entityID, entityIDOther);
+            largeEntities.insert(entityID);
+
+            for (autoc& boxOther : boxes)
+            {
+              autoc entityIDOther = detail::getKeyPart(boxes, boxOther);
+              if (!largeEntities.contains(entityIDOther))
+                collidedEntityPairs.emplace_back(entityID, entityIDOther);
+            }
           }
           else
             entityIDsInRoot.emplace_back(entityID);
