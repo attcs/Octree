@@ -65,7 +65,6 @@ namespace Example
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{2, 4}, pickedBoxIDs));
     }
 
-
     TEST_METHOD(Example3)
     {
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
@@ -150,5 +149,53 @@ namespace Example
       // or
       // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
     }
+
+    TEST_METHOD(Example2Map)
+    {
+      auto boxes = std::unordered_map<OrthoTree::index_t, BoundingBox2D>{
+        { 10, BoundingBox2D{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
+        { 13, BoundingBox2D{{ 3.0, 3.0 }, { 4.0, 4.0 }}},
+        { 11, BoundingBox2D{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
+        { 14, BoundingBox2D{{ 1.2, 1.2 }, { 2.8, 2.8 }}},
+        { 12, BoundingBox2D{{ 2.0, 2.0 }, { 3.0, 3.0 }}}
+      };
+
+      auto qt = QuadtreeBoxMap(
+        boxes,
+        3, // max depth
+        std::nullopt, // user-provided bounding Box for all
+        2 // max element in a node
+      );
+
+      auto collidingIDPairs = qt.CollisionDetection(boxes); //: { {1,4}, {2,4} }
+
+      auto searchBox = BoundingBox2D{
+        {1.0, 1.0},
+        {3.1, 3.1}
+      };
+
+      // Boxes within the range
+      auto insideBoxIDs = qt.RangeSearch(searchBox, boxes); //: { 1, 2, 4 }
+
+      // Overlapping Boxes with the range
+      constexpr bool shouldFullyContain = false;
+      auto overlappingBoxIDs = qt.RangeSearch<shouldFullyContain>(searchBox, boxes); //: { 1, 2, 3, 4 }
+
+      // Picked boxes
+      auto pickPoint = Point2D{ 2.5, 2.5 };
+      auto pickedBoxIDs = qt.PickSearch(pickPoint, boxes); //: { 2, 4 }
+
+
+      Assert::IsTrue(std::ranges::is_permutation(
+        vector<std::pair<std::size_t, std::size_t>>{
+          {11, 14},
+          {12, 14}
+      },
+        collidingIDPairs));
+      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 11, 12, 14 }, insideBoxIDs));
+      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 11, 12, 13, 14 }, overlappingBoxIDs));
+      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 12, 14 }, pickedBoxIDs));
+    }
+
   };
 }

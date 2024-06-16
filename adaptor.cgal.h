@@ -198,13 +198,81 @@ namespace CGAL
 
   // Container types
 
-  using QuadtreePointC = OrthoTree::OrthoTreeContainerPoint<QuadtreePoint, Point_2<Cartesian<double>>>;
-  using OctreePointC = OrthoTree::OrthoTreeContainerPoint<OctreePoint, Point_3<Cartesian<double>>>;
+  using QuadtreePointC = OrthoTree::OrthoTreeContainerPoint<QuadtreePoint>;
+  using OctreePointC = OrthoTree::OrthoTreeContainerPoint<OctreePoint>;
 
   template<int SPLIT_DEPTH_INCREASEMENT>
-  using QuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<QuadtreeBoxs<SPLIT_DEPTH_INCREASEMENT>, Bbox_2>;
+  using QuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<QuadtreeBoxs<SPLIT_DEPTH_INCREASEMENT>>;
   using QuadtreeBoxC = QuadtreeBoxCs<2>;
   template<int SPLIT_DEPTH_INCREASEMENT>
-  using OctreeBoxCs = OrthoTree::OrthoTreeContainerBox<OctreeBoxs<SPLIT_DEPTH_INCREASEMENT>, Bbox_3>;
+  using OctreeBoxCs = OrthoTree::OrthoTreeContainerBox<OctreeBoxs<SPLIT_DEPTH_INCREASEMENT>>;
   using OctreeBoxC = OctreeBoxCs<2>;
+
+
+  // Map types
+
+  template<typename T>
+  using CGALContainer = std::unordered_map<std::size_t, T>;
+
+  // Core types
+  using QuadtreePointMap = OrthoTree::OrthoTreePoint<
+    2,
+    CGAL::Point_2<CGAL::Cartesian<double>>,
+    CGAL::Bbox_2,
+    CGAL::Ray_2<CGAL::Cartesian<double>>,
+    CGAL::Plane_2,
+    double,
+    CGALAdaptorGeneral2D,
+    CGALContainer<CGAL::Point_2<CGAL::Cartesian<double>>>>;
+
+  using OctreePointMap = OrthoTree::OrthoTreePoint<
+    3,
+    CGAL::Point_3<CGAL::Cartesian<double>>,
+    CGAL::Bbox_3,
+    CGAL::Ray_3<CGAL::Cartesian<double>>,
+    CGAL::Plane_3<CGAL::Cartesian<double>>,
+    double,
+    CGALAdaptorGeneral3D,
+    CGALContainer<CGAL::Point_3<CGAL::Cartesian<double>>>>;
+
+  template<int SPLIT_DEPTH_INCREASEMENT>
+  using QuadtreeBoxsMap = OrthoTree::OrthoTreeBoundingBox<
+    2,
+    CGAL::Point_2<CGAL::Cartesian<double>>,
+    CGAL::Bbox_2,
+    CGAL::Ray_2<CGAL::Cartesian<double>>,
+    CGAL::Plane_2,
+    double,
+    SPLIT_DEPTH_INCREASEMENT,
+    CGALAdaptorGeneral2D,
+    CGALContainer<CGAL::Bbox_2>>;
+
+  using QuadtreeBoxMap = QuadtreeBoxs<2>;
+
+  template<int SPLIT_DEPTH_INCREASEMENT>
+  using OctreeBoxsMap = OrthoTree::OrthoTreeBoundingBox<
+    3,
+    CGAL::Point_3<CGAL::Cartesian<double>>,
+    CGAL::Bbox_3,
+    CGAL::Ray_3<CGAL::Cartesian<double>>,
+    CGAL::Plane_3<CGAL::Cartesian<double>>,
+    double,
+    SPLIT_DEPTH_INCREASEMENT,
+    CGALAdaptorGeneral3D,
+    CGALContainer<CGAL::Bbox_3>>;
+
+  using OctreeBoxMap = OctreeBoxsMap<2>;
+
+
+  // Container types
+
+  using QuadtreePointMapC = OrthoTree::OrthoTreeContainerPoint<QuadtreePointMap>;
+  using OctreePointMapC = OrthoTree::OrthoTreeContainerPoint<OctreePointMap>;
+
+  template<int SPLIT_DEPTH_INCREASEMENT>
+  using QuadtreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<QuadtreeBoxsMap<SPLIT_DEPTH_INCREASEMENT>>;
+  using QuadtreeBoxMapC = QuadtreeBoxMapCs<2>;
+  template<int SPLIT_DEPTH_INCREASEMENT>
+  using OctreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<OctreeBoxsMap<SPLIT_DEPTH_INCREASEMENT>>;
+  using OctreeBoxMapC = OctreeBoxMapCs<2>;
 } // namespace CGAL
