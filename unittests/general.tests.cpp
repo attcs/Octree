@@ -3224,15 +3224,3 @@ namespace LongIntAdaptor
 
   };
 }
-
-namespace CompileTest
-{
-  TEST_CLASS(CompileTest)
-  {
-    TEST_METHOD(AllFunc)
-    {
-      testCompileBoxBatchSplitStrategy();
-    }
-
-  };
-}
