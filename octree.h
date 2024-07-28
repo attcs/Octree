@@ -3524,10 +3524,10 @@ namespace OrthoTree
 
                         for (std::size_t iNodePrev = 0, iNodeParent = 0; iNodePrev < iNodeKey && iNodeParent < parentNodeKeysNo;)
                         {
-                          if (parentNodeKeys[iNodeParent] == currentNodeKeys[iNodeParent] || (parentNodeKeys[iNodeParent] == keysOfEntitysDepth[iNodePrev]))
+                          if (parentNodeKeys[iNodeParent] == currentNodeKeys[iNodePrev] || (parentNodeKeys[iNodeParent] == keysOfEntitysDepth[iNodePrev]))
                           {
                             // Found an earlier common key
-                            entityIDPairsFromOtherBranch.at(entityID).emplace(entityIDFromParent);
+                            entityIDPairsFromOtherBranch[entityID].emplace(entityIDFromParent);
                             break;
                           }
                           else if (parentNodeKeys[iNodeParent] < currentNodeKeys[iNodePrev])
