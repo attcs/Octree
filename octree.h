@@ -3577,7 +3577,7 @@ namespace OrthoTree
           for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
           {
             autoc iEntityID = entityIDs[iEntity];
-            autoc& entityKeys = entityIDNodeMap[iEntityID];
+            autoc& entityKeys = entityIDNodeMap.at(iEntityID);
             autoc entityKeysNo = entityKeys.size();
 
             for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
@@ -3591,7 +3591,7 @@ namespace OrthoTree
               else
               {
                 // Same entities could collide in other nodes, but only the first occurrence should be checked
-                autoc& entityKeysOfJ = entityIDNodeMap[jEntityID];
+                autoc& entityKeysOfJ = entityIDNodeMap.at(jEntityID);
                 auto isFirstCollisionCheckHappening = entityKeysNo == 1 || entityKeysOfJ.size() == 1;
                 if (!isFirstCollisionCheckHappening)
                 {
