@@ -1616,21 +1616,24 @@ namespace OrthoTree
     {
       auto gridID = DimArray<GridID>{};
       if constexpr (DIMENSION_NO == 1)
-        return { RemoveSentinelBit(nodeKey) };
+        return { RemoveSentinelBit(nodeKey) << (maxDepthNo - GetDepthID(nodeKey)) };
       else
       {
         autoc depthID = GetDepthID(nodeKey);
 
-        auto mask = MortonGridID{ 1 };
+        autoce mask = MortonGridID{ 1 };
         for (depth_t iDepth = maxDepthNo - depthID, shift = 0; iDepth < maxDepthNo; ++iDepth)
           for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID, ++shift)
+          {
             if constexpr (IS_LINEAR_TREE)
             {
-              gridID[dimensionID] |= (nodeKey & mask) >> (shift - iDepth);
-              mask <<= 1;
+              gridID[dimensionID] |= ((nodeKey >> shift) & mask) << iDepth;
             }
             else
+            {
               gridID[dimensionID] |= GridID{ nodeKey[shift] } << iDepth;
+            }
+          }
       }
       return gridID;
     }
