@@ -2578,7 +2578,7 @@ namespace OrthoTree
     std::vector<TEntityID> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, TContainer const& points) const noexcept
     {
       auto neighborEntities = std::multiset<EntityDistance>();
-      autoc smallestNodeKey = this->FindSmallestNode<true>(searchPoint);
+      autoc smallestNodeKey = this->template FindSmallestNode<true>(searchPoint);
       if (Base::IsValidKey(smallestNodeKey))
       {
         autoc& smallestNode = this->GetNode(smallestNodeKey);
