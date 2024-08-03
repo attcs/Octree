@@ -1771,21 +1771,11 @@ namespace OrthoTree
     }
 
   private:
-    template<bool DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID = false>
-    void collectAllIdInDFS(Node const& parentNode, std::vector<TEntityID>& foundEntities, TEntityID minEntityID = 0) const noexcept
+    void collectAllIdInDFS(Node const& parentNode, std::vector<TEntityID>& foundEntities) const noexcept
     {
-      // TODO: minEntityID vs unordered_map
-      if constexpr (DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID)
-      {
-        for (autoc entityID : parentNode.Entities)
-          if (entityID > minEntityID)
-            foundEntities.emplace_back(entityID);
-      }
-      else
-        foundEntities.insert(foundEntities.end(), parentNode.Entities.begin(), parentNode.Entities.end());
-
+      foundEntities.insert(foundEntities.end(), parentNode.Entities.begin(), parentNode.Entities.end());
       for (MortonNodeIDCR childKey : parentNode.GetChildren())
-        collectAllIdInDFS<DO_COLLECT_ONLY_LARGER_THAN_MIN_ENTITY_ID>(this->GetNode(childKey), foundEntities, minEntityID);
+        collectAllIdInDFS(this->GetNode(childKey), foundEntities);
     }
 
   public:
