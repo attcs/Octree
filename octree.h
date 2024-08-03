@@ -1061,15 +1061,25 @@ namespace OrthoTree
       return ri;
     }
 
-
+    template<bool ALLOW_OUT_OF_BOX_GEOMETRY = false>
     constexpr DimArray<GridID> getGridIdPoint(TVector const& point) const noexcept
     {
       auto gridIDs = DimArray<GridID>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        autoc pointComponent = AD::GetPointC(point, dimensionID) - AD::GetBoxMinC(this->m_boxSpace, dimensionID);
-        auto rasterID = static_cast<double>(pointComponent) * this->m_rasterizerFactors[dimensionID];
-        gridIDs[dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(rasterID));
+        auto pointComponent = AD::GetPointC(point, dimensionID) - AD::GetBoxMinC(this->m_boxSpace, dimensionID);
+        if constexpr (ALLOW_OUT_OF_BOX_GEOMETRY)
+        {
+          if (pointComponent < 0.0)
+            pointComponent = 0.0;
+        }
+        else
+        {
+          assert(pointComponent >= 0.0);
+        }
+
+        autoc rasterID = GridID(pointComponent * this->m_rasterizerFactors[dimensionID]);
+        gridIDs[dimensionID] = std::min<GridID>(this->m_maxRasterID, rasterID);
       }
       return gridIDs;
     }
@@ -1197,16 +1207,22 @@ namespace OrthoTree
       return nodeChild;
     }
 
-    constexpr MortonGridID getLocationID(TVector const& point) const noexcept { return MortonEncode(this->getGridIdPoint(point)); }
-
-    constexpr std::tuple<depth_t, MortonGridID> getDepthAndLocationID(TVector const& point) const noexcept
+    template<bool ALLOW_OUT_OF_BOX_GEOMETRY = false>
+    constexpr MortonGridID getLocationID(TVector const& point) const noexcept
     {
-      return { this->m_maxDepthNo, this->getLocationID(point) };
+      return MortonEncode(this->getGridIdPoint<ALLOW_OUT_OF_BOX_GEOMETRY>(point));
     }
 
+    template<bool ALLOW_OUT_OF_BOX_GEOMETRY = false>
+    constexpr std::tuple<depth_t, MortonGridID> getDepthAndLocationID(TVector const& point) const noexcept
+    {
+      return { this->m_maxDepthNo, this->getLocationID<ALLOW_OUT_OF_BOX_GEOMETRY>(point) };
+    }
+
+    template<bool ALLOW_OUT_OF_BOX_GEOMETRY = false>
     constexpr std::tuple<depth_t, MortonGridID> getDepthAndLocationID(TBox const& box) const noexcept
     {
-      autoc entityMinMaxGridID = this->getGridIdBox(box);
+      autoc entityMinMaxGridID = this->getGridIdBox<ALLOW_OUT_OF_BOX_GEOMETRY>(box);
       auto minLocationID = MortonEncode(entityMinMaxGridID[0]);
       autoc maxLocationID = MortonEncode(entityMinMaxGridID[1]);
 
@@ -1895,9 +1911,10 @@ namespace OrthoTree
     }
 
     // Get Node ID of a point
+    template<bool ALLOW_OUT_OF_BOX_GEOMETRY = false>
     MortonNodeID GetNodeID(TVector const& searchPoint) const noexcept
     {
-      autoc locationID = this->getLocationID(searchPoint);
+      autoc locationID = this->getLocationID<ALLOW_OUT_OF_BOX_GEOMETRY>(searchPoint);
       return this->GetHash(this->m_maxDepthNo, locationID);
     }
 
@@ -1909,12 +1926,15 @@ namespace OrthoTree
     }
 
     // Find smallest node which contains the box
+    template<bool ALLOW_OUT_OF_BOX_GEOMETRY = false>
     MortonNodeID FindSmallestNode(TVector const& searchPoint) const noexcept
     {
-      if (!AD::DoesBoxContainPoint(this->m_boxSpace, searchPoint))
-        return MortonNodeID{};
-
-      return this->FindSmallestNodeKey(this->GetNodeID(searchPoint));
+      if constexpr (!ALLOW_OUT_OF_BOX_GEOMETRY)
+      {
+        if (!AD::DoesBoxContainPoint(this->m_boxSpace, searchPoint))
+          return MortonNodeID{};
+      }
+      return this->FindSmallestNodeKey(this->GetNodeID<ALLOW_OUT_OF_BOX_GEOMETRY>(searchPoint));
     }
 
     // Find smallest node which contains the box
@@ -2565,7 +2585,7 @@ namespace OrthoTree
     std::vector<TEntityID> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, TContainer const& points) const noexcept
     {
       auto neighborEntities = std::multiset<EntityDistance>();
-      autoc smallestNodeKey = this->FindSmallestNode(searchPoint);
+      autoc smallestNodeKey = this->FindSmallestNode<true>(searchPoint);
       if (Base::IsValidKey(smallestNodeKey))
       {
         autoc& smallestNode = this->GetNode(smallestNodeKey);
