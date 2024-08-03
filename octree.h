@@ -1514,9 +1514,9 @@ namespace OrthoTree
 
     static inline bool IsValidKey(NonLinearMortonGridID const& key) noexcept { return key.any(); }
 
-    static depth_t GetDepthID(MortonNodeID key) noexcept
+    static constexpr depth_t GetDepthID(MortonNodeID key) noexcept
     {
-      // Keep shifting off three bits at a time, increasing depth counter
+      // Keep shifting off DIMENSION_NO bits at a time, increasing depth counter
       for (depth_t d = 0; IsValidKey(key); ++d, key >>= DIMENSION_NO)
         if (key == 1) // If only sentinel bit remains, exit with node depth
           return d;
@@ -1640,12 +1640,12 @@ namespace OrthoTree
 
 
   public: // Getters
-    inline auto const& GetNodes() const noexcept { return m_nodes; }
+    constexpr auto const& GetNodes() const noexcept { return m_nodes; }
     inline bool HasNode(MortonNodeIDCR key) const noexcept { return m_nodes.contains(key); }
     inline auto const& GetNode(MortonNodeIDCR key) const noexcept { return m_nodes.at(key); }
-    inline auto const& GetBox() const noexcept { return m_boxSpace; }
-    inline auto GetDepthMax() const noexcept { return m_maxDepthNo; }
-    inline auto GetResolutionMax() const noexcept { return m_maxRasterResolution; }
+    constexpr auto const& GetBox() const noexcept { return m_boxSpace; }
+    constexpr auto GetDepthMax() const noexcept { return m_maxDepthNo; }
+    constexpr auto GetResolutionMax() const noexcept { return m_maxRasterResolution; }
     inline auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
       autoc it = std::ranges::find_if(m_nodes, [&](autoc& keyAndValue) {
@@ -1725,7 +1725,7 @@ namespace OrthoTree
     {
       struct Search
       {
-        MortonNodeID Key;
+        MortonNodeIDCR Key;
         bool DoAvoidSelectionParent;
       };
 
@@ -1741,7 +1741,7 @@ namespace OrthoTree
         autoc doAvoidSelection = doAvoidSelectionParent || selectorUnconditional(key, node);
         procedure(key, node, doAvoidSelection);
 
-        for (MortonNodeID childKey : node.GetChildren())
+        for (MortonNodeIDCR childKey : node.GetChildren())
           nodesToProceed.push({ childKey, doAvoidSelection });
       }
     }
@@ -1755,7 +1755,7 @@ namespace OrthoTree
         return;
 
       procedure(key, node);
-      for (autoc childKey : node.GetChildren())
+      for (MortonNodeIDCR childKey : node.GetChildren())
         VisitNodesInDFS(childKey, procedure, selector);
     }
 
