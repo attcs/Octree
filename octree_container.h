@@ -64,7 +64,11 @@ namespace OrthoTree
     : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
     {
       if (isParallelCreation)
+#if !__APPLE__
         OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+        { /* Execution policies are not available on Apple platforms yet */ }
+#endif
       else
         OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
@@ -78,7 +82,11 @@ namespace OrthoTree
     : m_geometryCollection(geometryCollection)
     {
       if (isParallelCreation)
+#if !__APPLE__
         OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      { /* Execution policies are not available on Apple platforms yet */ }
+#endif
       else
         OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
@@ -92,7 +100,11 @@ namespace OrthoTree
     : m_geometryCollection(std::move(geometryCollection))
     {
       if (isParallelCreation)
+#if !__APPLE__
         OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      { /* Execution policies are not available on Apple platforms yet */ }
+#endif
       else
         OrthoTreeCore::Create(m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
@@ -230,7 +242,9 @@ namespace OrthoTree
     using base::base; // inherits all constructors
 
   public: // Edit functions
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     static OrthoTreeContainerPoint Create(
       std::span<TEntity const> const& geometryCollectionSpan,
       depth_t maxDepthNo = 0,
@@ -240,11 +254,17 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::vector(geometryCollectionSpan.begin(), geometryCollectionSpan.end());
+#if !__APPLE__
       OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      OrthoTreeCore::template Create(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#endif
       return otc;
     }
-    
+
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     static OrthoTreeContainerPoint Create(
       TContainer const& geometryCollection,
       depth_t maxDepthNo = 0,
@@ -253,11 +273,17 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = geometryCollection;
+#if !__APPLE__
       OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      OrthoTreeCore::template Create(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#endif
       return otc;
     }
-    
+
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     static OrthoTreeContainerPoint Create(
       TContainer&& geometryCollection,
       depth_t maxDepthNo = 0,
@@ -266,16 +292,27 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::move(geometryCollection);
+#if !__APPLE__
       OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      OrthoTreeCore::template Create(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#endif
       return otc;
     }
 
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     void Move(TVector const& vMove) noexcept
     {
+#if !__APPLE__
       this->m_tree.template Move<TExecutionPolicy>(vMove);
       auto ep = TExecutionPolicy{}; // GCC 11.3
-      std::for_each(ep, this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&vMove](auto& data) { 
+      std::for_each(ep, this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&vMove](auto& data) {
+#else
+      this->m_tree.template Move(vMove);
+      std::for_each(this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&vMove](auto& data) {
+#endif
         detail::setValuePart(data, AD::Add(detail::getValuePart(data), vMove));
       });
     }
@@ -330,7 +367,9 @@ namespace OrthoTree
     using base::base; // inherits all constructors
 
   public: // Edit functions
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     static OrthoTreeContainerBox Create(
       std::span<TEntity const> const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -340,11 +379,17 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
+#if !__APPLE__
       OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      OrthoTreeCore::template Create(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#endif
       return otc;
     }
 
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     static OrthoTreeContainerBox Create(
       TContainer const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -353,11 +398,17 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = geometryCollection;
+#if !__APPLE__
       OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      OrthoTreeCore::template Create(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#endif
       return otc;
     }
 
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     static OrthoTreeContainerBox Create(
       TContainer&& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -366,16 +417,27 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::move(geometryCollection);
+#if !__APPLE__
       OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#else
+      OrthoTreeCore::template Create(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+#endif
       return otc;
     }
 
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     void Move(TVector const& moveVector) noexcept
     {
+#if !__APPLE__
       this->m_tree.template Move<TExecutionPolicy>(moveVector);
       auto ep = TExecutionPolicy{}; // GCC 11.3
       std::for_each(ep, this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&moveVector](auto& data) {
+#else
+      this->m_tree.template Move(moveVector);
+      std::for_each(this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&moveVector](auto& data) {
+#endif
         auto box = detail::getValuePart(data);
         AD::MoveBox(box, moveVector);
         detail::setValuePart(data, box);
@@ -399,10 +461,16 @@ namespace OrthoTree
 
   public: // Collision detection
     // Collision detection between the contained elements
+#if !__APPLE__
     template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#endif
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection() const noexcept
     {
+#if !__APPLE__
       return this->m_tree.template CollisionDetection<TExecutionPolicy>(this->m_geometryCollection);
+#else
+      return this->m_tree.template CollisionDetection(this->m_geometryCollection);
+#endif
     }
 
     // Collision detection with another tree
