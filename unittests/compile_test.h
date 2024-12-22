@@ -24,7 +24,7 @@
 
 // Enforce the compilation of all template function
 
-template<OrthoTree::dim_t N, typename execution_policy_type>
+template<OrthoTree::dim_t N, typename TExecutionPolicy>
 void testCompilePoint()
 {
   using Point = OrthoTree::PointND<N>;
@@ -102,19 +102,19 @@ void testCompilePoint()
     tree.Update(2, vpt[2], vpt[3]);
     tree.Update(3, vpt[4]);
     tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree.EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<execution_policy_type>(tree, vpt, 4);
+    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, vpt, 4);
   }
 }
 
 
-template<OrthoTree::dim_t N, typename execution_policy_type>
+template<OrthoTree::dim_t N, typename TExecutionPolicy>
 void testCompilePointMap()
 {
   using Point = OrthoTree::PointND<N>;
@@ -211,18 +211,18 @@ void testCompilePointMap()
       {11, std::nullopt},
       {3,            4}
     });
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<execution_policy_type>(tree, vpt, 4);
+    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, vpt, 4);
   }
 }
 
-template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBox()
 {
   using Vector = OrthoTree::VectorND<N>;
@@ -267,7 +267,7 @@ void testCompileBox()
     autoc nodes = tree.GetNodes();
     autoc grid = tree.GetResolutionMax();
 
-    autoc vidCollision = tree.template CollisionDetection<execution_policy_type>(boxes);
+    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
     autoc vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
     autoc aidPick = tree.PickSearch({}, boxes);
@@ -304,18 +304,18 @@ void testCompileBox()
     tree.Update(2, boxes[2], boxes[3]);
     tree.Update(3, boxes[4]);
     tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<execution_policy_type>(tree, boxes, 4);
+    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, boxes, 4);
   }
 }
 
-template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxMap()
 {
   using Vector = OrthoTree::VectorND<N>;
@@ -360,7 +360,7 @@ void testCompileBoxMap()
     autoc nodes = tree.GetNodes();
     autoc grid = tree.GetResolutionMax();
 
-    autoc vidCollision = tree.template CollisionDetection<execution_policy_type>(boxes);
+    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
     autoc vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
     autoc aidPick = tree.PickSearch({}, boxes);
@@ -410,19 +410,19 @@ void testCompileBoxMap()
       {17, std::nullopt},
       {23,            22}
     });
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes.at(13), 3, 12);
     tree.Reset();
 
-    OT::template Create<execution_policy_type>(tree, boxes, 4);
+    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, boxes, 4);
   }
 }
 
 
-template<OrthoTree::dim_t N, typename execution_policy_type>
+template<OrthoTree::dim_t N, typename TExecutionPolicy>
 void testCompilePointC()
 {
   using Point = OrthoTree::PointND<N>;
@@ -442,8 +442,10 @@ void testCompilePointC()
   };
 
   auto tree = OT(vpt, 3, std::nullopt, 2, false);
-  auto treePar = OT(vpt, 3, std::nullopt, 2, true);
-
+#ifdef __cpp_lib_execution
+  [[maybe_unused]] auto treePar = OT(vpt, 3, std::nullopt, 2, true);
+#endif
+    
   // const member functions
   {
     autoc& treeCore = tree.GetCore();
@@ -472,19 +474,19 @@ void testCompilePointC()
     tree.Add(vpt[2]);
     tree.Erase(2);
     tree.Update(3, vpt[4]);
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<execution_policy_type>(vpt, 4);
-    tree = OT::template Create<execution_policy_type>(std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } }, 4);
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(vpt, 4);
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } }, 4);
   }
 }
 
-template<OrthoTree::dim_t N, typename execution_policy_type>
+template<OrthoTree::dim_t N, typename TExecutionPolicy>
 void testCompilePointMapC()
 {
   using Point = OrthoTree::PointND<N>;
@@ -510,8 +512,9 @@ void testCompilePointMapC()
   };
 
   auto tree = OT(vpt, 3, std::nullopt, 2, false);
-  auto treePar = OT(vpt, 3, std::nullopt, 2, true);
-
+#ifdef __cpp_lib_execution
+  [[maybe_unused]] auto treePar = OT(vpt, 3, std::nullopt, 2, true);
+#endif
   // const member functions
   {
     autoc& treeCore = tree.GetCore();
@@ -548,15 +551,15 @@ void testCompilePointMapC()
     tree.Add(60, vpt.at(20));
     tree.Erase(20);
     tree.Update(30, vpt.at(40));
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<execution_policy_type>(vpt, 4);
-    tree = OT::template Create<execution_policy_type>(
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(vpt, 4);
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(
       Map{
         { 11, Point{ 0.0 } },
         { 21, Point{ 1.0 } },
@@ -569,7 +572,7 @@ void testCompilePointMapC()
 }
 
 
-template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
@@ -586,8 +589,10 @@ void testCompileBoxC()
   };
 
   auto tree = OT(boxes, 3, std::nullopt, 2, false);
-  auto treePar = OT(boxes, 3, std::nullopt, 2, true);
-
+#ifdef __cpp_lib_execution
+  [[maybe_unused]] auto treePar = OT(boxes, 3, std::nullopt, 2, true);
+#endif
+    
   // const member functions
   {
     autoc& treeCore = tree.GetCore();
@@ -598,7 +603,7 @@ void testCompileBoxC()
     autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
     autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    autoc vidCollision = tree.template CollisionDetection<execution_policy_type>();
+    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
     autoc vidCollisionTree = tree.CollisionDetection(tree);
    
     autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
@@ -622,15 +627,15 @@ void testCompileBoxC()
     tree.Add(boxes[0]);
     tree.Erase(2);
     tree.Update(3, boxes[4]);
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<execution_policy_type>(boxes, 4);
-    tree = OT::template Create<execution_policy_type>(
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(boxes, 4);
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(
       std::vector
       {
         BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -645,7 +650,7 @@ void testCompileBoxC()
 
 }
 
-template<OrthoTree::dim_t N, typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxMapC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
@@ -662,8 +667,11 @@ void testCompileBoxMapC()
   };
 
   auto tree = OT(boxes, 3, std::nullopt, 2, false);
-  auto treePar = OT(boxes, 3, std::nullopt, 2, true);
 
+#ifdef __cpp_lib_execution
+  [[maybe_unused]] auto treePar = OT(boxes, 3, std::nullopt, 2, true);
+#endif
+    
   // const member functions
   {
     autoc& treeCore = tree.GetCore();
@@ -674,7 +682,7 @@ void testCompileBoxMapC()
     autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(30));
     autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(30));
 
-    autoc vidCollision = tree.template CollisionDetection<execution_policy_type>();
+    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
     autoc vidCollisionTree = tree.CollisionDetection(tree);
 
     autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
@@ -705,15 +713,15 @@ void testCompileBoxMapC()
     tree.Add(11, boxes.at(10));
     tree.Erase(20);
     tree.Update(40, boxes.at(30));
-    tree.template Move<execution_policy_type>({ 1.0, 1.0 });
+    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes.at(5), 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<execution_policy_type>(boxes, 4);
-    tree = OT::template Create<execution_policy_type>(
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(boxes, 4);
+    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(
       Map{
         { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
         { 15, BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
@@ -817,10 +825,15 @@ void testCompileBoxBatchDimension()
 template<uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxBatchExPol()
 {
+#ifdef __cpp_lib_execution
   testCompileBoxBatchDimension<std::execution::sequenced_policy, nSplitStrategyAdditionalDepth>();
   testCompileBoxBatchDimension<std::execution::unsequenced_policy, nSplitStrategyAdditionalDepth>();
   testCompileBoxBatchDimension<std::execution::parallel_policy, nSplitStrategyAdditionalDepth>();
   testCompileBoxBatchDimension<std::execution::parallel_unsequenced_policy, nSplitStrategyAdditionalDepth>();
+#else
+  struct ExecPolDummy{};
+  testCompileBoxBatchDimension<ExecPolDummy, nSplitStrategyAdditionalDepth>();
+#endif
 }
 
 

@@ -63,10 +63,16 @@ namespace OrthoTree
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
     {
-      if (isParallelCreation)
+#ifdef __cpp_lib_execution
+      if (isParallelCreation){
         OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
-      else
-        OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+        return;
+      }
+#else
+      assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
+#endif
+        
+      OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
     
     OrthoTreeContainerBase(
@@ -77,10 +83,16 @@ namespace OrthoTree
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(geometryCollection)
     {
-      if (isParallelCreation)
+#ifdef __cpp_lib_execution
+      if (isParallelCreation) {
         OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
-      else
-        OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+        return;
+      }
+#else
+      assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
+#endif
+
+      OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
     
     OrthoTreeContainerBase(
@@ -91,10 +103,16 @@ namespace OrthoTree
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(std::move(geometryCollection))
     {
-      if (isParallelCreation)
+#ifdef __cpp_lib_execution
+      if (isParallelCreation) {
         OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
-      else
-        OrthoTreeCore::Create(m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+        return;
+      }
+#else
+      assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
+#endif
+      
+      OrthoTreeCore::Create(m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
     
 
@@ -230,7 +248,7 @@ namespace OrthoTree
     using base::base; // inherits all constructors
 
   public: // Edit functions
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static OrthoTreeContainerPoint Create(
       std::span<TEntity const> const& geometryCollectionSpan,
       depth_t maxDepthNo = 0,
@@ -240,11 +258,11 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::vector(geometryCollectionSpan.begin(), geometryCollectionSpan.end());
-      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
     
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static OrthoTreeContainerPoint Create(
       TContainer const& geometryCollection,
       depth_t maxDepthNo = 0,
@@ -253,11 +271,11 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = geometryCollection;
-      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
     
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static OrthoTreeContainerPoint Create(
       TContainer&& geometryCollection,
       depth_t maxDepthNo = 0,
@@ -266,16 +284,16 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     void Move(TVector const& vMove) noexcept
     {
-      this->m_tree.template Move<TExecutionPolicy>(vMove);
-      auto ep = TExecutionPolicy{}; // GCC 11.3
-      std::for_each(ep, this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&vMove](auto& data) { 
+      this->m_tree. EXEC_POL_TEMPLATE_ADD(Move)(vMove);
+      EXEC_POL_DEF(ep); // GCC 11.3
+      std::for_each(EXEC_POL_ADD(ep) this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&vMove](auto& data) {
         detail::setValuePart(data, AD::Add(detail::getValuePart(data), vMove));
       });
     }
@@ -330,7 +348,7 @@ namespace OrthoTree
     using base::base; // inherits all constructors
 
   public: // Edit functions
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static OrthoTreeContainerBox Create(
       std::span<TEntity const> const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -340,11 +358,11 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
-      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static OrthoTreeContainerBox Create(
       TContainer const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -353,11 +371,11 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = geometryCollection;
-      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static OrthoTreeContainerBox Create(
       TContainer&& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -366,16 +384,16 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore::template Create<TExecutionPolicy>(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     void Move(TVector const& moveVector) noexcept
     {
-      this->m_tree.template Move<TExecutionPolicy>(moveVector);
-      auto ep = TExecutionPolicy{}; // GCC 11.3
-      std::for_each(ep, this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&moveVector](auto& data) {
+      this->m_tree. EXEC_POL_TEMPLATE_ADD(Move)(moveVector);
+      EXEC_POL_DEF(ep); // GCC 11.3
+      std::for_each(EXEC_POL_ADD(ep) this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&moveVector](auto& data) {
         auto box = detail::getValuePart(data);
         AD::MoveBox(box, moveVector);
         detail::setValuePart(data, box);
@@ -399,10 +417,10 @@ namespace OrthoTree
 
   public: // Collision detection
     // Collision detection between the contained elements
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection() const noexcept
     {
-      return this->m_tree.template CollisionDetection<TExecutionPolicy>(this->m_geometryCollection);
+      return this->m_tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(this->m_geometryCollection);
     }
 
     // Collision detection with another tree

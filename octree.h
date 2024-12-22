@@ -34,6 +34,7 @@ SOFTWARE.
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
+#include <version>
 
 #include <array>
 #include <bitset>
@@ -71,6 +72,21 @@ SOFTWARE.
 #define LOOPIVDEP
 #endif
 
+#ifdef __cpp_lib_execution
+#define EXEC_POL_TEMPLATE_DECL template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+#define EXEC_POL_TEMPLATE_PARAM typename TExecutionPolicy = std::execution::unsequenced_policy,
+#define EXEC_POL_TEMPLATE_ADD(func) template func<TExecutionPolicy>
+#define EXEC_POL_TEMPLATE_ADDF(func) func<TExecutionPolicy>
+#define EXEC_POL_DEF(e) auto constexpr e = TExecutionPolicy{}
+#define EXEC_POL_ADD(e) e,
+#else
+#define EXEC_POL_TEMPLATE_DECL
+#define EXEC_POL_TEMPLATE_PARAM
+#define EXEC_POL_TEMPLATE_ADD(func) func
+#define EXEC_POL_TEMPLATE_ADDF(func) func
+#define EXEC_POL_DEF(e)
+#define EXEC_POL_ADD(e)
+#endif
 
 namespace OrthoTree
 {
@@ -717,8 +733,6 @@ namespace OrthoTree
   template<std::size_t N>
   bitset_arithmetic<N> operator-(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
   {
-    assert(lhs >= rhs);
-
     auto ret = lhs;
     bool borrow = false;
     for (std::size_t i = 0; i < N; ++i)
@@ -1787,13 +1801,13 @@ namespace OrthoTree
     }
 
     // Update all element which are in the given hash-table.
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy, bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
+    template<EXEC_POL_TEMPLATE_PARAM bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
     void UpdateIndexes(std::unordered_map<TEntityID, std::optional<TEntityID>> const& updateMap) noexcept
     {
       autoc updateMapEndIterator = updateMap.end();
 
-      autoce ep = TExecutionPolicy{};
-      std::for_each(ep, m_nodes.begin(), m_nodes.end(), [&](auto& node) {
+      EXEC_POL_DEF(ep);
+      std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&](auto& node) {
         decltype(Node::Entities) entitiesNew;
         for (autoc& id : node.second.Entities)
         {
@@ -1873,11 +1887,11 @@ namespace OrthoTree
 
 
     // Move the whole tree with a std::vector of the movement
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     void Move(TVector const& moveVector) noexcept
     {
-      auto ep = TExecutionPolicy{}; // GCC 11.3
-      std::for_each(ep, m_nodes.begin(), m_nodes.end(), [&moveVector](auto& pairKeyNode) {
+      EXEC_POL_DEF(ep); // GCC 11.3
+      std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&moveVector](auto& pairKeyNode) {
         auto box = pairKeyNode.second.GetBoxInternal();
         AD::MoveBox(box, moveVector);
         pairKeyNode.second.SetBox(std::move(box));
@@ -2301,7 +2315,7 @@ namespace OrthoTree
     }
 
     // Create
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static void Create(
       OrthoTreePoint& tree,
       TContainer const& points,
@@ -2319,13 +2333,13 @@ namespace OrthoTree
         return;
 
       auto pointLocations = std::vector<Location>(pointNo);
-      auto ept = TExecutionPolicy{}; // GCC 11.3 only accept in this form
-      std::transform(ept, points.begin(), points.end(), pointLocations.begin(), [&](autoc& point) {
+      EXEC_POL_DEF(ept); // GCC 11.3
+      std::transform(EXEC_POL_ADD(ept) points.begin(), points.end(), pointLocations.begin(), [&](autoc& point) {
         return Location{ detail::getKeyPart(points, point), tree.getLocationID(detail::getValuePart(point)) };
       });
-
-      auto eps = TExecutionPolicy{}; // GCC 11.3 only accept in this form
-      std::sort(eps, pointLocations.begin(), pointLocations.end(), [&](autoc& leftLocation, autoc& rightLocation) {
+        
+      EXEC_POL_DEF(eps); // GCC 11.3
+      std::sort(EXEC_POL_ADD(eps) pointLocations.begin(), pointLocations.end(), [&](autoc& leftLocation, autoc& rightLocation) {
         return leftLocation.GridID < rightLocation.GridID;
       });
 
@@ -2879,7 +2893,7 @@ namespace OrthoTree
     }
 
     // Create
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     static void Create(
       OrthoTreeBoundingBox& tree,
       TContainer const& boxes,
@@ -2900,15 +2914,18 @@ namespace OrthoTree
       auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
 
       autoce NON_SPLITTED = SPLIT_DEPTH_INCREASEMENT == 0;
+      #ifdef __cpp_lib_execution
       autoce NON_PARALLEL = std::is_same<TExecutionPolicy, std::execution::unsequenced_policy>::value ||
                             std::is_same<TExecutionPolicy, std::execution::sequenced_policy>::value;
+      #else
+      autoce NON_PARALLEL = true;
+      #endif
 
-      auto epf = TExecutionPolicy{}; // GCC 11.3
       auto locations = LocationContainer(entityNo);
-
       if constexpr (NON_SPLITTED)
       {
-        std::transform(epf, boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes](autoc& box) {
+        EXEC_POL_DEF(epf); // GCC 11.3
+        std::transform(EXEC_POL_ADD(epf) boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes](autoc& box) {
           return tree.getLocation(detail::getKeyPart(boxes, box), detail::getValuePart(box), nullptr);
         });
       }
@@ -2917,7 +2934,8 @@ namespace OrthoTree
         locations.reserve(entityNo * std::min<std::size_t>(10, Base::CHILD_NO * SPLIT_DEPTH_INCREASEMENT));
 
         std::size_t locationID = 0;
-        std::for_each(epf, boxes.begin(), boxes.end(), [&tree, &boxes, &locations, &locationID](autoc& box) {
+        EXEC_POL_DEF(epf); // GCC 11.3
+        std::for_each(EXEC_POL_ADD(epf) boxes.begin(), boxes.end(), [&tree, &boxes, &locations, &locationID](autoc& box) {
           locations[locationID] = tree.getLocation(detail::getKeyPart(boxes, box), detail::getValuePart(box), &locations);
           ++locationID;
         });
@@ -2929,7 +2947,8 @@ namespace OrthoTree
           additionalLocations[detail::getKeyPart(boxes, entity)];
 
         locations.reserve(entityNo * std::min<std::size_t>(10, Base::CHILD_NO * SPLIT_DEPTH_INCREASEMENT));
-        std::transform(epf, boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes, &additionalLocations](autoc& box) {
+        EXEC_POL_DEF(epf); // GCC 11.3
+        std::transform(EXEC_POL_ADD(epf) boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes, &additionalLocations](autoc& box) {
           autoc entityID = detail::getKeyPart(boxes, box);
           return tree.getLocation(entityID, detail::getValuePart(box), &additionalLocations.at(entityID));
         });
@@ -2943,9 +2962,9 @@ namespace OrthoTree
         }
 
         locations.resize(position);
-        auto epf2 = TExecutionPolicy{}; // GCC 11.3
+        EXEC_POL_DEF(epf2); // GCC 11.3
         std::for_each(
-          epf2,
+          EXEC_POL_ADD(epf2)
           additionalLocations.begin(),
           additionalLocations.end(),
           [&locations, &additionalLocationPositions](auto& additionalLocation) {
@@ -2959,16 +2978,16 @@ namespace OrthoTree
           });
       }
 
-      auto eps = TExecutionPolicy{}; // GCC 11.3
-      std::sort(eps, locations.begin(), locations.end());
+      EXEC_POL_DEF(eps); // GCC 11.3
+      std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
 
       auto beginLocationIterator = locations.begin();
       tree.addNodes(nodeRoot, rootKey, beginLocationIterator, locations.end(), MortonNodeID{ 0 }, maxDepthNo);
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
       {
         // Eliminate duplicates. Not all sub-nodes will be created due to the maxElementNoInNode, which cause duplicates in the parent nodes.
-        auto epsp = TExecutionPolicy{}; // GCC 11.3
-        std::for_each(epsp, tree.m_nodes.begin(), tree.m_nodes.end(), [](auto& pairOfKeyAndNode) {
+        EXEC_POL_DEF(epsp); // GCC 11.3
+        std::for_each(EXEC_POL_ADD(epsp) tree.m_nodes.begin(), tree.m_nodes.end(), [](auto& pairOfKeyAndNode) {
           auto& node = pairOfKeyAndNode.second;
           std::ranges::sort(node.Entities);
           node.Entities.erase(std::unique(node.Entities.begin(), node.Entities.end()), node.Entities.end());
@@ -3409,7 +3428,7 @@ namespace OrthoTree
 
   private:
     // Collision detection between the stored elements from bottom to top logic
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     std::vector<std::pair<TEntityID, TEntityID>> collisionDetection(TContainer const& boxes, FCollisionDetector&& collisionDetector) const noexcept
     {
       using CollisionDetectionContainer = std::vector<std::pair<TEntityID, TEntityID>>;
@@ -3428,9 +3447,9 @@ namespace OrthoTree
           for (autoc entityID : node.Entities)
             entityIDNodeMap[entityID].emplace_back(nodeKey);
         });
-
-        auto ep = TExecutionPolicy{}; // GCC 11.3
-        std::for_each(ep, entityIDNodeMap.begin(), entityIDNodeMap.end(), [](auto& keys) {
+        
+        EXEC_POL_DEF(ep); // GCC 11.3
+        std::for_each(EXEC_POL_ADD(ep) entityIDNodeMap.begin(), entityIDNodeMap.end(), [](auto& keys) {
           if constexpr (Base::IS_LINEAR_TREE)
             std::ranges::sort(keys.second);
           else
@@ -3462,11 +3481,11 @@ namespace OrthoTree
         }
       }
 
-      auto ep = TExecutionPolicy{}; // GCC 11.3
+      EXEC_POL_DEF(ep); // GCC 11.3
 
       // Collision detection node-by-node without duplication
       auto collidedEntityPairsInsideNodes = std::vector<CollisionDetectionContainer>(this->m_nodes.size());
-      std::transform(ep, this->m_nodes.begin(), this->m_nodes.end(), collidedEntityPairsInsideNodes.begin(), [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
+      std::transform(EXEC_POL_ADD(ep) this->m_nodes.begin(), this->m_nodes.end(), collidedEntityPairsInsideNodes.begin(), [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
         auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
         autoc & [nodeKey, node] = pairKeyNode;
 
@@ -3641,20 +3660,20 @@ namespace OrthoTree
 
   public:
     // Collision detection between the stored elements from bottom to top logic
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer const& boxes) const noexcept
     {
-      return collisionDetection<TExecutionPolicy>(boxes, [](TEntityID id1, TBox const& e1, TEntityID id2, TBox const& e2) {
+      return EXEC_POL_TEMPLATE_ADDF(collisionDetection)(boxes, [](TEntityID id1, TBox const& e1, TEntityID id2, TBox const& e2) {
         return AD::AreBoxesOverlappedStrict(e1, e2);
       });
     }
 
 
     // Collision detection between the stored elements from bottom to top logic
-    template<typename TExecutionPolicy = std::execution::unsequenced_policy>
+    EXEC_POL_TEMPLATE_DECL
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer const& boxes, FCollisionDetector&& collisionDetector) const noexcept
     {
-      return collisionDetection<TExecutionPolicy>(boxes, [collisionDetector](TEntityID id1, TBox const& e1, TEntityID id2, TBox const& e2) {
+      return EXEC_POL_TEMPLATE_ADDF(collisionDetection)(boxes, [collisionDetector](TEntityID id1, TBox const& e1, TEntityID id2, TBox const& e2) {
         return AD::AreBoxesOverlappedStrict(e1, e2) && collisionDetector(id1, e1, id2, e2);
       });
     }
