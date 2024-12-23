@@ -772,7 +772,7 @@ int main()
   ofstream report;
   report.open("report.csv");
   
-  autoce nDepth = depth_t{ 5 };
+  autoce nDepth = depth_t{ 5 }; 
   {
     autoc szName = string("Diagonally placed points");
     autoc aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
@@ -840,7 +840,7 @@ int main()
     autoc aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_CylindricalSemiRandom<N, static_cast<size_t>(aSizeNonLog.back())>(); }, szName, aSizeNonLog.back(), report);
     autoc vTaskBruteForce = SelfConflictBruteForceBoxTasks<N>("Box self conflict by brute force", aBox);
     autoc vTaskTreeCollisionDetection = CollisionDetectionBoxTasks<N>(3, "Box self conflict by octree", aBox);
-    autoc vTaskTreeSearch = SearchTreeBoxTasks<N>(3, "Box search by octree", aBox);
+    autoc vTaskTreeSearch = SearchTreeBoxTasks<N>(5, "Box search by octree", aBox);
 
     RunTasks(vTaskBruteForce, report);
     RunTasks(vTaskTreeCollisionDetection, report);

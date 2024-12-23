@@ -21,6 +21,8 @@
 #endif // !UNREAL_DUMMY_TYPES
 #include "../adaptor.unreal.h"
 
+#include <functional>
+
 using namespace OrthoTree;
 
 using std::array;
@@ -134,7 +136,14 @@ namespace AdaptorTest
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).Entities.empty());
-      Assert::IsTrue(AreEqualAlmost(tree.GetBox(), MyBox2D{}));
+
+      autoc& box = tree.GetBox();
+      Assert::IsTrue(AreEqualAlmost(
+        MyBox2D{
+          MyPoint2D{box.Min[0], box.Min[1]},
+          MyPoint2D{box.Max[0], box.Min[1]}
+      },
+        MyBox2D{}));
     }
 
     TEST_METHOD(Insert_NonLeaf_Successful)
@@ -420,6 +429,274 @@ namespace AdaptorTest
         Assert::IsTrue(vector<std::size_t>{ 4, 2, 3 } == intersectedPoints);
         Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
         Assert::IsTrue(vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
+      }
+    };
+  } // namespace XYZAdaptorTest
+
+  namespace AbstractAdaptorTest
+  {
+    // User-defined geometrical objects
+
+    struct MyPoint2DBase
+    {
+      float x;
+      float y;
+
+      MyPoint2DBase(float x, float y): x(x), y(y){}
+      virtual ~MyPoint2DBase() {}
+
+      virtual float GetDistance() const = 0;
+    };
+    
+    struct MyPoint2DConcrete1 : MyPoint2DBase
+    {
+      using MyPoint2DBase::MyPoint2DBase;
+
+      virtual float GetDistance() const override { return x + y; };
+    };
+    
+    struct MyPoint2DConcrete2 : MyPoint2DBase
+    {
+      using MyPoint2DBase::MyPoint2DBase;
+
+      virtual float GetDistance() const override { return std::sqrt(x*x + y*y); };
+    };
+
+    struct MyBox2DBase
+    {
+      std::unique_ptr<MyPoint2DBase> Min, Max;
+
+      MyBox2DBase() = default;
+      MyBox2DBase(std::unique_ptr<MyPoint2DBase>&& minPoint, std::unique_ptr<MyPoint2DBase>&& maxPoint)
+      : Min(std::move(minPoint))
+      , Max(std::move(maxPoint))
+      {
+      }
+
+      virtual ~MyBox2DBase() {}
+      virtual float GetSize() const = 0;
+    };
+
+    struct MyBox2DConcrete1 : MyBox2DBase
+    {
+      using MyBox2DBase::MyBox2DBase;
+      virtual float GetSize() const override { return Max->x - Min->x; }
+    };
+
+    struct MyBox2DConcrete2 : MyBox2DBase
+    {
+      using MyBox2DBase::MyBox2DBase;
+      virtual float GetSize() const override { return Max->y - Min->y; }
+    };
+    
+    struct MyRay2DBase
+    {
+      std::unique_ptr<MyPoint2DBase> Origin, Direction;
+    };
+    struct MyPlane2DBase
+    {
+      float OrigoDistance;
+      std::unique_ptr<MyPoint2DBase> Normal;
+
+      MyPlane2DBase(float origoDistance, std::unique_ptr<MyPoint2DBase> normal)
+      : OrigoDistance(origoDistance)
+      , Normal(std::move(normal))
+      {}
+    };
+    
+
+    // Adaptor
+
+    struct AdaptorBasicsCustom
+    {
+      static float GetPointC(MyPoint2DBase const* pt, OrthoTree::dim_t i)
+      {
+        switch (i)
+        {
+        case 0: return pt->x;
+        case 1: return pt->y;
+        default: assert(false); return pt->x;
+        }
+      }
+
+      static void SetPointC(MyPoint2DBase* pt, OrthoTree::dim_t i, float v)
+      {
+        switch (i)
+        {
+        case 0: pt->x = v; break;
+        case 1: pt->y = v; break;
+        default: assert(false);
+        }
+      }
+
+      static void SetBoxMinC(MyBox2DBase* box, dim_t i, float v) { SetPointC(box->Min.get(), i, v); }
+      static void SetBoxMaxC(MyBox2DBase* box, dim_t i, float v) { SetPointC(box->Max.get(), i, v); }
+      static float GetBoxMinC(MyBox2DBase const* box, dim_t i) { return GetPointC(box->Min.get(), i); }
+      static float GetBoxMaxC(MyBox2DBase const* box, dim_t i) { return GetPointC(box->Max.get(), i); }
+
+      static MyPoint2DBase* GetRayDirection(MyRay2DBase const& ray) { return ray.Direction.get(); }
+      static MyPoint2DBase* GetRayOrigin(MyRay2DBase const& ray) { return ray.Origin.get(); }
+
+      static MyPoint2DBase* GetPlaneNormal(MyPlane2DBase const& plane) { return plane.Normal.get(); }
+      static float GetPlaneOrigoDistance(MyPlane2DBase const& plane) { return plane.OrigoDistance; }
+    };
+
+    using MyPoint2DPtr = MyPoint2DBase*;
+    using MyBox2DPtr = MyBox2DBase*;
+    using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, AdaptorBasicsCustom>;
+
+
+    // Tailored Quadtree objects
+
+    using QuadtreePointCustom = OrthoTree::OrthoTreePoint<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, AdaptorCustom>;
+
+    using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, 2, AdaptorCustom>;
+    using QuadtreeBoxCustomC = OrthoTreeContainerBox<QuadtreeBoxCustom>;
+
+    TEST_CLASS(AbstractAdaptorTest)
+    { 
+    public: 
+      TEST_METHOD(PointGeneral2D)
+      {
+
+        auto vptOwner = std::vector<std::unique_ptr<MyPoint2DBase>>{};
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 0.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(2.0f, 2.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(3.0f, 3.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(4.0f, 4.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(0.0f, 1.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(0.0f, 4.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(4.0f, 0.0f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(1.5f, 1.5f));
+        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(1.0f, 1.5f));
+
+        auto vptView = std::vector<MyPoint2DBase*>{};
+        std::ranges::transform(vptOwner, std::back_inserter(vptView), [](auto& ppt) { return ppt.get(); });
+
+        auto tree = QuadtreePointCustom(vptView, 3, std::nullopt, 2);
+
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+
+        auto searchBox = std::make_unique<MyBox2DConcrete1>();
+        searchBox->Min = std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f);
+        searchBox->Max = std::make_unique<MyPoint2DConcrete2>(2.0f, 2.0f);
+        auto pointsInSearchBox = tree.RangeSearch(searchBox.get(), vptView);
+
+        auto sqrt2Reciproc = float(1.0 / sqrt(2.0));
+        auto planeNormal = std::make_unique<MyPoint2DConcrete2>(sqrt2Reciproc, sqrt2Reciproc);
+        auto pointsInPlane = tree.PlaneSearch(2.6f, planeNormal.get(), 0.3f, vptView);
+
+        auto planesForFustrum = std::vector<MyPlane2DBase>{};
+        planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(-1.0f, 0.0f) });
+        planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(0.0f, -1.0f) });
+        planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(+1.0f, 0.0f) });
+        auto pointsInFrustum = tree.FrustumCulling(planesForFustrum, 0.01f, vptView);
+
+        autoc n = vptView.size();
+        vptView.emplace_back(vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.1f)).get());
+        tree.Insert(n, vptOwner.back().get());
+        tree.Erase<false>(0, vptOwner.front().get());
+        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+
+        auto searchPoint = std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f);
+        auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint.get(), 3, vptView);
+
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 0, 1, 2, 3, 6, 9, 10 }, pointsInSearchBox));
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 3, 7, 8 }, pointsInPlane));
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 2, 11, 10 }, entityIDsKNN));
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 0, 1, 2, 3, 6, 9, 10 }, pointsInFrustum));
+
+        Assert::IsTrue(std::vector<std::size_t>{ 8, 7, 0, 1, 6, 3, 2, 10, 9, 4, 5 } == entityIDsInBFS);
+        Assert::IsTrue(std::vector<std::size_t>{ 0, 1, 6, 2, 10, 9, 8, 7, 3, 4, 5 } == entityIDsInDFS);
+        Assert::IsTrue(std::vector<std::size_t>{ 1, 6, 2, 11, 10, 9, 8, 7, 3, 4, 5 } == entityIDsInDFS_AfterErase);
+      }
+
+      TEST_METHOD(BoxGeneral2DC_Example2)
+      {
+        auto boxes = std::vector<std::unique_ptr<MyBox2DBase>>{};
+        boxes.emplace_back(
+          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f), std::make_unique<MyPoint2DConcrete2>(1.0f, 1.0f)));
+        boxes.emplace_back(
+          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f), std::make_unique<MyPoint2DConcrete2>(2.0f, 2.0f)));
+        boxes.emplace_back(
+          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(2.0f, 2.0f), std::make_unique<MyPoint2DConcrete2>(3.0f, 3.0f)));
+        boxes.emplace_back(
+          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(3.0f, 3.0f), std::make_unique<MyPoint2DConcrete2>(4.0f, 4.0f)));
+        boxes.emplace_back(
+          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(1.2f, 1.2f), std::make_unique<MyPoint2DConcrete2>(2.8f, 2.8f)));
+
+        auto boxesView = std::vector<MyBox2DBase*>{};
+        std::ranges::transform(boxes, std::back_inserter(boxesView), [](auto& ppt) { return ppt.get(); });
+
+        auto quadtree = QuadtreeBoxCustomC(
+          boxesView,
+          3, // max depth
+          std::nullopt, // user-provided bounding Box for all
+          2, // max element in a node
+          false // parallel calculation option
+        );
+
+        auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
+
+        auto searchBox = MyBox2DConcrete1(
+          std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f),
+          std::make_unique<MyPoint2DConcrete1>(3.1f, 3.1f)
+        );
+
+        // Boxes within the range
+        auto insideBoxIDs = quadtree.RangeSearch(&searchBox); //: { 1, 2, 4 }
+
+        // Overlapping Boxes with the range
+        constexpr bool shouldFullyContain = false;                                    // overlap is enough
+        auto overlappingBoxIDs = quadtree.RangeSearch<shouldFullyContain>(&searchBox); //: { 1, 2, 3, 4 }
+
+        // Picked boxes
+        auto pickPoint = MyPoint2DConcrete1( 2.5f, 2.5f );
+        auto pickedIDs = quadtree.PickSearch(&pickPoint); //: { 2, 4 }
+
+        // Ray intersections
+        auto rayBasePoint = std::make_unique<MyPoint2DConcrete1>( 1.5f, 2.5f );
+        auto rayHeading = MyPoint2DConcrete1( 1.5f, 0.5f );
+        auto firstIntersectedBox = quadtree.RayIntersectedFirst(rayBasePoint.get(), &rayHeading, 0.01f); //: 4
+        auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint.get(), &rayHeading, 0.01f);     //: { 4, 2, 3 } in distance order!
+
+        // Plane
+        auto sqrt2 = sqrtf(2.0);
+        auto sqrt2Reciproc = 1.0f / sqrt2;
+
+        // Cross-point of the planes: 2;2;2
+        auto frustumBoundaryPlanes = std::vector<MyPlane2DBase>();
+        frustumBoundaryPlanes.emplace_back(2 * sqrt2, std::make_unique<MyPoint2DConcrete1>(sqrt2Reciproc, sqrt2Reciproc));        
+        frustumBoundaryPlanes.emplace_back(2.0f, std::make_unique<MyPoint2DConcrete1>(0.0f, -1.0f));
+
+        auto boxesInFrustum = quadtree.FrustumCulling( 
+          frustumBoundaryPlanes,
+          0.01f);
+
+        // Collect all IDs in breadth/depth first order
+        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+
+        Assert::IsTrue(std::ranges::is_permutation(
+          std::vector<std::pair<std::size_t, std::size_t>>{
+            {1, 4},
+            {2, 4}
+        },
+          collidingIDPairs));
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 1, 2, 4 }, insideBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 1, 2, 3, 4 }, overlappingBoxIDs));
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 2, 4 }, pickedIDs));
+        Assert::IsTrue(firstIntersectedBox.has_value());
+        Assert::AreEqual(std::size_t(4), *firstIntersectedBox);
+
+        Assert::IsTrue(std::ranges::is_permutation(std::vector<std::size_t>{ 1, 2, 4 }, boxesInFrustum));
+
+        Assert::IsTrue(std::vector<std::size_t>{ 4, 2, 3 } == intersectedPoints);
+        Assert::IsTrue(std::vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
+        Assert::IsTrue(std::vector<std::size_t>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
       }
     };
   } // namespace XYZAdaptorTest

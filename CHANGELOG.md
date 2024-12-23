@@ -1,5 +1,31 @@
 # Changelog
 
+## 2024-12-26
+New features
+* Support of abstract classes
+
+Refactorizations
+* Internal geometry module
+
+Maintenance
+* Support compilers w/o std::execution (e.g. Apple Clang)
+
+## 2024-03-26
+New features
+* New adaptors: glm, boost, CGAL
+* Built-in `Ray` and `Plane` types
+* Rebalancing insert
+
+Refactorizations
+* New, more capable adaptor concept
+* Separated Adapator tests
+* Support of `Eigen::Hyperplane` and `Eigen::ParametrizedLine`
+* Support of Unreal Engine `FRay`, `FPlane`
+
+Maintenance
+* GCC compile action
+* Fix a bug in `Insert()` 
+
 ## 2024-03-02
 New features
 * New adaptors: Eigen, Unreal Engine, XYZ

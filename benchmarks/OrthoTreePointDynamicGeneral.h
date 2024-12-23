@@ -16,8 +16,8 @@ template<
   typename TBox,
   typename TRay,
   typename TPlane, 
-  typename TGeonetry = double,
-  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeonetry>>
+  typename TGeometry = double,
+  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
 class OrthoTreePointDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << DIMENSION_NO;
@@ -78,11 +78,39 @@ private:
 
   }
 
+  static inline TBox BoxInvertedInit() noexcept
+  {
+    auto ext = TBox{};
+
+    for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+    {
+      AD::SetBoxMinC(ext, dimensionID, std::numeric_limits<TGeometry>::max());
+      AD::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
+    }
+
+    return ext;
+  }
+
+  static TBox GetBoxOfPoints(std::span<TVector const> const& points) noexcept
+  {
+    auto ext = BoxInvertedInit();
+    for (autoc& point : points)
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+      {
+        if (AD::GetBoxMinC(ext, dimensionID) > AD::GetPointC(point, dimensionID))
+          AD::SetBoxMinC(ext, dimensionID, AD::GetPointC(point, dimensionID));
+
+        if (AD::GetBoxMaxC(ext, dimensionID) < AD::GetPointC(point, dimensionID))
+          AD::SetBoxMaxC(ext, dimensionID, AD::GetPointC(point, dimensionID));
+      }
+
+    return ext;
+  }
 
 public:
   static OrthoTreePointDynamicGeneral Create(span<TVector const> const& vpt, size_t nDepthMax, std::optional<TBox> const& obox, size_t nElementMax)
   {
-    autoc box = obox.has_value() ? *obox : AD::GetBoxOfPoints(vpt);
+    autoc box = obox.has_value() ? *obox : GetBoxOfPoints(vpt);
 
     autoc npt = vpt.size();
     auto aid = vector<IdEntityNode>(npt, IdEntityNode{});
@@ -110,8 +138,8 @@ template<
   typename TBox,
   typename TRay,
   typename TPlane,
-  typename TGeonetry = double,
-  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeonetry>>
+  typename TGeometry = double,
+  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
 class OrthoTreeBoxDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << DIMENSION_NO;
@@ -192,11 +220,40 @@ private:
 
   }
 
+  static inline TBox BoxInvertedInit() noexcept
+  {
+    auto ext = TBox{};
+
+    for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+    {
+      AD::SetBoxMinC(ext, dimensionID, std::numeric_limits<TGeometry>::max());
+      AD::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
+    }
+
+    return ext;
+  }
+
+  static TBox GetBoxOfBoxes(std::span<TBox const> const& boxes) noexcept
+  {
+    auto ext = BoxInvertedInit();
+    for (autoc& e : boxes)
+    {
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+      {
+        if (AD::GetBoxMinC(ext, dimensionID) > AD::GetBoxMinC(e, dimensionID))
+          AD::SetBoxMinC(ext, dimensionID, AD::GetBoxMinC(e, dimensionID));
+
+        if (AD::GetBoxMaxC(ext, dimensionID) < AD::GetBoxMaxC(e, dimensionID))
+          AD::SetBoxMaxC(ext, dimensionID, AD::GetBoxMaxC(e, dimensionID));
+      }
+    }
+    return ext;
+  }
 
 public:
   static OrthoTreeBoxDynamicGeneral Create(span<TBox const> const& vBox, size_t nDepthMax, std::optional<TBox> const& obox = std::nullopt, size_t nElementMax = 20)
   {
-    autoc box = obox.has_value() ? *obox : AD::GetBoxOfBoxes(vBox);
+    autoc box = obox.has_value() ? *obox : GetBoxOfBoxes(vBox);
 
     autoc nEnt = vBox.size();
     auto aid = vector<IdEntityNode>(nEnt, IdEntityNode{});

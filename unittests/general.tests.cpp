@@ -372,7 +372,9 @@ namespace GeneralTest
       auto tree = DualtreePoint{};
       autoc bb = BoundingBox1D{ -1, +1 };
       tree.Init(bb, 3, 10);
-      Assert::IsTrue(AreEqualAlmost(bb, tree.GetBox()));
+      autoc& box = tree.GetBox();
+      
+      Assert::IsTrue(AreEqualAlmost(bb, BoundingBox1D{ .Min = box.Min, .Max = box.Max }));
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(1, nodes.size());
@@ -759,6 +761,8 @@ namespace GeneralTest
       using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
       autoce rAcc = std::numeric_limits<double>::min();
 
+      autoc ptPre = &tPre; 
+      autoc ptAfter = &tAfter; 
       autoc nodesPre = tPre.GetNodes();
       autoc nodesAfter = tAfter.GetNodes();
 
@@ -771,22 +775,13 @@ namespace GeneralTest
         if (pairPre.first != pairAfter.first)
           return false;
 
-        autoc& nodePre = pairPre.second;
-        autoc& nodeAfter = pairAfter.second;
-
-        auto vMoveActualMin = PointND<N>{};
-        auto vMoveActualMax = PointND<N>{};
+        auto vMoveActual = PointND<N>{};
+        autoc& centerPre = GetNodeCenterMacro(ptPre, pairPre.first, pairPre.second);
+        autoc& centerAfter = GetNodeCenterMacro(ptAfter, pairAfter.first, pairAfter.second);
         for (dim_t dimensionID = 0; dimensionID < N; ++dimensionID)
-        {
-          AD::SetPointC(
-            vMoveActualMin, dimensionID, AD::GetBoxMinC(nodeAfter.GetBox(), dimensionID) - AD::GetBoxMinC(nodePre.GetBox(), dimensionID));
-          AD::SetPointC(
-            vMoveActualMax, dimensionID, AD::GetBoxMaxC(nodeAfter.GetBox(), dimensionID) - AD::GetBoxMaxC(nodePre.GetBox(), dimensionID));
-        }
+          AD::SetPointC(vMoveActual, dimensionID, centerAfter[dimensionID] - centerPre[dimensionID]);
 
-        autoc bMin = AD::ArePointsEqual(vMoveActualMin, vMoveExpected, rAcc);
-        autoc bMax = AD::ArePointsEqual(vMoveActualMax, vMoveExpected, rAcc);
-        return bMin && bMax;
+        return AD::ArePointsEqual(vMoveActual, vMoveExpected, rAcc);
       });
 
       return std::ranges::all_of(vMatch, [](autoc bMatch) { return bMatch; });
@@ -1158,7 +1153,9 @@ namespace Tree1DTest
 			autoc& nodes = tree.GetNodes();
 			Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).Entities.empty());
-      Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BB1_INV));
+
+      autoc& box = tree.GetBox();
+      Assert::IsTrue(AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, BB1_INV));
 		}
 
     // ext    //!
@@ -1168,7 +1165,9 @@ namespace Tree1DTest
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsFalse(nodes.at(1).Entities.empty());
-      Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox1D{ Point1D{1.0}, Point1D{1.0} }));
+
+      autoc& box = tree.GetBox();
+      Assert::IsTrue(AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, BoundingBox1D{ Point1D{ 1.0 }, Point1D{ 1.0 } }));
     }
 
     // ext     //!
@@ -1186,7 +1185,9 @@ namespace Tree1DTest
       autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
       Assert::AreEqual<size_t>(tree.GetNodes().size(), 7);
-      Assert::IsTrue(AreEqualAlmost(tree.GetBox(), BoundingBox1D{ Point1D{0.0}, Point1D{3.0} }));
+
+      autoc& box = tree.GetBox();
+      Assert::IsTrue(AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, BoundingBox1D{ Point1D{ 0.0 }, Point1D{ 3.0 } }));
     }
 
     //!

@@ -26,7 +26,6 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 ## Limitations
 * Maximum number of dimensions is 63.
 * Maximum depth of octree solutions is 10.
-* Abstract classes cannot be used for `TVector` and `TBox`
 
 ## Requirements
 * Language standard: C++20 or above

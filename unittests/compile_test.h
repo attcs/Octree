@@ -56,7 +56,8 @@ void testCompilePoint()
   // const member functions
   {
     autoc keyRoot = tree.GetRootKey();
-    autoc extent = tree.CalculateExtent(keyRoot);
+    autoc center = tree.GetNodeCenter(keyRoot);
+    autoc size = tree.GetNodeSize(0);
 
     autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
     autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
@@ -152,7 +153,8 @@ void testCompilePointMap()
   // const member functions
   {
     autoc keyRoot = tree.GetRootKey();
-    autoc extent = tree.CalculateExtent(keyRoot);
+    autoc center = tree.GetNodeCenter(keyRoot);
+    autoc size = tree.GetNodeSize(0);
 
     autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
     autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
@@ -252,7 +254,8 @@ void testCompileBox()
   // const member functions
   {
     autoc keyRoot = tree.GetRootKey();
-    autoc extent = tree.CalculateExtent(keyRoot);
+    autoc center = tree.GetNodeCenter(keyRoot);
+    autoc size = tree.GetNodeSize(0);
 
     autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
     autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
@@ -345,7 +348,8 @@ void testCompileBoxMap()
   // const member functions
   {
     autoc keyRoot = tree.GetRootKey();
-    autoc extent = tree.CalculateExtent(keyRoot);
+    autoc center = tree.GetNodeCenter(keyRoot);
+    autoc size = tree.GetNodeSize(0);
 
     autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
     autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
