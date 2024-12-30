@@ -3724,8 +3724,21 @@ namespace OrthoTree
 
       autoc nodeDepthID = this->GetDepthID(nodeKey);
 
-      autoc& entityIDs = node.Entities;
-      autoc entityNoInNode = entityIDs.size();
+      auto pEntityIDs = &node.Entities;
+      autoc entityNoInNode = pEntityIDs->size();
+
+      autoc isSweepAndPruneStrategy = entityNoInNode > 15;
+      auto sortedEntityIDs = std::vector<TEntityID>{};
+      if (isSweepAndPruneStrategy)
+      {
+        sortedEntityIDs = node.Entities;
+        std::ranges::sort(sortedEntityIDs, [&](autoc entityIDL, autoc entityIDR) {
+          return AD::GetBoxMinC(detail::at(boxes, entityIDL), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDR), 0);
+        });
+        pEntityIDs = &sortedEntityIDs;
+      }
+      autoc& entityIDs = *pEntityIDs;
+
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
       {
         auto parentDepthID = nodeDepthID - 1;
@@ -3733,10 +3746,17 @@ namespace OrthoTree
         {
           autoc& parentEntityIDs = this->GetNode(parentKey).Entities;
 
-          for (autoc entityID : entityIDs)
-            for (autoc entityIDFromParent : parentEntityIDs)
+          for (autoc entityIDFromParent : parentEntityIDs)
+          {
+            for (autoc entityID : entityIDs)
+            {
+              if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, entityIDFromParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
+                break;
+
               if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
                 collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
+            }
+          }
         }
 
         for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
@@ -3746,6 +3766,9 @@ namespace OrthoTree
           for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
           {
             autoc jEntityID = entityIDs[jEntity];
+            if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, iEntityID), 0) < AD::GetBoxMinC(detail::at(boxes, jEntityID), 0))
+              break;
+
             if (AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
               collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
           }
@@ -3826,20 +3849,30 @@ namespace OrthoTree
 
             if (entityIDPairsFromOtherBranch.empty())
             {
-              for (autoc entityID : entityIDsToCheckOnOtherBranch)
-                for (autoc entityIDFromParent : parentEntityIDs)
+              for (autoc entityIDFromParent : parentEntityIDs)
+              {
+                for (autoc entityID : entityIDsToCheckOnOtherBranch)
+                {
+                  if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, entityIDFromParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
+                    break;
+
                   if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
                     collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
+                }
+              }
             }
             else
             {
-              for (autoc entityID : entityIDsToCheckOnOtherBranch)
+              for (autoc entityIDFromParent : parentEntityIDs)
               {
-                autoc it = entityIDPairsFromOtherBranch.find(entityID);
-                autoc areThereAnyFromOtherBranch = it != entityIDPairsFromOtherBranch.end();
-
-                for (autoc entityIDFromParent : parentEntityIDs)
+                for (autoc entityID : entityIDsToCheckOnOtherBranch)
                 {
+                  if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, entityIDFromParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
+                    break;
+
+                  autoc it = entityIDPairsFromOtherBranch.find(entityID);
+                  autoc areThereAnyFromOtherBranch = it != entityIDPairsFromOtherBranch.end();
+
                   autoc isAlreadyContained = areThereAnyFromOtherBranch && it->second.contains(entityIDFromParent);
                   if (!isAlreadyContained && AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
                     collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
@@ -3861,6 +3894,8 @@ namespace OrthoTree
             for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
             {
               autoc jEntityID = entityIDs[jEntity];
+              if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, iEntityID), 0) < AD::GetBoxMinC(detail::at(boxes, jEntityID), 0))
+                break;
 
               // Same entities could collide in other nodes, but only the first occurrence should be checked
               autoc& entityKeysOfJ = entityIDNodeMap.at(jEntityID);
