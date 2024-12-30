@@ -3613,8 +3613,8 @@ namespace OrthoTree
     }
 
 
-    // Client-defined Collision detector (params: id1, e1, id2, e2). It supplemented with the box intersection, the Client should not add.
-    using FCollisionDetector = std::function<bool(TEntityID, TBox const&, TEntityID, TBox const&)>;
+    // Client-defined Collision detector based on indices. AABB intersection is executed independently from this checker.
+    using FCollisionDetector = std::function<bool(TEntityID, TEntityID)>;
 
     // Collision detection: Returns all overlapping boxes from the source trees.
     static std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(
@@ -3716,7 +3716,6 @@ namespace OrthoTree
   private:
     void insertCollidedEntities(
       TContainer const& boxes,
-      FCollisionDetector const& collisionDetector,
       std::unordered_map<TEntityID, std::vector<MortonNodeID>> const& entityIDNodeMap,
       std::vector<TEntityID> const& entityIDsInRoot,
       std::pair<MortonNodeID, Node> const& pairKeyNode,
@@ -3742,7 +3741,7 @@ namespace OrthoTree
           {
             for (autoc entityID : entityIDs)
               for (autoc entityIDFromParent : parentEntityIDs)
-                if (collisionDetector(entityID, detail::at(boxes, entityID), entityIDFromParent, detail::at(boxes, entityIDFromParent)))
+                if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
                   collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
           }
           else
@@ -3813,7 +3812,7 @@ namespace OrthoTree
             {
               for (autoc entityID : entityIDsToCheckOnOtherBranch)
                 for (autoc entityIDFromParent : parentEntityIDs)
-                  if (collisionDetector(entityID, detail::at(boxes, entityID), entityIDFromParent, detail::at(boxes, entityIDFromParent)))
+                  if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
                     collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
             }
             else
@@ -3826,7 +3825,7 @@ namespace OrthoTree
                 for (autoc entityIDFromParent : parentEntityIDs)
                 {
                   autoc isAlreadyContained = areThereAnyFromOtherBranch && it->second.contains(entityIDFromParent);
-                  if (!isAlreadyContained && collisionDetector(entityID, detail::at(boxes, entityID), entityIDFromParent, detail::at(boxes, entityIDFromParent)))
+                  if (!isAlreadyContained && AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
                     collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
                 }
               }
@@ -3850,7 +3849,7 @@ namespace OrthoTree
             autoc jEntityID = entityIDs[jEntity];
             if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
             {
-              if (collisionDetector(iEntityID, detail::at(boxes, iEntityID), jEntityID, detail::at(boxes, jEntityID)))
+              if (AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
                 collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
             }
             else
@@ -3875,7 +3874,7 @@ namespace OrthoTree
               }
 
               if (isFirstCollisionCheckHappening)
-                if (collisionDetector(iEntityID, detail::at(boxes, iEntityID), jEntityID, detail::at(boxes, jEntityID)))
+                if (AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
                   collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
             }
           }
@@ -3885,7 +3884,8 @@ namespace OrthoTree
 
     // Collision detection between the stored elements from bottom to top logic
     EXEC_POL_TEMPLATE_DECL
-    std::vector<std::pair<TEntityID, TEntityID>> collisionDetection(TContainer const& boxes, FCollisionDetector&& collisionDetector) const noexcept
+    std::vector<std::pair<TEntityID, TEntityID>> collisionDetection(
+      TContainer const& boxes, std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
       using CollisionDetectionContainer = std::vector<std::pair<TEntityID, TEntityID>>;
 
@@ -3943,7 +3943,7 @@ namespace OrthoTree
       EXEC_POL_DEF(epcd); // GCC 11.3
       std::transform(EXEC_POL_ADD(epcd) this->m_nodes.begin(), this->m_nodes.end(), collidedEntityPairsInsideNodes.begin(), [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
         auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
-        insertCollidedEntities(boxes, collisionDetector, entityIDNodeMap, entityIDsInRoot, pairKeyNode, collidedEntityPairsInsideNode);
+        insertCollidedEntities(boxes, entityIDNodeMap, entityIDsInRoot, pairKeyNode, collidedEntityPairsInsideNode);
         return collidedEntityPairsInsideNode;
       });
 
@@ -3959,6 +3959,14 @@ namespace OrthoTree
       for (autoc& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
         collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
 
+      if (collisionDetector)
+      {
+        autoc it = std::remove_if(collidedEntityPairs.begin(), collidedEntityPairs.end(), [&](autoc& pair) {
+          return (*collisionDetector)(pair.first, pair.second);
+        });
+        collidedEntityPairs.erase(it, collidedEntityPairs.end());
+      }
+
       return collidedEntityPairs;
     }
 
@@ -3967,8 +3975,7 @@ namespace OrthoTree
     EXEC_POL_TEMPLATE_DECL
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer const& boxes) const noexcept
     {
-      return EXEC_POL_TEMPLATE_ADDF(
-        collisionDetection)(boxes, [](TEntityID id1, TBox const& e1, TEntityID id2, TBox const& e2) { return AD::AreBoxesOverlappedStrict(e1, e2); });
+      return EXEC_POL_TEMPLATE_ADDF(collisionDetection)(boxes, std::nullopt);
     }
 
 
@@ -3976,9 +3983,7 @@ namespace OrthoTree
     EXEC_POL_TEMPLATE_DECL
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer const& boxes, FCollisionDetector&& collisionDetector) const noexcept
     {
-      return EXEC_POL_TEMPLATE_ADDF(collisionDetection)(boxes, [collisionDetector](TEntityID id1, TBox const& e1, TEntityID id2, TBox const& e2) {
-        return AD::AreBoxesOverlappedStrict(e1, e2) && collisionDetector(id1, e1, id2, e2);
-      });
+      return EXEC_POL_TEMPLATE_ADDF(collisionDetection)(boxes, collisionDetector);
     }
 
   private:
