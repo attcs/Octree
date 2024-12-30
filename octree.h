@@ -3730,8 +3730,7 @@ namespace OrthoTree
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
       {
         auto parentDepthID = nodeDepthID - 1;
-        auto depthDifference = depth_t(1);
-        for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO, --parentDepthID, ++depthDifference)
+        for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO, --parentDepthID)
         {
           autoc& parentEntityIDs = *(parentDepthID == 0 ? &entityIDsInRoot : &this->GetNode(parentKey).Entities);
 
