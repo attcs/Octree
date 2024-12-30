@@ -3727,9 +3727,7 @@ namespace OrthoTree
 
       autoc& entityIDs = *(nodeDepthID == 0 ? &entityIDsInRoot : &node.Entities);
       autoc entityNoInNode = entityIDs.size();
-
-      // Collision detection with the parents
-      if (nodeDepthID > 0)
+      if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
       {
         auto parentDepthID = nodeDepthID - 1;
         auto depthDifference = depth_t(1);
@@ -3737,15 +3735,35 @@ namespace OrthoTree
         {
           autoc& parentEntityIDs = *(parentDepthID == 0 ? &entityIDsInRoot : &this->GetNode(parentKey).Entities);
 
-          if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+          for (autoc entityID : entityIDs)
+            for (autoc entityIDFromParent : parentEntityIDs)
+              if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
+                collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
+        }
+
+        for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
+        {
+          autoc iEntityID = entityIDs[iEntity];
+
+          for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
           {
-            for (autoc entityID : entityIDs)
-              for (autoc entityIDFromParent : parentEntityIDs)
-                if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
-                  collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
+            autoc jEntityID = entityIDs[jEntity];
+            if (AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
+              collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
           }
-          else
+        }
+      }
+      else
+      {
+        // Collision detection with the parents
+        if (nodeDepthID > 0)
+        {
+          auto parentDepthID = nodeDepthID - 1;
+          auto depthDifference = depth_t(1);
+          for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO, --parentDepthID, ++depthDifference)
           {
+            autoc& parentEntityIDs = *(parentDepthID == 0 ? &entityIDsInRoot : &this->GetNode(parentKey).Entities);
+
             // SPLIT_DEPTH_INCREASEMENT: entityID could occur in multiple node. This algorithm aims to check only the first occurrence's parents.
 
             auto entityIDsToCheckOnOtherBranch = std::vector<TEntityID>{};
@@ -3832,28 +3850,20 @@ namespace OrthoTree
             }
           }
         }
-      }
 
-
-      // Collision detection inside the node
-      if (entityNoInNode > 1)
-      {
-        for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
+        // Collision detection inside the node
+        if (entityNoInNode > 1)
         {
-          autoc iEntityID = entityIDs[iEntity];
-          autoc& entityKeys = entityIDNodeMap.at(iEntityID);
-          autoc entityKeysNo = entityKeys.size();
-
-          for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
+          for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
           {
-            autoc jEntityID = entityIDs[jEntity];
-            if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+            autoc iEntityID = entityIDs[iEntity];
+            autoc& entityKeys = entityIDNodeMap.at(iEntityID);
+            autoc entityKeysNo = entityKeys.size();
+
+            for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
             {
-              if (AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
-                collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
-            }
-            else
-            {
+              autoc jEntityID = entityIDs[jEntity];
+
               // Same entities could collide in other nodes, but only the first occurrence should be checked
               autoc& entityKeysOfJ = entityIDNodeMap.at(jEntityID);
               auto isFirstCollisionCheckHappening = entityKeysNo == 1 || entityKeysOfJ.size() == 1;
@@ -3883,8 +3893,7 @@ namespace OrthoTree
     }
 
     // Collision detection between the stored elements from bottom to top logic
-    EXEC_POL_TEMPLATE_DECL
-    std::vector<std::pair<TEntityID, TEntityID>> collisionDetection(
+    EXEC_POL_TEMPLATE_DECL std::vector<std::pair<TEntityID, TEntityID>> collisionDetection(
       TContainer const& boxes, std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
       using CollisionDetectionContainer = std::vector<std::pair<TEntityID, TEntityID>>;
