@@ -56,6 +56,7 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #include <span>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <assert.h>
@@ -238,6 +239,53 @@ namespace OrthoTree
     {
       continer[key] = value;
     }
+
+
+    template<typename T1, typename T2>
+    struct pair_hash
+    {
+      template<typename T>
+      static constexpr void hash_combine(std::size_t& seed, T value) noexcept
+      {
+        seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      }
+
+      constexpr std::size_t operator()(std::pair<T1, T2> const& pair) const noexcept
+      {
+        std::size_t seed = std::hash<T1>{}(pair.first);
+        hash_combine(seed, pair.second);
+        return seed;
+      }
+    };
+
+    struct pair_equal
+    {
+      template<class T1, class T2>
+      bool operator()(const std::pair<T1, T2>& lhs, const std::pair<T1, T2>& rhs) const
+      {
+        return lhs.first == rhs.first && lhs.second == rhs.second;
+      }
+    };
+
+    template<typename TContainer, typename... TElement>
+    concept HasEmplaceBack = requires(TContainer container, TElement&&... elements) { container.emplace_back(std::forward<TElement>(elements)...); };
+
+    // Konceptus emplace ellenőrzésére
+    template<typename TContainer, typename... TElement>
+    concept HasEmplace = requires(TContainer container, TElement&&... elements) { container.emplace(std::forward<TElement>(elements)...); };
+
+    template<HasEmplaceBack TContainer, typename... TElement>
+    constexpr void emplace(TContainer& container, TElement&&... element) noexcept
+    {
+      container.emplace_back(std::forward<TElement>(element)...);
+    }
+
+    template<HasEmplace TContainer, typename... TElement>
+    constexpr void emplace(TContainer& container, TElement&&... element) noexcept
+    {
+      container.emplace(std::forward<TElement>(element)...);
+    }
+
   } // namespace detail
 
 #ifdef _MSC_VER
@@ -3714,11 +3762,12 @@ namespace OrthoTree
     }
 
   private:
+    template<typename TCollisionDetectionContainer, bool IS_PARALLEL>
     void insertCollidedEntities(
       TContainer const& boxes,
-      std::unordered_map<TEntityID, std::vector<MortonNodeID>> const& entityIDNodeMap,
       std::pair<MortonNodeID, Node> const& pairKeyNode,
-      std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairsInsideNode) const noexcept
+      TCollisionDetectionContainer& collidedEntityPairsInsideNode,
+      std::mutex& m) const noexcept
     {
       autoc & [nodeKey, node] = pairKeyNode;
 
@@ -3753,8 +3802,18 @@ namespace OrthoTree
               if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, entityIDFromParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
                 break;
 
-              if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
-                collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
+              if (!AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
+                continue;
+
+              if constexpr (IS_PARALLEL)
+              {
+                std::scoped_lock l(m);
+                detail::emplace(collidedEntityPairsInsideNode, entityID, entityIDFromParent);
+              }
+              else
+              {
+                detail::emplace(collidedEntityPairsInsideNode, entityID, entityIDFromParent);
+              }
             }
           }
         }
@@ -3769,156 +3828,88 @@ namespace OrthoTree
             if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, iEntityID), 0) < AD::GetBoxMinC(detail::at(boxes, jEntityID), 0))
               break;
 
-            if (AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
-              collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
+            if (!AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
+              continue;
+
+            if constexpr (IS_PARALLEL)
+            {
+              std::scoped_lock l(m);
+              detail::emplace(collidedEntityPairsInsideNode, iEntityID, jEntityID);
+            }
+            else
+            {
+              detail::emplace(collidedEntityPairsInsideNode, iEntityID, jEntityID);
+            }
           }
         }
       }
       else
       {
-        // Collision detection with the parents
-        if (nodeDepthID > 0)
+        auto parentDepthID = nodeDepthID - 1;
+        for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO, --parentDepthID)
         {
-          auto parentDepthID = nodeDepthID - 1;
-          auto depthDifference = depth_t(1);
-          for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO, --parentDepthID, ++depthDifference)
+          autoc& parentEntityIDs = this->GetNode(parentKey).Entities;
+
+          for (autoc entityIDFromParent : parentEntityIDs)
           {
-            autoc& parentEntityIDs = this->GetNode(parentKey).Entities;
-
-            // SPLIT_DEPTH_INCREASEMENT: entityID could occur in multiple node. This algorithm aims to check only the first occurrence's parents.
-
-            auto entityIDsToCheckOnOtherBranch = std::vector<TEntityID>{};
-            entityIDsToCheckOnOtherBranch.reserve(entityNoInNode);
-            auto entityIDPairsFromOtherBranch = std::unordered_map<TEntityID, std::set<TEntityID>>{};
             for (autoc entityID : entityIDs)
             {
-              autoc& currentNodeKeys = entityIDNodeMap.at(entityID);
-              autoc currentNodeKeysNo = currentNodeKeys.size();
-              if (currentNodeKeysNo == 1)
-                entityIDsToCheckOnOtherBranch.emplace_back(entityID);
+              if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, entityIDFromParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
+                break;
+
+              if (!AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
+                continue;
+
+              auto entityID1 = entityID;
+              auto entityID2 = entityIDFromParent;
+              if (entityID1 > entityID2)
+              {
+                entityID1 = entityIDFromParent;
+                entityID2 = entityID;
+              }
+
+              if constexpr (IS_PARALLEL)
+              {
+                std::scoped_lock l(m);
+                detail::emplace(collidedEntityPairsInsideNode, entityID1, entityID2);
+              }
               else
               {
-                if (currentNodeKeys[0] == nodeKey)
-                  entityIDsToCheckOnOtherBranch.emplace_back(entityID);
-                else if (depthDifference <= SPLIT_DEPTH_INCREASEMENT)
-                {
-                  auto keysOfEntitysDepth = std::vector<MortonNodeID>();
-                  for (std::size_t iNodeKey = 1; iNodeKey < currentNodeKeysNo; ++iNodeKey)
-                  {
-                    // An earlier node is already check this level
-                    {
-                      auto& keyOfEntitysDepth = keysOfEntitysDepth.emplace_back(currentNodeKeys[iNodeKey - 1]);
-                      autoc prevDepthID = this->GetDepthID(keyOfEntitysDepth);
-                      if (prevDepthID > parentDepthID)
-                        keyOfEntitysDepth >>= DIMENSION_NO * (prevDepthID - parentDepthID);
-
-                      if (keyOfEntitysDepth == parentKey)
-                        break;
-                    }
-
-                    if (currentNodeKeys[iNodeKey] != nodeKey)
-                      continue;
-
-                    // On other branch splitted boxes could conflict already
-                    for (autoc entityIDFromParent : parentEntityIDs)
-                    {
-                      autoc& parentNodeKeys = entityIDNodeMap.at(entityIDFromParent);
-                      autoc parentNodeKeysNo = parentNodeKeys.size();
-
-                      for (std::size_t iNodePrev = 0, iNodeParent = 0; iNodePrev < iNodeKey && iNodeParent < parentNodeKeysNo;)
-                      {
-                        if (parentNodeKeys[iNodeParent] == currentNodeKeys[iNodePrev] || (parentNodeKeys[iNodeParent] == keysOfEntitysDepth[iNodePrev]))
-                        {
-                          // Found an earlier common key
-                          entityIDPairsFromOtherBranch[entityID].emplace(entityIDFromParent);
-                          break;
-                        }
-                        else if (parentNodeKeys[iNodeParent] < currentNodeKeys[iNodePrev])
-                          ++iNodeParent;
-                        else
-                          ++iNodePrev;
-                      }
-                    }
-
-                    entityIDsToCheckOnOtherBranch.emplace_back(entityID);
-                    break;
-                  }
-                }
-              }
-            }
-
-            if (entityIDPairsFromOtherBranch.empty())
-            {
-              for (autoc entityIDFromParent : parentEntityIDs)
-              {
-                for (autoc entityID : entityIDsToCheckOnOtherBranch)
-                {
-                  if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, entityIDFromParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
-                    break;
-
-                  if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
-                    collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
-                }
-              }
-            }
-            else
-            {
-              for (autoc entityIDFromParent : parentEntityIDs)
-              {
-                for (autoc entityID : entityIDsToCheckOnOtherBranch)
-                {
-                  if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, entityIDFromParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
-                    break;
-
-                  autoc it = entityIDPairsFromOtherBranch.find(entityID);
-                  autoc areThereAnyFromOtherBranch = it != entityIDPairsFromOtherBranch.end();
-
-                  autoc isAlreadyContained = areThereAnyFromOtherBranch && it->second.contains(entityIDFromParent);
-                  if (!isAlreadyContained && AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDFromParent)))
-                    collidedEntityPairsInsideNode.emplace_back(entityID, entityIDFromParent);
-                }
+                detail::emplace(collidedEntityPairsInsideNode, entityID1, entityID2);
               }
             }
           }
         }
 
-        // Collision detection inside the node
-        if (entityNoInNode > 1)
+        for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
         {
-          for (std::size_t iEntity = 0; iEntity < entityNoInNode; ++iEntity)
+          autoc iEntityID = entityIDs[iEntity];
+
+          for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
           {
-            autoc iEntityID = entityIDs[iEntity];
-            autoc& entityKeys = entityIDNodeMap.at(iEntityID);
-            autoc entityKeysNo = entityKeys.size();
+            autoc jEntityID = entityIDs[jEntity];
+            if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, iEntityID), 0) < AD::GetBoxMinC(detail::at(boxes, jEntityID), 0))
+              break;
 
-            for (std::size_t jEntity = iEntity + 1; jEntity < entityNoInNode; ++jEntity)
+            if (!AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
+              continue;
+
+            auto entityID1 = iEntityID;
+            auto entityID2 = jEntityID;
+            if (entityID1 > entityID2)
             {
-              autoc jEntityID = entityIDs[jEntity];
-              if (isSweepAndPruneStrategy && AD::GetBoxMaxC(detail::at(boxes, iEntityID), 0) < AD::GetBoxMinC(detail::at(boxes, jEntityID), 0))
-                break;
+              entityID1 = jEntityID;
+              entityID2 = iEntityID;
+            }
 
-              // Same entities could collide in other nodes, but only the first occurrence should be checked
-              autoc& entityKeysOfJ = entityIDNodeMap.at(jEntityID);
-              auto isFirstCollisionCheckHappening = entityKeysNo == 1 || entityKeysOfJ.size() == 1;
-              if (!isFirstCollisionCheckHappening)
-              {
-                for (std::size_t iEntityKey = 0, jEntityKey = 0; iEntityKey < entityKeysNo;)
-                {
-                  if (entityKeysOfJ[jEntityKey] == entityKeys[iEntityKey])
-                  {
-                    isFirstCollisionCheckHappening = nodeKey == entityKeys[iEntityKey];
-                    break;
-                  }
-                  else if (entityKeysOfJ[jEntityKey] < entityKeys[iEntityKey])
-                    ++jEntityKey;
-                  else
-                    ++iEntityKey;
-                }
-              }
-
-              if (isFirstCollisionCheckHappening)
-                if (AD::AreBoxesOverlappedStrict(detail::at(boxes, iEntityID), detail::at(boxes, jEntityID)))
-                  collidedEntityPairsInsideNode.emplace_back(iEntityID, jEntityID);
+            if constexpr (IS_PARALLEL)
+            {
+              std::scoped_lock l(m);
+              detail::emplace(collidedEntityPairsInsideNode, entityID1, entityID2);
+            }
+            else
+            {
+              detail::emplace(collidedEntityPairsInsideNode, entityID1, entityID2);
             }
           }
         }
@@ -3935,65 +3926,95 @@ namespace OrthoTree
       auto collidedEntityPairs = CollisionDetectionContainer();
       collidedEntityPairs.reserve(boxes.size());
 
-
-      // SPLIT_DEPTH_INCREASEMENT version of this algorithm needs a reverse std::map
-      auto entityIDNodeMap = std::unordered_map<TEntityID, std::vector<MortonNodeID>>(entityNo);
-      if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
-      {
-        std::for_each(this->m_nodes.begin(), this->m_nodes.end(), [&entityIDNodeMap](autoc& pairKeyNode) {
-          autoc & [nodeKey, node] = pairKeyNode;
-          for (autoc entityID : node.Entities)
-            entityIDNodeMap[entityID].emplace_back(nodeKey);
-        });
-
-        EXEC_POL_DEF(ep); // GCC 11.3
-        std::for_each(EXEC_POL_ADD(ep) entityIDNodeMap.begin(), entityIDNodeMap.end(), [](auto& keys) {
-          if constexpr (Base::IS_LINEAR_TREE)
-            std::ranges::sort(keys.second);
-          else
-            std::ranges::sort(keys.second, bitset_arithmetic_compare{});
-        });
-      }
-
-
 #ifdef __cpp_lib_execution
       autoce NON_PARALLEL = std::is_same<TExecutionPolicy, std::execution::unsequenced_policy>::value ||
                             std::is_same<TExecutionPolicy, std::execution::sequenced_policy>::value;
 #else
       autoce NON_PARALLEL = true;
 #endif
+      std::mutex m;
+      auto collidedEntityPairsMap = std::unordered_set<std::pair<TEntityID, TEntityID>, detail::pair_hash<TEntityID, TEntityID>, detail::pair_equal>{};
       if constexpr (NON_PARALLEL)
       {
         EXEC_POL_DEF(epcd); // GCC 11.3
         std::for_each(EXEC_POL_ADD(epcd) this->m_nodes.begin(), this->m_nodes.end(), [&](autoc& pairKeyNode) {
-          insertCollidedEntities(boxes, entityIDNodeMap, pairKeyNode, collidedEntityPairs);
+          if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+          {
+            insertCollidedEntities<decltype(collidedEntityPairs), false>(boxes, pairKeyNode, collidedEntityPairs, m);
+          }
+          else
+          {
+            insertCollidedEntities<decltype(collidedEntityPairsMap), false>(boxes, pairKeyNode, collidedEntityPairsMap, m);
+          }
         });
+
+        if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
+        {
+          collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsMap.begin(), collidedEntityPairsMap.end());
+        }
       }
       else
       {
-        auto collidedEntityPairsInsideNodes = std::vector<CollisionDetectionContainer>(this->m_nodes.size());
         EXEC_POL_DEF(epcd); // GCC 11.3
-        std::transform(
-          EXEC_POL_ADD(epcd) this->m_nodes.begin(),
-          this->m_nodes.end(),
-          collidedEntityPairsInsideNodes.begin(),
-          [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
-            auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
-            insertCollidedEntities(boxes, entityIDNodeMap, pairKeyNode, collidedEntityPairsInsideNode);
-            return collidedEntityPairsInsideNode;
-          });
+        std::for_each(std::execution::par, this->m_nodes.begin(), this->m_nodes.end(), [&](autoc& pairKeyNode) {
+          /*
+          if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+          {
+            insertCollidedEntities<decltype(collidedEntityPairs), true>(boxes, pairKeyNode, collidedEntityPairs, m);
+          }
+          else
+          {
+            insertCollidedEntities<decltype(collidedEntityPairsMap), true>(boxes, pairKeyNode, collidedEntityPairsMap, m);
+          }
+          */
 
+
+          auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
+          insertCollidedEntities<CollisionDetectionContainer, false>(boxes, pairKeyNode, collidedEntityPairsInsideNode, m);
+
+          std::unique_lock lock(m);
+
+          if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
+          {
+            collidedEntityPairsMap.insert(collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
+          }
+          else
+          {
+            collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsMap.begin(), collidedEntityPairsMap.end());
+          }
+        });
+
+        if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
+        {
+          collidedEntityPairs.reserve(collidedEntityPairs.size());
+          collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsMap.begin(), collidedEntityPairsMap.end());
+        }
+        /*
         EXEC_POL_DEF(eps); // GCC 11.3
-        autoc noCollisions = std::transform_reduce(
-          EXEC_POL_ADD(eps) collidedEntityPairsInsideNodes.begin(),
-          collidedEntityPairsInsideNodes.end(),
-          size_t{},
-          std::plus{},
-          [](autoc& collidedEntityPairsInsideNode) { return collidedEntityPairsInsideNode.size(); });
+          autoc noCollisions = std::transform_reduce(
+            EXEC_POL_ADD(eps) collidedEntityPairsInsideNodes.begin(),
+            collidedEntityPairsInsideNodes.end(),
+            size_t{},
+            std::plus{},
+            [](autoc& collidedEntityPairsInsideNode) { return collidedEntityPairsInsideNode.size(); });
 
-        collidedEntityPairs.reserve(collidedEntityPairs.size() + noCollisions);
-        for (autoc& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
-          collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
+        if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+        {
+          collidedEntityPairs.reserve(noCollisions);
+          for (autoc& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
+            collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
+        }
+        else
+        {
+          collidedEntityPairsMap.reserve(noCollisions);
+          for (auto& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
+          {
+            for (auto& collidedEntityPair : collidedEntityPairsInsideNode)
+              collidedEntityPairsMap.emplace(collidedEntityPair.first, collidedEntityPair.second);
+          }
+          collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsMap.begin(), collidedEntityPairsMap.end());
+        }
+        */
       }
 
       if (collisionDetector)
