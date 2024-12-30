@@ -3717,7 +3717,6 @@ namespace OrthoTree
     void insertCollidedEntities(
       TContainer const& boxes,
       std::unordered_map<TEntityID, std::vector<MortonNodeID>> const& entityIDNodeMap,
-      std::vector<TEntityID> const& entityIDsInRoot,
       std::pair<MortonNodeID, Node> const& pairKeyNode,
       std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairsInsideNode) const noexcept
     {
@@ -3725,14 +3724,14 @@ namespace OrthoTree
 
       autoc nodeDepthID = this->GetDepthID(nodeKey);
 
-      autoc& entityIDs = *(nodeDepthID == 0 ? &entityIDsInRoot : &node.Entities);
+      autoc& entityIDs = node.Entities;
       autoc entityNoInNode = entityIDs.size();
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
       {
         auto parentDepthID = nodeDepthID - 1;
         for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO, --parentDepthID)
         {
-          autoc& parentEntityIDs = *(parentDepthID == 0 ? &entityIDsInRoot : &this->GetNode(parentKey).Entities);
+          autoc& parentEntityIDs = this->GetNode(parentKey).Entities;
 
           for (autoc entityID : entityIDs)
             for (autoc entityIDFromParent : parentEntityIDs)
@@ -3761,7 +3760,7 @@ namespace OrthoTree
           auto depthDifference = depth_t(1);
           for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO, --parentDepthID, ++depthDifference)
           {
-            autoc& parentEntityIDs = *(parentDepthID == 0 ? &entityIDsInRoot : &this->GetNode(parentKey).Entities);
+            autoc& parentEntityIDs = this->GetNode(parentKey).Entities;
 
             // SPLIT_DEPTH_INCREASEMENT: entityID could occur in multiple node. This algorithm aims to check only the first occurrence's parents.
 
@@ -3922,29 +3921,6 @@ namespace OrthoTree
       }
 
 
-      // Entities which contain all of the tree could slow the algorithm, so these are eliminated
-      auto entityIDsInRoot = std::vector<TEntityID>();
-      {
-        autoc& nodeRoot = this->GetNode(this->GetRootKey());
-        std::set<TEntityID> largeEntities;
-        for (autoc entityID : nodeRoot.Entities)
-        {
-          if (IGM::DoesRangeContainBoxAD(detail::at(boxes, entityID), this->m_boxSpace))
-          {
-            largeEntities.insert(entityID);
-
-            for (autoc& boxOther : boxes)
-            {
-              autoc entityIDOther = detail::getKeyPart(boxes, boxOther);
-              if (!largeEntities.contains(entityIDOther))
-                collidedEntityPairs.emplace_back(entityID, entityIDOther);
-            }
-          }
-          else
-            entityIDsInRoot.emplace_back(entityID);
-        }
-      }
-
 #ifdef __cpp_lib_execution
       autoce NON_PARALLEL = std::is_same<TExecutionPolicy, std::execution::unsequenced_policy>::value ||
                             std::is_same<TExecutionPolicy, std::execution::sequenced_policy>::value;
@@ -3955,7 +3931,7 @@ namespace OrthoTree
       {
         EXEC_POL_DEF(epcd); // GCC 11.3
         std::for_each(EXEC_POL_ADD(epcd) this->m_nodes.begin(), this->m_nodes.end(), [&](autoc& pairKeyNode) {
-          insertCollidedEntities(boxes, entityIDNodeMap, entityIDsInRoot, pairKeyNode, collidedEntityPairs);
+          insertCollidedEntities(boxes, entityIDNodeMap, pairKeyNode, collidedEntityPairs);
         });
       }
       else
@@ -3968,7 +3944,7 @@ namespace OrthoTree
           collidedEntityPairsInsideNodes.begin(),
           [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
             auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
-            insertCollidedEntities(boxes, entityIDNodeMap, entityIDsInRoot, pairKeyNode, collidedEntityPairsInsideNode);
+            insertCollidedEntities(boxes, entityIDNodeMap, pairKeyNode, collidedEntityPairsInsideNode);
             return collidedEntityPairsInsideNode;
           });
 
