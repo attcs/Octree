@@ -3946,27 +3946,45 @@ namespace OrthoTree
         }
       }
 
+#ifdef __cpp_lib_execution
+      autoce NON_PARALLEL = std::is_same<TExecutionPolicy, std::execution::unsequenced_policy>::value ||
+                            std::is_same<TExecutionPolicy, std::execution::sequenced_policy>::value;
+#else
+      autoce NON_PARALLEL = true;
+#endif
+      if constexpr (NON_PARALLEL)
+      {
+        EXEC_POL_DEF(epcd); // GCC 11.3
+        std::for_each(EXEC_POL_ADD(epcd) this->m_nodes.begin(), this->m_nodes.end(), [&](autoc& pairKeyNode) {
+          insertCollidedEntities(boxes, entityIDNodeMap, entityIDsInRoot, pairKeyNode, collidedEntityPairs);
+        });
+      }
+      else
+      {
+        auto collidedEntityPairsInsideNodes = std::vector<CollisionDetectionContainer>(this->m_nodes.size());
+        EXEC_POL_DEF(epcd); // GCC 11.3
+        std::transform(
+          EXEC_POL_ADD(epcd) this->m_nodes.begin(),
+          this->m_nodes.end(),
+          collidedEntityPairsInsideNodes.begin(),
+          [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
+            auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
+            insertCollidedEntities(boxes, entityIDNodeMap, entityIDsInRoot, pairKeyNode, collidedEntityPairsInsideNode);
+            return collidedEntityPairsInsideNode;
+          });
 
-      // Collision detection node-by-node without duplication
-      auto collidedEntityPairsInsideNodes = std::vector<CollisionDetectionContainer>(this->m_nodes.size());
-      EXEC_POL_DEF(epcd); // GCC 11.3
-      std::transform(EXEC_POL_ADD(epcd) this->m_nodes.begin(), this->m_nodes.end(), collidedEntityPairsInsideNodes.begin(), [&](autoc& pairKeyNode) -> CollisionDetectionContainer {
-        auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
-        insertCollidedEntities(boxes, entityIDNodeMap, entityIDsInRoot, pairKeyNode, collidedEntityPairsInsideNode);
-        return collidedEntityPairsInsideNode;
-      });
+        EXEC_POL_DEF(eps); // GCC 11.3
+        autoc noCollisions = std::transform_reduce(
+          EXEC_POL_ADD(eps) collidedEntityPairsInsideNodes.begin(),
+          collidedEntityPairsInsideNodes.end(),
+          size_t{},
+          std::plus{},
+          [](autoc& collidedEntityPairsInsideNode) { return collidedEntityPairsInsideNode.size(); });
 
-      EXEC_POL_DEF(eps); // GCC 11.3
-      autoc noCollisions = std::transform_reduce(
-        EXEC_POL_ADD(eps) collidedEntityPairsInsideNodes.begin(),
-        collidedEntityPairsInsideNodes.end(),
-        size_t{},
-        std::plus{},
-        [](autoc& collidedEntityPairsInsideNode) { return collidedEntityPairsInsideNode.size(); });
-
-      collidedEntityPairs.reserve(collidedEntityPairs.size() + noCollisions);
-      for (autoc& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
-        collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
+        collidedEntityPairs.reserve(collidedEntityPairs.size() + noCollisions);
+        for (autoc& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
+          collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
+      }
 
       if (collisionDetector)
       {
