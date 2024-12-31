@@ -3729,31 +3729,18 @@ namespace OrthoTree
     }
 
   private:
-    struct SweepAndPrune
+    struct SweepAndPruneDatabase
     {
-      constexpr SweepAndPrune(bool isSweepAndPruneStrategyOther, TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
+      constexpr SweepAndPruneDatabase(TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
+      : m_sortedEntityIDs(entityIDs) 
       {
-        autoc noEntity = entityIDs.size();
-        m_isSweepAndPruneStrategy = isSweepAndPruneStrategyOther && noEntity > 15;
-        if (m_isSweepAndPruneStrategy)
-        {
-          m_sortedEntityIDs = entityIDs;
-          std::ranges::sort(m_sortedEntityIDs, [&](autoc entityIDL, autoc entityIDR) {
-            return AD::GetBoxMinC(detail::at(boxes, entityIDL), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDR), 0);
-          });
-          m_pEntityIDs = &m_sortedEntityIDs;
-        }
-        else
-        {
-          m_pEntityIDs = &entityIDs;
-        }
+        std::ranges::sort(m_sortedEntityIDs, [&](autoc entityIDL, autoc entityIDR) {
+          return AD::GetBoxMinC(detail::at(boxes, entityIDL), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDR), 0);
+        });
       }
 
-      constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return *m_pEntityIDs; }
-      constexpr bool IsSweepAndPruneStrategy() const noexcept { return m_isSweepAndPruneStrategy; }
+      constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
     private:
-      bool m_isSweepAndPruneStrategy = false;
-      std::vector<TEntityID> const* m_pEntityIDs;
       std::vector<TEntityID> m_sortedEntityIDs;
     };
 
@@ -3765,38 +3752,32 @@ namespace OrthoTree
 
       autoc & [nodeKey, node] = pairKeyNode;
 
-      autoc spNode = SweepAndPrune(true, boxes, node.Entities);
-      autoc& entityIDs = spNode.GetEntities();
+      autoc nodeSPD = SweepAndPruneDatabase(boxes, node.Entities);
+      autoc& entityIDs = nodeSPD.GetEntities();
       autoc noEntity = entityIDs.size();
 
       for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO)
       {
-        autoc spParent = SweepAndPrune(spNode.IsSweepAndPruneStrategy(), boxes, this->GetNode(parentKey).Entities);
-        autoc& parentEntityIDs = spParent.GetEntities();
+        autoc parentSPD = SweepAndPruneDatabase(boxes, this->GetNode(parentKey).Entities);
+        autoc& parentEntityIDs = parentSPD.GetEntities();
 
         std::size_t iEntityBegin = 0;
         for (autoc entityIDParent : parentEntityIDs)
         {
-          if (spParent.IsSweepAndPruneStrategy())
-          {
-            for (; iEntityBegin < noEntity; ++iEntityBegin)
-              if (AD::GetBoxMaxC(detail::at(boxes, entityIDs[iEntityBegin]), 0) >= AD::GetBoxMinC(detail::at(boxes, entityIDParent), 0))
-                break;
-          }
+          for (; iEntityBegin < noEntity; ++iEntityBegin)
+            if (AD::GetBoxMaxC(detail::at(boxes, entityIDs[iEntityBegin]), 0) >= AD::GetBoxMinC(detail::at(boxes, entityIDParent), 0))
+              break; // sweep and prune optimization
 
           for (std::size_t iEntity = iEntityBegin; iEntity < noEntity; ++iEntity)
           {
             autoc entityID = entityIDs[iEntity];
 
-            if (spNode.IsSweepAndPruneStrategy() && AD::GetBoxMaxC(detail::at(boxes, entityIDParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
-              break;
+            if (AD::GetBoxMaxC(detail::at(boxes, entityIDParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
+              break; // sweep and prune optimization
 
             if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDParent)))
               detail::emplace(collidedEntityPairsInsideNode, detail::make_pair<TEntityID, doesOrderMatter>(entityID, entityIDParent));
           }
-
-          if (!spParent.IsSweepAndPruneStrategy())
-            iEntityBegin = 0;
         }
       }
 
@@ -3807,8 +3788,8 @@ namespace OrthoTree
         for (std::size_t j = i + 1; j < noEntity; ++j)
         {
           autoc entityIDJ = entityIDs[j];
-          if (spNode.IsSweepAndPruneStrategy() && AD::GetBoxMaxC(detail::at(boxes, entityIDI), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDJ), 0))
-            break;
+          if (AD::GetBoxMaxC(detail::at(boxes, entityIDI), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDJ), 0))
+            break; // sweep and prune optimization
 
           if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityIDI), detail::at(boxes, entityIDJ)))
             detail::emplace(collidedEntityPairsInsideNode, detail::make_pair<TEntityID, doesOrderMatter>(entityIDI, entityIDJ));
