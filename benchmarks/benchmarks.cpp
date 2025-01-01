@@ -598,19 +598,19 @@ namespace
           else 
             nDepthActual = 6;
         }
-        vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepthActual, fPar, aBox_.subspan(0, aSizeNonLog[iSize]), [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
+        vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepthActual, fPar, aBox_.subspan(0, aSizeNonLog[iSize]), [](depth_t nDepth_, span<BoundingBoxND<N> const> const& aBox, bool fPar)
         {
           autoce nSplit = 2;
           auto nt = TreeBoxND<N, nSplit>{};
           if (fPar)
           {
-            TreeBoxND<N, nSplit>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth, boxMax);
+            TreeBoxND<N, nSplit>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth_, boxMax);
             autoc vPair = nt.template CollisionDetection<std::execution::parallel_unsequenced_policy>(aBox);
-            return nt.GetNodes().size();
+            return vPair.size();
           }
           else
           {
-            TreeBoxND<N, nSplit>::Create(nt, aBox, nDepth, boxMax);
+            TreeBoxND<N, nSplit>::Create(nt, aBox, nDepth_, boxMax);
             autoc vPair = nt.CollisionDetection(aBox);
             return vPair.size();
           }          
