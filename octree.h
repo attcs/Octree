@@ -277,13 +277,20 @@ namespace OrthoTree
       container.emplace(std::forward<TElement>(element)...);
     }
 
-    template<typename T, bool doesOrderMatter>
-    static std::pair<T, T> make_pair(T a, T b) noexcept
+    template<typename T, bool DOES_ORDER_MATTER>
+    static std::pair<T, T> makePair(T a, T b) noexcept
     {
-      if constexpr (doesOrderMatter)
+      if constexpr (DOES_ORDER_MATTER)
         return a < b ? std::pair<T, T>{ a, b } : std::pair<T, T>{ b, a };
       else
         return std::pair<T, T>{ a, b };
+    }
+
+    template<typename TContainer>
+    void sortAndUnique(TContainer& c)
+    {
+      std::sort(c.begin(), c.end());
+      c.erase(std::unique(c.begin(), c.end()), c.end());
     }
   } // namespace detail
 
@@ -595,8 +602,8 @@ namespace OrthoTree
         }
       }
 
-      autoc minBoxDistance = *std::ranges::max_element(minBoxDistances);
-      autoc maxBoxDistance = *std::ranges::min_element(maxBoxDistances);
+      autoc minBoxDistance = *std::max_element(minBoxDistances.begin(), minBoxDistances.end());
+      autoc maxBoxDistance = *std::min_element(maxBoxDistances.begin(), maxBoxDistances.end());
       if (minBoxDistance > maxBoxDistance || maxBoxDistance < 0.0)
         return std::nullopt;
       else
@@ -1138,8 +1145,8 @@ namespace OrthoTree
           }
         }
 
-        autoc minBoxDistance = *std::ranges::max_element(minBoxDistances);
-        autoc maxBoxDistance = *std::ranges::min_element(maxBoxDistances);
+        autoc minBoxDistance = *std::max_element(minBoxDistances.begin(), minBoxDistances.end());
+        autoc maxBoxDistance = *std::min_element(maxBoxDistances.begin(), maxBoxDistances.end());
         if (minBoxDistance > maxBoxDistance || maxBoxDistance < 0.0)
           return std::nullopt;
         else
@@ -1241,9 +1248,9 @@ namespace OrthoTree
       constexpr bool HasChild(MortonNodeIDCR childKey) const noexcept
       {
         if constexpr (IS_LINEAR_TREE)
-          return std::ranges::binary_search(m_children, childKey);
+          return std::binary_search(m_children.begin(), m_children.end(), childKey);
         else
-          return std::ranges::binary_search(m_children, childKey, bitset_arithmetic_compare{});
+          return std::binary_search(m_children.begin(), m_children.end(), childKey, bitset_arithmetic_compare{});
       }
 
       constexpr bool IsChildNodeEnabled(ChildID childID) const noexcept
@@ -1531,11 +1538,13 @@ namespace OrthoTree
     {
       auto ids = std::vector<TEntityID>();
       ids.reserve(100);
-      std::ranges::for_each(m_nodes, [&](auto& node) { ids.insert(ids.end(), node.second.Entities.begin(), node.second.Entities.end()); });
+      std::for_each(m_nodes.begin(), m_nodes.end(), [&](auto& node) {
+        ids.insert(ids.end(), node.second.Entities.begin(), node.second.Entities.end());
+      });
 
-      std::ranges::sort(ids);
-      autoc itEndUnique = std::unique(ids.begin(), ids.end());
-      return itEndUnique == ids.end();
+      autoc idsSizeBeforeUnique = ids.size();
+      detail::sortAndUnique(ids);
+      return idsSizeBeforeUnique == ids.size();
     }
 
     static constexpr ChildID getChildIDByDepth(depth_t parentDepth, depth_t childDepth, MortonNodeIDCR childNodeKey)
@@ -1931,8 +1940,9 @@ namespace OrthoTree
     constexpr auto GetResolutionMax() const noexcept { return m_maxRasterResolution; }
     inline auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
-      autoc it = std::ranges::find_if(m_nodes, [&](autoc& keyAndValue) {
-        return std::ranges::find(keyAndValue.second.Entities, entityID) != keyAndValue.second.Entities.end();
+      autoc it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](autoc& keyAndValue) {
+        autoc& entities = keyAndValue.second.Entities;
+        return std::find(entities.begin(), entities.end(), entityID) != entities.end();
       });
 
       return it == m_nodes.end() ? MortonNodeID{} : it->first;
@@ -2205,14 +2215,7 @@ namespace OrthoTree
       return FindSmallestNodeKey(this->GetNodeID(box));
     }
 
-    MortonNodeID Find(TEntityID entityID) const noexcept
-    {
-      autoc it = find_if(this->m_nodes.begin(), this->m_nodes.end(), [entityID](autoc& keyAndNode) {
-        return std::ranges::find(keyAndNode.second.Entities, entityID) != end(keyAndNode.second.Entities);
-      });
-
-      return it == this->m_nodes.end() ? 0 : it->first;
-    }
+    MortonNodeID Find(TEntityID entityID) const noexcept { return GetNodeIDByEntity(entityID); }
 
   protected:
     struct GridBoundary
@@ -2689,10 +2692,9 @@ namespace OrthoTree
 
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
-        std::ranges::for_each(this->m_nodes, [entityID](auto& pairNode) {
-          for (auto& id : pairNode.second.Entities)
+        for (auto& [key, node] : this->m_nodes)
+          for (auto& id : node.Entities)
             id -= entityID < id;
-        });
       }
 
       return true;
@@ -2715,10 +2717,9 @@ namespace OrthoTree
 
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
-        std::ranges::for_each(this->m_nodes, [entitiyID](auto& pairNode) {
-          for (auto& id : pairNode.second.Entities)
+        for (auto& [key, node] : this->m_nodes)
+          for (auto& id : node.Entities)
             id -= entitiyID < id;
-        });
       }
 
       this->removeNodeIfPossible(nodeKey, node);
@@ -2786,7 +2787,7 @@ namespace OrthoTree
         return false;
 
       autoc& node = this->GetNode(smallestNodeKey);
-      return std::ranges::any_of(node.Entities, [&](autoc& entityID) {
+      return std::any_of(node.Entities.begin(), node.Entities.end(), [&](autoc& entityID) {
         return AD::ArePointsEqual(searchPoint, detail::at(points, entityID), tolerance);
       });
     }
@@ -2881,7 +2882,7 @@ namespace OrthoTree
       }
 
       auto nodeMinDistances = std::multiset<BoxDistance>();
-      std::ranges::for_each(this->m_nodes, [&](autoc& pairOfKeyAndNode) {
+      std::for_each(this->m_nodes.begin(), this->m_nodes.end(), [&](autoc& pairOfKeyAndNode) {
         autoc & [key, node] = pairOfKeyAndNode;
         if (node.Entities.empty() || key == smallestNodeKey)
           return;
@@ -3258,9 +3259,7 @@ namespace OrthoTree
         // Eliminate duplicates. Not all sub-nodes will be created due to the maxElementNoInNode, which cause duplicates in the parent nodes.
         EXEC_POL_DEF(epsp); // GCC 11.3
         std::for_each(EXEC_POL_ADD(epsp) tree.m_nodes.begin(), tree.m_nodes.end(), [](auto& pairOfKeyAndNode) {
-          auto& node = pairOfKeyAndNode.second;
-          std::ranges::sort(node.Entities);
-          node.Entities.erase(std::unique(node.Entities.begin(), node.Entities.end()), node.Entities.end());
+          detail::sortAndUnique(pairOfKeyAndNode.second.Entities);
         });
       }
     }
@@ -3355,11 +3354,11 @@ namespace OrthoTree
       if (doEraseRec<SPLIT_DEPTH_INCREASEMENT>(smallestNodeKey, entityIDToErase))
       {
         if constexpr (DO_UPDATE_ENTITY_IDS)
-          std::ranges::for_each(this->m_nodes, [&](auto& pairNode) {
-            for (auto& entityID : pairNode.second.Entities)
+        {
+          for (auto& [key, node] : this->m_nodes)
+            for (auto& entityID : node.Entities)
               entityID -= entityIDToErase < entityID;
-          });
-
+        }
         return true;
       }
       else
@@ -3404,10 +3403,11 @@ namespace OrthoTree
         return false;
 
       if constexpr (DO_UPDATE_ENTITY_IDS)
-        std::ranges::for_each(this->m_nodes, [&](auto& pairNode) {
-          for (auto& id : pairNode.second.Entities)
+      {
+        for (auto& [key, node] : this->m_nodes)
+          for (auto& id : node.Entities)
             id -= idErase < id;
-        });
+      }
 
       return true;
     }
@@ -3490,7 +3490,7 @@ namespace OrthoTree
     void pickSearch(TVector const& pickPoint, TContainer const& boxes, MortonNodeIDCR parentKey, std::vector<TEntityID>& foundEntitiyIDs) const noexcept
     {
       autoc& parentNode = this->GetNode(parentKey);
-      std::ranges::copy_if(parentNode.Entities, back_inserter(foundEntitiyIDs), [&](autoc entityID) {
+      std::copy_if(parentNode.Entities.begin(), parentNode.Entities.end(), back_inserter(foundEntitiyIDs), [&](autoc entityID) {
         return AD::DoesBoxContainPoint(detail::at(boxes, entityID), pickPoint);
       });
 
@@ -3567,7 +3567,7 @@ namespace OrthoTree
         if (nodeIterator == endIteratorOfNodes)
           continue;
 
-        std::ranges::copy_if(nodeIterator->second.Entities, std::back_inserter(foundEntitiyIDs), [&](autoc entityID) {
+        std::copy_if(nodeIterator->second.Entities.begin(), nodeIterator->second.Entities.end(), std::back_inserter(foundEntitiyIDs), [&](autoc entityID) {
           return AD::DoesBoxContainPoint(detail::at(boxes, entityID), pickPoint);
         });
       }
@@ -3586,11 +3586,7 @@ namespace OrthoTree
         return {};
 
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
-      {
-        std::ranges::sort(foundEntities);
-        autoc itEnd = std::unique(foundEntities.begin(), foundEntities.end());
-        foundEntities.erase(itEnd, foundEntities.end());
-      }
+        detail::sortAndUnique(foundEntities);
 
       return foundEntities;
     }
@@ -3684,7 +3680,7 @@ namespace OrthoTree
 
           autoc childIDs = nodeIterator->second.GetChildren();
           childNodes[sideID].resize(childIDs.size());
-          std::ranges::transform(childIDs, childNodes[sideID].begin(), [&](MortonNodeIDCR childKey) -> NodeIteratorAndStatus {
+          std::transform(childIDs.begin(), childIDs.end(), childNodes[sideID].begin(), [&](MortonNodeIDCR childKey) -> NodeIteratorAndStatus {
             return { trees[sideID]->m_nodes.find(childKey), false };
           });
         }
@@ -3712,10 +3708,7 @@ namespace OrthoTree
       }
 
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
-      {
-        std::ranges::sort(results);
-        results.erase(std::unique(results.begin(), results.end()), results.end());
-      }
+        detail::sortAndUnique(results);
 
       return results;
     }
@@ -3732,14 +3725,15 @@ namespace OrthoTree
     struct SweepAndPruneDatabase
     {
       constexpr SweepAndPruneDatabase(TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
-      : m_sortedEntityIDs(entityIDs) 
+      : m_sortedEntityIDs(entityIDs)
       {
-        std::ranges::sort(m_sortedEntityIDs, [&](autoc entityIDL, autoc entityIDR) {
+        std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&](autoc entityIDL, autoc entityIDR) {
           return AD::GetBoxMinC(detail::at(boxes, entityIDL), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDR), 0);
         });
       }
 
       constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
+
     private:
       std::vector<TEntityID> m_sortedEntityIDs;
     };
@@ -3748,7 +3742,7 @@ namespace OrthoTree
     void insertCollidedEntities(
       TContainer const& boxes, std::pair<MortonNodeID, Node> const& pairKeyNode, TCollisionDetectionContainer& collidedEntityPairsInsideNode) const noexcept
     {
-      autoce doesOrderMatter = SPLIT_DEPTH_INCREASEMENT > 0;
+      autoce DOES_ORDER_MATTER = SPLIT_DEPTH_INCREASEMENT > 0;
 
       autoc & [nodeKey, node] = pairKeyNode;
 
@@ -3776,7 +3770,7 @@ namespace OrthoTree
               break; // sweep and prune optimization
 
             if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDParent)))
-              detail::emplace(collidedEntityPairsInsideNode, detail::make_pair<TEntityID, doesOrderMatter>(entityID, entityIDParent));
+              detail::emplace(collidedEntityPairsInsideNode, detail::makePair<TEntityID, DOES_ORDER_MATTER>(entityID, entityIDParent));
           }
         }
       }
@@ -3792,7 +3786,7 @@ namespace OrthoTree
             break; // sweep and prune optimization
 
           if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityIDI), detail::at(boxes, entityIDJ)))
-            detail::emplace(collidedEntityPairsInsideNode, detail::make_pair<TEntityID, doesOrderMatter>(entityIDI, entityIDJ));
+            detail::emplace(collidedEntityPairsInsideNode, detail::makePair<TEntityID, DOES_ORDER_MATTER>(entityIDI, entityIDJ));
         }
       }
     }
