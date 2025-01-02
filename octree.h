@@ -1515,7 +1515,7 @@ namespace OrthoTree
 
       auto depthNo = this->m_maxDepthNo;
       for (auto locationDiffFlag = minLocationID ^ maxLocationID; IsValidKey(locationDiffFlag); locationDiffFlag >>= DIMENSION_NO, --depthNo)
-        minLocationID >>= DIMENSION_NO;
+        minLocationID = GetParentGridID(minLocationID);
 
       return { depthNo, minLocationID };
     }
@@ -1698,7 +1698,7 @@ namespace OrthoTree
         do
         {
           auto childNodeKey = newParentNodeKey;
-          newParentNodeKey >>= DIMENSION_NO;
+          newParentNodeKey = GetParentKey(newParentNodeKey);
           assert(IsValidKey(parentNodeKey));
           auto& newParentNode = this->m_nodes[newParentNodeKey];
           newParentNode.AddChildInOrder(childNodeKey);
@@ -1806,10 +1806,14 @@ namespace OrthoTree
 
     static inline bool IsValidKey(NonLinearMortonGridID const& key) noexcept { return key.any(); }
 
+    static constexpr MortonNodeID GetParentKey(MortonNodeIDCR key) noexcept { return key >> DIMENSION_NO; }
+
+    static constexpr MortonGridID GetParentGridID(MortonGridID gridID) noexcept { return gridID >> DIMENSION_NO; }
+
     static constexpr depth_t GetDepthID(MortonNodeID key) noexcept
     {
       // Keep shifting off DIMENSION_NO bits at a time, increasing depth counter
-      for (depth_t d = 0; IsValidKey(key); ++d, key >>= DIMENSION_NO)
+      for (depth_t d = 0; IsValidKey(key); ++d, key = GetParentKey(key))
         if (key == 1) // If only sentinel bit remains, exit with node depth
           return d;
 
@@ -2163,7 +2167,7 @@ namespace OrthoTree
 
     std::tuple<MortonNodeID, depth_t> FindSmallestNodeKeyWithDepth(MortonNodeID searchKey) const noexcept
     {
-      for (depth_t depthID = this->m_maxDepthNo; IsValidKey(searchKey); searchKey >>= DIMENSION_NO, --depthID)
+      for (depth_t depthID = this->m_maxDepthNo; IsValidKey(searchKey); searchKey = GetParentKey(searchKey), --depthID)
         if (this->m_nodes.contains(searchKey))
           return { searchKey, depthID };
 
@@ -2172,7 +2176,7 @@ namespace OrthoTree
 
     MortonNodeID FindSmallestNodeKey(MortonNodeID searchKey) const noexcept
     {
-      for (; IsValidKey(searchKey); searchKey >>= DIMENSION_NO)
+      for (; IsValidKey(searchKey); searchKey = GetParentKey(searchKey))
         if (this->m_nodes.contains(searchKey))
           return searchKey;
 
@@ -2355,7 +2359,7 @@ namespace OrthoTree
 
       auto depthNo = this->m_maxDepthNo;
       for (auto diffLocationFlag = minLocationID ^ maxLocationID; IsValidKey(diffLocationFlag); diffLocationFlag >>= DIMENSION_NO, --depthNo)
-        minLocationID >>= DIMENSION_NO;
+        minLocationID = GetParentGridID(minLocationID);
 
       autoc rangeKey = this->GetHash(depthNo, minLocationID);
       auto smallestNodeKey = this->FindSmallestNodeKey(rangeKey);
@@ -2374,7 +2378,7 @@ namespace OrthoTree
 
       if constexpr (!DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY)
       {
-        for (smallestNodeKey >>= DIMENSION_NO; IsValidKey(smallestNodeKey); smallestNodeKey >>= DIMENSION_NO)
+        for (smallestNodeKey = GetParentKey(smallestNodeKey); IsValidKey(smallestNodeKey); smallestNodeKey = GetParentKey(smallestNodeKey))
           rangeSearchCopy<DO_RANGE_MUST_FULLY_CONTAIN>(range, geometryCollection, this->GetNode(smallestNodeKey), foundEntities);
       }
 
@@ -3123,7 +3127,7 @@ namespace OrthoTree
       autoc minGridID = location.MinGridID;
       for (auto flagDiffOfLocation = location.MinGridID ^ maxGridID; Base::IsValidKey(flagDiffOfLocation);
            flagDiffOfLocation >>= DIMENSION_NO, --location.DepthID)
-        location.MinGridID >>= DIMENSION_NO;
+        location.MinGridID = Base::GetParentGridID(location.MinGridID);
 
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
       {
@@ -3550,7 +3554,7 @@ namespace OrthoTree
         autoc maxLocationID = Base::MortonEncode(maxGridID);
         auto depthID = this->m_maxDepthNo;
         for (auto locationDiffFlag = locationID ^ maxLocationID; Base::IsValidKey(locationDiffFlag); locationDiffFlag >>= DIMENSION_NO, --depthID)
-          locationID >>= DIMENSION_NO;
+          locationID = Base::GetParentGridID(locationID);
 
         autoc rangeKey = this->GetHash(depthID, locationID);
         nodeKey = this->FindSmallestNodeKey(rangeKey);
@@ -3558,10 +3562,10 @@ namespace OrthoTree
         if (nodeIterator != endIteratorOfNodes)
           pickSearch(pickPoint, boxes, nodeIterator->first, foundEntitiyIDs);
 
-        nodeKey >>= DIMENSION_NO;
+        nodeKey = Base::GetParentKey(nodeKey);
       }
 
-      for (; Base::IsValidKey(nodeKey); nodeKey >>= DIMENSION_NO)
+      for (; Base::IsValidKey(nodeKey); nodeKey = Base::GetParentKey(nodeKey))
       {
         autoc nodeIterator = this->m_nodes.find(nodeKey);
         if (nodeIterator == endIteratorOfNodes)
@@ -3750,7 +3754,7 @@ namespace OrthoTree
       autoc& entityIDs = nodeSPD.GetEntities();
       autoc noEntity = entityIDs.size();
 
-      for (auto parentKey = nodeKey >> DIMENSION_NO; Base::IsValidKey(parentKey); parentKey >>= DIMENSION_NO)
+      for (auto parentKey = Base::GetParentKey(nodeKey); Base::IsValidKey(parentKey); parentKey = Base::GetParentKey(parentKey))
       {
         autoc parentSPD = SweepAndPruneDatabase(boxes, this->GetNode(parentKey).Entities);
         autoc& parentEntityIDs = parentSPD.GetEntities();
