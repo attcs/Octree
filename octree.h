@@ -2594,22 +2594,6 @@ namespace OrthoTree
       }
     }
 
-    static TBox getBoxOfPoints(TContainer const& points) noexcept
-    {
-      auto ext = Base::GetBoxInvertedInit();
-      for (autoc& point : points)
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          if (AD::GetBoxMinC(ext, dimensionID) > AD::GetPointC(detail::getValuePart(point), dimensionID))
-            AD::SetBoxMinC(ext, dimensionID, AD::GetPointC(detail::getValuePart(point), dimensionID));
-
-          if (AD::GetBoxMaxC(ext, dimensionID) < AD::GetPointC(detail::getValuePart(point), dimensionID))
-            AD::SetBoxMaxC(ext, dimensionID, AD::GetPointC(detail::getValuePart(point), dimensionID));
-        }
-
-      return ext;
-    }
-
   public: // Create
     // Create
     EXEC_POL_TEMPLATE_DECL
