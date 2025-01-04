@@ -1820,9 +1820,9 @@ namespace OrthoTree
       return 0;
     }
 
-    static inline MortonNodeID RemoveSentinelBit(MortonNodeIDCR key, std::optional<depth_t> const& depthIDOptional = std::nullopt) noexcept
+    static constexpr MortonNodeID RemoveSentinelBit(MortonNodeIDCR key, std::optional<depth_t> const& depthIDOptional = std::nullopt) noexcept
     {
-      autoc depthID = depthIDOptional.value_or(GetDepthID(key));
+      autoc depthID = depthIDOptional ? *depthIDOptional : GetDepthID(key);
       return key - (MortonNodeID{ 1 } << depthID);
     }
 
