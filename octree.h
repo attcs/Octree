@@ -3152,23 +3152,6 @@ namespace OrthoTree
       return location;
     }
 
-    static TBox GetBoxOfBoxes(TContainer const& boxes) noexcept
-    {
-      auto ext = Base::GetBoxInvertedInit();
-      for (autoc& e : boxes)
-      {
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          if (AD::GetBoxMinC(ext, dimensionID) > AD::GetBoxMinC(detail::getValuePart(e), dimensionID))
-            AD::SetBoxMinC(ext, dimensionID, AD::GetBoxMinC(detail::getValuePart(e), dimensionID));
-
-          if (AD::GetBoxMaxC(ext, dimensionID) < AD::GetBoxMaxC(detail::getValuePart(e), dimensionID))
-            AD::SetBoxMaxC(ext, dimensionID, AD::GetBoxMaxC(detail::getValuePart(e), dimensionID));
-        }
-      }
-      return ext;
-    }
-
   public: // Create
     // Create
     EXEC_POL_TEMPLATE_DECL
