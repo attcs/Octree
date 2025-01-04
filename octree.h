@@ -90,6 +90,7 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #define EXEC_POL_TEMPLATE_PARAM typename TExecutionPolicy = std::execution::unsequenced_policy,
 #define EXEC_POL_TEMPLATE_ADD(func) template func<TExecutionPolicy>
 #define EXEC_POL_TEMPLATE_ADDF(func) func<TExecutionPolicy>
+#define EXEC_POL_TEMPLATE_ADDFM(func, ...) func<TExecutionPolicy, __VA_ARGS__>
 #define EXEC_POL_DEF(e) TExecutionPolicy constexpr e
 #define EXEC_POL_ADD(e) e,
 #else
@@ -97,6 +98,7 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #define EXEC_POL_TEMPLATE_PARAM
 #define EXEC_POL_TEMPLATE_ADD(func) func
 #define EXEC_POL_TEMPLATE_ADDF(func) func
+#define EXEC_POL_TEMPLATE_ADDFM(func, ...) func<__VA_ARGS__>
 #define EXEC_POL_DEF(e)
 #define EXEC_POL_ADD(e)
 #endif
@@ -1951,61 +1953,6 @@ namespace OrthoTree
       return it == m_nodes.end() ? MortonNodeID{} : it->first;
     }
 
-  protected:
-    // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void InitBase(IGM::Box const& box, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
-    {
-      assert(this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded
-                                     // tree is wanted to be reset, use the Reset() function before init.
-      assert(maxDepthNo > 1);
-      assert(maxDepthNo <= MAX_THEORETICAL_DEPTH);
-      assert(maxDepthNo < std::numeric_limits<uint8_t>::max());
-      assert(maxElementNo > 1);
-      assert(CHAR_BIT * sizeof(GridID) >= m_maxDepthNo);
-
-      this->m_boxSpace = box;
-      this->m_maxDepthNo = maxDepthNo;
-      this->m_maxRasterResolution = static_cast<GridID>(pow2(maxDepthNo));
-      this->m_maxRasterID = this->m_maxRasterResolution - 1;
-      this->m_maxElementNo = maxElementNo;
-
-      [[maybe_unused]] auto& nodeRoot = this->m_nodes[GetRootKey()];
-#ifndef ORTHOTREE__DISABLED_NODECENTER
-      nodeRoot.SetCenter(IGM::GetBoxCenter(box));
-#endif // !ORTHOTREE__DISABLED_NODECENTER
-
-      // Size and raster info
-      {
-        auto [rasterizerFactors, sizeInDimensions] = GetGridRasterizer(this->m_boxSpace, this->m_maxRasterResolution);
-        this->m_rasterizerFactors = std::move(rasterizerFactors);
-        this->m_sizeInDimensions = std::move(sizeInDimensions);
-
-        // the 0-based depth size of the tree is m_maxDepthNo+1, and a fictive childnode halfsize (+2) could be asked prematurely.
-        depth_t constexpr additionalDepth = 3;
-        autoc examinedDepthSize = this->m_maxDepthNo + additionalDepth;
-        this->m_nodeSizes.resize(examinedDepthSize, this->m_sizeInDimensions);
-        autoce multiplier = IGM_Geometry(0.5);
-        auto factor = multiplier;
-        for (depth_t depthID = 1; depthID < examinedDepthSize; ++depthID, factor *= multiplier)
-          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-            this->m_nodeSizes[depthID][dimensionID] *= factor;
-      }
-
-      // Volume calculation
-      {
-        this->m_volumeOfOverallSpace = 1;
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          this->m_volumeOfOverallSpace *= this->m_sizeInDimensions[dimensionID];
-      }
-    }
-
-  public: // Main service functions
-    // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
-    {
-      this->InitBase(IGM::GetBoxAD(box), maxDepthNo, maxElementNo);
-    }
-
     using FProcedure = std::function<void(MortonNodeIDCR, Node const&)>;
     using FProcedureUnconditional = std::function<void(MortonNodeIDCR, Node const&, bool)>;
     using FSelector = std::function<bool(MortonNodeIDCR, Node const&)>;
@@ -2104,9 +2051,57 @@ namespace OrthoTree
       return entityIDs;
     }
 
+  protected:
+    constexpr void InitBase(IGM::Box const& box, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
+    {
+      assert(this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded
+                                     // tree is wanted to be reset, use the Reset() function before init.
+      assert(maxDepthNo > 1);
+      assert(maxDepthNo <= MAX_THEORETICAL_DEPTH);
+      assert(maxDepthNo < std::numeric_limits<uint8_t>::max());
+      assert(maxElementNo > 1);
+      assert(CHAR_BIT * sizeof(GridID) >= m_maxDepthNo);
+
+      this->m_boxSpace = box;
+      this->m_maxDepthNo = maxDepthNo;
+      this->m_maxRasterResolution = static_cast<GridID>(pow2(maxDepthNo));
+      this->m_maxRasterID = this->m_maxRasterResolution - 1;
+      this->m_maxElementNo = maxElementNo;
+
+      [[maybe_unused]] auto& nodeRoot = this->m_nodes[GetRootKey()];
+#ifndef ORTHOTREE__DISABLED_NODECENTER
+      nodeRoot.SetCenter(IGM::GetBoxCenter(box));
+#endif // !ORTHOTREE__DISABLED_NODECENTER
+
+      // Size and raster info
+      {
+        auto [rasterizerFactors, sizeInDimensions] = GetGridRasterizer(this->m_boxSpace, this->m_maxRasterResolution);
+        this->m_rasterizerFactors = std::move(rasterizerFactors);
+        this->m_sizeInDimensions = std::move(sizeInDimensions);
+
+        // the 0-based depth size of the tree is m_maxDepthNo+1, and a fictive childnode halfsize (+2) could be asked prematurely.
+        depth_t constexpr additionalDepth = 3;
+        autoc examinedDepthSize = this->m_maxDepthNo + additionalDepth;
+        this->m_nodeSizes.resize(examinedDepthSize, this->m_sizeInDimensions);
+        autoce multiplier = IGM_Geometry(0.5);
+        auto factor = multiplier;
+        for (depth_t depthID = 1; depthID < examinedDepthSize; ++depthID, factor *= multiplier)
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+            this->m_nodeSizes[depthID][dimensionID] *= factor;
+      }
+
+      // Volume calculation
+      {
+        this->m_volumeOfOverallSpace = 1;
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          this->m_volumeOfOverallSpace *= this->m_sizeInDimensions[dimensionID];
+      }
+    }
+
+
     // Update all element which are in the given hash-table.
     template<EXEC_POL_TEMPLATE_PARAM bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
-    void UpdateIndexes(std::unordered_map<TEntityID, std::optional<TEntityID>> const& updateMap) noexcept
+    void UpdateIndexesBase(std::unordered_map<TEntityID, std::optional<TEntityID>> const& updateMap) noexcept
     {
       autoc updateMapEndIterator = updateMap.end();
 
@@ -2131,17 +2126,18 @@ namespace OrthoTree
 
 
     // Reset the tree
-    void Reset() noexcept
+    void ResetBase() noexcept
     {
       m_nodes.clear();
       m_boxSpace = {};
       m_volumeOfOverallSpace = 0.0;
       m_rasterizerFactors = {};
+      m_nodeSizes = {};
     }
 
 
     // Remove all elements and ids, except Root
-    void Clear() noexcept
+    void ClearBase() noexcept
     {
       std::erase_if(m_nodes, [](autoc& p) { return p.first != GetRootKey(); });
       cont_at(m_nodes, GetRootKey()).Entities.clear();
@@ -2150,7 +2146,7 @@ namespace OrthoTree
 
     // Move the whole tree with a std::vector of the movement
     EXEC_POL_TEMPLATE_DECL
-    void Move(TVector const& moveVector) noexcept
+    void MoveBase(TVector const& moveVector) noexcept
     {
 #ifndef ORTHOTREE__DISABLED_NODECENTER
       EXEC_POL_DEF(ep); // GCC 11.3
@@ -2164,6 +2160,8 @@ namespace OrthoTree
       IGM::MoveAD(this->m_boxSpace, moveVector);
     }
 
+  public: // Main service functions
+    // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
     std::tuple<MortonNodeID, depth_t> FindSmallestNodeKeyWithDepth(MortonNodeID searchKey) const noexcept
     {
       for (depth_t depthID = this->m_maxDepthNo; IsValidKey(searchKey); searchKey = GetParentKey(searchKey), --depthID)
@@ -2414,7 +2412,8 @@ namespace OrthoTree
       return results;
     }
 
-    std::vector<TEntityID> PlanePositiveSegmentationBase(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TContainer const& data) const noexcept
+    std::vector<TEntityID> PlanePositiveSegmentationBase(
+      TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance, TContainer const& data) const noexcept
     {
       assert(AD::IsNormalizedVector(planeNormal));
 
@@ -2494,8 +2493,6 @@ namespace OrthoTree
     }
   };
 
-
-  // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<
     dim_t DIMENSION_NO,
     typename TVector_,
@@ -2505,7 +2502,7 @@ namespace OrthoTree
     typename TGeometry_ = double,
     typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
     typename TContainer_ = std::span<TVector_ const>>
-  class OrthoTreePoint final : public OrthoTreeBase<DIMENSION_NO, TVector_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
+  class OrthoTreePointBase : public OrthoTreeBase<DIMENSION_NO, TVector_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
   {
   protected:
     using Base = OrthoTreeBase<DIMENSION_NO, TVector_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>;
@@ -2534,18 +2531,6 @@ namespace OrthoTree
     using TContainer = typename Base::TContainer;
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
-
-  public: // Create
-    // Ctors
-    OrthoTreePoint() = default;
-    OrthoTreePoint(
-      TContainer const& points,
-      std::optional<depth_t> maxDepthNoIn = std::nullopt,
-      std::optional<TBox> const& boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
-    {
-      Create(*this, points, maxDepthNoIn, boxSpaceOptional, maxElementNoInNode);
-    }
 
   private: // Aid functions
     struct Location
@@ -2598,7 +2583,7 @@ namespace OrthoTree
     // Create
     EXEC_POL_TEMPLATE_DECL
     static void Create(
-      OrthoTreePoint& tree,
+      OrthoTreePointBase& tree,
       TContainer const& points,
       std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
@@ -2629,142 +2614,6 @@ namespace OrthoTree
 
       auto beginIterator = pointLocations.begin();
       tree.CreateChildNodes(nodeRoot, rootKey, beginIterator, pointLocations.end(), MortonNodeID{ 0 }, maxDepthNo);
-    }
-
-  public: // Edit functions
-    bool InsertWithRebalancing(TEntityID newEntityID, TVector const& newPoint, TContainer const& points) noexcept
-    {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
-        return false;
-
-      autoc[entityDepth, entityLocation] = this->GetDepthAndLocationID(newPoint);
-      autoc entityNodeKey = Base::GetHash(entityDepth, entityLocation);
-      autoc[parentNodeKey, parentDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
-      if (!Base::IsValidKey(parentNodeKey))
-        return false;
-
-      return this->template InsertWithRebalancingBase<true>(parentNodeKey, parentDepthID, entityNodeKey, entityDepth, newEntityID, points);
-    }
-
-    // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
-    bool Insert(TEntityID entityID, TVector const& newPoint, bool doInsertToLeaf = false) noexcept
-    {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
-        return false;
-
-      autoc entityNodeKey = this->GetNodeID(newPoint);
-      autoc smallestNodeKey = this->FindSmallestNodeKey(entityNodeKey);
-      if (!Base::IsValidKey(smallestNodeKey))
-        return false;
-
-      return this->template InsertWithoutRebalancingBase<true>(smallestNodeKey, entityNodeKey, entityID, doInsertToLeaf);
-    }
-
-    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
-    template<bool DO_UPDATE_ENTITY_IDS = std::is_same_v<TEntity, typename TContainer::value_type>>
-    constexpr bool EraseId(TEntityID entityID) noexcept
-    {
-      bool isErased = false;
-      for (auto& [nodeKey, node] : this->m_nodes)
-      {
-        if (std::erase(node.Entities, entityID))
-        {
-          this->RemoveNodeIfPossible(nodeKey, node);
-          isErased = true;
-          break;
-        }
-      }
-
-      if (!isErased)
-        return false;
-
-      if constexpr (DO_UPDATE_ENTITY_IDS)
-      {
-        for (auto& [key, node] : this->m_nodes)
-          for (auto& id : node.Entities)
-            id -= entityID < id;
-      }
-
-      return true;
-    }
-
-    // Erase id, aided with the original point
-    template<bool DO_UPDATE_ENTITY_IDS = std::is_same_v<TEntity, typename TContainer::value_type>>
-    bool Erase(TEntityID entitiyID, TVector const& entityOriginalPoint) noexcept
-    {
-      autoc nodeKey = this->FindSmallestNode(entityOriginalPoint);
-      if (!Base::IsValidKey(nodeKey))
-        return false; // old box is not in the handled space domain
-
-      auto& node = this->m_nodes.at(nodeKey);
-      autoc endIteratorAfterRemove = std::remove(node.Entities.begin(), node.Entities.end(), entitiyID);
-      if (endIteratorAfterRemove == node.Entities.end())
-        return false; // id was not registered previously.
-
-      node.Entities.erase(endIteratorAfterRemove, node.Entities.end());
-
-      if constexpr (DO_UPDATE_ENTITY_IDS)
-      {
-        for (auto& [key, node] : this->m_nodes)
-          for (auto& id : node.Entities)
-            id -= entitiyID < id;
-      }
-
-      this->RemoveNodeIfPossible(nodeKey, node);
-
-      return true;
-    }
-
-
-    // Update id by the new point information
-    bool Update(TEntityID entityID, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
-    {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
-        return false;
-
-      if (!this->EraseId<false>(entityID))
-        return false;
-
-      return this->Insert(entityID, newPoint, doesInsertToLeaf);
-    }
-
-
-    // Update id by the new point information and the erase part is aided by the old point geometry data
-    bool Update(TEntityID entityID, TVector const& oldPoint, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
-    {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
-        return false;
-
-      if (!this->Erase<false>(entityID, oldPoint))
-        return false;
-
-      return this->Insert(entityID, newPoint, doesInsertToLeaf);
-    }
-
-
-    // Update id with rebalancing by the new point information
-    bool Update(TEntityID entityID, TVector const& newPoint, TContainer const& points) noexcept
-    {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
-        return false;
-
-      if (!this->EraseId<false>(entityID))
-        return false;
-
-      return this->InsertWithRebalancing(entityID, newPoint, points);
-    }
-
-
-    // Update id with rebalacing by the new point information and the erase part is aided by the old point geometry data
-    bool Update(TEntityID entityID, TVector const& oldPoint, TVector const& newPoint, TContainer const& points) noexcept
-    {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
-        return false;
-
-      if (!this->Erase<false>(entityID, oldPoint))
-        return false;
-
-      return this->InsertWithRebalancing(entityID, newPoint, points);
     }
 
   public: // Search functions
@@ -2900,8 +2749,223 @@ namespace OrthoTree
   };
 
 
-  // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
-  // SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
+  // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
+  template<
+    dim_t DIMENSION_NO,
+    typename TVector_,
+    typename TBox_,
+    typename TRay_,
+    typename TPlane_,
+    typename TGeometry_ = double,
+    typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
+    typename TContainer_ = std::span<TVector_ const>>
+  class OrthoTreePoint final : public OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
+  {
+  protected:
+    using Base = OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>;
+    using EntityDistance = typename Base::EntityDistance;
+    using BoxDistance = typename Base::BoxDistance;
+    using IGM = typename Base::IGM;
+    using IGM_Geometry = typename IGM::Geometry;
+
+  public:
+    using AD = typename Base::AD;
+    using MortonGridID = typename Base::MortonGridID;
+    using MortonGridIDCR = typename Base::MortonGridIDCR;
+    using MortonNodeID = typename Base::MortonNodeID;
+    using MortonNodeIDCR = typename Base::MortonNodeIDCR;
+    using ChildID = typename Base::ChildID;
+
+    using Node = typename Base::Node;
+
+    using TGeometry = TGeometry_;
+    using TVector = TVector_;
+    using TBox = TBox_;
+    using TRay = TRay_;
+    using TPlane = TPlane_;
+    using TEntity = typename Base::TEntity;
+    using TEntityID = typename Base::TEntityID;
+    using TContainer = typename Base::TContainer;
+
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
+
+  public: // Create
+    // Ctors
+    OrthoTreePoint() = default;
+    OrthoTreePoint(
+      TContainer const& points,
+      std::optional<depth_t> maxDepthNoIn = std::nullopt,
+      std::optional<TBox> const& boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+    {
+      this->Create(*this, points, maxDepthNoIn, boxSpaceOptional, maxElementNoInNode);
+    }
+
+  public: // Edit functions
+    constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
+    {
+      this->InitBase(IGM::GetBoxAD(box), maxDepthNo, maxElementNo);
+    }
+
+    bool InsertWithRebalancing(TEntityID newEntityID, TVector const& newPoint, TContainer const& points) noexcept
+    {
+      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+        return false;
+
+      autoc[entityDepth, entityLocation] = this->GetDepthAndLocationID(newPoint);
+      autoc entityNodeKey = Base::GetHash(entityDepth, entityLocation);
+      autoc[parentNodeKey, parentDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
+      if (!Base::IsValidKey(parentNodeKey))
+        return false;
+
+      return this->template InsertWithRebalancingBase<true>(parentNodeKey, parentDepthID, entityNodeKey, entityDepth, newEntityID, points);
+    }
+
+
+    // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
+    bool Insert(TEntityID entityID, TVector const& newPoint, bool doInsertToLeaf = false) noexcept
+    {
+      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+        return false;
+
+      autoc entityNodeKey = this->GetNodeID(newPoint);
+      autoc smallestNodeKey = this->FindSmallestNodeKey(entityNodeKey);
+      if (!Base::IsValidKey(smallestNodeKey))
+        return false;
+
+      return this->template InsertWithoutRebalancingBase<true>(smallestNodeKey, entityNodeKey, entityID, doInsertToLeaf);
+    }
+
+
+    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
+    template<bool DO_UPDATE_ENTITY_IDS = std::is_same_v<TEntity, typename TContainer::value_type>>
+    constexpr bool EraseId(TEntityID entityID) noexcept
+    {
+      bool isErased = false;
+      for (auto& [nodeKey, node] : this->m_nodes)
+      {
+        if (std::erase(node.Entities, entityID))
+        {
+          this->RemoveNodeIfPossible(nodeKey, node);
+          isErased = true;
+          break;
+        }
+      }
+
+      if (!isErased)
+        return false;
+
+      if constexpr (DO_UPDATE_ENTITY_IDS)
+      {
+        for (auto& [key, node] : this->m_nodes)
+          for (auto& id : node.Entities)
+            id -= entityID < id;
+      }
+
+      return true;
+    }
+
+
+    // Erase id, aided with the original point
+    template<bool DO_UPDATE_ENTITY_IDS = std::is_same_v<TEntity, typename TContainer::value_type>>
+    bool Erase(TEntityID entitiyID, TVector const& entityOriginalPoint) noexcept
+    {
+      autoc nodeKey = this->FindSmallestNode(entityOriginalPoint);
+      if (!Base::IsValidKey(nodeKey))
+        return false; // old box is not in the handled space domain
+
+      auto& node = this->m_nodes.at(nodeKey);
+      autoc endIteratorAfterRemove = std::remove(node.Entities.begin(), node.Entities.end(), entitiyID);
+      if (endIteratorAfterRemove == node.Entities.end())
+        return false; // id was not registered previously.
+
+      node.Entities.erase(endIteratorAfterRemove, node.Entities.end());
+
+      if constexpr (DO_UPDATE_ENTITY_IDS)
+      {
+        for (auto& [key, node] : this->m_nodes)
+          for (auto& id : node.Entities)
+            id -= entitiyID < id;
+      }
+
+      this->RemoveNodeIfPossible(nodeKey, node);
+
+      return true;
+    }
+
+
+    // Update id by the new point information
+    bool Update(TEntityID entityID, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
+    {
+      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+        return false;
+
+      if (!this->EraseId<false>(entityID))
+        return false;
+
+      return this->Insert(entityID, newPoint, doesInsertToLeaf);
+    }
+
+
+    // Update id by the new point information and the erase part is aided by the old point geometry data
+    bool Update(TEntityID entityID, TVector const& oldPoint, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
+    {
+      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+        return false;
+
+      if (!this->Erase<false>(entityID, oldPoint))
+        return false;
+
+      return this->Insert(entityID, newPoint, doesInsertToLeaf);
+    }
+
+
+    // Update id with rebalancing by the new point information
+    bool Update(TEntityID entityID, TVector const& newPoint, TContainer const& points) noexcept
+    {
+      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+        return false;
+
+      if (!this->EraseId<false>(entityID))
+        return false;
+
+      return this->InsertWithRebalancing(entityID, newPoint, points);
+    }
+
+
+    // Update id with rebalacing by the new point information and the erase part is aided by the old point geometry data
+    bool Update(TEntityID entityID, TVector const& oldPoint, TVector const& newPoint, TContainer const& points) noexcept
+    {
+      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+        return false;
+
+      if (!this->Erase<false>(entityID, oldPoint))
+        return false;
+
+      return this->InsertWithRebalancing(entityID, newPoint, points);
+    }
+
+
+    // Update all element which are in the given hash-table
+    template<EXEC_POL_TEMPLATE_PARAM bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
+    void UpdateIndexes(std::unordered_map<TEntityID, std::optional<TEntityID>> const& updateMap)
+    {
+      this->template EXEC_POL_TEMPLATE_ADDFM(UpdateIndexesBase, DO_UNIQUENESS_CHECK_TO_INDICIES)(updateMap);
+    }
+
+
+    // Reset the state of the tree to be zero initialized
+    void Reset() noexcept { this->ResetBase(); }
+
+
+    // Empty the tree nodes and entities
+    void Clear() noexcept { this->ClearBase(); }
+
+
+    EXEC_POL_TEMPLATE_DECL
+    void Move(TVector const& moveVector) noexcept { this->template EXEC_POL_TEMPLATE_ADDF(MoveBase)(moveVector); }
+  };
+
   template<
     dim_t DIMENSION_NO,
     typename TVector_,
@@ -2912,7 +2976,7 @@ namespace OrthoTree
     depth_t SPLIT_DEPTH_INCREASEMENT = 2,
     typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
     typename TContainer_ = std::span<TBox_ const>>
-  class OrthoTreeBoundingBox final : public OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
+  class OrthoTreeBoundingBoxBase : public OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
   {
   protected:
     using Base = OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>;
@@ -2945,18 +3009,7 @@ namespace OrthoTree
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
-  public: // Ctors
-    OrthoTreeBoundingBox() = default;
-    OrthoTreeBoundingBox(
-      TContainer const& boxes,
-      std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& oBoxSpace = std::nullopt,
-      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
-    {
-      Create(*this, boxes, maxDepthNo, oBoxSpace, nElementMaxInNode);
-    }
-
-  private: // Aid functions
+  protected: // Aid functions
     struct Location
     {
       TEntityID EntityID;
@@ -3140,7 +3193,7 @@ namespace OrthoTree
     // Create
     EXEC_POL_TEMPLATE_DECL
     static void Create(
-      OrthoTreeBoundingBox& tree,
+      OrthoTreeBoundingBoxBase& tree,
       TContainer const& boxes,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> const& boxSpaceOptional = std::nullopt,
@@ -3234,216 +3287,7 @@ namespace OrthoTree
         });
       }
     }
-
-  public: // Edit functions
-    bool InsertWithRebalancing(TEntityID newEntityID, TBox const& newBox, TContainer const& boxes) noexcept
-    {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
-        return false;
-
-      auto locations = std::vector<Location>(1);
-      locations[0] = this->GetEntityLocation(newEntityID, newBox, &locations);
-
-      for (autoc& location : locations)
-      {
-        autoc entityNodeKey = this->GetHash(location.DepthID, location.MinGridID);
-        autoc parentNodeKey = this->FindSmallestNodeKey(entityNodeKey);
-
-        if (!this->template InsertWithRebalancingBase<SPLIT_DEPTH_INCREASEMENT == 0>(
-              parentNodeKey, Base::GetDepthID(parentNodeKey), entityNodeKey, location.DepthID, newEntityID, boxes))
-          return false;
-      }
-
-      return true;
-    }
-
-
-    // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
-    bool Insert(TEntityID newEntityID, TBox const& newBox, bool doInsertToLeaf = false) noexcept
-    {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
-        return false;
-
-      autoc smallestNodeKey = this->FindSmallestNode(newBox);
-      if (!Base::IsValidKey(smallestNodeKey))
-        return false; // new box is not in the handled space domain
-
-      auto locations = std::vector<Location>(1);
-      locations[0] = this->GetEntityLocation(newEntityID, newBox, &locations);
-
-      for (autoc& location : locations)
-      {
-        autoc entityNodeKey = this->GetHash(location.DepthID, location.MinGridID);
-        if (!this->template InsertWithoutRebalancingBase<SPLIT_DEPTH_INCREASEMENT == 0>(smallestNodeKey, entityNodeKey, newEntityID, doInsertToLeaf))
-          return false;
-      }
-
-      return true;
-    }
-
-
-  private:
-    bool doErase(Node& node, TEntityID entityID) noexcept
-    {
-      auto& idList = node.Entities;
-      autoc endIteratorAfterRemove = std::remove(idList.begin(), idList.end(), entityID);
-      if (endIteratorAfterRemove == idList.end())
-        return false; // id was not registered previously.
-
-      idList.erase(endIteratorAfterRemove, idList.end());
-      return true;
-    }
-
-
-    template<depth_t REMAINING_DEPTH>
-    bool doEraseRec(MortonNodeIDCR nodeKey, TEntityID entityID) noexcept
-    {
-      auto& node = this->m_nodes.at(nodeKey);
-      auto ret = this->doErase(node, entityID);
-      if constexpr (REMAINING_DEPTH > 0)
-      {
-        autoc children = node.GetChildren();
-        for (MortonNodeIDCR childKey : children)
-          ret |= doEraseRec<REMAINING_DEPTH - 1>(childKey, entityID);
-      }
-
-      this->RemoveNodeIfPossible(nodeKey, node);
-
-      return ret;
-    }
-
-
-  public:
-    // Erase id, aided with the original bounding box
-    template<bool DO_UPDATE_ENTITY_IDS = true>
-    bool Erase(TEntityID entityIDToErase, TBox const& box) noexcept
-    {
-      autoc smallestNodeKey = this->FindSmallestNode(box);
-      if (!Base::IsValidKey(smallestNodeKey))
-        return false; // old box is not in the handled space domain
-
-      if (doEraseRec<SPLIT_DEPTH_INCREASEMENT>(smallestNodeKey, entityIDToErase))
-      {
-        if constexpr (DO_UPDATE_ENTITY_IDS)
-        {
-          for (auto& [key, node] : this->m_nodes)
-            for (auto& entityID : node.Entities)
-              entityID -= entityIDToErase < entityID;
-        }
-        return true;
-      }
-      else
-        return false;
-    }
-
-
-    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
-    template<bool DO_UPDATE_ENTITY_IDS = true>
-    constexpr bool EraseId(TEntityID idErase) noexcept
-    {
-      bool isErased = false;
-      if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
-      {
-        for (auto& [nodeKey, node] : this->m_nodes)
-        {
-          if (std::erase(node.Entities, idErase) > 0)
-          {
-            this->RemoveNodeIfPossible(nodeKey, node);
-            isErased = true;
-            break;
-          }
-        }
-      }
-      else
-      {
-        auto erasableNodes = std::vector<MortonNodeID>{};
-        for (auto& [nodeKey, node] : this->m_nodes)
-        {
-          autoc isErasedInCurrent = std::erase(node.Entities, idErase) > 0;
-          if (isErasedInCurrent)
-            erasableNodes.emplace_back(nodeKey);
-
-          isErased |= isErasedInCurrent;
-        }
-
-        for (MortonNodeIDCR nodeKey : erasableNodes)
-          this->RemoveNodeIfPossible(nodeKey, this->GetNode(nodeKey));
-      }
-
-      if (!isErased)
-        return false;
-
-      if constexpr (DO_UPDATE_ENTITY_IDS)
-      {
-        for (auto& [key, node] : this->m_nodes)
-          for (auto& id : node.Entities)
-            id -= idErase < id;
-      }
-
-      return true;
-    }
-
-
-    // Update id by the new bounding box information
-    bool Update(TEntityID entityID, TBox const& boxNew, bool doInsertToLeaf = false) noexcept
-    {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, boxNew))
-        return false;
-
-      if (!this->EraseId<false>(entityID))
-        return false;
-
-      return this->Insert(entityID, boxNew, doInsertToLeaf);
-    }
-
-
-    // Update id by the new bounding box information and the erase part is aided by the old bounding box geometry data
-    bool Update(TEntityID entityID, TBox const& oldBox, TBox const& newBox, bool doInsertToLeaf = false) noexcept
-    {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
-        return false;
-
-      if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
-        if (this->FindSmallestNode(oldBox) == this->FindSmallestNode(newBox))
-          return true;
-
-      if (!this->Erase<false>(entityID, oldBox))
-        return false; // entityID was not registered previously.
-
-      return this->Insert(entityID, newBox, doInsertToLeaf);
-    }
-
-
-    // Update id with rebalancing by the new bounding box information
-    bool Update(TEntityID entityID, TBox const& boxNew, TContainer const& boxes) noexcept
-    {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, boxNew))
-        return false;
-
-      if (!this->EraseId<false>(entityID))
-        return false;
-
-      return this->InsertWithRebalancing(entityID, boxNew, boxes);
-    }
-
-
-    // Update id with rebalancing by the new bounding box information and the erase part is aided by the old bounding box geometry data
-    bool Update(TEntityID entityID, TBox const& oldBox, TBox const& newBox, TContainer const& boxes) noexcept
-    {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
-        return false;
-
-      if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
-        if (this->FindSmallestNode(oldBox) == this->FindSmallestNode(newBox))
-          return true;
-
-      if (!this->Erase<false>(entityID, oldBox))
-        return false; // entityID was not registered previously.
-
-      return this->InsertWithRebalancing(entityID, newBox, boxes);
-    }
-
-
+  
   private:
     constexpr std::array<DimArray<GridID>, 2> GetGridIdPointEdge(TVector const& point) const noexcept
     {
@@ -3600,7 +3444,7 @@ namespace OrthoTree
 
     // Collision detection: Returns all overlapping boxes from the source trees.
     static std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(
-      OrthoTreeBoundingBox const& leftTree, TContainer const& leftBoxes, OrthoTreeBoundingBox const& rightTree, TContainer const& rightBoxes) noexcept
+      OrthoTreeBoundingBoxBase const& leftTree, TContainer const& leftBoxes, OrthoTreeBoundingBoxBase const& rightTree, TContainer const& rightBoxes) noexcept
     {
       using NodeIterator = typename Base::template UnderlyingContainer<Node>::const_iterator;
       struct NodeIteratorAndStatus
@@ -3687,7 +3531,7 @@ namespace OrthoTree
 
     // Collision detection: Returns all overlapping boxes from the source trees.
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(
-      TContainer const& boxes, OrthoTreeBoundingBox const& otherTree, TContainer const& otherBoxes) const noexcept
+      TContainer const& boxes, OrthoTreeBoundingBoxBase const& otherTree, TContainer const& otherBoxes) const noexcept
     {
       return CollisionDetection(*this, boxes, otherTree, otherBoxes);
     }
@@ -3975,6 +3819,297 @@ namespace OrthoTree
 
       return foundEntities.begin()->EntityID;
     }
+  };
+
+
+  // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
+  // SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
+  template<
+    dim_t DIMENSION_NO,
+    typename TVector_,
+    typename TBox_,
+    typename TRay_,
+    typename TPlane_,
+    typename TGeometry_ = double,
+    depth_t SPLIT_DEPTH_INCREASEMENT = 2,
+    typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
+    typename TContainer_ = std::span<TBox_ const>>
+  class OrthoTreeBoundingBox final
+  : public OrthoTreeBoundingBoxBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, SPLIT_DEPTH_INCREASEMENT, TAdapter_, TContainer_>
+  {
+  protected:
+    using Base = OrthoTreeBoundingBoxBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, SPLIT_DEPTH_INCREASEMENT, TAdapter_, TContainer_>;
+    using EntityDistance = typename Base::EntityDistance;
+    using BoxDistance = typename Base::BoxDistance;
+    using GridBoundary = typename Base::GridBoundary;
+    template<typename T>
+    using DimArray = std::array<T, DIMENSION_NO>;
+    using IGM = typename Base::IGM;
+    using IGM_Geometry = typename IGM::Geometry;
+
+  public:
+    using AD = typename Base::AD;
+    using MortonGridID = typename Base::MortonGridID;
+    using MortonGridIDCR = typename Base::MortonGridIDCR;
+    using MortonNodeID = typename Base::MortonNodeID;
+    using MortonNodeIDCR = typename Base::MortonNodeIDCR;
+    using ChildID = typename Base::ChildID;
+
+    using Node = typename Base::Node;
+
+    using TGeometry = TGeometry_;
+    using TVector = TVector_;
+    using TBox = TBox_;
+    using TRay = TRay_;
+    using TPlane = TPlane_;
+    using TEntity = typename Base::TEntity;
+    using TEntityID = typename Base::TEntityID;
+    using TContainer = typename Base::TContainer;
+
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
+
+  public: // Ctors
+    OrthoTreeBoundingBox() = default;
+    OrthoTreeBoundingBox(
+      TContainer const& boxes,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<TBox> const& oBoxSpace = std::nullopt,
+      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
+    {
+      this->Create(*this, boxes, maxDepthNo, oBoxSpace, nElementMaxInNode);
+    }
+  public: // Edit functions
+    constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
+    {
+      this->InitBase(IGM::GetBoxAD(box), maxDepthNo, maxElementNo);
+    }
+
+    bool InsertWithRebalancing(TEntityID newEntityID, TBox const& newBox, TContainer const& boxes) noexcept
+    {
+      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+        return false;
+
+      auto locations = std::vector<Base::Location>(1);
+      locations[0] = this->GetEntityLocation(newEntityID, newBox, &locations);
+
+      for (autoc& location : locations)
+      {
+        autoc entityNodeKey = this->GetHash(location.DepthID, location.MinGridID);
+        autoc parentNodeKey = this->FindSmallestNodeKey(entityNodeKey);
+
+        if (!this->template InsertWithRebalancingBase<SPLIT_DEPTH_INCREASEMENT == 0>(
+              parentNodeKey, Base::GetDepthID(parentNodeKey), entityNodeKey, location.DepthID, newEntityID, boxes))
+          return false;
+      }
+
+      return true;
+    }
+
+
+    // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
+    bool Insert(TEntityID newEntityID, TBox const& newBox, bool doInsertToLeaf = false) noexcept
+    {
+      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+        return false;
+
+      autoc smallestNodeKey = this->FindSmallestNode(newBox);
+      if (!Base::IsValidKey(smallestNodeKey))
+        return false; // new box is not in the handled space domain
+
+      auto locations = std::vector<Base::Location>(1);
+      locations[0] = this->GetEntityLocation(newEntityID, newBox, &locations);
+
+      for (autoc& location : locations)
+      {
+        autoc entityNodeKey = this->GetHash(location.DepthID, location.MinGridID);
+        if (!this->template InsertWithoutRebalancingBase<SPLIT_DEPTH_INCREASEMENT == 0>(smallestNodeKey, entityNodeKey, newEntityID, doInsertToLeaf))
+          return false;
+      }
+
+      return true;
+    }
+
+
+  private:
+    bool doErase(Node& node, TEntityID entityID) noexcept
+    {
+      auto& idList = node.Entities;
+      autoc endIteratorAfterRemove = std::remove(idList.begin(), idList.end(), entityID);
+      if (endIteratorAfterRemove == idList.end())
+        return false; // id was not registered previously.
+
+      idList.erase(endIteratorAfterRemove, idList.end());
+      return true;
+    }
+
+
+    template<depth_t REMAINING_DEPTH>
+    bool doEraseRec(MortonNodeIDCR nodeKey, TEntityID entityID) noexcept
+    {
+      auto& node = this->m_nodes.at(nodeKey);
+      auto ret = this->doErase(node, entityID);
+      if constexpr (REMAINING_DEPTH > 0)
+      {
+        autoc children = node.GetChildren();
+        for (MortonNodeIDCR childKey : children)
+          ret |= doEraseRec<REMAINING_DEPTH - 1>(childKey, entityID);
+      }
+
+      this->RemoveNodeIfPossible(nodeKey, node);
+
+      return ret;
+    }
+
+
+  public:
+    // Erase id, aided with the original bounding box
+    template<bool DO_UPDATE_ENTITY_IDS = true>
+    bool Erase(TEntityID entityIDToErase, TBox const& box) noexcept
+    {
+      autoc smallestNodeKey = this->FindSmallestNode(box);
+      if (!Base::IsValidKey(smallestNodeKey))
+        return false; // old box is not in the handled space domain
+
+      if (doEraseRec<SPLIT_DEPTH_INCREASEMENT>(smallestNodeKey, entityIDToErase))
+      {
+        if constexpr (DO_UPDATE_ENTITY_IDS)
+        {
+          for (auto& [key, node] : this->m_nodes)
+            for (auto& entityID : node.Entities)
+              entityID -= entityIDToErase < entityID;
+        }
+        return true;
+      }
+      else
+        return false;
+    }
+
+
+    // Erase an id. Traverse all node if it is needed, which has major performance penalty.
+    template<bool DO_UPDATE_ENTITY_IDS = true>
+    constexpr bool EraseId(TEntityID idErase) noexcept
+    {
+      bool isErased = false;
+      if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+      {
+        for (auto& [nodeKey, node] : this->m_nodes)
+        {
+          if (std::erase(node.Entities, idErase) > 0)
+          {
+            this->RemoveNodeIfPossible(nodeKey, node);
+            isErased = true;
+            break;
+          }
+        }
+      }
+      else
+      {
+        auto erasableNodes = std::vector<MortonNodeID>{};
+        for (auto& [nodeKey, node] : this->m_nodes)
+        {
+          autoc isErasedInCurrent = std::erase(node.Entities, idErase) > 0;
+          if (isErasedInCurrent)
+            erasableNodes.emplace_back(nodeKey);
+
+          isErased |= isErasedInCurrent;
+        }
+
+        for (MortonNodeIDCR nodeKey : erasableNodes)
+          this->RemoveNodeIfPossible(nodeKey, this->GetNode(nodeKey));
+      }
+
+      if (!isErased)
+        return false;
+
+      if constexpr (DO_UPDATE_ENTITY_IDS)
+      {
+        for (auto& [key, node] : this->m_nodes)
+          for (auto& id : node.Entities)
+            id -= idErase < id;
+      }
+
+      return true;
+    }
+
+
+    // Update id by the new bounding box information
+    bool Update(TEntityID entityID, TBox const& boxNew, bool doInsertToLeaf = false) noexcept
+    {
+      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, boxNew))
+        return false;
+
+      if (!this->EraseId<false>(entityID))
+        return false;
+
+      return this->Insert(entityID, boxNew, doInsertToLeaf);
+    }
+
+
+    // Update id by the new bounding box information and the erase part is aided by the old bounding box geometry data
+    bool Update(TEntityID entityID, TBox const& oldBox, TBox const& newBox, bool doInsertToLeaf = false) noexcept
+    {
+      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+        return false;
+
+      if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+        if (this->FindSmallestNode(oldBox) == this->FindSmallestNode(newBox))
+          return true;
+
+      if (!this->Erase<false>(entityID, oldBox))
+        return false; // entityID was not registered previously.
+
+      return this->Insert(entityID, newBox, doInsertToLeaf);
+    }
+
+
+    // Update id with rebalancing by the new bounding box information
+    bool Update(TEntityID entityID, TBox const& boxNew, TContainer const& boxes) noexcept
+    {
+      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, boxNew))
+        return false;
+
+      if (!this->EraseId<false>(entityID))
+        return false;
+
+      return this->InsertWithRebalancing(entityID, boxNew, boxes);
+    }
+
+
+    // Update id with rebalancing by the new bounding box information and the erase part is aided by the old bounding box geometry data
+    bool Update(TEntityID entityID, TBox const& oldBox, TBox const& newBox, TContainer const& boxes) noexcept
+    {
+      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+        return false;
+
+      if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
+        if (this->FindSmallestNode(oldBox) == this->FindSmallestNode(newBox))
+          return true;
+
+      if (!this->Erase<false>(entityID, oldBox))
+        return false; // entityID was not registered previously.
+
+      return this->InsertWithRebalancing(entityID, newBox, boxes);
+    }
+
+
+    // Update all element which are in the given hash-table
+    template<EXEC_POL_TEMPLATE_PARAM bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
+    void UpdateIndexes(std::unordered_map<TEntityID, std::optional<TEntityID>> const& updateMap)
+    {
+      this->template EXEC_POL_TEMPLATE_ADDFM(UpdateIndexesBase, DO_UNIQUENESS_CHECK_TO_INDICIES)(updateMap);
+    }
+
+
+    // Reset the state of the tree to be zero initialized
+    void Reset() noexcept { this->ResetBase(); }
+
+
+    // Empty the tree nodes and entities
+    void Clear() noexcept { this->ClearBase(); }
+
+
+    EXEC_POL_TEMPLATE_DECL
+    void Move(TVector const& moveVector) noexcept { this->template EXEC_POL_TEMPLATE_ADDF(MoveBase)(moveVector); }
   };
 
 
