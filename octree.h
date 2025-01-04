@@ -1199,17 +1199,16 @@ namespace OrthoTree
     static_assert(AdaptorConcept<AD, TVector, TBox, TRay, TPlane, TGeometry>);
     static_assert(0 < DIMENSION_NO && DIMENSION_NO < 64);
 
+    template<typename T>
+    using DimArray = std::array<T, DIMENSION_NO>;
+    using IGM = typename detail::InternalGeometryModule<DIMENSION_NO, TGeometry, TVector, TBox, TAdapter>;
+    using IGM_Geometry = typename IGM::Geometry;
+
   protected:
     // Max number of children
     static autoce CHILD_NO = pow2_ce<DIMENSION_NO>();
     // Type system determined maximal depth.
     static autoce MAX_THEORETICAL_DEPTH = depth_t((CHAR_BIT * sizeof(MortonNodeID) - 1 /*sentinal bit*/) / DIMENSION_NO);
-
-  public:
-    template<typename T>
-    using DimArray = std::array<T, DIMENSION_NO>;
-    using IGM = typename detail::InternalGeometryModule<DIMENSION_NO, TGeometry, TVector, TBox, TAdapter>;
-    using IGM_Geometry = typename IGM::Geometry;
 
   public:
     class Node
@@ -2536,6 +2535,18 @@ namespace OrthoTree
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
+  public: // Create
+    // Ctors
+    OrthoTreePoint() = default;
+    OrthoTreePoint(
+      TContainer const& points,
+      std::optional<depth_t> maxDepthNoIn = std::nullopt,
+      std::optional<TBox> const& boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+    {
+      Create(*this, points, maxDepthNoIn, boxSpaceOptional, maxElementNoInNode);
+    }
+
   private: // Aid functions
     struct Location
     {
@@ -2600,17 +2611,6 @@ namespace OrthoTree
     }
 
   public: // Create
-    // Ctors
-    OrthoTreePoint() = default;
-    OrthoTreePoint(
-      TContainer const& points,
-      std::optional<depth_t> maxDepthNoIn = std::nullopt,
-      std::optional<TBox> const& boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
-    {
-      Create(*this, points, maxDepthNoIn, boxSpaceOptional, maxElementNoInNode);
-    }
-
     // Create
     EXEC_POL_TEMPLATE_DECL
     static void Create(
@@ -2961,6 +2961,17 @@ namespace OrthoTree
 
     static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
 
+  public: // Ctors
+    OrthoTreeBoundingBox() = default;
+    OrthoTreeBoundingBox(
+      TContainer const& boxes,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<TBox> const& oBoxSpace = std::nullopt,
+      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
+    {
+      Create(*this, boxes, maxDepthNo, oBoxSpace, nElementMaxInNode);
+    }
+
   private: // Aid functions
     struct Location
     {
@@ -3159,17 +3170,6 @@ namespace OrthoTree
     }
 
   public: // Create
-    // Ctors
-    OrthoTreeBoundingBox() = default;
-    OrthoTreeBoundingBox(
-      TContainer const& boxes,
-      std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& oBoxSpace = std::nullopt,
-      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
-    {
-      Create(*this, boxes, maxDepthNo, oBoxSpace, nElementMaxInNode);
-    }
-
     // Create
     EXEC_POL_TEMPLATE_DECL
     static void Create(
