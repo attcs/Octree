@@ -124,7 +124,7 @@ namespace
 
     auto const s = Point_3<Cartesian<double>>(rayO.origin[0], rayO.origin[1], rayO.origin[2]);
     auto const v = Vector_3<Cartesian<double>>(rayO.direction[0], rayO.direction[1], rayO.direction[2]);
-    rayA = Ray_2<Cartesian<double>>(s, v);
+    rayA = Ray_3<Cartesian<double>>(s, v);
   }
 
   template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
