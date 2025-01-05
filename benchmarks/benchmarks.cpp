@@ -341,7 +341,7 @@ namespace
     return aBox;
   }
 
-  template <typename TVector, typename TBox>
+  template <typename TVector, typename TBox, typename TRay, typename TPlane>
   vector<vector<std::size_t>> RangeSearchNaive(span<TBox const> const& vSearchBox, span<TBox const> const& vBox)
   {
     autoc n = vBox.size();
@@ -353,7 +353,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, TVector, TBox>::AreBoxesOverlapped(boxSearch, vBox[i], false))
+        if (AdaptorGeneral<N, TVector, TBox, TRay, TPlane>::AreBoxesOverlapped(boxSearch, vBox[i], false))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
@@ -391,7 +391,7 @@ namespace
   }
 
 
-  template <typename TVector, typename TBox>
+  template<typename TVector, typename TBox, typename TRay, typename TPlane>
   vector<vector<std::size_t>> RangeSearchNaive(span<TBox const> const& vSearchBox, span<TVector const> const& vPoint)
   {
     autoc n = vPoint.size();
@@ -403,7 +403,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, TVector, TBox>::DoesBoxContainPoint(boxSearch, vPoint[i]))
+        if (AdaptorGeneral<N, TVector, TBox, TRay, TPlane>::DoesBoxContainPoint(boxSearch, vPoint[i]))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
@@ -673,7 +673,7 @@ namespace
         { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepth, false, aBox_.subspan(0, aSizeNonLog[iSize])
         , [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
           {
-            autoc vvElem = RangeSearchNaive<PointND<N>, BoundingBoxND<N>>(aBox, aBox);
+            autoc vvElem = RangeSearchNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox, aBox);
 
             size_t nFound = 0;
             for (autoc& vElem : vvElem)
