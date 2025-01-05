@@ -294,6 +294,13 @@ namespace OrthoTree
       std::sort(c.begin(), c.end());
       c.erase(std::unique(c.begin(), c.end()), c.end());
     }
+
+    template<typename TElement>
+    void sortAndUniqueSpan(std::span<TElement>& c)
+    {
+      std::sort(c.begin(), c.end());
+      c = std::span<TElement>{ c.begin(), std::unique(c.begin(), c.end()) };
+    }
   } // namespace detail
 
 #ifdef _MSC_VER
@@ -1169,13 +1176,15 @@ namespace OrthoTree
     typename TPlane_,
     typename TGeometry_ = double,
     typename TAdapter = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
-    typename TContainer_ = std::span<TEntity_ const>>
+    typename TContainer_ = std::span<TEntity_ const>,
+    bool IS_MUTABLE_NODES_ = true>
   class OrthoTreeBase
   {
   public:
     static autoce IS_LINEAR_TREE = DIMENSION_NO < 15;
     static autoce IS_BOX_TYPE = std::is_same<TEntity_, TBox_>::value;
     static autoce IS_CONTIGOUS_CONTAINER = std::contiguous_iterator<typename TContainer_::iterator>;
+    static autoce IS_MUTABLE_NODES = IS_MUTABLE_NODES_;
 
     // Max value: 2 ^ DIMENSION_NO
     using ChildID = std::conditional_t < DIMENSION_NO<4, uint32_t, uint64_t>;
@@ -1216,17 +1225,20 @@ namespace OrthoTree
     class Node
     {
     private:
+      using EntityContainer = typename std::conditional_t<IS_MUTABLE_NODES, std::vector<TEntityID>, std::span<TEntityID>>;
+
+    private:
+      EntityContainer m_entities;
       std::vector<MortonNodeID> m_children;
+
 #ifndef ORTHOTREE__DISABLED_NODECENTER
       IGM::Vector m_center;
 #endif
 
-    public: // Public members
-      std::vector<TEntityID> Entities = {};
-
-    public:
+    public: // Child management
 #ifndef ORTHOTREE__DISABLED_NODECENTER
       constexpr IGM::Vector const& GetCenter() const noexcept { return m_center; }
+
       constexpr void SetCenter(IGM::Vector&& center) noexcept { m_center = std::move(center); }
 #endif // !ORTHOTREE__DISABLED_NODECENTER
 
@@ -1277,7 +1289,77 @@ namespace OrthoTree
       }
 
       constexpr bool IsAnyChildExist() const noexcept { return !m_children.empty(); }
+
       constexpr std::vector<MortonNodeID> const& GetChildren() const noexcept { return m_children; }
+
+    public: // Entity management
+      constexpr void SetEntities(EntityContainer&& entities) noexcept { m_entities = std::move(entities); }
+
+      constexpr size_t GetEntitiesSize() const noexcept { return m_entities.size(); }
+
+      constexpr std::span<TEntityID const> GetEntitiesView() const noexcept
+      {
+        if constexpr (IS_MUTABLE_NODES)
+        {
+          return std::span(m_entities.begin(), m_entities.end());
+        }
+        else
+        {
+          return m_entities;
+        }
+      }
+
+      constexpr std::span<TEntityID> GetEntitiesView() noexcept
+      {
+        if constexpr (IS_MUTABLE_NODES)
+        {
+          return std::span(m_entities.begin(), m_entities.end());
+        }
+        else
+        {
+          return m_entities;
+        }
+      }
+
+      constexpr EntityContainer&& ExtractEntities() noexcept { return std::move(m_entities); }
+
+      constexpr void AddEntity(TEntityID entityID) noexcept
+      {
+        if constexpr (IS_MUTABLE_NODES)
+        {
+          m_entities.emplace_back(entityID);
+        }
+        else
+        {
+          assert(false); // This operation is not supported for non-mutable nodes.
+        }
+      }
+
+      constexpr bool RemoveEntity(TEntityID entityID) noexcept
+      {
+        if constexpr (IS_MUTABLE_NODES)
+        {
+          autoc endIteratorAfterRemove = std::remove(m_entities.begin(), m_entities.end(), entityID);
+          if (endIteratorAfterRemove == m_entities.end())
+            return false; // entityID was not registered previously.
+
+          m_entities.erase(endIteratorAfterRemove, m_entities.end());
+          return true;
+        }
+        else
+        {
+          assert(false); // This operation is not supported for non-mutable nodes.
+          return false;
+        }
+      }
+
+      constexpr void Clear() noexcept
+      {
+        if constexpr (IS_MUTABLE_NODES)
+        {
+          m_entities.clear();
+        }
+      }
     };
 
   protected: // Aid struct to partitioning and distance ordering
@@ -1311,6 +1393,7 @@ namespace OrthoTree
 
   protected: // Member variables
     UnderlyingContainer<Node> m_nodes;
+    std::conditional_t<IS_MUTABLE_NODES, std::monostate, std::vector<TEntityID>> m_entities;
 
     std::size_t m_maxElementNo = 11;
     depth_t m_maxDepthNo = {};
@@ -1322,6 +1405,72 @@ namespace OrthoTree
     IGM::Vector m_rasterizerFactors;
     IGM::Vector m_sizeInDimensions;
     std::vector<typename IGM::Vector> m_nodeSizes;
+
+  public: // Constructors
+    OrthoTreeBase() noexcept = default;
+
+    OrthoTreeBase(OrthoTreeBase const& other) noexcept { *this = other; }
+
+    OrthoTreeBase(OrthoTreeBase&& other) noexcept { *this = std::move(other); }
+
+    OrthoTreeBase& operator=(OrthoTreeBase const& other) noexcept
+    {
+      if (this == &other)
+        return *this;
+
+      this->m_nodes = other.m_nodes;
+      if constexpr (!IS_MUTABLE_NODES)
+      {
+        this->m_entities = other.m_entities;
+
+        autoc thisEntityDataPtr = this->m_entities.data();
+        autoc otherEntityDataPtr = other.m_entities.data();
+        for (auto& [key, node] : this->m_nodes)
+        {
+          autoc otherView = node.GetEntitiesView();
+          autoc noBegin = otherView.data() - otherEntityDataPtr;
+          node.SetEntities(std::span(thisEntityDataPtr + noBegin, otherView.size()));
+        }
+      }
+
+      this->m_maxElementNo = other.m_maxElementNo;
+      this->m_maxDepthNo = other.m_maxDepthNo;
+      this->m_maxRasterResolution = other.m_maxRasterResolution;
+      this->m_maxRasterID = other.m_maxRasterID;
+
+      this->m_boxSpace = other.m_boxSpace;
+      this->m_volumeOfOverallSpace = other.m_volumeOfOverallSpace;
+      this->m_rasterizerFactors = other.m_rasterizerFactors;
+      this->m_sizeInDimensions = other.m_sizeInDimensions;
+      this->m_nodeSizes = other.m_nodeSizes;
+
+      return *this;
+    }
+
+    OrthoTreeBase& operator=(OrthoTreeBase&& other) noexcept
+    {
+      if (this == &other)
+        return *this;
+
+      this->m_nodes = std::move(other.m_nodes);
+      if constexpr (!IS_MUTABLE_NODES)
+      {
+        this->m_entities = std::move(other.m_entities);
+      }
+      this->m_maxElementNo = other.m_maxElementNo;
+      this->m_maxDepthNo = other.m_maxDepthNo;
+      this->m_maxRasterResolution = other.m_maxRasterResolution;
+      this->m_maxRasterID = other.m_maxRasterID;
+
+      this->m_boxSpace = other.m_boxSpace;
+      this->m_volumeOfOverallSpace = other.m_volumeOfOverallSpace;
+      this->m_rasterizerFactors = other.m_rasterizerFactors;
+      this->m_sizeInDimensions = other.m_sizeInDimensions;
+      this->m_nodeSizes = std::move(other.m_nodeSizes);
+
+      other.ResetBase();
+      return *this;
+    }
 
   public: // Node helpers
     // Calculate extent by box of the tree and the key of the node
@@ -1540,7 +1689,8 @@ namespace OrthoTree
       auto ids = std::vector<TEntityID>();
       ids.reserve(100);
       std::for_each(m_nodes.begin(), m_nodes.end(), [&](auto& node) {
-        ids.insert(ids.end(), node.second.Entities.begin(), node.second.Entities.end());
+        autoc entities = node.second.GetEntitiesView();
+        ids.insert(ids.end(), entities.begin(), entities.end());
       });
 
       autoc idsSizeBeforeUnique = ids.size();
@@ -1564,6 +1714,8 @@ namespace OrthoTree
       TEntityID newEntityID,
       TContainer const& geometryCollection) noexcept
     {
+      assert(IS_MUTABLE_NODES); // This operation is not supported for non-mutable nodes.
+
       auto& parentNode = this->m_nodes.at(parentNodeKey);
       autoc shouldInsertInParentNode = entitiyNodeKey == parentNodeKey;
 
@@ -1581,7 +1733,7 @@ namespace OrthoTree
           // If possible, entity should be placed in a leaf node, therefore if the parent node is not a leaf, a new child should be created.
           if (isParentNotLeafNode && !shouldInsertInParentNode)
             return ControlFlow::ShouldCreateOnlyOneChild;
-          else if (parentNode.Entities.size() + 1 >= this->m_maxElementNo)
+          else if (parentNode.GetEntitiesSize() + 1 >= this->m_maxElementNo)
             return ControlFlow::FullRebalancing;
         }
         return ControlFlow::InsertInParentNode;
@@ -1596,7 +1748,7 @@ namespace OrthoTree
 
         parentNode.AddChildInOrder(childNodeKey);
         auto& childNode = this->CreateChild(parentNode, childID, childNodeKey);
-        childNode.Entities.emplace_back(newEntityID);
+        childNode.AddEntity(newEntityID);
 
         break;
       }
@@ -1611,13 +1763,13 @@ namespace OrthoTree
 
           parentNode.AddChildInOrder(childNodeKey);
           auto& childNode = this->CreateChild(parentNode, childID, childNodeKey);
-          childNode.Entities.emplace_back(newEntityID);
+          childNode.AddEntity(newEntityID);
         }
-
-        size_t remainingEntityNo = parentNode.Entities.size();
+        auto parentEntities = parentNode.ExtractEntities();
+        size_t remainingEntityNo = parentEntities.size();
         for (size_t i = 0; i < remainingEntityNo; ++i)
         {
-          auto entityID = parentNode.Entities[i];
+          auto entityID = parentEntities[i];
           autoc[depthID, locationID] = this->GetDepthAndLocationID(geometryCollection[entityID]);
           if (depthID <= parentDepth)
             continue;
@@ -1634,39 +1786,43 @@ namespace OrthoTree
           {
             parentNode.AddChildInOrder(childNodeKey);
             auto& childNode = this->CreateChild(parentNode, childID, childNodeKey);
-            childNode.Entities.emplace_back(entityID);
+            childNode.AddEntity(entityID);
           }
 
           if constexpr (IS_BOX_TYPE)
           {
             --remainingEntityNo;
-            parentNode.Entities[i] = parentNode.Entities[remainingEntityNo];
+            parentEntities[i] = parentEntities[remainingEntityNo];
             --i;
           }
         }
 
-        if constexpr (!IS_BOX_TYPE)
-          parentNode.Entities = {}; // All reserved memory should be freed.
-        else
+        if constexpr (IS_BOX_TYPE)
         {
           if (shouldInsertInParentNode)
           {
-            if (remainingEntityNo == parentNode.Entities.size())
-              parentNode.Entities.emplace_back(newEntityID);
+            if (remainingEntityNo == parentEntities.size())
+              parentEntities.emplace_back(newEntityID);
             else
             {
-              parentNode.Entities[remainingEntityNo] = newEntityID;
+              parentEntities[remainingEntityNo] = newEntityID;
               ++remainingEntityNo;
             }
           }
-          parentNode.Entities.resize(remainingEntityNo);
+          parentEntities.resize(remainingEntityNo);
+          parentNode.SetEntities(std::move(parentEntities));
+        }
+        else
+        {
+          if (!parentNode.IsAnyChildExist())
+            parentNode.SetEntities(std::move(parentEntities));
         }
 
         break;
       }
 
       case ControlFlow::InsertInParentNode:
-      default: parentNode.Entities.emplace_back(newEntityID); break;
+      default: parentNode.AddEntity(newEntityID); break;
       }
 
 
@@ -1681,7 +1837,7 @@ namespace OrthoTree
     {
       if (entityNodeKey == parentNodeKey)
       {
-        cont_at(this->m_nodes, entityNodeKey).Entities.emplace_back(entityID);
+        cont_at(this->m_nodes, entityNodeKey).AddEntity(entityID);
         if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
           assert(this->IsEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
         return true;
@@ -1690,7 +1846,7 @@ namespace OrthoTree
       if (doInsertToLeaf)
       {
         auto& newNode = this->m_nodes[entityNodeKey];
-        newNode.Entities.emplace_back(entityID);
+        newNode.AddEntity(entityID);
 #ifndef ORTHOTREE__DISABLED_NODECENTER
         newNode.SetCenter(this->CalculateCenter(entityNodeKey));
 #endif
@@ -1722,10 +1878,12 @@ namespace OrthoTree
 
           parentNode.AddChildInOrder(childNodeKey);
           auto& nodeChild = this->CreateChild(parentNode, childID, childNodeKey);
-          nodeChild.Entities.emplace_back(entityID);
+          nodeChild.AddEntity(entityID);
         }
         else
-          parentNode.Entities.emplace_back(entityID);
+        {
+          parentNode.AddEntity(entityID);
+        }
       }
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
@@ -1748,7 +1906,7 @@ namespace OrthoTree
       if (nodeKey == GetRootKey())
         return;
 
-      if (node.IsAnyChildExist() || !node.Entities.empty())
+      if (node.IsAnyChildExist() || node.GetEntitiesSize() > 0)
         return;
 
       autoc parentKey = nodeKey >> DIMENSION_NO;
@@ -1783,7 +1941,6 @@ namespace OrthoTree
       return static_cast<std::size_t>(rMult * nElementInNodeAvg);
     }
 
-
     static inline depth_t EstimateMaxDepth(std::size_t elementNo, std::size_t maxElementNo) noexcept
     {
       if (elementNo < maxElementNo)
@@ -1793,7 +1950,6 @@ namespace OrthoTree
       // nLeaf = (2^nDepth)^DIMENSION_NO
       return std::clamp(static_cast<depth_t>(std::log2(nLeaf) / static_cast<double>(DIMENSION_NO)), depth_t(2), depth_t(10));
     }
-
 
     static inline MortonNodeID GetHash(depth_t depth, MortonNodeIDCR key) noexcept
     {
@@ -1946,7 +2102,7 @@ namespace OrthoTree
     inline auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
       autoc it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](autoc& keyAndValue) {
-        autoc& entities = keyAndValue.second.Entities;
+        autoc entities = keyAndValue.second.GetEntitiesView();
         return std::find(entities.begin(), entities.end(), entityID) != entities.end();
       });
 
@@ -2031,14 +2187,18 @@ namespace OrthoTree
       auto entityIDs = std::vector<TEntityID>();
       entityIDs.reserve(m_nodes.size() * std::max<std::size_t>(2, m_maxElementNo / 2));
 
-      VisitNodes(rootKey, [&entityIDs](MortonNodeIDCR, autoc& node) { entityIDs.insert(entityIDs.end(), node.Entities.begin(), node.Entities.end()); });
+      VisitNodes(rootKey, [&entityIDs](MortonNodeIDCR, autoc& node) {
+        autoc nodeEntities = node.GetEntitiesView();
+        entityIDs.insert(entityIDs.end(), nodeEntities.begin(), nodeEntities.end());
+      });
       return entityIDs;
     }
 
   private:
     void CollectAllIdInDFSRecursive(Node const& parentNode, std::vector<TEntityID>& foundEntities) const noexcept
     {
-      foundEntities.insert(foundEntities.end(), parentNode.Entities.begin(), parentNode.Entities.end());
+      autoc parentEntities = parentNode.GetEntitiesView();
+      foundEntities.insert(foundEntities.end(), parentEntities.begin(), parentEntities.end());
       for (MortonNodeIDCR childKey : parentNode.GetChildren())
         CollectAllIdInDFSRecursive(this->GetNode(childKey), foundEntities);
     }
@@ -2107,17 +2267,28 @@ namespace OrthoTree
 
       EXEC_POL_DEF(ep);
       std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&](auto& node) {
-        decltype(Node::Entities) entitiesNew;
-        for (autoc& id : node.second.Entities)
+        auto nodeEntities = node.second.ExtractEntities();
+        auto n = nodeEntities.size();
+        for (size_t i = 0; i < n; ++i)
         {
-          autoc it = updateMap.find(id);
+          autoc it = updateMap.find(nodeEntities[i]);
           if (it == updateMapEndIterator)
-            entitiesNew.emplace_back(id);
-          else if (it->second)
-            entitiesNew.emplace_back(*it->second);
-        }
+            continue;
 
-        node.second.Entities = std::move(entitiesNew);
+          if (it->second)
+          {
+            nodeEntities[i] = *it->second;
+          }
+          else
+          {
+            // Remove the id and replace it with the last one
+            --n;
+            nodeEntities[i] = nodeEntities[n];
+            --i;
+          }
+        }
+        nodeEntities.resize(n);
+        node.second.SetEntities(std::move(nodeEntities));
       });
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
@@ -2140,7 +2311,9 @@ namespace OrthoTree
     void ClearBase() noexcept
     {
       std::erase_if(m_nodes, [](autoc& p) { return p.first != GetRootKey(); });
-      cont_at(m_nodes, GetRootKey()).Entities.clear();
+      cont_at(m_nodes, GetRootKey()).Clear();
+      if constexpr (!IS_MUTABLE_NODES)
+        m_entities.clear();
     }
 
 
@@ -2247,7 +2420,7 @@ namespace OrthoTree
     constexpr void RangeSearchBaseCopy(
       TBox const& range, TContainer const& geometryCollection, Node const& parentNode, std::vector<TEntityID>& foundEntities) const noexcept
     {
-      for (autoc entityID : parentNode.Entities)
+      for (autoc entityID : parentNode.GetEntitiesView())
       {
         bool fAdd = false;
         if constexpr (IS_BOX_TYPE)
@@ -2401,7 +2574,7 @@ namespace OrthoTree
       };
 
       autoc procedure = [&](MortonNodeIDCR, Node const& node) {
-        for (autoc entityID : node.Entities)
+        for (autoc entityID : node.GetEntitiesView())
           if (GetEntityPlaneRelation(detail::at(data, entityID), distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit)
             if (std::find(results.begin(), results.end(), entityID) == results.end())
               results.emplace_back(entityID);
@@ -2425,7 +2598,7 @@ namespace OrthoTree
       };
 
       autoc procedure = [&](MortonNodeIDCR, Node const& node) {
-        for (autoc entityID : node.Entities)
+        for (autoc entityID : node.GetEntitiesView())
         {
           autoc relation = GetEntityPlaneRelation(detail::at(data, entityID), distanceOfOrigo, planeNormal, tolerance);
           if (relation == PlaneRelation::Negative)
@@ -2469,7 +2642,7 @@ namespace OrthoTree
       };
 
       autoc procedure = [&](MortonNodeIDCR, Node const& node) {
-        for (autoc entityID : node.Entities)
+        for (autoc entityID : node.GetEntitiesView())
         {
           auto relation = PlaneRelation::Negative;
           for (autoc& plane : boundaryPlanes)
@@ -2501,11 +2674,13 @@ namespace OrthoTree
     typename TPlane_,
     typename TGeometry_ = double,
     typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
-    typename TContainer_ = std::span<TVector_ const>>
-  class OrthoTreePointBase : public OrthoTreeBase<DIMENSION_NO, TVector_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
+    typename TContainer_ = std::span<TVector_ const>,
+    bool IS_MUTABLE_NODES_ = true>
+  class OrthoTreePointBase
+  : public OrthoTreeBase<DIMENSION_NO, TVector_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, IS_MUTABLE_NODES_>
   {
   protected:
-    using Base = OrthoTreeBase<DIMENSION_NO, TVector_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>;
+    using Base = OrthoTreeBase<DIMENSION_NO, TVector_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, IS_MUTABLE_NODES_>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
     using IGM = typename Base::IGM;
@@ -2543,6 +2718,7 @@ namespace OrthoTree
     void CreateChildNodes(
       Node& parentNode,
       MortonNodeIDCR parentKey,
+      LocationIterator const& locationBeginIteratorOrigin,
       LocationIterator& locationBeginIterator,
       LocationIterator const& locationEndIterator,
       MortonGridIDCR gridID,
@@ -2551,8 +2727,19 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
       if (elementNo < this->m_maxElementNo || remainingDepth == 0)
       {
-        parentNode.Entities.resize(elementNo);
-        std::transform(locationBeginIterator, locationEndIterator, parentNode.Entities.begin(), [](autoc& item) { return item.EntityID; });
+        if constexpr (Base::IS_MUTABLE_NODES)
+        {
+          auto entities = std::vector<TEntityID>(elementNo);
+          std::transform(locationBeginIterator, locationEndIterator, entities.begin(), [](autoc& item) { return item.EntityID; });
+          parentNode.SetEntities(std::move(entities));
+        }
+        else
+        {
+          autoc noBegin = std::distance(locationBeginIteratorOrigin, locationBeginIterator);
+          autoc noEnd = std::distance(locationBeginIteratorOrigin, locationEndIterator);
+          autoc begin = this->m_entities.begin();
+          parentNode.SetEntities(std::span(std::next(begin, noBegin), std::next(begin, noEnd)));
+        }
         locationBeginIterator = locationEndIterator;
         return;
       }
@@ -2575,7 +2762,7 @@ namespace OrthoTree
 
         parentNode.AddChild(childKey);
         auto& childNode = this->CreateChild(parentNode, actualChildID, childKey);
-        this->CreateChildNodes(childNode, childKey, locationBeginIterator, actualEndIterator, beginChildGridID, remainingDepth);
+        this->CreateChildNodes(childNode, childKey, locationBeginIteratorOrigin, locationBeginIterator, actualEndIterator, beginChildGridID, remainingDepth);
       }
     }
 
@@ -2609,11 +2796,17 @@ namespace OrthoTree
         return leftLocation.GridID < rightLocation.GridID;
       });
 
+      if constexpr (!Base::IS_MUTABLE_NODES)
+      {
+        tree.m_entities.resize(pointNo);
+        std::transform(pointLocations.begin(), pointLocations.end(), tree.m_entities.begin(), [](autoc& location) { return location.EntityID; });
+      }
+
       autoc rootKey = Base::GetRootKey();
       auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
 
       auto beginIterator = pointLocations.begin();
-      tree.CreateChildNodes(nodeRoot, rootKey, beginIterator, pointLocations.end(), MortonNodeID{ 0 }, maxDepthNo);
+      tree.CreateChildNodes(nodeRoot, rootKey, pointLocations.begin(), beginIterator, pointLocations.end(), MortonNodeID{ 0 }, maxDepthNo);
     }
 
   public: // Search functions
@@ -2624,7 +2817,8 @@ namespace OrthoTree
         return false;
 
       autoc& node = this->GetNode(smallestNodeKey);
-      return std::any_of(node.Entities.begin(), node.Entities.end(), [&](autoc& entityID) {
+      autoc entities = node.GetEntitiesView();
+      return std::any_of(entities.begin(), entities.end(), [&](autoc& entityID) {
         return AD::ArePointsEqual(searchPoint, detail::at(points, entityID), tolerance);
       });
     }
@@ -2677,7 +2871,7 @@ namespace OrthoTree
   private: // K Nearest Neighbor helpers
     static void CreateEntityDistance(Node const& node, TVector const& searchPoint, TContainer const& points, std::multiset<EntityDistance>& neighborEntities) noexcept
     {
-      for (autoc id : node.Entities)
+      for (autoc id : node.GetEntitiesView())
         neighborEntities.insert({ { AD::Distance(searchPoint, detail::at(points, id)) }, id });
     }
 
@@ -2721,7 +2915,7 @@ namespace OrthoTree
       auto nodeMinDistances = std::multiset<BoxDistance>();
       std::for_each(this->m_nodes.begin(), this->m_nodes.end(), [&](autoc& pairOfKeyAndNode) {
         autoc & [key, node] = pairOfKeyAndNode;
-        if (node.Entities.empty() || key == smallestNodeKey)
+        if (node.GetEntitiesView().empty() || key == smallestNodeKey)
           return;
 
         autoc depthID = this->GetDepthID(key);
@@ -2748,6 +2942,59 @@ namespace OrthoTree
     }
   };
 
+  // OrthoTreePointView: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order. Immutable version.
+  template<
+    dim_t DIMENSION_NO,
+    typename TVector_,
+    typename TBox_,
+    typename TRay_,
+    typename TPlane_,
+    typename TGeometry_ = double,
+    typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
+    typename TContainer_ = std::span<TVector_ const>>
+  class OrthoTreePointView final : public OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, false>
+  {
+  protected:
+    using Base = OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, false>;
+    using EntityDistance = typename Base::EntityDistance;
+    using BoxDistance = typename Base::BoxDistance;
+    using IGM = typename Base::IGM;
+    using IGM_Geometry = typename IGM::Geometry;
+
+  public:
+    using AD = typename Base::AD;
+    using MortonGridID = typename Base::MortonGridID;
+    using MortonGridIDCR = typename Base::MortonGridIDCR;
+    using MortonNodeID = typename Base::MortonNodeID;
+    using MortonNodeIDCR = typename Base::MortonNodeIDCR;
+    using ChildID = typename Base::ChildID;
+
+    using Node = typename Base::Node;
+
+    using TGeometry = TGeometry_;
+    using TVector = TVector_;
+    using TBox = TBox_;
+    using TRay = TRay_;
+    using TPlane = TPlane_;
+    using TEntity = typename Base::TEntity;
+    using TEntityID = typename Base::TEntityID;
+    using TContainer = typename Base::TContainer;
+
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
+
+  public: // Create
+    // Ctors
+    OrthoTreePointView() noexcept = default;
+    OrthoTreePointView(
+      TContainer const& points,
+      std::optional<depth_t> maxDepthNoIn = std::nullopt,
+      std::optional<TBox> const& boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+    {
+      this->Create(*this, points, maxDepthNoIn, boxSpaceOptional, maxElementNoInNode);
+    }
+  };
+
 
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<
@@ -2759,10 +3006,10 @@ namespace OrthoTree
     typename TGeometry_ = double,
     typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
     typename TContainer_ = std::span<TVector_ const>>
-  class OrthoTreePoint final : public OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
+  class OrthoTreePoint final : public OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, true>
   {
   protected:
-    using Base = OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>;
+    using Base = OrthoTreePointBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, true>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
     using IGM = typename Base::IGM;
@@ -2844,7 +3091,7 @@ namespace OrthoTree
       bool isErased = false;
       for (auto& [nodeKey, node] : this->m_nodes)
       {
-        if (std::erase(node.Entities, entityID))
+        if (node.RemoveEntity(entityID))
         {
           this->RemoveNodeIfPossible(nodeKey, node);
           isErased = true;
@@ -2858,7 +3105,7 @@ namespace OrthoTree
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
         for (auto& [key, node] : this->m_nodes)
-          for (auto& id : node.Entities)
+          for (auto& id : node.GetEntitiesView())
             id -= entityID < id;
       }
 
@@ -2875,16 +3122,13 @@ namespace OrthoTree
         return false; // old box is not in the handled space domain
 
       auto& node = this->m_nodes.at(nodeKey);
-      autoc endIteratorAfterRemove = std::remove(node.Entities.begin(), node.Entities.end(), entitiyID);
-      if (endIteratorAfterRemove == node.Entities.end())
+      if (!node.RemoveEntity(entitiyID))
         return false; // id was not registered previously.
-
-      node.Entities.erase(endIteratorAfterRemove, node.Entities.end());
 
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
         for (auto& [key, node] : this->m_nodes)
-          for (auto& id : node.Entities)
+          for (auto& id : node.GetEntitiesView())
             id -= entitiyID < id;
       }
 
@@ -2975,11 +3219,13 @@ namespace OrthoTree
     typename TGeometry_ = double,
     depth_t SPLIT_DEPTH_INCREASEMENT = 2,
     typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
-    typename TContainer_ = std::span<TBox_ const>>
-  class OrthoTreeBoundingBoxBase : public OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>
+    typename TContainer_ = std::span<TBox_ const>,
+    bool IS_MUTABLE_NODES_ = true>
+  class OrthoTreeBoundingBoxBase
+  : public OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, IS_MUTABLE_NODES_>
   {
   protected:
-    using Base = OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>;
+    using Base = OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_, IS_MUTABLE_NODES_>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
     using GridBoundary = typename Base::GridBoundary;
@@ -3055,6 +3301,7 @@ namespace OrthoTree
     void CreateChildNodes(
       Node& parentNode,
       MortonNodeIDCR parentKey,
+      LocationIterator const& beginLocationIteratorOrigin,
       LocationIterator& beginLocationIterator,
       LocationIterator const& endLocationIterator,
       MortonGridIDCR firstLocationID,
@@ -3066,8 +3313,21 @@ namespace OrthoTree
         if (elementNo == 0)
           return;
 
-        parentNode.Entities.resize(elementNo);
-        std::transform(beginLocationIterator, endLocationIterator, parentNode.Entities.begin(), [](autoc& item) { return item.EntityID; });
+        if constexpr (Base::IS_MUTABLE_NODES)
+        {
+          auto parentEntities = parentNode.ExtractEntities();
+          assert(parentEntities.size() == 0);
+          parentEntities.resize(elementNo);
+          std::transform(beginLocationIterator, endLocationIterator, parentEntities.begin(), [](autoc& item) { return item.EntityID; });
+          parentNode.SetEntities(std::move(parentEntities));
+        }
+        else
+        {
+          autoc noBegin = std::distance(beginLocationIteratorOrigin, beginLocationIterator);
+          autoc noEnd = std::distance(beginLocationIteratorOrigin, endLocationIterator);
+          autoc begin = this->m_entities.begin();
+          parentNode.SetEntities(std::span(std::next(begin, noBegin), std::next(begin, noEnd)));
+        }
         beginLocationIterator = endLocationIterator;
         return;
       }
@@ -3079,8 +3339,21 @@ namespace OrthoTree
         beginLocationIterator = std::partition_point(it, endLocationIterator, [&](autoc& idLocation) { return idLocation.DepthID == it->DepthID; });
         autoc nElementCur = static_cast<int>(std::distance(it, beginLocationIterator));
 
-        parentNode.Entities.resize(nElementCur);
-        std::transform(it, beginLocationIterator, parentNode.Entities.begin(), [](autoc& item) { return item.EntityID; });
+        if constexpr (Base::IS_MUTABLE_NODES)
+        {
+          auto parentEntities = parentNode.ExtractEntities();
+          assert(parentEntities.size() == 0);
+          parentEntities.resize(nElementCur);
+          std::transform(it, beginLocationIterator, parentEntities.begin(), [](autoc& item) { return item.EntityID; });
+          parentNode.SetEntities(std::move(parentEntities));
+        }
+        else
+        {
+          autoc noBegin = std::distance(beginLocationIteratorOrigin, it);
+          autoc noEnd = std::distance(beginLocationIteratorOrigin, beginLocationIterator);
+          autoc begin = this->m_entities.begin();
+          parentNode.SetEntities(std::span(std::next(begin, noBegin), std::next(begin, noEnd)));
+        }
       }
 
       ++currentDepthID;
@@ -3105,7 +3378,8 @@ namespace OrthoTree
 
         parentNode.AddChild(childKey);
         auto& nodeChild = this->CreateChild(parentNode, actualChildID, childKey);
-        this->CreateChildNodes(nodeChild, childKey, beginLocationIterator, actualEndLocationIterator, firstChildLocationID, remainingDepthNo);
+        this->CreateChildNodes(
+          nodeChild, childKey, beginLocationIteratorOrigin, beginLocationIterator, actualEndLocationIterator, firstChildLocationID, remainingDepthNo);
       }
     }
 
@@ -3276,18 +3550,35 @@ namespace OrthoTree
       EXEC_POL_DEF(eps); // GCC 11.3
       std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
 
+      if constexpr (!Base::IS_MUTABLE_NODES)
+      {
+        tree.m_entities.resize(locations.size());
+        EXEC_POL_DEF(epl); // GCC 11.3
+        std::transform(EXEC_POL_ADD(epl) locations.begin(), locations.end(), tree.m_entities.begin(), [](autoc& location) { return location.EntityID; });
+      }
+
       auto beginLocationIterator = locations.begin();
-      tree.CreateChildNodes(nodeRoot, rootKey, beginLocationIterator, locations.end(), MortonNodeID{ 0 }, maxDepthNo);
+      tree.CreateChildNodes(nodeRoot, rootKey, locations.begin(), beginLocationIterator, locations.end(), MortonNodeID{ 0 }, maxDepthNo);
+
+      // Eliminate duplicates. Not all sub-nodes will be created due to the maxElementNoInNode, which cause duplicates in the parent nodes.
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
       {
-        // Eliminate duplicates. Not all sub-nodes will be created due to the maxElementNoInNode, which cause duplicates in the parent nodes.
         EXEC_POL_DEF(epsp); // GCC 11.3
         std::for_each(EXEC_POL_ADD(epsp) tree.m_nodes.begin(), tree.m_nodes.end(), [](auto& pairOfKeyAndNode) {
-          detail::sortAndUnique(pairOfKeyAndNode.second.Entities);
+          auto entities = pairOfKeyAndNode.second.ExtractEntities();
+          if constexpr (Base::IS_MUTABLE_NODES)
+          {
+            detail::sortAndUnique(entities);
+          }
+          else
+          {
+            detail::sortAndUniqueSpan(entities);
+          }
+          pairOfKeyAndNode.second.SetEntities(std::move(entities));
         });
       }
     }
-  
+
   private:
     constexpr std::array<DimArray<GridID>, 2> GetGridIdPointEdge(TVector const& point) const noexcept
     {
@@ -3305,7 +3596,8 @@ namespace OrthoTree
     void PickSearchRecursive(TVector const& pickPoint, TContainer const& boxes, MortonNodeIDCR parentKey, std::vector<TEntityID>& foundEntitiyIDs) const noexcept
     {
       autoc& parentNode = this->GetNode(parentKey);
-      std::copy_if(parentNode.Entities.begin(), parentNode.Entities.end(), back_inserter(foundEntitiyIDs), [&](autoc entityID) {
+      autoc parentEntities = parentNode.GetEntitiesView();
+      std::copy_if(parentEntities.begin(), parentEntities.end(), std::back_inserter(foundEntitiyIDs), [&](autoc entityID) {
         return AD::DoesBoxContainPoint(detail::at(boxes, entityID), pickPoint);
       });
 
@@ -3382,7 +3674,8 @@ namespace OrthoTree
         if (nodeIterator == endIteratorOfNodes)
           continue;
 
-        std::copy_if(nodeIterator->second.Entities.begin(), nodeIterator->second.Entities.end(), std::back_inserter(foundEntitiyIDs), [&](autoc entityID) {
+        autoc entities = nodeIterator->second.GetEntitiesView();
+        std::copy_if(entities.begin(), entities.end(), std::back_inserter(foundEntitiyIDs), [&](autoc entityID) {
           return AD::DoesBoxContainPoint(detail::at(boxes, entityID), pickPoint);
         });
       }
@@ -3479,8 +3772,8 @@ namespace OrthoTree
 
         // Check the current ascendant content
         {
-          for (autoc leftEntityID : parentNodePair[Left].Iterator->second.Entities)
-            for (autoc rightEntityID : parentNodePair[Right].Iterator->second.Entities)
+          for (autoc leftEntityID : parentNodePair[Left].Iterator->second.GetEntitiesView())
+            for (autoc rightEntityID : parentNodePair[Right].Iterator->second.GetEntitiesView())
               if (AD::AreBoxesOverlapped(detail::at(leftBoxes, leftEntityID), detail::at(rightBoxes, rightEntityID), false))
                 results.emplace_back(leftEntityID, rightEntityID);
         }
@@ -3506,7 +3799,7 @@ namespace OrthoTree
 
         // Add parent if it has any element
         for (autoc sideID : { Left, Right })
-          if (!parentNodePair[sideID].Iterator->second.Entities.empty())
+          if (parentNodePair[sideID].Iterator->second.GetEntitiesSize() > 0)
             childNodes[sideID].push_back({ parentNodePair[sideID].Iterator, true });
 
 
@@ -3539,8 +3832,8 @@ namespace OrthoTree
   private:
     struct SweepAndPruneDatabase
     {
-      constexpr SweepAndPruneDatabase(TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
-      : m_sortedEntityIDs(entityIDs)
+      constexpr SweepAndPruneDatabase(TContainer const& boxes, std::span<TEntityID const> const& entityIDs) noexcept
+      : m_sortedEntityIDs(entityIDs.begin(), entityIDs.end())
       {
         std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&](autoc entityIDL, autoc entityIDR) {
           return AD::GetBoxMinC(detail::at(boxes, entityIDL), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDR), 0);
@@ -3561,13 +3854,13 @@ namespace OrthoTree
 
       autoc & [nodeKey, node] = pairKeyNode;
 
-      autoc nodeSPD = SweepAndPruneDatabase(boxes, node.Entities);
+      autoc nodeSPD = SweepAndPruneDatabase(boxes, node.GetEntitiesView());
       autoc& entityIDs = nodeSPD.GetEntities();
       autoc noEntity = entityIDs.size();
 
       for (auto parentKey = Base::GetParentKey(nodeKey); Base::IsValidKey(parentKey); parentKey = Base::GetParentKey(parentKey))
       {
-        autoc parentSPD = SweepAndPruneDatabase(boxes, this->GetNode(parentKey).Entities);
+        autoc parentSPD = SweepAndPruneDatabase(boxes, this->GetNode(parentKey).GetEntitiesView());
         autoc& parentEntityIDs = parentSPD.GetEntities();
 
         std::size_t iEntityBegin = 0;
@@ -3722,7 +4015,7 @@ namespace OrthoTree
       if (!isNodeHit)
         return;
 
-      for (autoc entityID : node.Entities)
+      for (autoc entityID : node.GetEntitiesView())
       {
         autoc entityDistance = AD::GetRayBoxDistance(detail::at(boxes, entityID), rayBasePoint, rayHeading, tolerance);
         if (entityDistance && (maxExaminationDistance == 0 || entityDistance.value() <= maxExaminationDistance))
@@ -3747,7 +4040,7 @@ namespace OrthoTree
       autoc& node = this->GetNode(parentKey);
 
       autoc maxExaminationDistance = foundEntities.empty() ? std::numeric_limits<typename IGM::Geometry>::infinity() : foundEntities.rbegin()->Distance;
-      for (autoc entityID : node.Entities)
+      for (autoc entityID : node.GetEntitiesView())
       {
         autoc distance = AD::GetRayBoxDistance(detail::at(boxes, entityID), rayBasePoint, rayHeading, tolerance);
         if (!distance)
@@ -3821,6 +4114,65 @@ namespace OrthoTree
     }
   };
 
+  
+  // OrthoTreeBoundingBoxView: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order. Immutable version.
+  // SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
+  template<
+    dim_t DIMENSION_NO,
+    typename TVector_,
+    typename TBox_,
+    typename TRay_,
+    typename TPlane_,
+    typename TGeometry_ = double,
+    depth_t SPLIT_DEPTH_INCREASEMENT = 2,
+    typename TAdapter_ = AdaptorGeneral<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_>,
+    typename TContainer_ = std::span<TBox_ const>>
+  class OrthoTreeBoundingBoxView final
+  : public OrthoTreeBoundingBoxBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, SPLIT_DEPTH_INCREASEMENT, TAdapter_, TContainer_, false>
+  {
+  protected:
+    using Base =
+      OrthoTreeBoundingBoxBase<DIMENSION_NO, TVector_, TBox_, TRay_, TPlane_, TGeometry_, SPLIT_DEPTH_INCREASEMENT, TAdapter_, TContainer_, false>;
+    using EntityDistance = typename Base::EntityDistance;
+    using BoxDistance = typename Base::BoxDistance;
+    using GridBoundary = typename Base::GridBoundary;
+    template<typename T>
+    using DimArray = std::array<T, DIMENSION_NO>;
+    using IGM = typename Base::IGM;
+    using IGM_Geometry = typename IGM::Geometry;
+
+  public:
+    using AD = typename Base::AD;
+    using MortonGridID = typename Base::MortonGridID;
+    using MortonGridIDCR = typename Base::MortonGridIDCR;
+    using MortonNodeID = typename Base::MortonNodeID;
+    using MortonNodeIDCR = typename Base::MortonNodeIDCR;
+    using ChildID = typename Base::ChildID;
+
+    using Node = typename Base::Node;
+
+    using TGeometry = TGeometry_;
+    using TVector = TVector_;
+    using TBox = TBox_;
+    using TRay = TRay_;
+    using TPlane = TPlane_;
+    using TEntity = typename Base::TEntity;
+    using TEntityID = typename Base::TEntityID;
+    using TContainer = typename Base::TContainer;
+
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
+
+  public: // Ctors
+    OrthoTreeBoundingBoxView() = default;
+    OrthoTreeBoundingBoxView(
+      TContainer const& boxes,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<TBox> const& oBoxSpace = std::nullopt,
+      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
+    {
+      this->Create(*this, boxes, maxDepthNo, oBoxSpace, nElementMaxInNode);
+    }
+  };
 
   // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
   // SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
@@ -3878,6 +4230,7 @@ namespace OrthoTree
     {
       this->Create(*this, boxes, maxDepthNo, oBoxSpace, nElementMaxInNode);
     }
+
   public: // Edit functions
     constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
     {
@@ -3889,7 +4242,7 @@ namespace OrthoTree
       if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
         return false;
 
-      auto locations = std::vector<Base::Location>(1);
+      auto locations = std::vector<typename Base::Location>(1);
       locations[0] = this->GetEntityLocation(newEntityID, newBox, &locations);
 
       for (autoc& location : locations)
@@ -3916,7 +4269,7 @@ namespace OrthoTree
       if (!Base::IsValidKey(smallestNodeKey))
         return false; // new box is not in the handled space domain
 
-      auto locations = std::vector<Base::Location>(1);
+      auto locations = std::vector<typename Base::Location>(1);
       locations[0] = this->GetEntityLocation(newEntityID, newBox, &locations);
 
       for (autoc& location : locations)
@@ -3931,23 +4284,11 @@ namespace OrthoTree
 
 
   private:
-    bool doErase(Node& node, TEntityID entityID) noexcept
-    {
-      auto& idList = node.Entities;
-      autoc endIteratorAfterRemove = std::remove(idList.begin(), idList.end(), entityID);
-      if (endIteratorAfterRemove == idList.end())
-        return false; // id was not registered previously.
-
-      idList.erase(endIteratorAfterRemove, idList.end());
-      return true;
-    }
-
-
     template<depth_t REMAINING_DEPTH>
     bool doEraseRec(MortonNodeIDCR nodeKey, TEntityID entityID) noexcept
     {
       auto& node = this->m_nodes.at(nodeKey);
-      auto ret = this->doErase(node, entityID);
+      auto ret = node.RemoveEntity(entityID);
       if constexpr (REMAINING_DEPTH > 0)
       {
         autoc children = node.GetChildren();
@@ -3975,7 +4316,7 @@ namespace OrthoTree
         if constexpr (DO_UPDATE_ENTITY_IDS)
         {
           for (auto& [key, node] : this->m_nodes)
-            for (auto& entityID : node.Entities)
+            for (auto& entityID : node.GetEntitiesView())
               entityID -= entityIDToErase < entityID;
         }
         return true;
@@ -3994,7 +4335,7 @@ namespace OrthoTree
       {
         for (auto& [nodeKey, node] : this->m_nodes)
         {
-          if (std::erase(node.Entities, idErase) > 0)
+          if (node.RemoveEntity(idErase))
           {
             this->RemoveNodeIfPossible(nodeKey, node);
             isErased = true;
@@ -4007,7 +4348,7 @@ namespace OrthoTree
         auto erasableNodes = std::vector<MortonNodeID>{};
         for (auto& [nodeKey, node] : this->m_nodes)
         {
-          autoc isErasedInCurrent = std::erase(node.Entities, idErase) > 0;
+          autoc isErasedInCurrent = node.RemoveEntity(idErase);
           if (isErasedInCurrent)
             erasableNodes.emplace_back(nodeKey);
 
@@ -4024,7 +4365,7 @@ namespace OrthoTree
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
         for (auto& [key, node] : this->m_nodes)
-          for (auto& id : node.Entities)
+          for (auto& id : node.GetEntitiesView())
             id -= idErase < id;
       }
 
@@ -4111,7 +4452,6 @@ namespace OrthoTree
     EXEC_POL_TEMPLATE_DECL
     void Move(TVector const& moveVector) noexcept { this->template EXEC_POL_TEMPLATE_ADDF(MoveBase)(moveVector); }
   };
-
 
   template<dim_t DIMENSION_NO, typename TGeometry = double>
   using VectorND = std::array<TGeometry, DIMENSION_NO>;

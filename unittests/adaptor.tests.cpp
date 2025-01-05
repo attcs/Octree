@@ -112,6 +112,12 @@ namespace AdaptorTest
 {
   using namespace CustomGeometryType;
 
+  template<typename T>
+  std::vector<std::remove_cvref_t<T>> GetVector(std::span<T> s)
+  {
+    return std::vector<std::remove_cvref_t<T>>(s.begin(), s.end());
+  }
+
   static bool AreEqualAlmost(MyBox2D const& l, MyBox2D const& r) noexcept
   {
     for (autoc iMax : { 0, 1 })
@@ -135,7 +141,7 @@ namespace AdaptorTest
       autoc tree = QuadtreePointCustom(vector<MyPoint2D>{}, 2);
       autoc& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
-      Assert::IsTrue(nodes.at(1).Entities.empty());
+      Assert::IsTrue(GetVector(nodes.at(1).GetEntitiesView()).empty());
 
       autoc& box = tree.GetBox();
       Assert::IsTrue(AreEqualAlmost(
@@ -155,7 +161,7 @@ namespace AdaptorTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
-      Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).Entities == vector<size_t>{ 3, 4 });
+      Assert::IsTrue(GetVector(nodes.at(tree.GetHash(2, 15)).GetEntitiesView()) == vector<size_t>{ 3, 4 });
     }
 
     TEST_METHOD(Contains__1__True)
