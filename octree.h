@@ -645,6 +645,17 @@ namespace OrthoTree
   using bitset_arithmetic = std::bitset<N>;
 
   template<std::size_t N>
+  auto operator<=>(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
+  {
+    using R = std::strong_ordering;
+    for (std::size_t i = 0, id = N - 1; i < N; ++i, --id)
+      if (lhs[id] ^ rhs[id])
+        return lhs[id] ? R::greater : R::less;
+
+    return R::equal;
+  }
+
+  template<std::size_t N>
   bitset_arithmetic<N> operator+(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
   {
     bool carry = false;
@@ -800,17 +811,6 @@ namespace OrthoTree
   bitset_arithmetic<N> operator/(bitset_arithmetic<N> const& dividend, bitset_arithmetic<N> const& divisor) noexcept
   {
     return std::get<0>(gf2_div(dividend, divisor));
-  }
-
-  template<std::size_t N>
-  auto operator<=>(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
-  {
-    using R = std::strong_ordering;
-    for (std::size_t i = 0, id = N - 1; i < N; ++i, --id)
-      if (lhs[id] ^ rhs[id])
-        return lhs[id] ? R::greater : R::less;
-
-    return R::equal;
   }
 
   struct bitset_arithmetic_compare final
