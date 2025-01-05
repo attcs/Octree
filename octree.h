@@ -3466,8 +3466,8 @@ namespace OrthoTree
       autoc rootKey = Base::GetRootKey();
       autoc trees = std::array{ &leftTree, &rightTree };
 
-      autoc pLeftTree = &leftTree;
-      autoc pRightTree = &rightTree;
+      [[maybe_unused]] autoc pLeftTree = &leftTree;
+      [[maybe_unused]] autoc pRightTree = &rightTree;
       auto nodePairToProceed = std::queue<ParentIteratorArray>{};
       nodePairToProceed.push({
         NodeIteratorAndStatus{  leftTree.m_nodes.find(rootKey), false },
