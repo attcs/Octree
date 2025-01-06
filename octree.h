@@ -373,7 +373,7 @@ namespace OrthoTree
 
   template<class TAdapter, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
   concept AdaptorConcept =
-    requires { AdaptorBasicsConcept<TAdapter, TVector, TBox, TRay, TPlane, TGeometry>; } && requires(TBox const& box, TVector const& point) {
+    requires { requires AdaptorBasicsConcept<TAdapter, TVector, TBox, TRay, TPlane, TGeometry>; } && requires(TBox const& box, TVector const& point) {
       { TAdapter::DoesBoxContainPoint(box, point) } -> std::convertible_to<bool>;
     } && requires(TBox const& e1, TBox const& e2, bool e1_must_contain_e2) {
       { TAdapter::AreBoxesOverlapped(e1, e2, e1_must_contain_e2) } -> std::convertible_to<bool>;
@@ -2828,10 +2828,7 @@ namespace OrthoTree
     std::vector<TEntityID> RangeSearch(TBox const& range, TContainer const& points) const noexcept
     {
       auto foundEntityIDs = std::vector<TEntityID>();
-
-      if (!this->template RangeSearchBaseRoot<false, DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY>(range, points, foundEntityIDs))
-        return {};
-
+      this->template RangeSearchBaseRoot<false, DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY>(range, points, foundEntityIDs);
       return foundEntityIDs;
     }
 
@@ -3689,9 +3686,7 @@ namespace OrthoTree
     std::vector<TEntityID> RangeSearch(TBox const& range, TContainer const& boxes) const noexcept
     {
       auto foundEntities = std::vector<TEntityID>();
-
-      if (!this->template RangeSearchBaseRoot<DO_MUST_FULLY_CONTAIN, false>(range, boxes, foundEntities))
-        return {};
+      this->template RangeSearchBaseRoot<DO_MUST_FULLY_CONTAIN, false>(range, boxes, foundEntities);
 
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
         detail::sortAndUnique(foundEntities);
