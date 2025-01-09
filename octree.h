@@ -57,6 +57,7 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 
 #include <assert.h>
