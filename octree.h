@@ -4110,9 +4110,10 @@ namespace OrthoTree
     }
   };
 
-  
-  // OrthoTreeBoundingBoxView: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order. Immutable version.
-  // SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
+
+  // OrthoTreeBoundingBoxView: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z
+  // order. Immutable version. SPLIT_DEPTH_INCREASEMENT: if (SPLIT_DEPTH_INCREASEMENT > 0) Those items which are not fit in the child nodes may be
+  // stored in the children/grand-children instead of the parent.
   template<
     dim_t DIMENSION_NO,
     typename TVector_,
@@ -4513,12 +4514,39 @@ namespace OrthoTree
     AdaptorGeneralND<DIMENSION_NO, TGeometry>,
     TContainer>;
 
+  template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType, typename TContainer = std::span<OrthoTree::VectorND<DIMENSION_NO, TGeometry> const>>
+  using TreePointViewND = OrthoTree::OrthoTreePointView<
+    DIMENSION_NO,
+    OrthoTree::VectorND<DIMENSION_NO, TGeometry>,
+    OrthoTree::BoundingBoxND<DIMENSION_NO, TGeometry>,
+    OrthoTree::RayND<DIMENSION_NO, TGeometry>,
+    OrthoTree::PlaneND<DIMENSION_NO, TGeometry>,
+    TGeometry,
+    AdaptorGeneralND<DIMENSION_NO, TGeometry>,
+    TContainer>;
+
   template<
     dim_t DIMENSION_NO,
     uint32_t SPLIT_DEPTH_INCREASEMENT = 2,
     typename TGeometry = BaseGeometryType,
     typename TContainer = std::span<OrthoTree::BoundingBoxND<DIMENSION_NO, TGeometry> const>>
   using TreeBoxND = OrthoTree::OrthoTreeBoundingBox<
+    DIMENSION_NO,
+    OrthoTree::VectorND<DIMENSION_NO, TGeometry>,
+    OrthoTree::BoundingBoxND<DIMENSION_NO, TGeometry>,
+    OrthoTree::RayND<DIMENSION_NO, TGeometry>,
+    OrthoTree::PlaneND<DIMENSION_NO, TGeometry>,
+    TGeometry,
+    SPLIT_DEPTH_INCREASEMENT,
+    AdaptorGeneralND<DIMENSION_NO, TGeometry>,
+    TContainer>;
+
+  template<
+    dim_t DIMENSION_NO,
+    uint32_t SPLIT_DEPTH_INCREASEMENT = 2,
+    typename TGeometry = BaseGeometryType,
+    typename TContainer = std::span<OrthoTree::BoundingBoxND<DIMENSION_NO, TGeometry> const>>
+  using TreeBoxViewND = OrthoTree::OrthoTreeBoundingBoxView<
     DIMENSION_NO,
     OrthoTree::VectorND<DIMENSION_NO, TGeometry>,
     OrthoTree::BoundingBoxND<DIMENSION_NO, TGeometry>,
