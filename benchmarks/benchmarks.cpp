@@ -413,14 +413,15 @@ namespace
   template<dim_t nDim>
   static size_t TreePointCreate(depth_t depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
   {
+    using TreePoint = TreePointND<nDim>;
     auto box = BoundingBoxND<nDim>{};
     box.Max.fill(rMax);
 
-    auto nt = TreePointND<nDim>{};
+    auto nt = TreePoint{};
     if (fPar)
-      TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, box);
+      TreePoint::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, box);
     else
-      TreePointND<nDim>::Create(nt, aPoint, depth, box);
+      TreePoint::Create(nt, aPoint, depth, box);
 
     return nt.GetNodes().size();
   }
@@ -439,15 +440,17 @@ namespace
   template<dim_t nDim>
   static size_t TreeBoxCreate(depth_t depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
   {
+    autoce nSplit = 0;
+    using TreeBox = TreeBoxND<nDim, nSplit>;
+
     auto box = BoundingBoxND<nDim>{};
     box.Max.fill(rMax);
 
-    autoce nSplit = 0;
-    auto nt = TreeBoxND<nDim, nSplit>{};
+    auto nt = TreeBox{};
     if (fPar)
-      TreeBoxND<nDim, nSplit>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
+      TreeBox::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
     else
-      TreeBoxND<nDim, nSplit>::Create(nt, aBox, depth, box);
+      TreeBox::Create(nt, aBox, depth, box);
 
     return nt.GetNodes().size();
   }
@@ -601,16 +604,17 @@ namespace
         vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepthActual, fPar, aBox_.subspan(0, aSizeNonLog[iSize]), [](depth_t nDepth_, span<BoundingBoxND<N> const> const& aBox, bool fPar)
         {
           autoce nSplit = 2;
-          auto nt = TreeBoxND<N, nSplit>{};
+          using TreeBox = TreeBoxND<N, nSplit>;
+          auto nt = TreeBox{};
           if (fPar)
           {
-            TreeBoxND<N, nSplit>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth_, boxMax);
+            TreeBox::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth_, boxMax);
             autoc vPair = nt.template CollisionDetection<std::execution::parallel_unsequenced_policy>(aBox);
             return vPair.size();
           }
           else
           {
-            TreeBoxND<N, nSplit>::Create(nt, aBox, nDepth_, boxMax);
+            TreeBox::Create(nt, aBox, nDepth_, boxMax);
             autoc vPair = nt.CollisionDetection(aBox);
             return vPair.size();
           }          
