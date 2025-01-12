@@ -940,7 +940,6 @@ namespace OrthoTree
         return true;
       }
 
-
       static constexpr bool DoesRangeContainBoxAD(Box const& range, TBox const& box) noexcept
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1051,7 +1050,6 @@ namespace OrthoTree
         }
         return true;
       }
-
 
       static constexpr bool DoesBoxContainPointAD(Vector const& center, Vector const& halfSizes, TVector const& point, TGeometry tolerance = 0) noexcept
       {
@@ -1213,7 +1211,7 @@ namespace OrthoTree
       }
 
       template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-      constexpr DimArray<GridID> GetGridIdPoint(TVector const& point) const noexcept
+      constexpr DimArray<GridID> GetPointGridID(TVector const& point) const noexcept
       {
         auto gridIDs = DimArray<GridID>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1249,7 +1247,7 @@ namespace OrthoTree
       }
 
       template<bool DO_POINT_LIKE_CLASSIFICATION = false>
-      constexpr std::array<DimArray<GridID>, 2> GetGridIdBox(TBox const& box) const noexcept
+      constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox const& box) const noexcept
       {
         auto gridID = std::array<DimArray<GridID>, 2>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1731,6 +1729,7 @@ namespace OrthoTree
       }
 
       constexpr bool IsAnyChildExist() const noexcept { return !m_children.empty(); }
+
       constexpr std::vector<MortonNodeID> const& GetChildren() const noexcept { return m_children; }
     };
 
@@ -1855,7 +1854,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr MortonLocationID GetLocationID(TVector const& point) const noexcept
     {
-      return SI::Encode(this->m_grid.template GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
+      return SI::Encode(this->m_grid.template GetPointGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
@@ -1867,7 +1866,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr SI::DepthAndLocationID GetDepthAndLocationID(TBox const& box) const noexcept
     {
-      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.template GetGridIdBox<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
+      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
     }
 
     static inline TBox GetBoxInvertedInit() noexcept
@@ -3257,7 +3256,7 @@ namespace OrthoTree
 
     Location GetEntityLocation(TEntityID entityID, TBox const& box, LocationContainer* additionalLocations) const noexcept
     {
-      autoc boxMinMaxGridID = this->m_grid.GetGridIdBox(box);
+      autoc boxMinMaxGridID = this->m_grid.GetBoxGridID(box);
       autoc boxLocationID = SI::GetRangeLocationID(boxMinMaxGridID);
       auto location = Location{ .EntityID = entityID, .DepthAndLocation = SI::GetDepthAndLocationID(this->m_maxDepthNo, boxLocationID) };
 
