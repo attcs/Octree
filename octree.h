@@ -1174,7 +1174,7 @@ namespace OrthoTree
       using LinearLocationID = UnderlyingInt;
       using NonLinearLocationID = bitset_arithmetic<DIMENSION_NO * 4 + 1>;
       using LocationID = typename std::conditional_t<IS_LINEAR_TREE, LinearLocationID, NonLinearLocationID>;
-      using NodeID = LocationID; // same as the MortonGridID, but depth is signed by a sentinel bit.
+      using NodeID = LocationID; // same as the LocationID, but depth is signed by a sentinel bit.
       using LocationIDCR = typename std::conditional_t<IS_LINEAR_TREE, LocationID const, LocationID const&>;
       using NodeIDCR = LocationIDCR;
       template<typename T>
@@ -1527,9 +1527,9 @@ namespace OrthoTree
     using SI = detail::MortonSpaceIndexing<DIMENSION_NO>;
     using MortonNodeID = typename SI::NodeID;
     using MortonNodeIDCR = typename SI::NodeIDCR;
-    using MortonGridID = typename SI::LocationID;
-    using MortonGridIDCR = typename SI::LocationIDCR;
-    using ChildID = typename SI::ChildID;
+    using MortonLocationID = typename SI::LocationID;
+    using MortonLocationIDCR = typename SI::LocationIDCR;
+    using MortonChildID = typename SI::ChildID;
 
   public:
     class Node
@@ -1573,7 +1573,7 @@ namespace OrthoTree
           return std::binary_search(m_children.begin(), m_children.end(), childKey, bitset_arithmetic_compare{});
       }
 
-      constexpr bool IsChildNodeEnabled(ChildID childID) const noexcept
+      constexpr bool IsChildNodeEnabled(MortonChildID childID) const noexcept
       {
         autoc childMortonID = MortonNodeID(childID);
         return std::find_if(m_children.begin(), m_children.end(), [childMortonID](autoc& childKey) {
@@ -1783,7 +1783,7 @@ namespace OrthoTree
       return gridID;
     }
 
-    inline Node& CreateChild(Node& parentNode, ChildID childID, MortonNodeIDCR childKey) noexcept
+    inline Node& CreateChild(Node& parentNode, MortonChildID childID, MortonNodeIDCR childKey) noexcept
     {
       assert(childID < SI::CHILD_NO);
       auto& nodeChild = m_nodes[childKey];
@@ -1808,7 +1808,7 @@ namespace OrthoTree
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr MortonGridID GetLocationID(TVector const& point) const noexcept
+    constexpr MortonLocationID GetLocationID(TVector const& point) const noexcept
     {
       return SI::Encode(this->GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
     }
@@ -2256,7 +2256,7 @@ namespace OrthoTree
     }
 
   public:
-    std::vector<TEntityID> CollectAllIdInDFS(MortonGridIDCR parentKey = SI::GetRootKey()) const noexcept
+    std::vector<TEntityID> CollectAllIdInDFS(MortonNodeIDCR parentKey = SI::GetRootKey()) const noexcept
     {
       auto entityIDs = std::vector<TEntityID>{};
       CollectAllIdInDFSRecursive(GetNode(parentKey), entityIDs);
@@ -2430,13 +2430,13 @@ namespace OrthoTree
     struct OverlappingSpaceSegments
     {
       // Flags to sign the overlapped segments dimension-wise
-      MortonGridID minSegmentFlag{}, maxSegmentFlag{};
+      MortonLocationID minSegmentFlag{}, maxSegmentFlag{};
     };
 
     static constexpr OverlappingSpaceSegments GetRelativeMinMaxLocation(IGM::Vector const& center, TBox const& range) noexcept
     {
       auto overlappedSegments = OverlappingSpaceSegments{};
-      auto segmentBit = MortonGridID{ 1 };
+      auto segmentBit = MortonLocationID{ 1 };
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID, segmentBit <<= 1)
       {
         overlappedSegments.minSegmentFlag |= segmentBit * (center[dimensionID] <= AD::GetBoxMinC(range, dimensionID));
@@ -2467,12 +2467,12 @@ namespace OrthoTree
       // Same min-max bit means: only the min or max should be walked
 
       // The key will have signal bit also, dimensionMask is applied to calculate only the last, dimension part of the key
-      autoc dimensionMask = MortonGridID{ SI::CHILD_NO - 1 };
+      autoc dimensionMask = MortonLocationID{ SI::CHILD_NO - 1 };
 
       // Sign the dimensions which should not be walked fully
       autoc limitedDimensionsMask = (~(minSegmentFlag ^ maxSegmentFlag)) & dimensionMask;
 
-      if (limitedDimensionsMask == MortonGridID{} && IGM::DoesRangeContainBoxAD(range, this->GetNodeBox(depthID, center)))
+      if (limitedDimensionsMask == MortonLocationID{} && IGM::DoesRangeContainBoxAD(range, this->GetNodeBox(depthID, center)))
       {
         CollectAllIdInDFSRecursive(currentNode, foundEntities);
         return;
@@ -2676,11 +2676,11 @@ namespace OrthoTree
   public:
     using AD = typename Base::AD;
     using SI = typename Base::SI;
-    using MortonGridID = typename Base::MortonGridID;
-    using MortonGridIDCR = typename Base::MortonGridIDCR;
+    using MortonLocationID = typename Base::MortonLocationID;
+    using MortonLocationIDCR = typename Base::MortonLocationIDCR;
     using MortonNodeID = typename Base::MortonNodeID;
     using MortonNodeIDCR = typename Base::MortonNodeIDCR;
-    using ChildID = typename Base::ChildID;
+    using MortonChildID = typename Base::MortonChildID;
 
     using Node = typename Base::Node;
 
@@ -2711,7 +2711,7 @@ namespace OrthoTree
     struct Location
     {
       TEntityID EntityID;
-      MortonGridID LocationID;
+      MortonLocationID LocationID;
     };
 
     using LocationIterator = typename std::vector<Location>::iterator;
@@ -2720,7 +2720,7 @@ namespace OrthoTree
       MortonNodeIDCR parentKey,
       LocationIterator& locationBeginIterator,
       LocationIterator const& locationEndIterator,
-      MortonGridIDCR startLocationID,
+      MortonLocationIDCR startLocationID,
       depth_t remainingDepth) noexcept
     {
       std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
@@ -3081,11 +3081,11 @@ namespace OrthoTree
   public:
     using AD = typename Base::AD;
     using SI = typename Base::SI;
-    using MortonGridID = typename Base::MortonGridID;
-    using MortonGridIDCR = typename Base::MortonGridIDCR;
+    using MortonLocationID = typename Base::MortonLocationID;
+    using MortonLocationIDCR = typename Base::MortonLocationIDCR;
     using MortonNodeID = typename Base::MortonNodeID;
     using MortonNodeIDCR = typename Base::MortonNodeIDCR;
-    using ChildID = typename Base::ChildID;
+    using MortonChildID = typename Base::MortonChildID;
 
     using Node = typename Base::Node;
 
@@ -3128,7 +3128,7 @@ namespace OrthoTree
       MortonNodeIDCR parentKey,
       LocationIterator& beginLocationIterator,
       LocationIterator const& endLocationIterator,
-      MortonGridIDCR startLocationID,
+      MortonLocationIDCR startLocationID,
       depth_t remainingDepthNo) noexcept
     {
       std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
