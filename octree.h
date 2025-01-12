@@ -1157,6 +1157,143 @@ namespace OrthoTree
     };
 
 
+    template<dim_t DIMENSION_NO, typename TGeometry, typename TVector, typename TBox, typename AD>
+    struct GridSpaceIndexing
+    {
+      template<typename T>
+      using DimArray = std::array<T, DIMENSION_NO>;
+
+      using IGM = InternalGeometryModule<DIMENSION_NO, TGeometry, TVector, TBox, AD>;
+      using IGM_Geometry = typename IGM::Geometry;
+
+
+      constexpr GridSpaceIndexing() = default;
+
+      constexpr GridSpaceIndexing(depth_t maxDepthNo, IGM::Box const& boxSpace) noexcept
+      : m_maxRasterResolution(detail::pow2<depth_t, GridID>(maxDepthNo))
+      , m_maxRasterID(m_maxRasterResolution - 1)
+      , m_boxSpace(boxSpace)
+      {
+        autoc subDivisionNoFactor = IGM_Geometry(m_maxRasterResolution);
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          m_sizeInDimensions[dimensionID] = m_boxSpace.Max[dimensionID] - m_boxSpace.Min[dimensionID];
+          autoc isFlat = m_sizeInDimensions[dimensionID] == 0;
+          m_rasterizerFactors[dimensionID] = isFlat ? IGM_Geometry(1.0) : (subDivisionNoFactor / m_sizeInDimensions[dimensionID]);
+        }
+
+        m_volumeOfOverallSpace = 1;
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          m_volumeOfOverallSpace *= m_sizeInDimensions[dimensionID];
+      }
+
+      constexpr IGM::Vector const& GetSizes() const noexcept { return m_sizeInDimensions; }
+
+      constexpr IGM::Geometry GetVolume() const noexcept { return m_volumeOfOverallSpace; }
+
+      constexpr IGM::Box const& GetBoxSpace() const noexcept { return m_boxSpace; }
+
+      constexpr void Move(IGM::Vector const& moveVector) noexcept { IGM::MoveAD(m_boxSpace, moveVector); }
+
+      constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
+   
+      constexpr IGM::Vector CalculateCenter(DimArray<GridID> const& gridID, depth_t centerLevel) const noexcept
+      {
+        using IGM_Vector = typename IGM::Vector;
+
+        autoc halfGrid = IGM_Geometry(detail::pow2(centerLevel)) * IGM_Geometry(0.5);
+
+        IGM_Vector center;
+        LOOPIVDEP
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          center[dimensionID] =
+            (IGM_Geometry(gridID[dimensionID]) + halfGrid) / m_rasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
+
+        return center;
+      }
+
+      template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
+      constexpr DimArray<GridID> GetGridIdPoint(TVector const& point) const noexcept
+      {
+        auto gridIDs = DimArray<GridID>{};
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          auto pointComponent = IGM_Geometry(AD::GetPointC(point, dimensionID)) - this->m_boxSpace.Min[dimensionID];
+          if constexpr (HANDLE_OUT_OF_TREE_GEOMETRY)
+          {
+            if (pointComponent < 0.0)
+              pointComponent = 0.0;
+          }
+          else
+          {
+            assert(pointComponent >= 0.0);
+          }
+
+          autoc rasterID = GridID(pointComponent * m_rasterizerFactors[dimensionID]);
+          gridIDs[dimensionID] = std::min<GridID>(m_maxRasterID, rasterID);
+        }
+        return gridIDs;
+      }
+
+      constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(TVector const& point) const noexcept
+      {
+        auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          autoc rasterID =
+            (IGM_Geometry(AD::GetPointC(point, dimensionID)) - this->m_boxSpace.Min[dimensionID]) * this->m_rasterizerFactors[dimensionID];
+          pointMinMaxGridID[0][dimensionID] = pointMinMaxGridID[1][dimensionID] = static_cast<GridID>(rasterID);
+          pointMinMaxGridID[0][dimensionID] -= (pointMinMaxGridID[0][dimensionID] > 0) && (floor(rasterID) == rasterID);
+        }
+        return pointMinMaxGridID;
+      }
+
+      template<bool DO_POINT_LIKE_CLASSIFICATION = false>
+      constexpr std::array<DimArray<GridID>, 2> GetGridIdBox(TBox const& box) const noexcept
+      {
+        auto gridID = std::array<DimArray<GridID>, 2>{};
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          autoc minComponentRasterID = (IGM_Geometry(AD::GetBoxMinC(box, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
+          autoc maxComponentRasterID = (IGM_Geometry(AD::GetBoxMaxC(box, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
+
+          if constexpr (DO_POINT_LIKE_CLASSIFICATION)
+          {
+            gridID[0][dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(minComponentRasterID));
+            gridID[1][dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(maxComponentRasterID));
+          }
+          else
+          {
+            if (minComponentRasterID < IGM_Geometry(1))
+              gridID[0][dimensionID] = 0;
+            else if (minComponentRasterID > m_maxRasterID)
+              gridID[0][dimensionID] = m_maxRasterID;
+            else
+              gridID[0][dimensionID] = static_cast<GridID>(minComponentRasterID);
+
+            if (maxComponentRasterID < IGM_Geometry(1))
+              gridID[1][dimensionID] = 0;
+            else if (maxComponentRasterID > m_maxRasterID)
+              gridID[1][dimensionID] = m_maxRasterID;
+            else if (minComponentRasterID != maxComponentRasterID && std::floor(maxComponentRasterID) == maxComponentRasterID)
+              gridID[1][dimensionID] = static_cast<GridID>(maxComponentRasterID) - 1;
+            else
+              gridID[1][dimensionID] = static_cast<GridID>(maxComponentRasterID);
+          }
+        }
+        return gridID;
+      }
+
+    private:
+      GridID m_maxRasterResolution = {};
+      GridID m_maxRasterID = {};
+
+      IGM::Box m_boxSpace = {};
+      IGM::Geometry m_volumeOfOverallSpace = {};
+      IGM::Vector m_rasterizerFactors;
+      IGM::Vector m_sizeInDimensions;
+    };
+
     template<dim_t DIMENSION_NO>
     struct MortonSpaceIndexing
     {
@@ -1289,7 +1426,6 @@ namespace OrthoTree
         autoc depthID = depthIDOptional ? *depthIDOptional : GetDepthID(key);
         return key - (NodeID{ 1 } << depthID);
       }
-
 
       static constexpr LocationID GetLocationIDOnExaminedLevel(LocationIDCR locationID, depth_t examinationLevel) noexcept
       {
@@ -1468,8 +1604,7 @@ namespace OrthoTree
       {
         return GetHash(GetDepthAndLocationID(maxDepthNo, locationIDRange));
       }
-
-      
+     
       static constexpr auto IsLess(DepthAndLocationID const& leftLocation, DepthAndLocationID const& rightLocation) noexcept
       {
         if (leftLocation.DepthID == rightLocation.DepthID)
@@ -1634,32 +1769,18 @@ namespace OrthoTree
 
     std::size_t m_maxElementNo = 11;
     depth_t m_maxDepthNo = {};
-    GridID m_maxRasterResolution = {};
-    GridID m_maxRasterID = {};
 
-    IGM::Box m_boxSpace = {};
-    IGM::Geometry m_volumeOfOverallSpace = {};
-    IGM::Vector m_rasterizerFactors;
-    IGM::Vector m_sizeInDimensions;
     std::vector<typename IGM::Vector> m_nodeSizes;
+
+    detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD> m_grid;
 
   public: // Node helpers
     // Calculate extent by box of the tree and the key of the node
     constexpr IGM::Vector CalculateCenter(MortonNodeIDCR key) const noexcept
     {
-      using IGM_Vector = typename IGM::Vector;
-
-      autoc depthID = SI::GetDepthID(key);
-      autoc halfGrid = IGM_Geometry(detail::pow2(GetDepthMax() - depthID)) * IGM_Geometry(0.5);
-
       autoc gridID = SI::Decode(key, GetDepthMax());
-      IGM_Vector center;
-      LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        center[dimensionID] =
-          (IGM_Geometry(gridID[dimensionID]) + halfGrid) / this->m_rasterizerFactors[dimensionID] + this->m_boxSpace.Min[dimensionID];
-
-      return center;
+      autoc centerLevel = GetDepthMax() - SI::GetDepthID(key);
+      return m_grid.CalculateCenter(gridID, centerLevel);
     }
 
 #ifdef ORTHOTREE__DISABLED_NODECENTER
@@ -1674,10 +1795,11 @@ namespace OrthoTree
     constexpr IGM::Vector GetNodeSize(depth_t depthID) const noexcept
     {
       autoc depthFactor = IGM_Geometry(1.0) / IGM_Geometry(detail::pow2(depthID));
+      autoc& spaceSizes = this->m_grid.GetSizes();
       typename IGM::Vector size;
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        size[dimensionID] = this->m_sizeInDimensions[dimensionID] * depthFactor;
+        size[dimensionID] = spaceSizes[dimensionID] * depthFactor;
 
       return size;
     }
@@ -1704,84 +1826,7 @@ namespace OrthoTree
 
     constexpr IGM::Box GetNodeBox(MortonNodeIDCR key) const noexcept { return this->GetNodeBox(SI::GetDepthID(key), this->GetNodeCenter(key)); }
 
-  protected: // Grid functions
-    struct RasterInfo
-    {
-      IGM::Vector rasterizerFactors;
-      IGM::Vector sizeInDimensions;
-    };
-    static constexpr RasterInfo GetGridRasterizer(IGM::Box const& box, GridID subDivisionNo) noexcept
-    {
-      RasterInfo ri;
-      autoc subDivisionNoFactor = IGM_Geometry(subDivisionNo);
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        ri.sizeInDimensions[dimensionID] = box.Max[dimensionID] - box.Min[dimensionID];
-        autoc isFlat = ri.sizeInDimensions[dimensionID] == 0;
-        ri.rasterizerFactors[dimensionID] = isFlat ? IGM_Geometry(1.0) : (subDivisionNoFactor / ri.sizeInDimensions[dimensionID]);
-      }
-
-      return ri;
-    }
-
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr DimArray<GridID> GetGridIdPoint(TVector const& point) const noexcept
-    {
-      auto gridIDs = DimArray<GridID>{};
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        auto pointComponent = IGM_Geometry(AD::GetPointC(point, dimensionID)) - this->m_boxSpace.Min[dimensionID];
-        if constexpr (HANDLE_OUT_OF_TREE_GEOMETRY)
-        {
-          if (pointComponent < 0.0)
-            pointComponent = 0.0;
-        }
-        else
-        {
-          assert(pointComponent >= 0.0);
-        }
-
-        autoc rasterID = GridID(pointComponent * this->m_rasterizerFactors[dimensionID]);
-        gridIDs[dimensionID] = std::min<GridID>(this->m_maxRasterID, rasterID);
-      }
-      return gridIDs;
-    }
-
-    template<bool DO_POINT_LIKE_CLASSIFICATION = false>
-    constexpr std::array<DimArray<GridID>, 2> GetGridIdBox(TBox const& box) const noexcept
-    {
-      auto gridID = std::array<DimArray<GridID>, 2>{};
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        autoc minComponentRasterID = (IGM_Geometry(AD::GetBoxMinC(box, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
-        autoc maxComponentRasterID = (IGM_Geometry(AD::GetBoxMaxC(box, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
-
-        if constexpr (DO_POINT_LIKE_CLASSIFICATION)
-        {
-          gridID[0][dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(minComponentRasterID));
-          gridID[1][dimensionID] = std::min<GridID>(this->m_maxRasterID, static_cast<GridID>(maxComponentRasterID));
-        }
-        else
-        {
-          if (minComponentRasterID < IGM_Geometry(1))
-            gridID[0][dimensionID] = 0;
-          else if (minComponentRasterID > m_maxRasterID)
-            gridID[0][dimensionID] = m_maxRasterID;
-          else
-            gridID[0][dimensionID] = static_cast<GridID>(minComponentRasterID);
-
-          if (maxComponentRasterID < IGM_Geometry(1))
-            gridID[1][dimensionID] = 0;
-          else if (maxComponentRasterID > m_maxRasterID)
-            gridID[1][dimensionID] = m_maxRasterID;
-          else if (minComponentRasterID != maxComponentRasterID && std::floor(maxComponentRasterID) == maxComponentRasterID)
-            gridID[1][dimensionID] = static_cast<GridID>(maxComponentRasterID) - 1;
-          else
-            gridID[1][dimensionID] = static_cast<GridID>(maxComponentRasterID);
-        }
-      }
-      return gridID;
-    }
+  protected:
 
     inline Node& CreateChild(Node& parentNode, MortonChildID childID, MortonNodeIDCR childKey) noexcept
     {
@@ -1810,7 +1855,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr MortonLocationID GetLocationID(TVector const& point) const noexcept
     {
-      return SI::Encode(this->GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
+      return SI::Encode(this->m_grid.GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
@@ -1822,7 +1867,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr SI::DepthAndLocationID GetDepthAndLocationID(TBox const& box) const noexcept
     {
-      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->GetGridIdBox<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
+      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.GetGridIdBox<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
     }
 
     static inline TBox GetBoxInvertedInit() noexcept
@@ -2081,7 +2126,6 @@ namespace OrthoTree
       return static_cast<std::size_t>(rMult * nElementInNodeAvg);
     }
 
-
     static inline depth_t EstimateMaxDepth(std::size_t elementNo, std::size_t maxElementNo) noexcept
     {
       if (elementNo < maxElementNo)
@@ -2097,9 +2141,9 @@ namespace OrthoTree
     constexpr auto const& GetNodes() const noexcept { return m_nodes; }
     inline bool HasNode(MortonNodeIDCR key) const noexcept { return m_nodes.contains(key); }
     inline auto const& GetNode(MortonNodeIDCR key) const noexcept { return m_nodes.at(key); }
-    constexpr auto const& GetBox() const noexcept { return m_boxSpace; }
+    constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
     constexpr auto GetDepthMax() const noexcept { return m_maxDepthNo; }
-    constexpr auto GetResolutionMax() const noexcept { return m_maxRasterResolution; }
+    constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
     inline auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
       autoc it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](autoc& keyAndValue) {
@@ -2112,7 +2156,7 @@ namespace OrthoTree
 
   protected:
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void InitBase(IGM::Box const& box, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
+    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
     {
       assert(this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded
                                      // tree is wanted to be reset, use the Reset() function before init.
@@ -2122,40 +2166,24 @@ namespace OrthoTree
       assert(maxElementNo > 1);
       assert(CHAR_BIT * sizeof(GridID) >= m_maxDepthNo);
 
-      this->m_boxSpace = box;
+      this->m_grid = detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD>(maxDepthNo, boxSpace);
       this->m_maxDepthNo = maxDepthNo;
-      this->m_maxRasterResolution = static_cast<GridID>(detail::pow2(maxDepthNo));
-      this->m_maxRasterID = this->m_maxRasterResolution - 1;
       this->m_maxElementNo = maxElementNo;
 
       [[maybe_unused]] auto& nodeRoot = this->m_nodes[SI::GetRootKey()];
 #ifndef ORTHOTREE__DISABLED_NODECENTER
-      nodeRoot.SetCenter(IGM::GetBoxCenter(box));
+      nodeRoot.SetCenter(IGM::GetBoxCenter(boxSpace));
 #endif // !ORTHOTREE__DISABLED_NODECENTER
 
-      // Size and raster info
-      {
-        auto [rasterizerFactors, sizeInDimensions] = GetGridRasterizer(this->m_boxSpace, this->m_maxRasterResolution);
-        this->m_rasterizerFactors = std::move(rasterizerFactors);
-        this->m_sizeInDimensions = std::move(sizeInDimensions);
-
-        // the 0-based depth size of the tree is m_maxDepthNo+1, and a fictive childnode halfsize (+2) could be asked prematurely.
-        depth_t constexpr additionalDepth = 3;
-        autoc examinedDepthSize = this->m_maxDepthNo + additionalDepth;
-        this->m_nodeSizes.resize(examinedDepthSize, this->m_sizeInDimensions);
-        autoce multiplier = IGM_Geometry(0.5);
-        auto factor = multiplier;
-        for (depth_t depthID = 1; depthID < examinedDepthSize; ++depthID, factor *= multiplier)
-          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-            this->m_nodeSizes[depthID][dimensionID] *= factor;
-      }
-
-      // Volume calculation
-      {
-        this->m_volumeOfOverallSpace = 1;
+      // the 0-based depth size of the tree is m_maxDepthNo+1, and a fictive childnode halfsize (+2) could be asked prematurely.
+      depth_t constexpr additionalDepth = 3;
+      autoc examinedDepthSize = this->m_maxDepthNo + additionalDepth;
+      this->m_nodeSizes.resize(examinedDepthSize, this->m_grid.GetSizes());
+      autoce multiplier = IGM_Geometry(0.5);
+      auto factor = multiplier;
+      for (depth_t depthID = 1; depthID < examinedDepthSize; ++depthID, factor *= multiplier)
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          this->m_volumeOfOverallSpace *= this->m_sizeInDimensions[dimensionID];
-      }
+          this->m_nodeSizes[depthID][dimensionID] *= factor;
     }
 
   public: // Main service functions
@@ -2293,9 +2321,7 @@ namespace OrthoTree
     void Reset() noexcept
     {
       m_nodes.clear();
-      m_boxSpace = {};
-      m_volumeOfOverallSpace = 0.0;
-      m_rasterizerFactors = {};
+      m_grid = {};
     }
 
 
@@ -2319,8 +2345,7 @@ namespace OrthoTree
         pairKeyNode.second.SetCenter(std::move(center));
       });
 #endif // !ORTHOTREE__DISABLED_NODECENTER
-
-      IGM::MoveAD(this->m_boxSpace, moveVector);
+      m_grid.Move(moveVector);
     }
 
     std::tuple<MortonNodeID, depth_t> FindSmallestNodeKeyWithDepth(MortonNodeID searchKey) const noexcept
@@ -2361,7 +2386,7 @@ namespace OrthoTree
     {
       if constexpr (!HANDLE_OUT_OF_TREE_GEOMETRY)
       {
-        if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, searchPoint))
+        if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), searchPoint))
           return MortonNodeID{};
       }
       return this->FindSmallestNodeKey(this->GetNodeID<HANDLE_OUT_OF_TREE_GEOMETRY>(searchPoint));
@@ -2370,7 +2395,7 @@ namespace OrthoTree
     // Find smallest node which contains the box
     MortonNodeID FindSmallestNode(TBox const& box) const noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, box))
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), box))
         return MortonNodeID{};
 
       return FindSmallestNodeKey(this->GetNodeID(box));
@@ -2499,7 +2524,7 @@ namespace OrthoTree
     bool RangeSearchBaseRoot(TBox const& range, TContainer const& geometryCollection, std::vector<TEntityID>& foundEntities) const noexcept
     {
       autoc entityNo = geometryCollection.size();
-      if (IGM::DoesRangeContainBoxAD(range, this->m_boxSpace))
+      if (IGM::DoesRangeContainBoxAD(range, this->m_grid.GetBoxSpace()))
       {
         foundEntities.resize(entityNo);
 
@@ -2528,7 +2553,7 @@ namespace OrthoTree
         rangeVolume *= AD::GetBoxMaxC(range, dimensionID) - AD::GetBoxMinC(range, dimensionID);
 
       autoc foundEntityNoEstimation =
-        this->m_volumeOfOverallSpace < 0.01 ? 10 : static_cast<std::size_t>((rangeVolume * entityNo) / this->m_volumeOfOverallSpace);
+        this->m_grid.GetVolume() < 0.01 ? 10 : static_cast<std::size_t>((rangeVolume * entityNo) / this->m_grid.GetVolume());
 
       foundEntities.reserve(foundEntityNoEstimation);
       RangeSearchBase<DO_RANGE_MUST_FULLY_CONTAIN>(range, geometryCollection, SI::GetDepthID(smallestNodeKey), smallestNodeKey, foundEntities);
@@ -2791,7 +2816,7 @@ namespace OrthoTree
   public: // Edit functions
     bool InsertWithRebalancing(TEntityID newEntityID, TVector const& newPoint, TContainer const& points) noexcept
     {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
       autoc[entityDepth, entityLocation] = this->GetDepthAndLocationID(newPoint);
@@ -2806,7 +2831,7 @@ namespace OrthoTree
     // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
     bool Insert(TEntityID entityID, TVector const& newPoint, bool doInsertToLeaf = false) noexcept
     {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
       autoc entityNodeKey = this->GetNodeID(newPoint);
@@ -2876,7 +2901,7 @@ namespace OrthoTree
     // Update id by the new point information
     bool Update(TEntityID entityID, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
     {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
       if (!this->EraseId<false>(entityID))
@@ -2889,7 +2914,7 @@ namespace OrthoTree
     // Update id by the new point information and the erase part is aided by the old point geometry data
     bool Update(TEntityID entityID, TVector const& oldPoint, TVector const& newPoint, bool doesInsertToLeaf = false) noexcept
     {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
       if (!this->Erase<false>(entityID, oldPoint))
@@ -2902,7 +2927,7 @@ namespace OrthoTree
     // Update id with rebalancing by the new point information
     bool Update(TEntityID entityID, TVector const& newPoint, TContainer const& points) noexcept
     {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
       if (!this->EraseId<false>(entityID))
@@ -2915,7 +2940,7 @@ namespace OrthoTree
     // Update id with rebalacing by the new point information and the erase part is aided by the old point geometry data
     bool Update(TEntityID entityID, TVector const& oldPoint, TVector const& newPoint, TContainer const& points) noexcept
     {
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, newPoint))
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
       if (!this->Erase<false>(entityID, oldPoint))
@@ -3232,7 +3257,7 @@ namespace OrthoTree
 
     Location GetEntityLocation(TEntityID entityID, TBox const& box, LocationContainer* additionalLocations) const noexcept
     {
-      autoc boxMinMaxGridID = this->GetGridIdBox(box);
+      autoc boxMinMaxGridID = this->m_grid.GetGridIdBox(box);
       autoc boxLocationID = SI::GetRangeLocationID(boxMinMaxGridID);
       auto location = Location{ .EntityID = entityID, .DepthAndLocation = SI::GetDepthAndLocationID(this->m_maxDepthNo, boxLocationID) };
 
@@ -3350,7 +3375,7 @@ namespace OrthoTree
   public: // Edit functions
     bool InsertWithRebalancing(TEntityID newEntityID, TBox const& newBox, TContainer const& boxes) noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), newBox))
         return false;
 
       auto locations = std::vector<Location>(1);
@@ -3373,7 +3398,7 @@ namespace OrthoTree
     // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
     bool Insert(TEntityID newEntityID, TBox const& newBox, bool doInsertToLeaf = false) noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), newBox))
         return false;
 
       autoc smallestNodeKey = this->FindSmallestNode(newBox);
@@ -3499,7 +3524,7 @@ namespace OrthoTree
     // Update id by the new bounding box information
     bool Update(TEntityID entityID, TBox const& boxNew, bool doInsertToLeaf = false) noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, boxNew))
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), boxNew))
         return false;
 
       if (!this->EraseId<false>(entityID))
@@ -3512,7 +3537,7 @@ namespace OrthoTree
     // Update id by the new bounding box information and the erase part is aided by the old bounding box geometry data
     bool Update(TEntityID entityID, TBox const& oldBox, TBox const& newBox, bool doInsertToLeaf = false) noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), newBox))
         return false;
 
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
@@ -3529,7 +3554,7 @@ namespace OrthoTree
     // Update id with rebalancing by the new bounding box information
     bool Update(TEntityID entityID, TBox const& boxNew, TContainer const& boxes) noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, boxNew))
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), boxNew))
         return false;
 
       if (!this->EraseId<false>(entityID))
@@ -3542,7 +3567,7 @@ namespace OrthoTree
     // Update id with rebalancing by the new bounding box information and the erase part is aided by the old bounding box geometry data
     bool Update(TEntityID entityID, TBox const& oldBox, TBox const& newBox, TContainer const& boxes) noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(this->m_boxSpace, newBox))
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), newBox))
         return false;
 
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
@@ -3557,19 +3582,6 @@ namespace OrthoTree
 
 
   private:
-    constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(TVector const& point) const noexcept
-    {
-      auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        autoc rasterID = (IGM_Geometry(AD::GetPointC(point, dimensionID)) - this->m_boxSpace.Min[dimensionID]) * this->m_rasterizerFactors[dimensionID];
-        pointMinMaxGridID[0][dimensionID] = pointMinMaxGridID[1][dimensionID] = static_cast<GridID>(rasterID);
-        pointMinMaxGridID[0][dimensionID] -= (pointMinMaxGridID[0][dimensionID] > 0) && (floor(rasterID) == rasterID);
-      }
-      return pointMinMaxGridID;
-    }
-
-
     void PickSearchRecursive(TVector const& pickPoint, TContainer const& boxes, MortonNodeIDCR parentKey, std::vector<TEntityID>& foundEntitiyIDs) const noexcept
     {
       autoc& parentNode = this->GetNode(parentKey);
@@ -3618,13 +3630,13 @@ namespace OrthoTree
     std::vector<TEntityID> PickSearch(TVector const& pickPoint, TContainer const& boxes) const noexcept
     {
       auto foundEntitiyIDs = std::vector<TEntityID>();
-      if (!IGM::DoesBoxContainPointAD(this->m_boxSpace, pickPoint))
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), pickPoint))
         return foundEntitiyIDs;
 
       foundEntitiyIDs.reserve(100);
 
       autoc endIteratorOfNodes = this->m_nodes.end();
-      autoc gridIDRange = this->GetEdgePointGridID(pickPoint);
+      autoc gridIDRange = this->m_grid.GetEdgePointGridID(pickPoint);
       auto rangeLocationID = SI::GetRangeLocationID(gridIDRange);
 
       auto nodeKey = SI::GetHash(this->m_maxDepthNo, rangeLocationID[0]);
