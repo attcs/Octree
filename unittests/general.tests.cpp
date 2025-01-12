@@ -122,80 +122,80 @@ namespace GeneralTest
     TEST_METHOD(M1D_0_0)
     {
       autoce arr = array<GridID, 1> { 0 };
-      Assert::AreEqual(DualtreePoint::MortonGridID{ 0 }, DualtreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(DualtreePoint::MortonGridID{ 0 }, DualtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M1D_4_4)
     {
       autoce arr = array<GridID, 1>{ 4 };
-      Assert::AreEqual(DualtreePoint::MortonGridID{ 4 }, DualtreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(DualtreePoint::MortonGridID{ 4 }, DualtreePoint::SI::Encode(arr));
     }
 
 
     TEST_METHOD(M2D_00_0)
     {
       autoce arr = array<GridID, 2>{ 0, 0 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 0 }, QuadtreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 0 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_20_4)
     {
       autoce arr = array<GridID, 2>{ 2, 0 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 4 }, QuadtreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 4 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_02_8)
     {
       autoce arr = array<GridID, 2>{ 0, 2 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 8 }, QuadtreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 8 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_22_12)
     {
       autoce arr = array<GridID, 2>{ 2, 2 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 12 }, QuadtreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 12 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_13_11)
     {
       autoce arr = array<GridID, 2>{ 1, 3 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 11 }, QuadtreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonGridID{ 11 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_000_0)
     {
       autoce arr = array<GridID, 3>{ 0, 0, 0 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 0 }, OctreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonGridID{ 0 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_100_1)
     {
       autoce arr = array<GridID, 3>{ 1, 0, 0 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 1 }, OctreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonGridID{ 1 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_001_4)
     {
       autoce arr = array<GridID, 3>{ 0, 0, 1 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 4 }, OctreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonGridID{ 4 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_111_7)
     {
       autoce arr = array<GridID, 3>{ 1, 1, 1 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 7 }, OctreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonGridID{ 7 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M4D_1111_15)
     {
       autoce arr = array<GridID, 4>{ 1, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::MortonGridID{ 15 }, HexatreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(HexatreePoint::MortonGridID{ 15 }, HexatreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M4D_2111_30)
     {
       autoce arr = array<GridID, 4>{ 2, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::MortonGridID{ 30 }, HexatreePoint::SI::MortonEncode(arr));
+      Assert::AreEqual(HexatreePoint::MortonGridID{ 30 }, HexatreePoint::SI::Encode(arr));
     }
   };
 

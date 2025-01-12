@@ -1171,39 +1171,39 @@ namespace OrthoTree
       using ChildID = UnderlyingInt;
 
       // Max value: 2 ^ nDepth ^ DIMENSION_NO * 2 (signal bit)
-      using LinearMortonGridID = UnderlyingInt;
-      using NonLinearMortonGridID = bitset_arithmetic<DIMENSION_NO * 4 + 1>;
-      using MortonGridID = typename std::conditional_t<IS_LINEAR_TREE, LinearMortonGridID, NonLinearMortonGridID>;
-      using MortonNodeID = MortonGridID; // same as the MortonGridID, but depth is signed by a sentinel bit.
-      using MortonGridIDCR = typename std::conditional_t<IS_LINEAR_TREE, MortonNodeID const, MortonNodeID const&>;
-      using MortonNodeIDCR = MortonGridIDCR;
+      using LinearLocationID = UnderlyingInt;
+      using NonLinearLocationID = bitset_arithmetic<DIMENSION_NO * 4 + 1>;
+      using LocationID = typename std::conditional_t<IS_LINEAR_TREE, LinearLocationID, NonLinearLocationID>;
+      using NodeID = LocationID; // same as the MortonGridID, but depth is signed by a sentinel bit.
+      using LocationIDCR = typename std::conditional_t<IS_LINEAR_TREE, LocationID const, LocationID const&>;
+      using NodeIDCR = LocationIDCR;
       template<typename T>
       using DimArray = std::array<T, DIMENSION_NO>;
 
       // Type system determined maximal depth.
-      static autoce MAX_THEORETICAL_DEPTH = depth_t((CHAR_BIT * sizeof(MortonNodeID) - 1 /*sentinal bit*/) / DIMENSION_NO);
+      static autoce MAX_THEORETICAL_DEPTH = depth_t((CHAR_BIT * sizeof(NodeID) - 1 /*sentinal bit*/) / DIMENSION_NO);
 
       struct DepthAndLocationID
       {
         depth_t DepthID;
-        MortonGridID LocationID;
+        LocationID LocationID;
       };
 
       class ChildLocationGenerator
       {
       public:
-        constexpr ChildLocationGenerator(MortonGridIDCR startLocationID, depth_t examinedLevel) noexcept
+        constexpr ChildLocationGenerator(LocationIDCR startLocationID, depth_t examinedLevel) noexcept
         : m_shift(examinedLevel * DIMENSION_NO)
         , m_startLocationID(startLocationID)
         , m_startLocationIDOnExaminedLevel(startLocationID >> m_shift)
-        , m_stepNo(MortonGridID{ 1 } << m_shift)
+        , m_stepNo(LocationID{ 1 } << m_shift)
         {
         }
 
         // LocationID is on the base grid level
-        constexpr ChildID GetChildID(MortonGridIDCR locationID) const noexcept
+        constexpr ChildID GetChildID(LocationIDCR locationID) const noexcept
         {
-          return CastMortonIdToChildId((locationID - m_startLocationID) >> m_shift);
+          return CastMortonIDToChildID((locationID - m_startLocationID) >> m_shift);
         }
 
         // LocationID is on a custom depth
@@ -1211,30 +1211,30 @@ namespace OrthoTree
         {
           assert(examinationDepthID <= depthAndLocation.DepthID);
           autoc locationIDOnExaminationLevel = GetLocationIDOnExaminedLevel(depthAndLocation.LocationID, depthAndLocation.DepthID - examinationDepthID);
-          return CastMortonIdToChildId(locationIDOnExaminationLevel - m_startLocationIDOnExaminedLevel);
+          return CastMortonIDToChildID(locationIDOnExaminationLevel - m_startLocationIDOnExaminedLevel);
         }
 
-        constexpr MortonGridID GetStartLocationID(ChildID childID) const noexcept { return m_startLocationID + MortonGridID(childID) * m_stepNo; }
+        constexpr LocationID GetStartLocationID(ChildID childID) const noexcept { return m_startLocationID + LocationID(childID) * m_stepNo; }
 
       private:
         UnderlyingInt m_shift;
-        MortonGridIDCR m_startLocationID;
-        MortonGridID m_startLocationIDOnExaminedLevel;
-        MortonGridID m_stepNo;
+        LocationIDCR m_startLocationID;
+        LocationID m_startLocationIDOnExaminedLevel;
+        LocationID m_stepNo;
       };
 
       class ChildKeyGenerator
       {
       public:
-        constexpr ChildKeyGenerator(MortonNodeIDCR parentNodeKey) noexcept
+        constexpr ChildKeyGenerator(NodeIDCR parentNodeKey) noexcept
         : m_parentFlag(parentNodeKey << DIMENSION_NO)
         {
         }
 
-        constexpr MortonNodeID GetChildNodeKey(ChildID childID) const noexcept { return m_parentFlag | MortonNodeID(childID); }
+        constexpr NodeID GetChildNodeKey(ChildID childID) const noexcept { return m_parentFlag | NodeID(childID); }
 
       private:
-        MortonNodeID m_parentFlag;
+        NodeID m_parentFlag;
       };
 
       class GridConverter
@@ -1245,35 +1245,35 @@ namespace OrthoTree
         {
         }
 
-        MortonGridID GetLocationID(DimArray<GridID> const& gridID) const noexcept { return MortonEncode(gridID) >> m_shift; }
+        LocationID GetLocationID(DimArray<GridID> const& gridID) const noexcept { return Encode(gridID) >> m_shift; }
 
       private:
         UnderlyingInt m_shift;
       };
 
-      static constexpr MortonNodeID GetHash(DepthAndLocationID const& location) noexcept
+      static constexpr NodeID GetHash(DepthAndLocationID const& location) noexcept
       {
-        assert(location.LocationID < (MortonNodeID(1) << (location.DepthID * DIMENSION_NO)));
-        return (MortonNodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | location.LocationID;
+        assert(location.LocationID < (NodeID(1) << (location.DepthID * DIMENSION_NO)));
+        return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | location.LocationID;
       }
 
-      static constexpr MortonNodeID GetHash(depth_t depth, MortonGridIDCR locationID) noexcept
+      static constexpr NodeID GetHash(depth_t depth, LocationID locationID) noexcept
       {
-        assert(locationID < (MortonNodeID(1) << (depth * DIMENSION_NO)));
-        return (MortonNodeID{ 1 } << (depth * DIMENSION_NO)) | locationID;
+        assert(locationID < (NodeID(1) << (depth * DIMENSION_NO)));
+        return (NodeID{ 1 } << (depth * DIMENSION_NO)) | locationID;
       }
 
-      static constexpr MortonNodeID GetRootKey() noexcept { return MortonNodeID{ 1 }; }
+      static constexpr NodeID GetRootKey() noexcept { return NodeID{ 1 }; }
 
-      static constexpr bool IsValidKey(LinearMortonGridID key) noexcept { return key > 0; }
+      static constexpr bool IsValidKey(LinearLocationID key) noexcept { return key > 0; }
 
-      static inline bool IsValidKey(NonLinearMortonGridID const& key) noexcept { return key.any(); }
+      static inline bool IsValidKey(NonLinearLocationID const& key) noexcept { return key.any(); }
 
-      static constexpr MortonNodeID GetParentKey(MortonNodeIDCR key) noexcept { return key >> DIMENSION_NO; }
+      static constexpr NodeID GetParentKey(NodeIDCR key) noexcept { return key >> DIMENSION_NO; }
 
-      static constexpr MortonGridID GetParentGridID(MortonGridID locationID) noexcept { return locationID >> DIMENSION_NO; }
+      static constexpr LocationID GetParentGridID(LocationIDCR locationID) noexcept { return locationID >> DIMENSION_NO; }
 
-      static constexpr depth_t GetDepthID(MortonNodeID key) noexcept
+      static constexpr depth_t GetDepthID(NodeID key) noexcept
       {
         // Keep shifting off DIMENSION_NO bits at a time, increasing depth counter
         for (depth_t d = 0; IsValidKey(key); ++d, key = GetParentKey(key))
@@ -1284,42 +1284,42 @@ namespace OrthoTree
         return 0;
       }
 
-      static constexpr MortonNodeID RemoveSentinelBit(MortonNodeIDCR key, std::optional<depth_t> const& depthIDOptional = std::nullopt) noexcept
+      static constexpr NodeID RemoveSentinelBit(NodeIDCR key, std::optional<depth_t> const& depthIDOptional = std::nullopt) noexcept
       {
         autoc depthID = depthIDOptional ? *depthIDOptional : GetDepthID(key);
-        return key - (MortonNodeID{ 1 } << depthID);
+        return key - (NodeID{ 1 } << depthID);
       }
 
 
-      static constexpr MortonGridID GetLocationIDOnExaminedLevel(MortonGridIDCR locationID, depth_t examinationLevel) noexcept
+      static constexpr LocationID GetLocationIDOnExaminedLevel(LocationIDCR locationID, depth_t examinationLevel) noexcept
       {
         return locationID >> (examinationLevel * DIMENSION_NO);
       }
 
-      static constexpr bool IsAllChildTouched(std::array<MortonGridID, 2> const& locationIDRange, depth_t examinationLevel) noexcept
+      static constexpr bool IsAllChildTouched(std::array<LocationID, 2> const& locationIDRange, depth_t examinationLevel) noexcept
       {
         return IsValidKey((locationIDRange[1] - locationIDRange[0]) >> (examinationLevel * DIMENSION_NO - 1));
       }
 
     private: // Morton aid functions
-      static inline ChildID GetKeyChildPart(MortonNodeIDCR key) noexcept
+      static inline ChildID GetKeyChildPart(NodeIDCR key) noexcept
       {
         if constexpr (IS_LINEAR_TREE)
         {
-          autoce maskLastBits1 = (MortonNodeID{ 1 } << DIMENSION_NO) - 1;
-          return CastMortonIdToChildId(key & maskLastBits1);
+          autoce maskLastBits1 = (NodeID{ 1 } << DIMENSION_NO) - 1;
+          return CastMortonIDToChildID(key & maskLastBits1);
         }
         else
         {
-          auto childID = MortonNodeID{};
+          auto childID = NodeID{};
           for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
             childID[dimensionID] = key[dimensionID];
 
-          return CastMortonIdToChildId(childID);
+          return CastMortonIDToChildID(childID);
         }
       }
 
-      static constexpr MortonGridID Part1By2(GridID n) noexcept
+      static constexpr LocationID Part1By2(GridID n) noexcept
       {
         // n = ----------------------9876543210 : Bits initially
         // n = ------98----------------76543210 : After (1)
@@ -1330,18 +1330,18 @@ namespace OrthoTree
         n = (n ^ (n << 8)) & 0x0300f00f;  // (2)
         n = (n ^ (n << 4)) & 0x030c30c3;  // (3)
         n = (n ^ (n << 2)) & 0x09249249;  // (4)
-        if constexpr (std::is_same<MortonGridID, bitset_arithmetic<DIMENSION_NO>>::value)
+        if constexpr (IS_LINEAR_TREE)
         {
-          return MortonGridID(n);
+          return n;
         }
         else
         {
-          return n;
+          return LocationID(n);
         }
       }
 
       // Separates low 16 bits of input by one bit
-      static constexpr MortonGridID Part1By1(GridID n) noexcept
+      static constexpr LocationID Part1By1(GridID n) noexcept
       {
         // n = ----------------fedcba9876543210 : Bits initially
         // n = --------fedcba98--------76543210 : After (1)
@@ -1353,21 +1353,21 @@ namespace OrthoTree
         n = (n ^ (n << 2)) & 0x33333333; // (3)
         n = (n ^ (n << 1)) & 0x55555555; // (4)
 
-        if constexpr (std::is_same<MortonGridID, bitset_arithmetic<DIMENSION_NO>>::value)
+        if constexpr (IS_LINEAR_TREE)
         {
-          return MortonGridID(n);
+          return n;
         }
         else
         {
-          return n;
+          return LocationID(n);
         }
       }
 
     public:
-      static inline MortonGridID MortonEncode(DimArray<GridID> const& gridID) noexcept
+      static inline LocationID Encode(DimArray<GridID> const& gridID) noexcept
       {
         if constexpr (DIMENSION_NO == 1)
-          return MortonGridID(gridID[0]);
+          return LocationID(gridID[0]);
         else if constexpr (DIMENSION_NO == 2)
           return (Part1By1(gridID[1]) << 1) + Part1By1(gridID[0]);
         else if constexpr (DIMENSION_NO == 3)
@@ -1378,7 +1378,7 @@ namespace OrthoTree
           for (dim_t dimensionID = 1; dimensionID < DIMENSION_NO; ++dimensionID)
             msb |= gridID[dimensionID];
 
-          MortonGridID locationID = 0;
+          LocationID locationID = 0;
           GridID mask = 1;
           for (dim_t i = 0; msb; mask <<= 1, msb >>= 1, ++i)
           {
@@ -1387,7 +1387,7 @@ namespace OrthoTree
             {
               autoc shift = dimensionID + i * DIMENSION_NO;
               if constexpr (IS_LINEAR_TREE)
-                locationID |= static_cast<MortonGridID>(gridID[dimensionID] & mask) << (shift - i);
+                locationID |= static_cast<LocationID>(gridID[dimensionID] & mask) << (shift - i);
               else
                 locationID[shift] = gridID[dimensionID] & mask;
             }
@@ -1396,7 +1396,7 @@ namespace OrthoTree
         }
       }
 
-      static DimArray<GridID> MortonDecode(MortonNodeIDCR nodeKey, depth_t maxDepthNo) noexcept
+      static DimArray<GridID> Decode(NodeIDCR nodeKey, depth_t maxDepthNo) noexcept
       {
         auto gridID = DimArray<GridID>{};
         if constexpr (DIMENSION_NO == 1)
@@ -1405,7 +1405,7 @@ namespace OrthoTree
         {
           autoc depthID = GetDepthID(nodeKey);
 
-          autoce mask = MortonGridID{ 1 };
+          autoce mask = LocationID{ 1 };
           for (depth_t iDepth = maxDepthNo - depthID, shift = 0; iDepth < maxDepthNo; ++iDepth)
             for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID, ++shift)
             {
@@ -1422,15 +1422,15 @@ namespace OrthoTree
         return gridID;
       }
 
-      static inline ChildID CastMortonIdToChildId(NonLinearMortonGridID const& bs) noexcept
+      static inline ChildID CastMortonIDToChildID(NonLinearLocationID const& bs) noexcept
       {
-        assert(bs <= NonLinearMortonGridID(std::numeric_limits<ChildID>::max()));
+        assert(bs <= NonLinearLocationID(std::numeric_limits<ChildID>::max()));
         return bs.to_ullong();
       }
 
-      static constexpr ChildID CastMortonIdToChildId(LinearMortonGridID morton) noexcept { return morton; }
+      static constexpr ChildID CastMortonIDToChildID(LinearLocationID morton) noexcept { return morton; }
 
-      static constexpr ChildID GetChildIDByDepth(depth_t parentDepth, depth_t childDepth, MortonNodeIDCR childNodeKey)
+      static constexpr ChildID GetChildIDByDepth(depth_t parentDepth, depth_t childDepth, LocationIDCR childNodeKey)
       {
         autoc depthDifference = childDepth - parentDepth;
         assert(depthDifference > 0);
@@ -1439,12 +1439,12 @@ namespace OrthoTree
 
       static constexpr bool IsChildInGreaterSegment(ChildID childID, dim_t dimensionID) noexcept { return (ChildID{ 1 } << dimensionID) & childID; }
 
-      static constexpr std::array<MortonGridID, 2> GetRangeLocationID(std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
+      static constexpr std::array<LocationID, 2> GetRangeLocationID(std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
-        return { MortonEncode(gridIDRange[0]), MortonEncode(gridIDRange[1]) };
+        return { Encode(gridIDRange[0]), Encode(gridIDRange[1]) };
       }
 
-      static constexpr DepthAndLocationID GetDepthAndLocationID(depth_t maxDepthNo, std::array<MortonGridID, 2> const& locationIDRange) noexcept
+      static constexpr DepthAndLocationID GetDepthAndLocationID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
         auto dl = DepthAndLocationID{ maxDepthNo, locationIDRange[0] };
 
@@ -1459,12 +1459,12 @@ namespace OrthoTree
         return GetDepthAndLocationID(maxDepthNo, GetRangeLocationID(gridIDRange));
       }
 
-      static constexpr MortonNodeID GetNodeID(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
+      static constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
         return GetHash(GetDepthAndLocationID(maxDepthNo, gridIDRange));
       }
 
-      static constexpr MortonNodeID GetNodeID(depth_t maxDepthNo, std::array<MortonGridID, 2> const& locationIDRange) noexcept
+      static constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
         return GetHash(GetDepthAndLocationID(maxDepthNo, locationIDRange));
       }
@@ -1525,10 +1525,10 @@ namespace OrthoTree
     using IGM = typename detail::InternalGeometryModule<DIMENSION_NO, TGeometry, TVector, TBox, TAdapter>;
     using IGM_Geometry = typename IGM::Geometry;
     using SI = detail::MortonSpaceIndexing<DIMENSION_NO>;
-    using MortonNodeID = typename SI::MortonNodeID;
-    using MortonNodeIDCR = typename SI::MortonNodeIDCR;
-    using MortonGridID = typename SI::MortonGridID;
-    using MortonGridIDCR = typename SI::MortonGridIDCR;
+    using MortonNodeID = typename SI::NodeID;
+    using MortonNodeIDCR = typename SI::NodeIDCR;
+    using MortonGridID = typename SI::LocationID;
+    using MortonGridIDCR = typename SI::LocationIDCR;
     using ChildID = typename SI::ChildID;
 
   public:
@@ -1652,7 +1652,7 @@ namespace OrthoTree
       autoc depthID = SI::GetDepthID(key);
       autoc halfGrid = IGM_Geometry(detail::pow2(GetDepthMax() - depthID)) * IGM_Geometry(0.5);
 
-      autoc gridID = SI::MortonDecode(key, GetDepthMax());
+      autoc gridID = SI::Decode(key, GetDepthMax());
       IGM_Vector center;
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1810,7 +1810,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr MortonGridID GetLocationID(TVector const& point) const noexcept
     {
-      return SI::MortonEncode(this->GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
+      return SI::Encode(this->GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>

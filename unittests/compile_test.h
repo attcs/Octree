@@ -35,8 +35,8 @@ void testCompilePoint()
 
   autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::MortonDecode(key, 3);
-  autoc idGrid = OT::SI::MortonEncode(aidGrid);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
   autoc fValid = OT::SI::IsValidKey(key);
   autoc idChild = OT::SI::RemoveSentinelBit(key);
 
@@ -127,8 +127,8 @@ void testCompilePointMap()
 
   autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::MortonDecode(key, 3);
-  autoc idGrid = OT::SI::MortonEncode(aidGrid);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
   autoc fValid = OT::SI::IsValidKey(key);
   autoc idChild = OT::SI::RemoveSentinelBit(key);
 
@@ -235,8 +235,8 @@ void testCompileBox()
 
   autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::MortonDecode(key, 3);
-  autoc idGrid = OT::SI::MortonEncode(aidGrid);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
   autoc fValid = OT::SI::IsValidKey(key);
   autoc idChild = OT::SI::RemoveSentinelBit(key);
 
@@ -330,8 +330,8 @@ void testCompileBoxMap()
 
   autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::MortonDecode(key, 3);
-  autoc idGrid = OT::SI::MortonEncode(aidGrid);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
   autoc fValid = OT::SI::IsValidKey(key);
   autoc idChild = OT::SI::RemoveSentinelBit(key);
 
