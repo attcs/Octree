@@ -124,13 +124,6 @@ namespace OrthoTree
 #pragma warning(disable : 4715)
 #endif
 
-  // Crash the program if out_of_range exception is raised
-  template<typename container_type>
-  inline auto& cont_at(container_type& container, typename std::remove_reference_t<container_type>::key_type const& id) noexcept
-  {
-    return container.at(id);
-  }
-
   namespace detail
   {
     template<typename TContainer, typename TKey>
@@ -215,14 +208,27 @@ namespace OrthoTree
 
 
     template<typename TContainer, typename TKey>
-    constexpr const auto& at(TContainer const& container, TKey key)
+    constexpr const auto& at(TContainer const& container, TKey const& key) noexcept
       requires(HasAt<TContainer, TKey>)
     {
       return container.at(key);
     }
 
     template<typename TContainer, typename TKey>
-    constexpr const auto& at(TContainer const& continer, TKey key)
+    constexpr auto& at(TContainer& container, TKey const& key) noexcept
+      requires(HasAt<TContainer, TKey>)
+    {
+      return container.at(key);
+    }
+
+    template<typename TContainer, typename TKey>
+    constexpr const auto& at(TContainer const& continer, TKey const& key) noexcept
+    {
+      return continer[key];
+    }
+
+    template<typename TContainer, typename TKey>
+    constexpr auto& at(TContainer& continer, TKey const& key) noexcept
     {
       return continer[key];
     }
@@ -295,7 +301,7 @@ namespace OrthoTree
 
     template<typename TContainer, typename... TElement>
     concept HasReserve = requires(TContainer container) { container.reserve(0); };
-  
+
     template<HasReserve TContainer>
     constexpr void reserve(TContainer& m, std::size_t n) noexcept
     {
@@ -1205,7 +1211,7 @@ namespace OrthoTree
       constexpr void Move(IGM::Vector const& moveVector) noexcept { IGM::MoveAD(m_boxSpace, moveVector); }
 
       constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
-   
+
       constexpr IGM::Vector CalculateCenter(DimArray<GridID> const& gridID, depth_t centerLevel) const noexcept
       {
         using IGM_Vector = typename IGM::Vector;
@@ -1215,8 +1221,7 @@ namespace OrthoTree
         IGM_Vector center;
         LOOPIVDEP
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          center[dimensionID] =
-            (IGM_Geometry(gridID[dimensionID]) + halfGrid) / m_rasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
+          center[dimensionID] = (IGM_Geometry(gridID[dimensionID]) + halfGrid) / m_rasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
 
         return center;
       }
@@ -1249,8 +1254,7 @@ namespace OrthoTree
         auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          autoc rasterID =
-            (IGM_Geometry(AD::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
+          autoc rasterID = (IGM_Geometry(AD::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
           pointMinMaxGridID[0][dimensionID] = pointMinMaxGridID[1][dimensionID] = static_cast<GridID>(rasterID);
           pointMinMaxGridID[0][dimensionID] -= (pointMinMaxGridID[0][dimensionID] > 0) && (floor(rasterID) == rasterID);
         }
@@ -1613,7 +1617,7 @@ namespace OrthoTree
       {
         return GetHash(GetDepthAndLocationID(maxDepthNo, locationIDRange));
       }
-     
+
       static constexpr auto IsLess(DepthAndLocationID const& leftLocation, DepthAndLocationID const& rightLocation) noexcept
       {
         if (leftLocation.DepthID == rightLocation.DepthID)
@@ -1837,7 +1841,6 @@ namespace OrthoTree
     constexpr IGM::Box GetNodeBox(MortonNodeIDCR key) const noexcept { return this->GetNodeBox(SI::GetDepthID(key), this->GetNodeCenter(key)); }
 
   protected:
-
     inline Node& CreateChild(Node& parentNode, MortonChildID childID, MortonNodeIDCR childKey) noexcept
     {
       assert(childID < SI::CHILD_NO);
@@ -2034,7 +2037,7 @@ namespace OrthoTree
     {
       if (entityNodeKey == parentNodeKey)
       {
-        cont_at(this->m_nodes, entityNodeKey).Entities.emplace_back(entityID);
+        detail::at(this->m_nodes, entityNodeKey).Entities.emplace_back(entityID);
         if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
           assert(this->IsEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
         return true;
@@ -2064,7 +2067,7 @@ namespace OrthoTree
       }
       else
       {
-        auto& parentNode = this->m_nodes.at(parentNodeKey);
+        auto& parentNode = detail::at(this->m_nodes, parentNodeKey);
         if (parentNode.IsAnyChildExist())
         {
           autoc parentDepth = SI::GetDepthID(parentNodeKey);
@@ -2095,7 +2098,7 @@ namespace OrthoTree
         return;
 
       autoc parentKey = SI::GetParentKey(nodeKey);
-      auto& parentNode = this->m_nodes.at(parentKey);
+      auto& parentNode = detail::at(this->m_nodes, parentKey);
       parentNode.RemoveChild(nodeKey);
       this->m_nodes.erase(nodeKey);
     }
@@ -2330,7 +2333,7 @@ namespace OrthoTree
     void Clear() noexcept
     {
       std::erase_if(m_nodes, [](autoc& p) { return p.first != SI::GetRootKey(); });
-      cont_at(m_nodes, SI::GetRootKey()).Entities.clear();
+      detail::at(m_nodes, SI::GetRootKey()).Entities.clear();
     }
 
 
@@ -2808,7 +2811,7 @@ namespace OrthoTree
       });
 
       autoc rootKey = SI::GetRootKey();
-      auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
+      auto& nodeRoot = detail::at(tree.m_nodes, rootKey);
 
       auto beginIterator = pointLocations.begin();
       tree.CreateChildNodes(nodeRoot, rootKey, beginIterator, pointLocations.end(), MortonNodeID{ 0 }, maxDepthNo);
@@ -2879,7 +2882,7 @@ namespace OrthoTree
       if (!SI::IsValidKey(nodeKey))
         return false; // old box is not in the handled space domain
 
-      auto& node = this->m_nodes.at(nodeKey);
+      auto& node = detail::at(this->m_nodes, nodeKey);
       autoc endIteratorAfterRemove = std::remove(node.Entities.begin(), node.Entities.end(), entitiyID);
       if (endIteratorAfterRemove == node.Entities.end())
         return false; // id was not registered previously.
@@ -3294,7 +3297,7 @@ namespace OrthoTree
         return;
 
       autoc rootKey = SI::GetRootKey();
-      auto& nodeRoot = cont_at(tree.m_nodes, rootKey);
+      auto& nodeRoot = detail::at(tree.m_nodes, rootKey);
 
       autoce NON_SPLITTED = SPLIT_DEPTH_INCREASEMENT == 0;
 #ifdef __cpp_lib_execution
@@ -3436,7 +3439,7 @@ namespace OrthoTree
     template<depth_t REMAINING_DEPTH>
     bool DoEraseRec(MortonNodeIDCR nodeKey, TEntityID entityID) noexcept
     {
-      auto& node = this->m_nodes.at(nodeKey);
+      auto& node = detail::at(this->m_nodes, nodeKey);
       auto isThereAnyErased = this->DoErase(node, entityID);
       if constexpr (REMAINING_DEPTH > 0)
       {
