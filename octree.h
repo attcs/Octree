@@ -293,6 +293,17 @@ namespace OrthoTree
       c.erase(std::unique(c.begin(), c.end()), c.end());
     }
 
+    template<typename TContainer, typename... TElement>
+    concept HasReserve = requires(TContainer container) { container.reserve(0); };
+  
+    template<HasReserve TContainer>
+    constexpr void reserve(TContainer& m, std::size_t n) noexcept
+    {
+      m.reserve(n);
+    };
+
+    template<typename TContainer>
+    constexpr void reserve(TContainer&, std::size_t) noexcept {};
 
     template<uint8_t e, typename TOut = std::size_t>
     consteval TOut pow2_ce()
@@ -2075,15 +2086,6 @@ namespace OrthoTree
       return true;
     }
 
-    template<typename TData>
-    static void ReserveContainer(NonLinearUnderlyingContainer<TData>&, std::size_t) noexcept {};
-
-    template<typename TData>
-    static void ReserveContainer(LinearUnderlyingContainer<TData>& m, std::size_t n) noexcept
-    {
-      m.reserve(n);
-    };
-
     void RemoveNodeIfPossible(MortonNodeIDCR nodeKey, Node const& node) noexcept
     {
       if (nodeKey == SI::GetRootKey())
@@ -2790,7 +2792,7 @@ namespace OrthoTree
 
       autoc maxDepthNo = (!maxDepthNoIn || maxDepthNoIn == 0) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthNoIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
-      Base::ReserveContainer(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthNo, maxElementNoInNode));
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthNo, maxElementNoInNode));
       if (points.empty())
         return;
 
@@ -3287,7 +3289,7 @@ namespace OrthoTree
       autoc maxDepthNo = (!maxDepthIn || maxDepthIn == 0) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
 
-      Base::ReserveContainer(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
       if (entityNo == 0)
         return;
 
