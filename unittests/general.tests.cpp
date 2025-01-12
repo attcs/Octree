@@ -761,8 +761,8 @@ namespace GeneralTest
       using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
       autoce rAcc = std::numeric_limits<double>::min();
 
-      autoc ptPre = &tPre; 
-      autoc ptAfter = &tAfter; 
+      [[maybe_unused]] autoc ptPre = &tPre; 
+      [[maybe_unused]] autoc ptAfter = &tAfter; 
       autoc nodesPre = tPre.GetNodes();
       autoc nodesAfter = tAfter.GetNodes();
 

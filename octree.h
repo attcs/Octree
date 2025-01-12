@@ -1855,7 +1855,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr MortonLocationID GetLocationID(TVector const& point) const noexcept
     {
-      return SI::Encode(this->m_grid.GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
+      return SI::Encode(this->m_grid.template GetGridIdPoint<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
@@ -1867,7 +1867,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr SI::DepthAndLocationID GetDepthAndLocationID(TBox const& box) const noexcept
     {
-      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.GetGridIdBox<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
+      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.template GetGridIdBox<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
     }
 
     static inline TBox GetBoxInvertedInit() noexcept
@@ -1933,7 +1933,7 @@ namespace OrthoTree
       {
       case ControlFlow::ShouldCreateOnlyOneChild: {
 
-        autoc childGenerator = SI::ChildKeyGenerator(parentNodeKey);
+        autoc childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
         autoc childID = SI::GetChildIDByDepth(parentDepth, entityDepth, entitiyNodeKey);
         autoc childNodeKey = childGenerator.GetChildNodeKey(childID);
 
@@ -1945,7 +1945,7 @@ namespace OrthoTree
       }
 
       case ControlFlow::FullRebalancing: {
-        autoc childGenerator = SI::ChildKeyGenerator(parentNodeKey);
+        autoc childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
 
         if (!shouldInsertInParentNode)
         {
@@ -2059,7 +2059,7 @@ namespace OrthoTree
         {
           autoc parentDepth = SI::GetDepthID(parentNodeKey);
           autoc childID = SI::GetChildIDByDepth(parentDepth, SI::GetDepthID(entityNodeKey), entityNodeKey);
-          autoc childGenerator = SI::ChildKeyGenerator(parentNodeKey);
+          autoc childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
           autoc childNodeKey = childGenerator.GetChildNodeKey(childID);
 
           parentNode.AddChildInOrder(childNodeKey);
@@ -2758,8 +2758,8 @@ namespace OrthoTree
       }
 
       --remainingDepth;
-      autoc keyGenerator = SI::ChildKeyGenerator(parentKey);
-      autoc locationGenerator = SI::ChildLocationGenerator(startLocationID, remainingDepth);
+      autoc keyGenerator = typename SI::ChildKeyGenerator(parentKey);
+      autoc locationGenerator = typename SI::ChildLocationGenerator(startLocationID, remainingDepth);
 
       while (locationBeginIterator != locationEndIterator)
       {
@@ -3184,8 +3184,8 @@ namespace OrthoTree
       ++currentDepthID;
       --remainingDepthNo;
 
-      autoc keyGenerator = SI::ChildKeyGenerator(parentKey);
-      autoc locationGenerator = SI::ChildLocationGenerator(startLocationID, remainingDepthNo);
+      autoc keyGenerator = typename SI::ChildKeyGenerator(parentKey);
+      autoc locationGenerator = typename SI::ChildLocationGenerator(startLocationID, remainingDepthNo);
       while (beginLocationIterator != endLocationIterator)
       {
         autoc actualChildID = locationGenerator.GetChildID(beginLocationIterator->DepthAndLocation, currentDepthID);
@@ -3233,7 +3233,7 @@ namespace OrthoTree
       Base::template ConstructGridIDListRecursively<DIMENSION_NO>(gridStepNo, gridBoundaries, temporaryGridID, gridIDs);
 
       autoc boxNo = gridIDs.size();
-      autoc gridGenerator = SI::GridConverter(remainingDepthNo);
+      autoc gridGenerator = typename SI::GridConverter(remainingDepthNo);
 
       // First element into locationID
       location.DepthAndLocation.DepthID = depthID;
