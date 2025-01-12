@@ -322,10 +322,10 @@ namespace
 
     auto tree = TOrthoTreeA(points_span, 3, std::nullopt, 2);
 
-    auto const entityIDsInBFSActual = tree.CollectAllIdInBFS(tree.SI::GetRootKey());
+    auto const entityIDsInBFSActual = tree.CollectAllIdInBFS(TOrthoTreeA::SI::GetRootKey());
     auto const entityIDsInBFSExpected = std::vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 };
 
-    auto const entityIDsInDFSActual = tree.CollectAllIdInDFS(tree.SI::GetRootKey());
+    auto const entityIDsInDFSActual = tree.CollectAllIdInDFS(TOrthoTreeA::SI::GetRootKey());
     auto const entityIDsInDFSExpected = std::vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 };
 
     auto const pointsInSearchBoxActual = tree.RangeSearch(searchBox, points);
