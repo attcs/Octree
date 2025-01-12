@@ -3421,33 +3421,33 @@ namespace OrthoTree
 
 
   private:
-    bool doErase(Node& node, TEntityID entityID) noexcept
+    bool DoErase(Node& node, TEntityID entityID) noexcept
     {
-      auto& idList = node.Entities;
-      autoc endIteratorAfterRemove = std::remove(idList.begin(), idList.end(), entityID);
-      if (endIteratorAfterRemove == idList.end())
+      auto& entities = node.Entities;
+      autoc endIteratorAfterRemove = std::remove(entities.begin(), entities.end(), entityID);
+      if (endIteratorAfterRemove == entities.end())
         return false; // id was not registered previously.
 
-      idList.erase(endIteratorAfterRemove, idList.end());
+      entities.erase(endIteratorAfterRemove, entities.end());
       return true;
     }
 
 
     template<depth_t REMAINING_DEPTH>
-    bool doEraseRec(MortonNodeIDCR nodeKey, TEntityID entityID) noexcept
+    bool DoEraseRec(MortonNodeIDCR nodeKey, TEntityID entityID) noexcept
     {
       auto& node = this->m_nodes.at(nodeKey);
-      auto ret = this->doErase(node, entityID);
+      auto isThereAnyErased = this->DoErase(node, entityID);
       if constexpr (REMAINING_DEPTH > 0)
       {
         autoc children = node.GetChildren();
         for (MortonNodeIDCR childKey : children)
-          ret |= doEraseRec<REMAINING_DEPTH - 1>(childKey, entityID);
+          isThereAnyErased |= DoEraseRec<REMAINING_DEPTH - 1>(childKey, entityID);
       }
 
       this->RemoveNodeIfPossible(nodeKey, node);
 
-      return ret;
+      return isThereAnyErased;
     }
 
 
@@ -3460,7 +3460,7 @@ namespace OrthoTree
       if (!SI::IsValidKey(smallestNodeKey))
         return false; // old box is not in the handled space domain
 
-      if (doEraseRec<SPLIT_DEPTH_INCREASEMENT>(smallestNodeKey, entityIDToErase))
+      if (DoEraseRec<SPLIT_DEPTH_INCREASEMENT>(smallestNodeKey, entityIDToErase))
       {
         if constexpr (DO_UPDATE_ENTITY_IDS)
         {
