@@ -1187,28 +1187,6 @@ namespace OrthoTree
       {
         depth_t DepthID;
         MortonGridID LocationID;
-
-        constexpr auto operator<(DepthAndLocationID const& rightLocation) const
-        {
-          if (DepthID == rightLocation.DepthID)
-            return LocationID < rightLocation.LocationID;
-          else if (DepthID < rightLocation.DepthID)
-          {
-            autoc minGridIDOfRightOnTheSameDepth = GetLocationIDOnExaminedLevel(rightLocation.LocationID, rightLocation.DepthID - DepthID);
-            if (LocationID == minGridIDOfRightOnTheSameDepth)
-              return true;
-
-            return LocationID < minGridIDOfRightOnTheSameDepth;
-          }
-          else
-          {
-            autoc minGridIDOfLeftOnTheSameDepth = GetLocationIDOnExaminedLevel(LocationID, DepthID - rightLocation.DepthID);
-            if (rightLocation.LocationID == minGridIDOfLeftOnTheSameDepth)
-              return false;
-
-            return minGridIDOfLeftOnTheSameDepth < rightLocation.LocationID;
-          }
-        }
       };
 
       class ChildLocationGenerator
@@ -1489,6 +1467,23 @@ namespace OrthoTree
       static constexpr MortonNodeID GetNodeID(depth_t maxDepthNo, std::array<MortonGridID, 2> const& locationIDRange) noexcept
       {
         return GetHash(GetDepthAndLocationID(maxDepthNo, locationIDRange));
+      }
+
+      
+      static constexpr auto IsLess(DepthAndLocationID const& leftLocation, DepthAndLocationID const& rightLocation) noexcept
+      {
+        if (leftLocation.DepthID == rightLocation.DepthID)
+          return leftLocation.LocationID < rightLocation.LocationID;
+        else if (leftLocation.DepthID < rightLocation.DepthID)
+        {
+          autoc locationIDRight = GetLocationIDOnExaminedLevel(rightLocation.LocationID, rightLocation.DepthID - leftLocation.DepthID);
+          return leftLocation.LocationID <= locationIDRight;
+        }
+        else
+        {
+          autoc locationIDLeft = GetLocationIDOnExaminedLevel(leftLocation.LocationID, leftLocation.DepthID - rightLocation.DepthID);
+          return locationIDLeft < rightLocation.LocationID;
+        }
       }
     };
   } // namespace detail
@@ -3122,7 +3117,7 @@ namespace OrthoTree
       TEntityID EntityID;
       SI::DepthAndLocationID DepthAndLocation;
 
-      constexpr auto operator<(Location const& rightLocation) const { return DepthAndLocation < rightLocation.DepthAndLocation; }
+      constexpr auto operator<(Location const& rightLocation) const { return SI::IsLess(DepthAndLocation, rightLocation.DepthAndLocation); }
     };
 
     using LocationContainer = std::vector<Location>;
