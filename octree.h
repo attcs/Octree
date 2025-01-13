@@ -1336,7 +1336,7 @@ namespace OrthoTree
       struct DepthAndLocationID
       {
         depth_t DepthID;
-        LocationID LocationID;
+        LocationID LocID;
       };
 
       class ChildLocationGenerator
@@ -1360,7 +1360,7 @@ namespace OrthoTree
         constexpr ChildID GetChildID(DepthAndLocationID const& depthAndLocation, depth_t examinationDepthID) const noexcept
         {
           assert(examinationDepthID <= depthAndLocation.DepthID);
-          autoc locationIDOnExaminationLevel = GetLocationIDOnExaminedLevel(depthAndLocation.LocationID, depthAndLocation.DepthID - examinationDepthID);
+          autoc locationIDOnExaminationLevel = GetLocationIDOnExaminedLevel(depthAndLocation.LocID, depthAndLocation.DepthID - examinationDepthID);
           return CastMortonIDToChildID(locationIDOnExaminationLevel - m_startLocationIDOnExaminedLevel);
         }
 
@@ -1403,8 +1403,8 @@ namespace OrthoTree
 
       static constexpr NodeID GetHash(DepthAndLocationID const& location) noexcept
       {
-        assert(location.LocationID < (NodeID(1) << (location.DepthID * DIMENSION_NO)));
-        return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | location.LocationID;
+        assert(location.LocID < (NodeID(1) << (location.DepthID * DIMENSION_NO)));
+        return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | location.LocID;
       }
 
       static constexpr NodeID GetHash(depth_t depth, LocationID locationID) noexcept
@@ -1598,7 +1598,7 @@ namespace OrthoTree
         auto dl = DepthAndLocationID{ maxDepthNo, locationIDRange[0] };
 
         for (auto diffLocationFlag = locationIDRange[0] ^ locationIDRange[1]; IsValidKey(diffLocationFlag); diffLocationFlag >>= DIMENSION_NO, --dl.DepthID)
-          dl.LocationID = GetParentGridID(dl.LocationID);
+          dl.LocID = GetParentGridID(dl.LocID);
 
         return dl;
       }
@@ -1621,16 +1621,16 @@ namespace OrthoTree
       static constexpr auto IsLess(DepthAndLocationID const& leftLocation, DepthAndLocationID const& rightLocation) noexcept
       {
         if (leftLocation.DepthID == rightLocation.DepthID)
-          return leftLocation.LocationID < rightLocation.LocationID;
+          return leftLocation.LocID < rightLocation.LocID;
         else if (leftLocation.DepthID < rightLocation.DepthID)
         {
-          autoc locationIDRight = GetLocationIDOnExaminedLevel(rightLocation.LocationID, rightLocation.DepthID - leftLocation.DepthID);
-          return leftLocation.LocationID <= locationIDRight;
+          autoc locationIDRight = GetLocationIDOnExaminedLevel(rightLocation.LocID, rightLocation.DepthID - leftLocation.DepthID);
+          return leftLocation.LocID <= locationIDRight;
         }
         else
         {
-          autoc locationIDLeft = GetLocationIDOnExaminedLevel(leftLocation.LocationID, leftLocation.DepthID - rightLocation.DepthID);
-          return locationIDLeft < rightLocation.LocationID;
+          autoc locationIDLeft = GetLocationIDOnExaminedLevel(leftLocation.LocID, leftLocation.DepthID - rightLocation.DepthID);
+          return locationIDLeft < rightLocation.LocID;
         }
       }
     };
@@ -3241,7 +3241,7 @@ namespace OrthoTree
 
       // First element into locationID
       location.DepthAndLocation.DepthID = depthID;
-      location.DepthAndLocation.LocationID = gridGenerator.GetLocationID(gridIDs[0]);
+      location.DepthAndLocation.LocID = gridGenerator.GetLocationID(gridIDs[0]);
       autoc entityID = location.EntityID;
 
       autoc additionalBoxNo = boxNo - 1;
@@ -3254,7 +3254,7 @@ namespace OrthoTree
         auto& location = additionalLocations.at(locationNo + iBox);
         location.EntityID = entityID;
         location.DepthAndLocation.DepthID = depthID;
-        location.DepthAndLocation.LocationID = gridGenerator.GetLocationID(gridIDs[iBox + 1]);
+        location.DepthAndLocation.LocID = gridGenerator.GetLocationID(gridIDs[iBox + 1]);
       }
     }
 
