@@ -105,14 +105,14 @@ namespace OrthoTree
     {
 #ifdef __cpp_lib_execution
       if (isParallelCreation) {
-        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
         return;
       }
 #else
       assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
 #endif
       
-      OrthoTreeCore::Create(m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
     
 
@@ -271,7 +271,7 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = geometryCollection;
-      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
     
@@ -284,7 +284,7 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
       return otc;
     }
 
