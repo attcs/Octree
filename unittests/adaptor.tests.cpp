@@ -155,7 +155,7 @@ namespace AdaptorTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
-      Assert::IsTrue(nodes.at(tree.GetHash(2, 15)).Entities == vector<size_t>{ 3, 4 });
+      Assert::IsTrue(nodes.at(QuadtreePointCustom::SI::GetHash(2, 15)).Entities == vector<size_t>{ 3, 4 });
     }
 
     TEST_METHOD(Contains__1__True)
@@ -188,8 +188,8 @@ namespace AdaptorTest
         };
         auto tree = Eigen::OctreePoint3d(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(Eigen::OctreePoint3d::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(Eigen::OctreePoint3d::SI::GetRootKey());
 
         auto searchBox = Eigen::AlignedBox3d(Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(2.0, 2.0, 2.0));
         auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
@@ -318,8 +318,8 @@ namespace AdaptorTest
         };
         auto tree = XYZ::OctreePoint(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(OctreePoint::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(OctreePoint::SI::GetRootKey());
 
         auto searchBox = BasicTypesXYZ::BoundingBox3D{
           BasicTypesXYZ::Point3D{0.0, 0.0, 0.0},
@@ -577,8 +577,8 @@ namespace AdaptorTest
 
         auto tree = QuadtreePointCustom(vptView, 3, std::nullopt, 2);
 
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(QuadtreePointCustom::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(QuadtreePointCustom::SI::GetRootKey());
 
         auto searchBox = std::make_unique<MyBox2DConcrete1>();
         searchBox->Min = std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f);
@@ -725,8 +725,8 @@ namespace AdaptorTest
         };
         auto tree = FOctreePoint(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(FOctreePoint::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(FOctreePoint::SI::GetRootKey());
 
         auto searchBox = FBox(
           FVector(0.0, 0.0, 0.0),
@@ -834,8 +834,8 @@ namespace AdaptorTest
         };
         auto tree = boost::geometry::octree_point(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(tree.GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(tree.GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllIdInBFS(octree_point::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllIdInDFS(octree_point::SI::GetRootKey());
 
         auto searchBox = box_t(point_t(0.0, 0.0, 0.0), point_t(2.0, 2.0, 2.0));
         auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);

@@ -33,12 +33,12 @@ void testCompilePoint()
 
   using OT = OrthoTree::TreePointND<N>;
 
-  autoc key = OT::GetHash(2, 3);
+  autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::MortonDecode(key, 3);
-  autoc idGrid = OT::MortonEncode(aidGrid);
-  autoc fValid = OT::IsValidKey(key);
-  autoc idChild = OT::RemoveSentinelBit(key);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
+  autoc fValid = OT::SI::IsValidKey(key);
+  autoc idChild = OT::SI::RemoveSentinelBit(key);
 
   autoce vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
@@ -55,7 +55,7 @@ void testCompilePoint()
 
   // const member functions
   {
-    autoc keyRoot = tree.GetRootKey();
+    autoc keyRoot = OT::SI::GetRootKey();
     autoc center = tree.GetNodeCenter(keyRoot);
     autoc size = tree.GetNodeSize(0);
 
@@ -66,7 +66,7 @@ void testCompilePoint()
 
     autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
     autoc boxAll = tree.GetBox();
-    autoc nDepth = tree.GetDepthID(keyRoot);
+    autoc nDepth = OT::SI::GetDepthID(keyRoot);
     autoc nDepthMax = tree.GetDepthMax();
     autoc nodeRoot = tree.GetNode(keyRoot);
     autoc nodes = tree.GetNodes();
@@ -125,12 +125,12 @@ void testCompilePointMap()
 
   using OT = OrthoTree::TreePointND<N, OrthoTree::BaseGeometryType, Map>;
 
-  autoc key = OT::GetHash(2, 3);
+  autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::MortonDecode(key, 3);
-  autoc idGrid = OT::MortonEncode(aidGrid);
-  autoc fValid = OT::IsValidKey(key);
-  autoc idChild = OT::RemoveSentinelBit(key);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
+  autoc fValid = OT::SI::IsValidKey(key);
+  autoc idChild = OT::SI::RemoveSentinelBit(key);
 
   autoc vpt = Map{
     { 10, Point{ 0.0 } },
@@ -152,7 +152,7 @@ void testCompilePointMap()
 
   // const member functions
   {
-    autoc keyRoot = tree.GetRootKey();
+    autoc keyRoot = OT::SI::GetRootKey();
     autoc center = tree.GetNodeCenter(keyRoot);
     autoc size = tree.GetNodeSize(0);
 
@@ -163,7 +163,7 @@ void testCompilePointMap()
 
     autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
     autoc boxAll = tree.GetBox();
-    autoc nDepth = tree.GetDepthID(keyRoot);
+    autoc nDepth = OT::SI::GetDepthID(keyRoot);
     autoc nDepthMax = tree.GetDepthMax();
     autoc nodeRoot = tree.GetNode(keyRoot);
     autoc nodes = tree.GetNodes();
@@ -233,12 +233,12 @@ void testCompileBox()
 
   using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth>;
 
-  autoc key = OT::GetHash(2, 3);
+  autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::MortonDecode(key, 3);
-  autoc idGrid = OT::MortonEncode(aidGrid);
-  autoc fValid = OT::IsValidKey(key);
-  autoc idChild = OT::RemoveSentinelBit(key);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
+  autoc fValid = OT::SI::IsValidKey(key);
+  autoc idChild = OT::SI::RemoveSentinelBit(key);
 
   autoce boxes = std::array
   {
@@ -253,7 +253,7 @@ void testCompileBox()
 
   // const member functions
   {
-    autoc keyRoot = tree.GetRootKey();
+    autoc keyRoot = OT::SI::GetRootKey();
     autoc center = tree.GetNodeCenter(keyRoot);
     autoc size = tree.GetNodeSize(0);
 
@@ -264,7 +264,7 @@ void testCompileBox()
 
     autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
     autoc boxAll = tree.GetBox();
-    autoc nDepth = tree.GetDepthID(keyRoot);
+    autoc nDepth = OT::SI::GetDepthID(keyRoot);
     autoc nDepthMax = tree.GetDepthMax();
     autoc nodeRoot = tree.GetNode(keyRoot);
     autoc nodes = tree.GetNodes();
@@ -328,12 +328,12 @@ void testCompileBoxMap()
   using Map = std::unordered_map<int, BoundingBox>;
   using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth, OrthoTree::BaseGeometryType, Map>;
 
-  autoc key = OT::GetHash(2, 3);
+  autoc key = OT::SI::GetHash(2, 3);
   autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::MortonDecode(key, 3);
-  autoc idGrid = OT::MortonEncode(aidGrid);
-  autoc fValid = OT::IsValidKey(key);
-  autoc idChild = OT::RemoveSentinelBit(key);
+  autoc aidGrid = OT::SI::Decode(key, 3);
+  autoc idGrid = OT::SI::Encode(aidGrid);
+  autoc fValid = OT::SI::IsValidKey(key);
+  autoc idChild = OT::SI::RemoveSentinelBit(key);
 
   autoc boxes = Map{
     { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
@@ -347,7 +347,7 @@ void testCompileBoxMap()
 
   // const member functions
   {
-    autoc keyRoot = tree.GetRootKey();
+    autoc keyRoot = OT::SI::GetRootKey();
     autoc center = tree.GetNodeCenter(keyRoot);
     autoc size = tree.GetNodeSize(0);
 
@@ -358,7 +358,7 @@ void testCompileBoxMap()
 
     autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
     autoc boxAll = tree.GetBox();
-    autoc nDepth = tree.GetDepthID(keyRoot);
+    autoc nDepth = OT::SI::GetDepthID(keyRoot);
     autoc nDepthMax = tree.GetDepthMax();
     autoc nodeRoot = tree.GetNode(keyRoot);
     autoc nodes = tree.GetNodes();

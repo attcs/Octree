@@ -122,80 +122,80 @@ namespace GeneralTest
     TEST_METHOD(M1D_0_0)
     {
       autoce arr = array<GridID, 1> { 0 };
-      Assert::AreEqual(DualtreePoint::MortonGridID{ 0 }, DualtreePoint::MortonEncode(arr));
+      Assert::AreEqual(DualtreePoint::MortonLocationID{ 0 }, DualtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M1D_4_4)
     {
       autoce arr = array<GridID, 1>{ 4 };
-      Assert::AreEqual(DualtreePoint::MortonGridID{ 4 }, DualtreePoint::MortonEncode(arr));
+      Assert::AreEqual(DualtreePoint::MortonLocationID{ 4 }, DualtreePoint::SI::Encode(arr));
     }
 
 
     TEST_METHOD(M2D_00_0)
     {
       autoce arr = array<GridID, 2>{ 0, 0 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 0 }, QuadtreePoint::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonLocationID{ 0 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_20_4)
     {
       autoce arr = array<GridID, 2>{ 2, 0 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 4 }, QuadtreePoint::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonLocationID{ 4 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_02_8)
     {
       autoce arr = array<GridID, 2>{ 0, 2 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 8 }, QuadtreePoint::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonLocationID{ 8 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_22_12)
     {
       autoce arr = array<GridID, 2>{ 2, 2 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 12 }, QuadtreePoint::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonLocationID{ 12 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M2D_13_11)
     {
       autoce arr = array<GridID, 2>{ 1, 3 };
-      Assert::AreEqual(QuadtreePoint::MortonGridID{ 11 }, QuadtreePoint::MortonEncode(arr));
+      Assert::AreEqual(QuadtreePoint::MortonLocationID{ 11 }, QuadtreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_000_0)
     {
       autoce arr = array<GridID, 3>{ 0, 0, 0 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 0 }, OctreePoint::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonLocationID{ 0 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_100_1)
     {
       autoce arr = array<GridID, 3>{ 1, 0, 0 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 1 }, OctreePoint::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonLocationID{ 1 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_001_4)
     {
       autoce arr = array<GridID, 3>{ 0, 0, 1 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 4 }, OctreePoint::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonLocationID{ 4 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M3D_111_7)
     {
       autoce arr = array<GridID, 3>{ 1, 1, 1 };
-      Assert::AreEqual(OctreePoint::MortonGridID{ 7 }, OctreePoint::MortonEncode(arr));
+      Assert::AreEqual(OctreePoint::MortonLocationID{ 7 }, OctreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M4D_1111_15)
     {
       autoce arr = array<GridID, 4>{ 1, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::MortonGridID{ 15 }, HexatreePoint::MortonEncode(arr));
+      Assert::AreEqual(HexatreePoint::MortonLocationID{ 15 }, HexatreePoint::SI::Encode(arr));
     }
 
     TEST_METHOD(M4D_2111_30)
     {
       autoce arr = array<GridID, 4>{ 2, 1, 1, 1 };
-      Assert::AreEqual(HexatreePoint::MortonGridID{ 30 }, HexatreePoint::MortonEncode(arr));
+      Assert::AreEqual(HexatreePoint::MortonLocationID{ 30 }, HexatreePoint::SI::Encode(arr));
     }
   };
 
@@ -205,7 +205,7 @@ namespace GeneralTest
     template<dim_t N>
     static void _complex_ND_Only1()
     {
-      using child_id_type_ = typename TreeBoxND<N>::ChildID;
+      using child_id_type_ = typename TreeBoxND<N>::MortonChildID;
       using MortonNodeID = typename TreeBoxND<N>::MortonNodeID;
       auto node = typename TreeBoxND<N>::Node();
       Assert::IsFalse(node.IsAnyChildExist());
@@ -242,7 +242,7 @@ namespace GeneralTest
     template<dim_t N>
     static void _complex_All_ND()
     {
-      using ChildID = typename TreeBoxND<N>::ChildID;
+      using ChildID = typename TreeBoxND<N>::MortonChildID;
       using MortonNodeID = typename TreeBoxND<N>::MortonNodeID;
       auto node = typename TreeBoxND<N>::Node();
 
@@ -338,32 +338,32 @@ namespace GeneralTest
 
     TEST_METHOD(GetHash__00_1)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 1 }, DualtreePoint::GetHash(0, 0));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 1 }, DualtreePoint::SI::GetHash(0, 0));
     }
 
     TEST_METHOD(GetHash__11_3)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 3 }, DualtreePoint::GetHash(1, 1));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 3 }, DualtreePoint::SI::GetHash(1, 1));
     }
     TEST_METHOD(GetHash__22_4)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 6 }, DualtreePoint::GetHash(2, 2));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 6 }, DualtreePoint::SI::GetHash(2, 2));
     }
 
     TEST_METHOD(GetHash__37_15)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 15 }, DualtreePoint::GetHash(3, 7));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 15 }, DualtreePoint::SI::GetHash(3, 7));
     }
 
     TEST_METHOD(GetDepth__37_15__3)
     {
-      autoc lc = DualtreePoint::GetDepthID(DualtreePoint::GetHash(3, 7));
+      autoc lc = DualtreePoint::SI::GetDepthID(DualtreePoint::SI::GetHash(3, 7));
       Assert::AreEqual(depth_t{ 3 }, lc);
     }
 
     TEST_METHOD(RemoveSentinelBit__37_15__7)
     {
-      autoc lc = DualtreePoint::RemoveSentinelBit(DualtreePoint::GetHash(3, 7));
+      autoc lc = DualtreePoint::SI::RemoveSentinelBit(DualtreePoint::SI::GetHash(3, 7));
       Assert::AreEqual(MortonNodeID{ 7 }, lc);
     }
 
@@ -457,7 +457,7 @@ namespace GeneralTest
       autoc tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
       auto ids = vector<size_t>();
-      tree.VisitNodes(tree.GetRootKey()
+      tree.VisitNodes(DualtreePoint::SI::GetRootKey()
         , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
@@ -475,7 +475,7 @@ namespace GeneralTest
       autoc tree = DualtreeBox(vBox, 3, std::nullopt, 2);
 
       auto ids = vector<size_t>();
-      tree.VisitNodes(tree.GetRootKey()
+      tree.VisitNodes(DualtreeBox::SI::GetRootKey()
         , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
@@ -488,13 +488,13 @@ namespace GeneralTest
       autoce vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
-      autoc kNode = tree.GetHash(2, 2);
+      autoc kNode = DualtreePoint::SI::GetHash(2, 2);
       autoc& node = tree.GetNode(kNode);
       Assert::AreEqual<size_t>(node.Entities.size(), 1);
       tree.EraseId(2);
       Assert::IsTrue(node.Entities.empty());
 
-      autoc kNode3 = tree.GetHash(2, 3);
+      autoc kNode3 = DualtreePoint::SI::GetHash(2, 3);
       autoc& node3 = tree.GetNode(kNode3);
       Assert::AreEqual<std::size_t>(node3.Entities[0], 2);
     }
@@ -512,7 +512,7 @@ namespace GeneralTest
       tree.UpdateIndexes({});
 
       auto ids = vector<size_t>();
-      tree.VisitNodes(tree.GetRootKey()
+      tree.VisitNodes(DualtreeBox::SI::GetRootKey()
         , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
@@ -532,7 +532,7 @@ namespace GeneralTest
       tree.UpdateIndexes({ { 2, 7 } });
 
       auto ids = vector<size_t>();
-      tree.VisitNodes(tree.GetRootKey()
+      tree.VisitNodes(DualtreeBox::SI::GetRootKey()
         , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
@@ -551,7 +551,7 @@ namespace GeneralTest
       tree.UpdateIndexes({ { 2, std::nullopt } });
 
       auto ids = vector<size_t>();
-      tree.VisitNodes(tree.GetRootKey()
+      tree.VisitNodes(DualtreeBox::SI::GetRootKey()
         , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
@@ -576,7 +576,7 @@ namespace GeneralTest
 
 
       auto ids = vector<size_t>();
-      tree.VisitNodes(tree.GetRootKey()
+      tree.VisitNodes(DualtreeBox::SI::GetRootKey()
         , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
@@ -601,7 +601,7 @@ namespace GeneralTest
 
 
       auto ids = vector<size_t>();
-      tree.VisitNodes(tree.GetRootKey()
+      tree.VisitNodes(DualtreeBox::SI::GetRootKey()
         , [&ids](autoc, autoc& node) { ids.insert(end(ids), begin(node.Entities), end(node.Entities)); }
       );
 
@@ -648,7 +648,7 @@ namespace GeneralTest
 
       tree.Clear();
       Assert::AreEqual<size_t>(1, nodes.size());
-      autoc node = nodes.at(tree.GetHash(0, 0));
+      autoc node = nodes.at(DualtreeBox::SI::GetHash(0, 0));
       Assert::AreEqual<size_t>(1, node.Entities.empty());
     }
 
@@ -761,8 +761,8 @@ namespace GeneralTest
       using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
       autoce rAcc = std::numeric_limits<double>::min();
 
-      autoc ptPre = &tPre; 
-      autoc ptAfter = &tAfter; 
+      [[maybe_unused]] autoc ptPre = &tPre; 
+      [[maybe_unused]] autoc ptAfter = &tAfter; 
       autoc nodesPre = tPre.GetNodes();
       autoc nodesAfter = tAfter.GetNodes();
 
@@ -1562,7 +1562,7 @@ namespace Tree1DTest
 
       autoc& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(nodes.at(tree.GetRootKey()).Entities == vector<size_t>{ 4 });
+      Assert::IsTrue(nodes.at(DualtreeBox::SI::GetRootKey()).Entities == vector<size_t>{ 4 });
     }
 
 
@@ -2362,7 +2362,7 @@ namespace Tree3DTest
         tree.InsertWithRebalancing(pointNo, points.back(), points);
         autoc nodeID_13 = tree.GetNodeIDByEntity(pointNo);
         Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_13, 18612224); // It should reoder to the bottom because of [0] is the same
-        Assert::AreEqual<depth_t>(8, tree.GetDepthID(nodeID_13));
+        Assert::AreEqual<depth_t>(8, OctreePoint::SI::GetDepthID(nodeID_13));
         ++pointNo;
       }
 

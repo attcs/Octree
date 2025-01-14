@@ -197,12 +197,12 @@ namespace OrthoTree
       m_geometryCollection.clear();
     }
 
-    inline std::vector<TEntityID> CollectAllIdInBFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    inline std::vector<TEntityID> CollectAllIdInBFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllIdInBFS(parentKey);
     }
 
-    inline std::vector<TEntityID> CollectAllIdInDFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::GetRootKey()) const noexcept
+    inline std::vector<TEntityID> CollectAllIdInDFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllIdInDFS(parentKey);
     }

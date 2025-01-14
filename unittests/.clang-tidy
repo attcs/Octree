@@ -1,0 +1,5 @@
+Checks:            '-*, bugprone-*, performance-*'
+WarningsAsErrors:  ''
+HeaderFilterRegex: '.*'
+FormatStyle:       'file'
+User:              x
