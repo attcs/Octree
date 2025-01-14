@@ -54,8 +54,8 @@ void testCompilePoint()
     auto const center = tree.GetNodeCenter(keyRoot);
     auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
     auto const nodeSmallest = tree.FindSmallestNode(vpt.back());
 
@@ -92,7 +92,7 @@ void testCompilePoint()
 
   // non-const member functions
   {
-    tree.template EraseId<false>(4);
+    tree.template EraseEntity<false>(4);
     tree.template Erase<false>(3, vpt[3]);
     tree.Insert(3, vpt[3]);
     tree.Update(2, vpt[2], vpt[3]);
@@ -151,8 +151,8 @@ void testCompilePointMap()
     auto const center = tree.GetNodeCenter(keyRoot);
     auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
     auto const nodeSmallest = tree.FindSmallestNode(vpt.at(11));
 
@@ -199,7 +199,7 @@ void testCompilePointMap()
 
   // non-const member functions
   {
-    tree.template EraseId<false>(20);
+    tree.template EraseEntity<false>(20);
     tree.template Erase<false>(30, vpt.at(30));
     tree.Insert(3, vpt.at(11));
     tree.Update(11, vpt.at(11), vpt.at(12));
@@ -252,8 +252,8 @@ void testCompileBox()
     auto const center = tree.GetNodeCenter(keyRoot);
     auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
     auto const nodeSmallest = tree.FindSmallestNode(boxes.back());
 
@@ -296,7 +296,7 @@ void testCompileBox()
 
   // non-const member functions
   {
-    tree.template EraseId<false>(4);
+    tree.template EraseEntity<false>(4);
     tree.template Erase<false>(3, boxes[3]);
     tree.Insert(3, boxes[3]);
     tree.Update(2, boxes[2], boxes[3]);
@@ -346,8 +346,8 @@ void testCompileBoxMap()
     auto const center = tree.GetNodeCenter(keyRoot);
     auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
     auto const nodeSmallest = tree.FindSmallestNode(boxes.at(11));
 
@@ -400,7 +400,7 @@ void testCompileBoxMap()
 
   // non-const member functions
   {
-    tree.template EraseId<false>(12);
+    tree.template EraseEntity<false>(12);
     tree.template Erase<false>(10, boxes.at(10));
     tree.Insert(23, boxes.at(17));
     tree.Update(11, boxes.at(11), boxes.at(17));

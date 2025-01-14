@@ -188,8 +188,8 @@ namespace AdaptorTest
         };
         auto tree = Eigen::OctreePoint3d(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(Eigen::OctreePoint3d::SI::GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(Eigen::OctreePoint3d::SI::GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(Eigen::OctreePoint3d::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(Eigen::OctreePoint3d::SI::GetRootKey());
 
         auto searchBox = Eigen::AlignedBox3d(Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(2.0, 2.0, 2.0));
         auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
@@ -210,7 +210,7 @@ namespace AdaptorTest
         vpt.push_back(Eigen::Vector3d(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);
-        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+        auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
         auto searchPoint = Eigen::Vector3d(1.0, 1.0, 1.0);
         auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
@@ -275,8 +275,8 @@ namespace AdaptorTest
           0.01f);
 
         // Collect all IDs in breadth/depth first order
-        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
-        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+        auto entityIDsInDFS = quadtree.CollectAllEntitiesInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllEntitiesInDFS();
 
         Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<std::size_t, std::size_t>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 4}, insideBoxIDs));
@@ -318,8 +318,8 @@ namespace AdaptorTest
         };
         auto tree = XYZ::OctreePoint(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(OctreePoint::SI::GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(OctreePoint::SI::GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(OctreePoint::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(OctreePoint::SI::GetRootKey());
 
         auto searchBox = BasicTypesXYZ::BoundingBox3D{
           BasicTypesXYZ::Point3D{0.0, 0.0, 0.0},
@@ -346,7 +346,7 @@ namespace AdaptorTest
         vpt.push_back(BasicTypesXYZ::Point3D(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);
-        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+        auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
         auto searchPoint = BasicTypesXYZ::Point3D(1.0, 1.0, 1.0);
         auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
@@ -414,8 +414,8 @@ namespace AdaptorTest
           0.01f);
 
         // Collect all IDs in breadth/depth first order
-        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
-        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+        auto entityIDsInDFS = quadtree.CollectAllEntitiesInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllEntitiesInDFS();
 
         Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<std::size_t, std::size_t>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
         Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 4}, insideBoxIDs));
@@ -577,8 +577,8 @@ namespace AdaptorTest
 
         auto tree = QuadtreePointCustom(vptView, 3, std::nullopt, 2);
 
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(QuadtreePointCustom::SI::GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(QuadtreePointCustom::SI::GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(QuadtreePointCustom::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(QuadtreePointCustom::SI::GetRootKey());
 
         auto searchBox = std::make_unique<MyBox2DConcrete1>();
         searchBox->Min = std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f);
@@ -599,7 +599,7 @@ namespace AdaptorTest
         vptView.emplace_back(vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.1f)).get());
         tree.Insert(n, vptOwner.back().get());
         tree.Erase<false>(0, vptOwner.front().get());
-        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+        auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
         auto searchPoint = std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f);
         auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint.get(), 3, vptView);
@@ -677,8 +677,8 @@ namespace AdaptorTest
           0.01f);
 
         // Collect all IDs in breadth/depth first order
-        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
-        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+        auto entityIDsInDFS = quadtree.CollectAllEntitiesInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllEntitiesInDFS();
 
         Assert::IsTrue(std::ranges::is_permutation(
           std::vector<std::pair<std::size_t, std::size_t>>{
@@ -725,8 +725,8 @@ namespace AdaptorTest
         };
         auto tree = FOctreePoint(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(FOctreePoint::SI::GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(FOctreePoint::SI::GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(FOctreePoint::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(FOctreePoint::SI::GetRootKey());
 
         auto searchBox = FBox(
           FVector(0.0, 0.0, 0.0),
@@ -741,7 +741,7 @@ namespace AdaptorTest
         vpt.push_back(FVector(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);
-        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+        auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
         auto searchPoint = FVector{ 1.0, 1.0, 1.0 };
         auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
@@ -801,8 +801,8 @@ namespace AdaptorTest
           0.01f);
 
         // Collect all IDs in breadth/depth first order
-        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
-        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+        auto entityIDsInDFS = quadtree.CollectAllEntitiesInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllEntitiesInDFS();
       }
     };
   }
@@ -834,8 +834,8 @@ namespace AdaptorTest
         };
         auto tree = boost::geometry::octree_point(vpt, 3, std::nullopt, 2);
         
-        auto entityIDsInBFS = tree.CollectAllIdInBFS(octree_point::SI::GetRootKey());
-        auto entityIDsInDFS = tree.CollectAllIdInDFS(octree_point::SI::GetRootKey());
+        auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(octree_point::SI::GetRootKey());
+        auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(octree_point::SI::GetRootKey());
 
         auto searchBox = box_t(point_t(0.0, 0.0, 0.0), point_t(2.0, 2.0, 2.0));
         auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
@@ -859,7 +859,7 @@ namespace AdaptorTest
         vpt.push_back(point_t(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);
-        auto entityIDsInDFS_AfterErase = tree.CollectAllIdInDFS();
+        auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
         auto searchPoint = point_t{ 1.0, 1.0, 1.0 };
         auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint, 3, vpt);
@@ -927,8 +927,8 @@ namespace AdaptorTest
           0.01);
 
         // Collect all IDs in breadth/depth first order
-        auto entityIDsInDFS = quadtree.CollectAllIdInBFS();
-        auto entityIDsInBFS = quadtree.CollectAllIdInDFS();
+        auto entityIDsInDFS = quadtree.CollectAllEntitiesInBFS();
+        auto entityIDsInBFS = quadtree.CollectAllEntitiesInDFS();
 
         Assert::IsTrue(std::ranges::is_permutation(
           vector<std::pair<std::size_t, std::size_t>>{

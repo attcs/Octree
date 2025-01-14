@@ -298,8 +298,8 @@ namespace GeneralTest
       auto const& nodesA = treeActual.GetNodes();
       Assert::AreEqual(nodesE.size(), nodesA.size());
 
-      auto const vidE = treeExpected.CollectAllIdInBFS();
-      auto const vidA = treeActual.CollectAllIdInBFS();
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
       Assert::IsTrue(vidE == vidA);
     }
 
@@ -321,8 +321,8 @@ namespace GeneralTest
       auto const& nodesA = treeActual.GetNodes();
       Assert::AreEqual(nodesE.size(), nodesA.size());
 
-      auto const vidE = treeExpected.CollectAllIdInBFS();
-      auto const vidA = treeActual.CollectAllIdInBFS();
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
       Assert::IsTrue(vidE == vidA);
     }
 
@@ -491,7 +491,7 @@ namespace GeneralTest
       auto const kNode = DualtreePoint::SI::GetHash(2, 2);
       auto const& node = tree.GetNode(kNode);
       Assert::AreEqual<size_t>(node.Entities.size(), 1);
-      tree.EraseId(2);
+      tree.EraseEntity(2);
       Assert::IsTrue(node.Entities.empty());
 
       auto const kNode3 = DualtreePoint::SI::GetHash(2, 3);
@@ -628,7 +628,7 @@ namespace GeneralTest
         }
       );
 
-      auto const ids = tree.CollectAllIdInBFS();
+      auto const ids = tree.CollectAllEntitiesInBFS();
 
       Assert::IsTrue(ids == vector<size_t>{3, 5, 1, 0, 2, 6 }); // instead of { 6, 4, 5, 0, 1, 2, 3 }
     }
@@ -1333,7 +1333,7 @@ namespace Tree1DTest
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
       
       Assert::IsTrue(tree.Update(3, { 1.1 }));
-      auto const ids = tree.CollectAllIdInBFS();
+      auto const ids = tree.CollectAllEntitiesInBFS();
       Assert::IsTrue(ids == vector<std::size_t>{ 0, 1, 3, 2 });
     }
 
@@ -1344,7 +1344,7 @@ namespace Tree1DTest
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Update(2, { 1.1 }));
-      auto const ids = tree.CollectAllIdInBFS();
+      auto const ids = tree.CollectAllEntitiesInBFS();
       Assert::IsTrue(ids == vector<std::size_t>{ 0, 1, 2, 3 });
     }
 
@@ -1355,9 +1355,9 @@ namespace Tree1DTest
 
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
-      auto const idsPre = tree.CollectAllIdInBFS();
+      auto const idsPre = tree.CollectAllEntitiesInBFS();
       Assert::IsFalse(tree.Update(2, { 3.1 }));
-      auto const idsPost = tree.CollectAllIdInBFS();
+      auto const idsPost = tree.CollectAllEntitiesInBFS();
 
       Assert::IsTrue(idsPre == idsPost);
     }
@@ -1369,7 +1369,7 @@ namespace Tree1DTest
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Erase(3, vpt.back()));
-      auto const ids = tree.CollectAllIdInBFS();
+      auto const ids = tree.CollectAllEntitiesInBFS();
       Assert::IsTrue(std::ranges::find(ids, 3) == end(ids));
     }
 
@@ -1378,9 +1378,9 @@ namespace Tree1DTest
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
-      auto const idsPre = tree.CollectAllIdInBFS();
+      auto const idsPre = tree.CollectAllEntitiesInBFS();
       Assert::IsFalse(tree.Erase(4, vpt.back()));
-      auto const idsPost = tree.CollectAllIdInBFS();
+      auto const idsPost = tree.CollectAllEntitiesInBFS();
 
       Assert::IsTrue(idsPre == idsPost);
     }
@@ -1390,9 +1390,9 @@ namespace Tree1DTest
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
 
-      auto const idsPre = tree.CollectAllIdInBFS();
+      auto const idsPre = tree.CollectAllEntitiesInBFS();
       Assert::IsFalse(tree.Erase(3, vpt.front()));
-      auto const idsPost = tree.CollectAllIdInBFS();
+      auto const idsPost = tree.CollectAllEntitiesInBFS();
 
       Assert::IsTrue(idsPre == idsPost);
     }
@@ -1623,7 +1623,7 @@ namespace Tree1DTest
       auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
       tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, false);
       tree.Insert(5, BoundingBox1D{ 3.5, 3.7 }, true);
-      tree.EraseId(3);
+      tree.EraseEntity(3);
       tree.Update(4, BoundingBox1D{ 3.8, 3.9 });
       tree.Update(0, vBoxL.front(), BoundingBox1D{ 3.8, 3.9 });
       tree.Update(1, vBoxL[1]);
@@ -2395,7 +2395,7 @@ namespace Tree3DTest
       tree.Update(8, points[8], points);
       auto const nodeID_8_u1 = tree.GetNodeIDByEntity(8);
 
-      auto const entitiesInBFS = tree.CollectAllIdInBFS();
+      auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
 
       Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_6_u1, 18612224);    
       Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_2_u3, 69);   
@@ -2626,7 +2626,7 @@ namespace Tree3DTest
       auto const nodeID_8_u1 = tree.GetNodeIDByEntity(8);
       Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_8_u1, 65508); // It should move
 
-      auto const entitiesInBFS = tree.CollectAllIdInBFS();
+      auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
       Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 6, 0, 0, 1, 10, 2, 3, 5, 7, 8, 4, 9, }); // [0] should be repetead, because it is splitted. 
     }
 

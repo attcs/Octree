@@ -1881,7 +1881,7 @@ namespace OrthoTree
       return ext;
     }
 
-    bool IsEveryItemIdUnique() const noexcept
+    bool IsEveryEntityUnique() const noexcept
     {
       auto ids = std::vector<TEntityID>();
       ids.reserve(100);
@@ -2011,7 +2011,7 @@ namespace OrthoTree
 
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-        assert(this->IsEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
+        assert(this->IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
 
       return true;
     }
@@ -2023,7 +2023,7 @@ namespace OrthoTree
       {
         detail::at(this->m_nodes, entityNodeKey).Entities.emplace_back(entityID);
         if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-          assert(this->IsEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
+          assert(this->IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
         return true;
       }
 
@@ -2068,7 +2068,7 @@ namespace OrthoTree
       }
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-        assert(this->IsEveryItemIdUnique()); // Assert means: index is already added. Wrong input!
+        assert(this->IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
 
       return true;
     }
@@ -2254,7 +2254,7 @@ namespace OrthoTree
 
 
     // Collect all item id, traversing the tree in breadth-first search order
-    std::vector<TEntityID> CollectAllIdInBFS(MortonNodeIDCR rootKey = SI::GetRootKey()) const noexcept
+    std::vector<TEntityID> CollectAllEntitiesInBFS(MortonNodeIDCR rootKey = SI::GetRootKey()) const noexcept
     {
       auto entityIDs = std::vector<TEntityID>();
       entityIDs.reserve(m_nodes.size() * std::max<std::size_t>(2, m_maxElementNo / 2));
@@ -2266,18 +2266,18 @@ namespace OrthoTree
     }
 
   private:
-    void CollectAllIdInDFSRecursive(Node const& parentNode, std::vector<TEntityID>& foundEntities) const noexcept
+    void CollectAllEntitiesInDFSRecursive(Node const& parentNode, std::vector<TEntityID>& foundEntities) const noexcept
     {
       foundEntities.insert(foundEntities.end(), parentNode.Entities.begin(), parentNode.Entities.end());
       for (MortonNodeIDCR childKey : parentNode.GetChildren())
-        CollectAllIdInDFSRecursive(this->GetNode(childKey), foundEntities);
+        CollectAllEntitiesInDFSRecursive(this->GetNode(childKey), foundEntities);
     }
 
   public:
-    std::vector<TEntityID> CollectAllIdInDFS(MortonNodeIDCR parentKey = SI::GetRootKey()) const noexcept
+    std::vector<TEntityID> CollectAllEntitiesInDFS(MortonNodeIDCR parentKey = SI::GetRootKey()) const noexcept
     {
       auto entityIDs = std::vector<TEntityID>{};
-      CollectAllIdInDFSRecursive(GetNode(parentKey), entityIDs);
+      CollectAllEntitiesInDFSRecursive(GetNode(parentKey), entityIDs);
       return entityIDs;
     }
 
@@ -2303,7 +2303,7 @@ namespace OrthoTree
       });
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-        assert(IsEveryItemIdUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
+        assert(IsEveryEntityUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
     }
 
 
@@ -2489,7 +2489,7 @@ namespace OrthoTree
 
       if (limitedDimensionsMask == MortonLocationID{} && IGM::DoesRangeContainBoxAD(range, this->GetNodeBox(depthID, center)))
       {
-        CollectAllIdInDFSRecursive(currentNode, foundEntities);
+        CollectAllEntitiesInDFSRecursive(currentNode, foundEntities);
         return;
       }
 
@@ -2834,7 +2834,7 @@ namespace OrthoTree
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
     template<bool DO_UPDATE_ENTITY_IDS = std::is_same_v<TEntity, typename TContainer::value_type>>
-    constexpr bool EraseId(TEntityID entityID) noexcept
+    constexpr bool EraseEntity(TEntityID entityID) noexcept
     {
       bool isErased = false;
       for (auto& [nodeKey, node] : this->m_nodes)
@@ -2894,7 +2894,7 @@ namespace OrthoTree
       if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
-      if (!this->EraseId<false>(entityID))
+      if (!this->EraseEntity<false>(entityID))
         return false;
 
       return this->Insert(entityID, newPoint, doesInsertToLeaf);
@@ -2920,7 +2920,7 @@ namespace OrthoTree
       if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
-      if (!this->EraseId<false>(entityID))
+      if (!this->EraseEntity<false>(entityID))
         return false;
 
       return this->InsertWithRebalancing(entityID, newPoint, points);
@@ -3460,7 +3460,7 @@ namespace OrthoTree
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
     template<bool DO_UPDATE_ENTITY_IDS = true>
-    constexpr bool EraseId(TEntityID idErase) noexcept
+    constexpr bool EraseEntity(TEntityID idErase) noexcept
     {
       bool isErased = false;
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
@@ -3511,7 +3511,7 @@ namespace OrthoTree
       if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), boxNew))
         return false;
 
-      if (!this->EraseId<false>(entityID))
+      if (!this->EraseEntity<false>(entityID))
         return false;
 
       return this->Insert(entityID, boxNew, doInsertToLeaf);
@@ -3541,7 +3541,7 @@ namespace OrthoTree
       if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), boxNew))
         return false;
 
-      if (!this->EraseId<false>(entityID))
+      if (!this->EraseEntity<false>(entityID))
         return false;
 
       return this->InsertWithRebalancing(entityID, boxNew, boxes);

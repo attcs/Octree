@@ -322,10 +322,10 @@ namespace
 
     auto tree = TOrthoTreeA(points_span, 3, std::nullopt, 2);
 
-    auto const entityIDsInBFSActual = tree.CollectAllIdInBFS(TOrthoTreeA::SI::GetRootKey());
+    auto const entityIDsInBFSActual = tree.CollectAllEntitiesInBFS(TOrthoTreeA::SI::GetRootKey());
     auto const entityIDsInBFSExpected = std::vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 };
 
-    auto const entityIDsInDFSActual = tree.CollectAllIdInDFS(TOrthoTreeA::SI::GetRootKey());
+    auto const entityIDsInDFSActual = tree.CollectAllEntitiesInDFS(TOrthoTreeA::SI::GetRootKey());
     auto const entityIDsInDFSExpected = std::vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 };
 
     auto const pointsInSearchBoxActual = tree.RangeSearch(searchBox, points);
@@ -339,7 +339,7 @@ namespace
 
     tree.Insert(pointNo - 1, points.back());
     tree.template Erase<false>(0, points[0]);
-    auto const entityIDsInDFS_AfterErase_Actual = tree.CollectAllIdInDFS();
+    auto const entityIDsInDFS_AfterErase_Actual = tree.CollectAllEntitiesInDFS();
     auto const entityIDsInDFS_AfterErase_Expected = std::vector<std::size_t>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 };
 
     auto const entityIDsKNNActual = tree.GetNearestNeighbors(pointOfkNN, 3, points);
@@ -480,10 +480,10 @@ namespace
     auto const boxesInFrustumActual = quadtree.FrustumCulling(frustumPlanes, GeometryA(0.01));
     auto const boxesInFrustumExpected = std::vector<std::size_t>{ 1, 2, 4 };
 
-    auto const entityIDsInDFSActual = quadtree.CollectAllIdInBFS();
+    auto const entityIDsInDFSActual = quadtree.CollectAllEntitiesInBFS();
     auto const entityIDsInDFSExpected = std::vector<std::size_t>{ 4, 0, 1, 2, 3 };
 
-    auto const entityIDsInBFSActual = quadtree.CollectAllIdInDFS();
+    auto const entityIDsInBFSActual = quadtree.CollectAllEntitiesInDFS();
     auto const entityIDsInBFSExpected = std::vector<std::size_t>{ 4, 0, 1, 2, 3 };
 
     if (!doCheck)
