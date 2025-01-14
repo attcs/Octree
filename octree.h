@@ -1401,13 +1401,13 @@ namespace OrthoTree
         UnderlyingInt m_shift;
       };
 
-      static constexpr NodeID GetHash(DepthAndLocationID const& location) noexcept
+      static constexpr NodeID GetHash(auto&& location) noexcept
       {
         assert(location.LocID < (NodeID(1) << (location.DepthID * DIMENSION_NO)));
         return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | location.LocID;
       }
 
-      static constexpr NodeID GetHash(depth_t depth, LocationID locationID) noexcept
+      static constexpr NodeID GetHash(depth_t depth, LocationIDCR locationID) noexcept
       {
         assert(locationID < (NodeID(1) << (depth * DIMENSION_NO)));
         return (NodeID{ 1 } << (depth * DIMENSION_NO)) | locationID;
