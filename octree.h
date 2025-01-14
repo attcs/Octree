@@ -75,17 +75,10 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #endif
 
 #ifdef __cpp_lib_execution
-#define EXEC_POL_TEMPLATE_DECL template<typename TExecutionPolicy = std::execution::unsequenced_policy>
-#define EXEC_POL_TEMPLATE_PARAM typename TExecutionPolicy = std::execution::unsequenced_policy,
-#define EXEC_POL_TEMPLATE_ADD(func) template func<TExecutionPolicy>
-#define EXEC_POL_TEMPLATE_ADDF(func) func<TExecutionPolicy>
-#define EXEC_POL_DEF(e) TExecutionPolicy constexpr e
+#define EXEC_POL_DEF(e) \
+  std::conditional_t<IS_PARALLEL_EXEC, std::execution::parallel_unsequenced_policy, std::execution::unsequenced_policy> constexpr e
 #define EXEC_POL_ADD(e) e,
 #else
-#define EXEC_POL_TEMPLATE_DECL
-#define EXEC_POL_TEMPLATE_PARAM
-#define EXEC_POL_TEMPLATE_ADD(func) func
-#define EXEC_POL_TEMPLATE_ADDF(func) func
 #define EXEC_POL_DEF(e)
 #define EXEC_POL_ADD(e)
 #endif
@@ -2289,7 +2282,7 @@ namespace OrthoTree
     }
 
     // Update all element which are in the given hash-table.
-    template<EXEC_POL_TEMPLATE_PARAM bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
+    template<bool IS_PARALLEL_EXEC = false, bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
     void UpdateIndexes(std::unordered_map<TEntityID, std::optional<TEntityID>> const& updateMap) noexcept
     {
       auto const updateMapEndIterator = updateMap.end();
@@ -2331,7 +2324,7 @@ namespace OrthoTree
 
 
     // Move the whole tree with a std::vector of the movement
-    EXEC_POL_TEMPLATE_DECL
+    template<bool IS_PARALLEL_EXEC = false>
     void Move(TVector const& moveVector) noexcept
     {
 #ifndef ORTHOTREE__DISABLED_NODECENTER
@@ -2775,7 +2768,7 @@ namespace OrthoTree
 
   public: // Create
     // Create
-    EXEC_POL_TEMPLATE_DECL
+    template<bool IS_PARALLEL_EXEC = false>
     static void Create(
       OrthoTreePoint& tree,
       TContainer const& points,
@@ -3274,7 +3267,7 @@ namespace OrthoTree
 
   public: // Create
     // Create
-    EXEC_POL_TEMPLATE_DECL
+    template<bool IS_PARALLEL_EXEC = false>
     static void Create(
       OrthoTreeBoundingBox& tree,
       TContainer const& boxes,
@@ -3294,15 +3287,8 @@ namespace OrthoTree
       auto constexpr rootKey = SI::GetRootKey();
       auto& nodeRoot = detail::at(tree.m_nodes, rootKey);
 
-      auto constexpr NON_SPLITTED = SPLIT_DEPTH_INCREASEMENT == 0;
-#ifdef __cpp_lib_execution
-      auto constexpr NON_PARALLEL = std::is_same<TExecutionPolicy, std::execution::unsequenced_policy>::value ||
-                                    std::is_same<TExecutionPolicy, std::execution::sequenced_policy>::value;
-#else
-      auto constexpr NON_PARALLEL = true;
-#endif
-
       auto locations = LocationContainer(entityNo);
+      auto constexpr NON_SPLITTED = SPLIT_DEPTH_INCREASEMENT == 0;
       if constexpr (NON_SPLITTED)
       {
         EXEC_POL_DEF(epf); // GCC 11.3
@@ -3310,7 +3296,7 @@ namespace OrthoTree
           return tree.GetEntityLocation(detail::getKeyPart(boxes, box), detail::getValuePart(box), nullptr);
         });
       }
-      else if constexpr (NON_PARALLEL)
+      else if constexpr (!IS_PARALLEL_EXEC)
       {
         locations.reserve(entityNo * std::min<std::size_t>(10, std::size_t{ SI::CHILD_NO } * std::size_t{ SPLIT_DEPTH_INCREASEMENT }));
 
@@ -3878,24 +3864,18 @@ namespace OrthoTree
     }
 
     // Collision detection between the stored elements from bottom to top logic
-    EXEC_POL_TEMPLATE_DECL std::vector<std::pair<TEntityID, TEntityID>> CollectCollidedEntities(
+    template<bool IS_PARALLEL_EXEC = false>
+    std::vector<std::pair<TEntityID, TEntityID>> CollectCollidedEntities(
       TContainer const& boxes, std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
       using CollisionDetectionContainer = std::vector<std::pair<TEntityID, TEntityID>>;
       using CollisionDetectionContainerMap = std::unordered_set<std::pair<TEntityID, TEntityID>, detail::pair_hash>;
 
-#ifdef __cpp_lib_execution
-      auto constexpr NON_PARALLEL = std::is_same<TExecutionPolicy, std::execution::unsequenced_policy>::value ||
-                                    std::is_same<TExecutionPolicy, std::execution::sequenced_policy>::value;
-#else
-      auto constexpr NON_PARALLEL = true;
-#endif
-
       auto const entityNo = boxes.size();
       auto collidedEntityPairs = CollisionDetectionContainer{};
       collidedEntityPairs.reserve(boxes.size());
       auto collidedEntityPairsMap = CollisionDetectionContainerMap{};
-      if constexpr (NON_PARALLEL)
+      if constexpr (!IS_PARALLEL_EXEC)
       {
         if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
         {
@@ -3961,18 +3941,18 @@ namespace OrthoTree
 
   public:
     // Collision detection between the stored elements from bottom to top logic
-    EXEC_POL_TEMPLATE_DECL
+    template<bool IS_PARALLEL_EXEC = false>
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer const& boxes) const noexcept
     {
-      return EXEC_POL_TEMPLATE_ADDF(CollectCollidedEntities)(boxes, std::nullopt);
+      return CollectCollidedEntities<IS_PARALLEL_EXEC>(boxes, std::nullopt);
     }
 
 
     // Collision detection between the stored elements from bottom to top logic
-    EXEC_POL_TEMPLATE_DECL
+    template<bool IS_PARALLEL_EXEC = false>
     inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer const& boxes, FCollisionDetector&& collisionDetector) const noexcept
     {
-      return EXEC_POL_TEMPLATE_ADDF(CollectCollidedEntities)(boxes, collisionDetector);
+      return CollectCollidedEntities<IS_PARALLEL_EXEC>(boxes, collisionDetector);
     }
 
   private:

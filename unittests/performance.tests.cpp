@@ -266,7 +266,7 @@ namespace PerformaceTest
 
       auto nt = TreePointND<nDim>{};
       if (fPar)
-        TreePointND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, Box);
+        TreePointND<nDim>::template Create<true>(nt, aPoint, depth, Box);
       else
         TreePointND<nDim>::Create(nt, aPoint, depth, Box);
 
@@ -319,7 +319,7 @@ namespace PerformaceTest
 
       auto nt = TreeBoxND<nDim>{};
       if (fPar)
-        TreeBoxND<nDim>::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, Box);
+        TreeBoxND<nDim>::template Create<true>(nt, aBox, depth, Box);
       else
         TreeBoxND<nDim>::Create(nt, aBox, depth, Box);
 

@@ -1468,7 +1468,7 @@ namespace Tree1DTest
       };
 
       auto quadtreebox = QuadtreeBox{};
-      QuadtreeBox::Create<std::execution::parallel_unsequenced_policy>(quadtreebox, boxes, 2
+      QuadtreeBox::Create<true>(quadtreebox, boxes, 2
         , std::nullopt // user-provided bounding Box for all
         , 2            // max element in a node 
       );
@@ -2302,7 +2302,7 @@ namespace Tree3DTest
           {+4, +4, +4}
       },
         2);
-      tree.UpdateIndexes<std::execution::parallel_policy, false>({});
+      tree.UpdateIndexes<true, false>({});
 
       auto const isOutsiderInserted = tree.Insert(pointNo, Point3D{ +5.0, +4.0, +4.0}, false);
       Assert::IsFalse(isOutsiderInserted);

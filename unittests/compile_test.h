@@ -19,7 +19,7 @@
 
 // Enforce the compilation of all template function
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
 void testCompilePoint()
 {
   using Point = OrthoTree::PointND<N>;
@@ -98,19 +98,19 @@ void testCompilePoint()
     tree.Update(2, vpt[2], vpt[3]);
     tree.Update(3, vpt[4]);
     tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
-    tree.EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, vpt, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt, 4);
   }
 }
 
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
 void testCompilePointMap()
 {
   using Point = OrthoTree::PointND<N>;
@@ -208,18 +208,18 @@ void testCompilePointMap()
       {11, std::nullopt},
       {3,            4}
     });
-    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, vpt, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt, 4);
   }
 }
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBox()
 {
   using Vector = OrthoTree::VectorND<N>;
@@ -265,7 +265,7 @@ void testCompileBox()
     auto const nodes = tree.GetNodes();
     auto const grid = tree.GetResolutionMax();
 
-    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
+    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
     auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
     auto const aidPick = tree.PickSearch({}, boxes);
@@ -302,18 +302,18 @@ void testCompileBox()
     tree.Update(2, boxes[2], boxes[3]);
     tree.Update(3, boxes[4]);
     tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
-    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, boxes, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes, 4);
   }
 }
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxMap()
 {
   using Vector = OrthoTree::VectorND<N>;
@@ -359,7 +359,7 @@ void testCompileBoxMap()
     auto const nodes = tree.GetNodes();
     auto const grid = tree.GetResolutionMax();
 
-    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
+    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
     auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
     auto const aidPick = tree.PickSearch({}, boxes);
@@ -409,19 +409,19 @@ void testCompileBoxMap()
       {17, std::nullopt},
       {23,            22}
     });
-    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes.at(13), 3, 12);
     tree.Reset();
 
-    OT:: EXEC_POL_TEMPLATE_ADD(Create)(tree, boxes, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes, 4);
   }
 }
 
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
 void testCompilePointC()
 {
   using Point = OrthoTree::PointND<N>;
@@ -473,19 +473,19 @@ void testCompilePointC()
     tree.Add(vpt[2]);
     tree.Erase(2);
     tree.Update(3, vpt[4]);
-    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(vpt, 4);
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } }, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } }, 4);
   }
 }
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
 void testCompilePointMapC()
 {
   using Point = OrthoTree::PointND<N>;
@@ -550,15 +550,15 @@ void testCompilePointMapC()
     tree.Add(60, vpt.at(20));
     tree.Erase(20);
     tree.Update(30, vpt.at(40));
-    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(vpt, 4);
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(
+    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(
       Map{
         { 11, Point{ 0.0 } },
         { 21, Point{ 1.0 } },
@@ -571,7 +571,7 @@ void testCompilePointMapC()
 }
 
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
@@ -602,7 +602,7 @@ void testCompileBoxC()
     auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
     auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
+    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
     auto const vidCollisionTree = tree.CollisionDetection(tree);
    
     auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
@@ -626,15 +626,15 @@ void testCompileBoxC()
     tree.Add(boxes[0]);
     tree.Erase(2);
     tree.Update(3, boxes[4]);
-    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(boxes, 4);
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(
+    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(
       std::vector
       {
         BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -649,7 +649,7 @@ void testCompileBoxC()
 
 }
 
-template<OrthoTree::dim_t N, typename TExecutionPolicy, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxMapC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
@@ -681,7 +681,7 @@ void testCompileBoxMapC()
     auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(30));
     auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(30));
 
-    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
+    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
     auto const vidCollisionTree = tree.CollisionDetection(tree);
 
     auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
@@ -712,15 +712,15 @@ void testCompileBoxMapC()
     tree.Add(11, boxes.at(10));
     tree.Erase(20);
     tree.Update(40, boxes.at(30));
-    tree. EXEC_POL_TEMPLATE_ADD(Move)({ 1.0, 1.0 });
+    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes.at(5), 3, 12);
     tree.Reset();
 
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(boxes, 4);
-    tree = OT:: EXEC_POL_TEMPLATE_ADD(Create)(
+    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(
       Map{
         { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
         { 15, BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
@@ -733,90 +733,90 @@ void testCompileBoxMapC()
 }
 
 
-template<typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxBatchDimension()
 {
   auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
 
   // Core types
   {
-    testCompilePoint<2, execution_policy_type>();
-    testCompilePoint<3, execution_policy_type>();
-    testCompilePoint<4, execution_policy_type>();
-    testCompilePoint<5, execution_policy_type>();
-    testCompilePoint<6, execution_policy_type>();
-    testCompilePoint<7, execution_policy_type>();
-    testCompilePoint<8, execution_policy_type>();
-    testCompilePoint<12, execution_policy_type>();
-    testCompilePoint<16, execution_policy_type>();
-    testCompilePoint<31, execution_policy_type>();
+    testCompilePoint<2, IS_PARALLEL_EXEC>();
+    testCompilePoint<3, IS_PARALLEL_EXEC>();
+    testCompilePoint<4, IS_PARALLEL_EXEC>();
+    testCompilePoint<5, IS_PARALLEL_EXEC>();
+    testCompilePoint<6, IS_PARALLEL_EXEC>();
+    testCompilePoint<7, IS_PARALLEL_EXEC>();
+    testCompilePoint<8, IS_PARALLEL_EXEC>();
+    testCompilePoint<12, IS_PARALLEL_EXEC>();
+    testCompilePoint<16, IS_PARALLEL_EXEC>();
+    testCompilePoint<31, IS_PARALLEL_EXEC>();
     if constexpr (isPlatform64)
     {
-      testCompilePoint<32, execution_policy_type>();
-      testCompilePoint<63, execution_policy_type>();
+      testCompilePoint<32, IS_PARALLEL_EXEC>();
+      testCompilePoint<63, IS_PARALLEL_EXEC>();
     }
-    testCompilePointMap<2, execution_policy_type>();
-    testCompilePointMap<3, execution_policy_type>();
+    testCompilePointMap<2, IS_PARALLEL_EXEC>();
+    testCompilePointMap<3, IS_PARALLEL_EXEC>();
 
-    testCompileBox<2, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<3, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<4, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<5, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<6, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<7, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<8, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<12, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<16, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBox<31, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    testCompileBox<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<4, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<5, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<6, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<7, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<8, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<12, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<16, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<31, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
     if constexpr (isPlatform64)
     {
-      testCompileBox<32, execution_policy_type, nSplitStrategyAdditionalDepth>();
-      testCompileBox<63, execution_policy_type, nSplitStrategyAdditionalDepth>();
+      testCompileBox<32, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+      testCompileBox<63, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
     }
 
-    testCompileBoxMap<2, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxMap<3, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    testCompileBoxMap<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxMap<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
   }
   
   // Container types
   {
-    testCompilePointC<2, execution_policy_type>();
-    testCompilePointC<3, execution_policy_type>();
-    testCompilePointC<4, execution_policy_type>();
-    testCompilePointC<5, execution_policy_type>();
-    testCompilePointC<6, execution_policy_type>();
-    testCompilePointC<7, execution_policy_type>();
-    testCompilePointC<8, execution_policy_type>();
-    testCompilePointC<12, execution_policy_type>();
-    testCompilePointC<16, execution_policy_type>();
-    testCompilePointC<31, execution_policy_type>();
+    testCompilePointC<2, IS_PARALLEL_EXEC>();
+    testCompilePointC<3, IS_PARALLEL_EXEC>();
+    testCompilePointC<4, IS_PARALLEL_EXEC>();
+    testCompilePointC<5, IS_PARALLEL_EXEC>();
+    testCompilePointC<6, IS_PARALLEL_EXEC>();
+    testCompilePointC<7, IS_PARALLEL_EXEC>();
+    testCompilePointC<8, IS_PARALLEL_EXEC>();
+    testCompilePointC<12, IS_PARALLEL_EXEC>();
+    testCompilePointC<16, IS_PARALLEL_EXEC>();
+    testCompilePointC<31, IS_PARALLEL_EXEC>();
     if constexpr (isPlatform64)
     {
-      testCompilePointC<32, execution_policy_type>();
-      testCompilePointC<63, execution_policy_type>();
+      testCompilePointC<32, IS_PARALLEL_EXEC>();
+      testCompilePointC<63, IS_PARALLEL_EXEC>();
     }
-    testCompilePointMapC<2, execution_policy_type>();
-    testCompilePointMapC<3, execution_policy_type>();
+    testCompilePointMapC<2, IS_PARALLEL_EXEC>();
+    testCompilePointMapC<3, IS_PARALLEL_EXEC>();
 
-    testCompileBoxC<2, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<3, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<4, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<5, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<6, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<7, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<8, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<12, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<16, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<31, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<4, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<5, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<6, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<7, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<8, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<12, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<16, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<31, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
 
     if constexpr (isPlatform64)
     {
-      testCompileBoxC<32, execution_policy_type, nSplitStrategyAdditionalDepth>();
-      testCompileBoxC<63, execution_policy_type, nSplitStrategyAdditionalDepth>();
+      testCompileBoxC<32, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+      testCompileBoxC<63, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
     }
 
-    testCompileBoxMapC<2, execution_policy_type, nSplitStrategyAdditionalDepth>();
-    testCompileBoxMapC<3, execution_policy_type, nSplitStrategyAdditionalDepth>();
+    testCompileBoxMapC<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxMapC<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
   }
 }
 
@@ -825,13 +825,10 @@ template<uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxBatchExPol()
 {
 #ifdef __cpp_lib_execution
-  testCompileBoxBatchDimension<std::execution::sequenced_policy, nSplitStrategyAdditionalDepth>();
-  testCompileBoxBatchDimension<std::execution::unsequenced_policy, nSplitStrategyAdditionalDepth>();
-  testCompileBoxBatchDimension<std::execution::parallel_policy, nSplitStrategyAdditionalDepth>();
-  testCompileBoxBatchDimension<std::execution::parallel_unsequenced_policy, nSplitStrategyAdditionalDepth>();
+  testCompileBoxBatchDimension<false, nSplitStrategyAdditionalDepth>();
+  testCompileBoxBatchDimension<true, nSplitStrategyAdditionalDepth>();
 #else
-  struct ExecPolDummy{};
-  testCompileBoxBatchDimension<ExecPolDummy, nSplitStrategyAdditionalDepth>();
+  testCompileBoxBatchDimension<false, nSplitStrategyAdditionalDepth>();
 #endif
 }
 

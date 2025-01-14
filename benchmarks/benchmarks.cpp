@@ -417,7 +417,7 @@ namespace
 
     auto nt = TreePoint{};
     if (fPar)
-      TreePoint::template Create<std::execution::parallel_unsequenced_policy>(nt, aPoint, depth, box);
+      TreePoint::template Create<true>(nt, aPoint, depth, box);
     else
       TreePoint::Create(nt, aPoint, depth, box);
 
@@ -446,7 +446,7 @@ namespace
 
     auto nt = TreeBox{};
     if (fPar)
-      TreeBox::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, depth, box);
+      TreeBox::template Create<true>(nt, aBox, depth, box);
     else
       TreeBox::Create(nt, aBox, depth, box);
 
@@ -606,8 +606,8 @@ namespace
           auto nt = TreeBox{};
           if (fPar)
           {
-            TreeBox::template Create<std::execution::parallel_unsequenced_policy>(nt, aBox, nDepth_, boxMax);
-            auto const vPair = nt.template CollisionDetection<std::execution::parallel_unsequenced_policy>(aBox);
+            TreeBox::template Create<true>(nt, aBox, nDepth_, boxMax);
+            auto const vPair = nt.template CollisionDetection<true>(aBox);
             return vPair.size();
           }
           else

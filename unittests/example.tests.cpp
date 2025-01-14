@@ -69,9 +69,9 @@ namespace Example
     {
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
       auto octreebox = OctreeBox{};
-      OctreeBox::Create<std::execution::parallel_unsequenced_policy>(octreebox, boxes, 3);
+      OctreeBox::Create<true>(octreebox, boxes, 3);
       // or
-      // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      // TreeBoxND<3>::template Create<true>(boxes, 3);
     }
 
 
@@ -144,10 +144,10 @@ namespace Example
       }
       // Using Create
       {
-        auto octreeBox = OctreeBoxC::Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+        auto octreeBox = OctreeBoxC::Create<true>(boxes, 3);
       }
       // or
-      // TreeBoxND<3>::template Create<std::execution::parallel_unsequenced_policy>(boxes, 3);
+      // TreeBoxND<3>::template Create<true>(boxes, 3);
     }
 
     TEST_METHOD(Example2Map)
