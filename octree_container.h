@@ -54,10 +54,10 @@ namespace OrthoTree
   public: // Constructors
     OrthoTreeContainerBase() noexcept = default;
 
-    OrthoTreeContainerBase(
+    explicit OrthoTreeContainerBase(
       std::span<TEntity const> const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
@@ -65,7 +65,7 @@ namespace OrthoTree
     {
 #ifdef __cpp_lib_execution
       if (isParallelCreation){
-        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
         return;
       }
 #else
@@ -75,17 +75,17 @@ namespace OrthoTree
       OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
     
-    OrthoTreeContainerBase(
+    explicit OrthoTreeContainerBase(
       TContainer const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(geometryCollection)
     {
 #ifdef __cpp_lib_execution
       if (isParallelCreation) {
-        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
         return;
       }
 #else
@@ -95,17 +95,17 @@ namespace OrthoTree
       OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
     
-    OrthoTreeContainerBase(
+    explicit OrthoTreeContainerBase(
       TContainer&& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
     : m_geometryCollection(std::move(geometryCollection))
     {
 #ifdef __cpp_lib_execution
       if (isParallelCreation) {
-        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+        OrthoTreeCore::template Create<std::execution::parallel_unsequenced_policy>(m_tree, m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
         return;
       }
 #else
@@ -252,13 +252,13 @@ namespace OrthoTree
     static OrthoTreeContainerPoint Create(
       std::span<TEntity const> const& geometryCollectionSpan,
       depth_t maxDepthNo = 0,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::vector(geometryCollectionSpan.begin(), geometryCollectionSpan.end());
-      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
     
@@ -266,12 +266,12 @@ namespace OrthoTree
     static OrthoTreeContainerPoint Create(
       TContainer const& geometryCollection,
       depth_t maxDepthNo = 0,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = geometryCollection;
-      OrthoTreeCore::EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
     
@@ -279,22 +279,22 @@ namespace OrthoTree
     static OrthoTreeContainerPoint Create(
       TContainer&& geometryCollection,
       depth_t maxDepthNo = 0,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerPoint();
       otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore::EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore::EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
 
     EXEC_POL_TEMPLATE_DECL
-    void Move(TVector const& vMove) noexcept
+    void Move(TVector const& moveVector) noexcept
     {
-      this->m_tree. EXEC_POL_TEMPLATE_ADD(Move)(vMove);
+      this->m_tree. EXEC_POL_TEMPLATE_ADD(Move)(moveVector);
       EXEC_POL_DEF(ep); // GCC 11.3
-      std::for_each(EXEC_POL_ADD(ep) this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&vMove](auto& data) {
-        detail::setValuePart(data, AD::Add(detail::getValuePart(data), vMove));
+      std::for_each(EXEC_POL_ADD(ep) this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&moveVector](auto& data) {
+        detail::setValuePart(data, AD::Add(detail::getValuePart(data), moveVector));
       });
     }
 
@@ -352,13 +352,13 @@ namespace OrthoTree
     static OrthoTreeContainerBox Create(
       std::span<TEntity const> const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
-      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
 
@@ -366,12 +366,12 @@ namespace OrthoTree
     static OrthoTreeContainerBox Create(
       TContainer const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = geometryCollection;
-      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
 
@@ -379,12 +379,12 @@ namespace OrthoTree
     static OrthoTreeContainerBox Create(
       TContainer&& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
-      std::optional<TBox> const& boxSpace = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       auto otc = OrthoTreeContainerBox();
       otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+      OrthoTreeCore:: EXEC_POL_TEMPLATE_ADD(Create)(otc.m_tree, otc.m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
 
