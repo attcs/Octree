@@ -114,7 +114,7 @@ namespace AdaptorTest
 
   static bool AreEqualAlmost(MyBox2D const& l, MyBox2D const& r) noexcept
   {
-    for (autoc iMax : { 0, 1 })
+    for (auto const iMax : { 0, 1 })
       for (dim_t iD = 0; iD < 2; ++iD)
       {
         if (l[iMax].x == r[iMax].x)
@@ -132,12 +132,12 @@ namespace AdaptorTest
   public:
     TEST_METHOD(Empty)
     {
-      autoc tree = QuadtreePointCustom(vector<MyPoint2D>{}, 2);
-      autoc& nodes = tree.GetNodes();
+      auto const tree = QuadtreePointCustom(vector<MyPoint2D>{}, 2);
+      auto const& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
       Assert::IsTrue(nodes.at(1).Entities.empty());
 
-      autoc& box = tree.GetBox();
+      auto const& box = tree.GetBox();
       Assert::IsTrue(AreEqualAlmost(
         MyBox2D{
           MyPoint2D{box.Min[0], box.Min[1]},
@@ -148,19 +148,19 @@ namespace AdaptorTest
 
     TEST_METHOD(Insert_NonLeaf_Successful)
     {
-      autoce vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
+      auto constexpr vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
       auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Insert(4, MyPoint2D{ 2.5, 2.5 }, false));
 
-      autoc& nodes = tree.GetNodes();
+      auto const& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
       Assert::IsTrue(nodes.at(QuadtreePointCustom::SI::GetHash(2, 15)).Entities == vector<size_t>{ 3, 4 });
     }
 
     TEST_METHOD(Contains__1__True)
     {
-      autoce vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
+      auto constexpr vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
       auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 2);
 
       Assert::IsTrue(tree.Contains(vpt[1], vpt, 0));
@@ -206,7 +206,7 @@ namespace AdaptorTest
 
         auto pointsInFrustum = tree.FrustumCulling(planes, 0.01, vpt);
           
-        autoc n = vpt.size();
+        auto const n = vpt.size();
         vpt.push_back(Eigen::Vector3d(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);
@@ -342,7 +342,7 @@ namespace AdaptorTest
           0.01f,
           vpt);
 
-        autoc n = vpt.size();
+        auto const n = vpt.size();
         vpt.push_back(BasicTypesXYZ::Point3D(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);
@@ -595,7 +595,7 @@ namespace AdaptorTest
         planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(+1.0f, 0.0f) });
         auto pointsInFrustum = tree.FrustumCulling(planesForFustrum, 0.01f, vptView);
 
-        autoc n = vptView.size();
+        auto const n = vptView.size();
         vptView.emplace_back(vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.1f)).get());
         tree.Insert(n, vptOwner.back().get());
         tree.Erase<false>(0, vptOwner.front().get());
@@ -737,7 +737,7 @@ namespace AdaptorTest
         auto sqrt3Reciproc = 1.0 / sqrt(3.0);
         auto pointsInPlane = tree.PlaneSearch(2.6, FVector( sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc ), 0.3, vpt);
 
-        autoc n = vpt.size();
+        auto const n = vpt.size();
         vpt.push_back(FVector(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);
@@ -855,7 +855,7 @@ namespace AdaptorTest
           0.01f,
           vpt);
 
-        autoc n = vpt.size();
+        auto const n = vpt.size();
         vpt.push_back(point_t(1.0, 1.0, 1.5));
         tree.Insert(n, vpt.back());
         tree.Erase<false>(0, vpt[0]);

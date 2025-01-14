@@ -10,12 +10,12 @@ using std::vector;
 namespace PerformaceTest
 {
 #ifdef _DEBUG
-  autoce N1M = 1000;
+  auto constexpr N1M = 1000;
 #else
-  autoce N1M = 1000000;
+  auto constexpr N1M = 1000000;
 #endif // _DEBUG
 
-  autoce rMax = 8.0;
+  auto constexpr rMax = 8.0;
 
 
   template<size_t nDim>
@@ -66,8 +66,8 @@ namespace PerformaceTest
 
     // Angle points
     {
-      autoc nRemain = nNumber - iNumber;
-      autoc rStep = rMax / (nRemain + 2);
+      auto const nRemain = nNumber - iNumber;
+      auto const rStep = rMax / (nRemain + 2);
       for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
         for (dim_t iDim = 0; iDim < nDim; ++iDim)
           aPoint[nNumber - iNumber - 1][iDim] = iRemain * rStep;
@@ -118,7 +118,7 @@ namespace PerformaceTest
     if constexpr (nNumber == 0)
       return {};
 
-    autoce rUnit = 1.0;
+    auto constexpr rUnit = 1.0;
     auto aBox = vector<BoundingBoxND<nDim>>(nNumber);
     aBox[0] = CreateBox(PointND<nDim>(), rMax);
     if constexpr (nNumber == 1)
@@ -147,11 +147,11 @@ namespace PerformaceTest
 
     // Angle points
     {
-      autoc nRemain = nNumber - iNumber;
-      autoc rStep = (rMax - rUnit) / (nRemain + 2);
+      auto const nRemain = nNumber - iNumber;
+      auto const rStep = (rMax - rUnit) / (nRemain + 2);
       for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
       {
-        autoc iNumberBox = nNumber - iNumber - 1;
+        auto const iNumberBox = nNumber - iNumber - 1;
         for (dim_t iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
           aBox[iNumberBox].Min[iDim] = iRemain * rStep;
 
@@ -168,7 +168,7 @@ namespace PerformaceTest
     if constexpr (nNumber == 0)
       return {};
 
-    autoce rUnit = 1.0;
+    auto constexpr rUnit = 1.0;
     auto aBox = vector<BoundingBoxND<nDim>>(nNumber);
     aBox[0] = CreateBox(PointND<nDim>(), rMax);
     if constexpr (nNumber == 1)
@@ -200,7 +200,7 @@ namespace PerformaceTest
     {
       for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
       {
-        autoc iNumberBox = nNumber - iNumber - 1;
+        auto const iNumberBox = nNumber - iNumber - 1;
         for (dim_t iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
           aBox[iNumberBox].Min[iDim] = (rand() % 100) * (rMax / 100.0);
 
@@ -216,42 +216,42 @@ namespace PerformaceTest
   {
     // Points
 
-    autoc sPoint2D_10M = CreatePoints<2, 10 * N1M>();
-    autoc aPoint2D_10M = std::span(sPoint2D_10M);
-    autoc aPoint2D_1M = aPoint2D_10M.subspan(0, N1M);
+    auto const sPoint2D_10M = CreatePoints<2, 10 * N1M>();
+    auto const aPoint2D_10M = std::span(sPoint2D_10M);
+    auto const aPoint2D_1M = aPoint2D_10M.subspan(0, N1M);
 
-    autoc sPoint3D_10M = CreatePoints<3, 10*N1M>();
-    autoc aPoint3D_10M = std::span(sPoint3D_10M);
-    autoc aPoint3D_1M = aPoint3D_10M.subspan(0, N1M);
-    autoc aPoint3D_10MR = CreateRandomPoints<3, 10 * N1M>();
+    auto const sPoint3D_10M = CreatePoints<3, 10*N1M>();
+    auto const aPoint3D_10M = std::span(sPoint3D_10M);
+    auto const aPoint3D_1M = aPoint3D_10M.subspan(0, N1M);
+    auto const aPoint3D_10MR = CreateRandomPoints<3, 10 * N1M>();
 
-    autoc aPoint4D_1M = CreatePoints<4, N1M>();
+    auto const aPoint4D_1M = CreatePoints<4, N1M>();
 
-    autoc aPoint16D_1M = CreatePoints<16, N1M>();
-    autoc aPoint63D_1M = CreatePoints<63, N1M>();
+    auto const aPoint16D_1M = CreatePoints<16, N1M>();
+    auto const aPoint63D_1M = CreatePoints<63, N1M>();
 
-    autoc TreePoint2D = QuadtreePoint(aPoint2D_10M, 4);
-    autoc TreePoint3D = OctreePoint(aPoint3D_10M, 4);
+    auto const TreePoint2D = QuadtreePoint(aPoint2D_10M, 4);
+    auto const TreePoint3D = OctreePoint(aPoint3D_10M, 4);
 
 
     // Boxes
 
-    autoc sBox2D_10M = CreateBoxes<2, 10*N1M>();
-    autoc aBox2D_10M = std::span(sBox2D_10M);
-    autoc aBox2D_1M = aBox2D_10M.subspan(0, N1M);
+    auto const sBox2D_10M = CreateBoxes<2, 10*N1M>();
+    auto const aBox2D_10M = std::span(sBox2D_10M);
+    auto const aBox2D_1M = aBox2D_10M.subspan(0, N1M);
 
-    autoc sBox3D_10M = CreateBoxes<3, 10*N1M>();
-    autoc aBox3D_10M = std::span(sBox3D_10M);
-    autoc aBox3D_1M = aBox3D_10M.subspan(0, N1M);
-    autoc aBox3D_10MR = CreateRandomBoxes<3, 10 * N1M>();
+    auto const sBox3D_10M = CreateBoxes<3, 10*N1M>();
+    auto const aBox3D_10M = std::span(sBox3D_10M);
+    auto const aBox3D_1M = aBox3D_10M.subspan(0, N1M);
+    auto const aBox3D_10MR = CreateRandomBoxes<3, 10 * N1M>();
 
-    autoc aBox4D_1M = CreateBoxes<4, N1M>();
-    autoc aBox63D_1M = CreateBoxes<63, N1M>();
+    auto const aBox4D_1M = CreateBoxes<4, N1M>();
+    auto const aBox63D_1M = CreateBoxes<63, N1M>();
 
-    autoc box2D = BoundingBox2D{ Point2D{}, Point2D{ rMax, rMax} };
-    autoc box3D = BoundingBox3D{ Point3D{}, Point3D{ rMax, rMax, rMax} };
-    autoc TreeBox2D_10M = QuadtreeBox(aBox2D_10M, 4, box2D);
-    autoc TreeBox3D_10M = OctreeBox(aBox3D_10M, 4, box3D);
+    auto const box2D = BoundingBox2D{ Point2D{}, Point2D{ rMax, rMax} };
+    auto const box3D = BoundingBox3D{ Point3D{}, Point3D{ rMax, rMax, rMax} };
+    auto const TreeBox2D_10M = QuadtreeBox(aBox2D_10M, 4, box2D);
+    auto const TreeBox3D_10M = OctreeBox(aBox3D_10M, 4, box3D);
   }
 
 
@@ -262,7 +262,7 @@ namespace PerformaceTest
     template<dim_t nDim>
     static TreePointND<nDim> CreateTest(depth_t depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
     {
-      autoc Box = CreateSearcBox<nDim>(0.0, rMax);
+      auto const Box = CreateSearcBox<nDim>(0.0, rMax);
 
       auto nt = TreePointND<nDim>{};
       if (fPar)
@@ -289,18 +289,18 @@ namespace PerformaceTest
 
     TEST_METHOD(RangeSearch_2D_10M)
     {
-      autoce n = 100;
+      auto constexpr n = 100;
 
-      autoc search_box = CreateSearcBox<2>(3.5, 1.0);
+      auto const search_box = CreateSearcBox<2>(3.5, 1.0);
       auto vvid = vector<vector<size_t>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreePoint2D.RangeSearch(search_box, PreCalculated::aPoint2D_10M);
     }
     TEST_METHOD(RangeSearch_3D_10M)
     {
-      autoce n = 100;
+      auto constexpr n = 100;
 
-      autoc search_box = CreateSearcBox<3>(3.5, 1.0);
+      auto const search_box = CreateSearcBox<3>(3.5, 1.0);
       auto vvid = vector<vector<size_t>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreePoint3D.RangeSearch(search_box, PreCalculated::aPoint3D_10M);
@@ -315,7 +315,7 @@ namespace PerformaceTest
     template<dim_t nDim>
     static auto CreateTest(depth_t depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
     {
-      autoc Box = CreateSearcBox<nDim>(0.0, rMax);
+      auto const Box = CreateSearcBox<nDim>(0.0, rMax);
 
       auto nt = TreeBoxND<nDim>{};
       if (fPar)
@@ -344,10 +344,10 @@ namespace PerformaceTest
 
     TEST_METHOD(RangeSearch_2D_10M)
     {
-      autoce nDim = 2;
-      autoce n = 10;
+      auto constexpr nDim = 2;
+      auto constexpr n = 10;
 
-      autoc search_box = CreateSearcBox<nDim>(3.5, 1.0);
+      auto const search_box = CreateSearcBox<nDim>(3.5, 1.0);
       auto vvid = vector<vector<size_t>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreeBox2D_10M.RangeSearch(search_box, PreCalculated::aBox2D_10M);
@@ -355,10 +355,10 @@ namespace PerformaceTest
 
     TEST_METHOD(RangeSearch_3D_10M)
     {
-      autoce nDim = 3;
-      autoce n = 10;
+      auto constexpr nDim = 3;
+      auto constexpr n = 10;
 
-      autoc search_box = CreateSearcBox<nDim>(3.5, 1.0);
+      auto const search_box = CreateSearcBox<nDim>(3.5, 1.0);
       auto vvid = vector<vector<size_t>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreeBox3D_10M.RangeSearch(search_box, PreCalculated::aBox3D_10MR);

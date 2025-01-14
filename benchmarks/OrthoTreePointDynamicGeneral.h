@@ -34,11 +34,11 @@ private:
 
   void _process(span<IdEntityNode> aid, span<TVector const> const& vpt, size_t nDepthRemain, size_t nElementMax)
   {
-    autoc nid = aid.size();
+    auto const nid = aid.size();
     if (nDepthRemain == 0 || nid < nElementMax)
     {
       vid.reserve(aid.size());
-      for (autoc& [id, idNode] : aid)
+      for (auto const& [id, idNode] : aid)
         vid.emplace_back(id);
 
       return;
@@ -54,9 +54,9 @@ private:
       for (dim_t iDimension = 0; iDimension < DIMENSION_NO; ++iDimension)
         idNode |= static_cast<size_t>(AD::GetPointC(ptMiddle, iDimension) < AD::GetPointC(vpt[id], iDimension)) << static_cast<size_t>(iDimension);
     }
-    std::sort(begin(aid), end(aid), [&](autoc& idL, autoc& idR) { return idL.idNode < idR.idNode; });
+    std::sort(begin(aid), end(aid), [&](auto const& idL, auto const& idR) { return idL.idNode < idR.idNode; });
 
-    autoc itidNodeEnd = end(aid);
+    auto const itidNodeEnd = end(aid);
     for (auto itidNodeLast = begin(aid); itidNodeLast != itidNodeEnd;)
     {
       vNode[itidNodeLast->idNode] = make_unique<OrthoTreePointDynamicGeneral>();
@@ -64,12 +64,12 @@ private:
       auto& node = *vNode[itidNodeLast->idNode].get();
       for (dim_t iDimension = 0; iDimension < DIMENSION_NO; ++iDimension)
       {
-        autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
+        auto const fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
         AD::SetBoxMinC(node.box, iDimension, fGreater * AD::GetPointC(ptMiddle, iDimension) + !fGreater * AD::GetBoxMinC(box, iDimension));
         AD::SetBoxMaxC(node.box, iDimension, !fGreater * AD::GetPointC(ptMiddle, iDimension) + fGreater * AD::GetBoxMaxC(box, iDimension));
       }
 
-      autoc itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](autoc& p) { return p.idNode == itidNodeLast->idNode; });
+      auto const itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](auto const& p) { return p.idNode == itidNodeLast->idNode; });
 
       node._process({ itidNodeLast, itidNode }, vpt, nDepthRemain - 1, nElementMax);
 
@@ -94,7 +94,7 @@ private:
   static TBox GetBoxOfPoints(std::span<TVector const> const& points) noexcept
   {
     auto ext = BoxInvertedInit();
-    for (autoc& point : points)
+    for (auto const& point : points)
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         if (AD::GetBoxMinC(ext, dimensionID) > AD::GetPointC(point, dimensionID))
@@ -110,9 +110,9 @@ private:
 public:
   static OrthoTreePointDynamicGeneral Create(span<TVector const> const& vpt, size_t nDepthMax, std::optional<TBox> const& obox, size_t nElementMax)
   {
-    autoc box = obox.has_value() ? *obox : GetBoxOfPoints(vpt);
+    auto const box = obox.has_value() ? *obox : GetBoxOfPoints(vpt);
 
-    autoc npt = vpt.size();
+    auto const npt = vpt.size();
     auto aid = vector<IdEntityNode>(npt, IdEntityNode{});
     for (size_t i = 0; i < npt; ++i)
       aid[i].id = i;
@@ -125,7 +125,7 @@ public:
 
   size_t GetNodeSize() const
   {
-    return std::ranges::count_if(vNode, [](autoc& node) -> bool { return node.get(); });
+    return std::ranges::count_if(vNode, [](auto const& node) -> bool { return node.get(); });
   }
 };
 
@@ -156,11 +156,11 @@ private:
 
   void _process(span<IdEntityNode> aid, span<TBox const> const& vBox, size_t nDepthRemain, size_t nElementMax)
   {
-    autoc nid = aid.size();
+    auto const nid = aid.size();
     if (nDepthRemain == 0 || nid < nElementMax)
     {
       vid.reserve(aid.size());
-      for (autoc& [id, idNode] : aid)
+      for (auto const& [id, idNode] : aid)
         vid.emplace_back(id);
 
       return;
@@ -183,14 +183,14 @@ private:
       idNode = idNode1 == idNode2 ? idNode1 : _nChild;
     }
 
-    sort(begin(aid), end(aid), [&](autoc& idL, autoc& idR) { return idL.idNode < idR.idNode; });
+    sort(begin(aid), end(aid), [&](auto const& idL, auto const& idR) { return idL.idNode < idR.idNode; });
 
-    autoc itidNodeEnd = end(aid);
+    auto const itidNodeEnd = end(aid);
     for (auto itidNodeLast = begin(aid); itidNodeLast != itidNodeEnd;)
     {
       if (itidNodeLast->idNode == _nChild)
       {
-        autoc nElement = std::distance(itidNodeLast, itidNodeEnd);
+        auto const nElement = std::distance(itidNodeLast, itidNodeEnd);
         vid.reserve(nElement);
         for (; itidNodeLast != itidNodeEnd; ++itidNodeLast)
           vid.emplace_back(itidNodeLast->id);
@@ -205,12 +205,12 @@ private:
 
         for (dim_t iDimension = 0; iDimension < DIMENSION_NO; ++iDimension)
         {
-          autoc fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
+          auto const fGreater = ((itidNodeLast->idNode >> iDimension) & 1);
           AD::SetBoxMinC(node.box, iDimension, fGreater * AD::GetPointC(ptMiddle, iDimension) + !fGreater * AD::GetBoxMinC(box, iDimension));
           AD::SetBoxMaxC(node.box, iDimension, !fGreater * AD::GetPointC(ptMiddle, iDimension) + fGreater * AD::GetBoxMaxC(box, iDimension));
         }
 
-        autoc itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](autoc& p) { return p.idNode == itidNodeLast->idNode; });
+        auto const itidNode = partition_point(itidNodeLast, itidNodeEnd, [&](auto const& p) { return p.idNode == itidNodeLast->idNode; });
 
         node._process({ itidNodeLast, itidNode }, vBox, nDepthRemain - 1, nElementMax);
 
@@ -236,7 +236,7 @@ private:
   static TBox GetBoxOfBoxes(std::span<TBox const> const& boxes) noexcept
   {
     auto ext = BoxInvertedInit();
-    for (autoc& e : boxes)
+    for (auto const& e : boxes)
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
@@ -253,9 +253,9 @@ private:
 public:
   static OrthoTreeBoxDynamicGeneral Create(span<TBox const> const& vBox, size_t nDepthMax, std::optional<TBox> const& obox = std::nullopt, size_t nElementMax = 20)
   {
-    autoc box = obox.has_value() ? *obox : GetBoxOfBoxes(vBox);
+    auto const box = obox.has_value() ? *obox : GetBoxOfBoxes(vBox);
 
-    autoc nEnt = vBox.size();
+    auto const nEnt = vBox.size();
     auto aid = vector<IdEntityNode>(nEnt, IdEntityNode{});
     for (size_t i = 0; i < nEnt; ++i)
       aid[i].id = i;
@@ -268,7 +268,7 @@ public:
 
   size_t GetNodeSize() const
   {
-    return std::ranges::count_if(vNode, [](autoc& node) -> bool { return node.get(); });
+    return std::ranges::count_if(vNode, [](auto const& node) -> bool { return node.get(); });
   }
 };
 

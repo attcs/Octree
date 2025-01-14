@@ -4,13 +4,6 @@
 #include <array>
 #include <vector>
 
-#ifndef autoc
-#define autoc_remove
-#define autoc auto const
-#define autoce auto constexpr
-#endif
-
-
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
@@ -33,16 +26,16 @@ void testCompilePoint()
 
   using OT = OrthoTree::TreePointND<N>;
 
-  autoc key = OT::SI::GetHash(2, 3);
-  autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::Decode(key, 3);
-  autoc idGrid = OT::SI::Encode(aidGrid);
-  autoc fValid = OT::SI::IsValidKey(key);
-  autoc idChild = OT::SI::RemoveSentinelBit(key);
+  auto const key = OT::SI::GetHash(2, 3);
+  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  auto const aidGrid = OT::SI::Decode(key, 3);
+  auto const idGrid = OT::SI::Encode(aidGrid);
+  auto const fValid = OT::SI::IsValidKey(key);
+  auto const idChild = OT::SI::RemoveSentinelBit(key);
 
-  autoce vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
+  auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
-  autoce boxes = std::array
+  auto constexpr boxes = std::array
   {
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
@@ -55,43 +48,43 @@ void testCompilePoint()
 
   // const member functions
   {
-    autoc keyRoot = OT::SI::GetRootKey();
-    autoc center = tree.GetNodeCenter(keyRoot);
-    autoc size = tree.GetNodeSize(0);
+    auto const keyRoot = OT::SI::GetRootKey();
+    auto const center = tree.GetNodeCenter(keyRoot);
+    auto const size = tree.GetNodeSize(0);
 
-    autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
 
-    autoc nodeSmallest = tree.FindSmallestNode(vpt.back());
+    auto const nodeSmallest = tree.FindSmallestNode(vpt.back());
 
-    autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    autoc boxAll = tree.GetBox();
-    autoc nDepth = OT::SI::GetDepthID(keyRoot);
-    autoc nDepthMax = tree.GetDepthMax();
-    autoc nodeRoot = tree.GetNode(keyRoot);
-    autoc nodes = tree.GetNodes();
-    autoc grid = tree.GetResolutionMax();
+    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    auto const boxAll = tree.GetBox();
+    auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    auto const nDepthMax = tree.GetDepthMax();
+    auto const nodeRoot = tree.GetNode(keyRoot);
+    auto const nodes = tree.GetNodes();
+    auto const grid = tree.GetResolutionMax();
 
-    autoc aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
-    autoc aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
-    autoc idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    autoc idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0, vpt);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, vpt);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
+    auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
+    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0, vpt);
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, vpt);
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }}
       },
       0.0,
       vpt);
-    autoc kNN = tree.GetNearestNeighbors({}, 2, vpt);
+    auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](autoc&, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-      , [](autoc&, autoc&) -> bool { return true; }
+      , [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
+      , [](auto const&, auto const&) -> bool { return true; }
     );
   }
 
@@ -125,14 +118,14 @@ void testCompilePointMap()
 
   using OT = OrthoTree::TreePointND<N, OrthoTree::BaseGeometryType, Map>;
 
-  autoc key = OT::SI::GetHash(2, 3);
-  autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::Decode(key, 3);
-  autoc idGrid = OT::SI::Encode(aidGrid);
-  autoc fValid = OT::SI::IsValidKey(key);
-  autoc idChild = OT::SI::RemoveSentinelBit(key);
+  auto const key = OT::SI::GetHash(2, 3);
+  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  auto const aidGrid = OT::SI::Decode(key, 3);
+  auto const idGrid = OT::SI::Encode(aidGrid);
+  auto const fValid = OT::SI::IsValidKey(key);
+  auto const idChild = OT::SI::RemoveSentinelBit(key);
 
-  autoc vpt = Map{
+  auto const vpt = Map{
     { 10, Point{ 0.0 } },
     { 20, Point{ 1.0 } },
     { 30, Point{ 2.0 } },
@@ -140,7 +133,7 @@ void testCompilePointMap()
     { 12, Point{ 4.0 } }
   };
 
-  autoc boxes = std::array{
+  auto const boxes = std::array{
     BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }},
     BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }},
     BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }},
@@ -152,54 +145,54 @@ void testCompilePointMap()
 
   // const member functions
   {
-    autoc keyRoot = OT::SI::GetRootKey();
-    autoc center = tree.GetNodeCenter(keyRoot);
-    autoc size = tree.GetNodeSize(0);
+    auto const keyRoot = OT::SI::GetRootKey();
+    auto const center = tree.GetNodeCenter(keyRoot);
+    auto const size = tree.GetNodeSize(0);
 
-    autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
 
-    autoc nodeSmallest = tree.FindSmallestNode(vpt.at(11));
+    auto const nodeSmallest = tree.FindSmallestNode(vpt.at(11));
 
-    autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    autoc boxAll = tree.GetBox();
-    autoc nDepth = OT::SI::GetDepthID(keyRoot);
-    autoc nDepthMax = tree.GetDepthMax();
-    autoc nodeRoot = tree.GetNode(keyRoot);
-    autoc nodes = tree.GetNodes();
-    autoc grid = tree.GetResolutionMax();
+    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    auto const boxAll = tree.GetBox();
+    auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    auto const nDepthMax = tree.GetDepthMax();
+    auto const nodeRoot = tree.GetNode(keyRoot);
+    auto const nodes = tree.GetNodes();
+    auto const grid = tree.GetResolutionMax();
 
-    autoc aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
-    autoc aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
-    autoc idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    autoc idPlaneIntersectedP = tree.PlaneSearch(
+    auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
+    auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
+    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    auto const idPlaneIntersectedP = tree.PlaneSearch(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       vpt);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation(
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       vpt);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }}
     },
       0.0,
       vpt);
-    autoc kNN = tree.GetNearestNeighbors({}, 2, vpt);
+    auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(
       keyRoot,
-      [&vListIsAnyChild](autoc&, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
-      [](autoc&, autoc&) -> bool { return true; });
+      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
+      [](auto const&, auto const&) -> bool { return true; });
   }
 
   // non-const member functions
@@ -233,14 +226,14 @@ void testCompileBox()
 
   using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth>;
 
-  autoc key = OT::SI::GetHash(2, 3);
-  autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::Decode(key, 3);
-  autoc idGrid = OT::SI::Encode(aidGrid);
-  autoc fValid = OT::SI::IsValidKey(key);
-  autoc idChild = OT::SI::RemoveSentinelBit(key);
+  auto const key = OT::SI::GetHash(2, 3);
+  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  auto const aidGrid = OT::SI::Decode(key, 3);
+  auto const idGrid = OT::SI::Encode(aidGrid);
+  auto const fValid = OT::SI::IsValidKey(key);
+  auto const idChild = OT::SI::RemoveSentinelBit(key);
 
-  autoce boxes = std::array
+  auto constexpr boxes = std::array
   {
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
@@ -253,39 +246,39 @@ void testCompileBox()
 
   // const member functions
   {
-    autoc keyRoot = OT::SI::GetRootKey();
-    autoc center = tree.GetNodeCenter(keyRoot);
-    autoc size = tree.GetNodeSize(0);
+    auto const keyRoot = OT::SI::GetRootKey();
+    auto const center = tree.GetNodeCenter(keyRoot);
+    auto const size = tree.GetNodeSize(0);
 
-    autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
 
-    autoc nodeSmallest = tree.FindSmallestNode(boxes.back());
+    auto const nodeSmallest = tree.FindSmallestNode(boxes.back());
 
-    autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    autoc boxAll = tree.GetBox();
-    autoc nDepth = OT::SI::GetDepthID(keyRoot);
-    autoc nDepthMax = tree.GetDepthMax();
-    autoc nodeRoot = tree.GetNode(keyRoot);
-    autoc nodes = tree.GetNodes();
-    autoc grid = tree.GetResolutionMax();
+    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    auto const boxAll = tree.GetBox();
+    auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    auto const nDepthMax = tree.GetDepthMax();
+    auto const nodeRoot = tree.GetNode(keyRoot);
+    auto const nodes = tree.GetNodes();
+    auto const grid = tree.GetResolutionMax();
 
-    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
-    autoc vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
+    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
+    auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
-    autoc aidPick = tree.PickSearch({}, boxes);
-    autoc aidBoxesInRange = tree.RangeSearch(boxes[0], boxes);
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], boxes);
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], boxes);
+    auto const aidPick = tree.PickSearch({}, boxes);
+    auto const aidBoxesInRange = tree.RangeSearch(boxes[0], boxes);
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], boxes);
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], boxes);
 
-    autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
-    autoc idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
+    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
+    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
 
-    autoc idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    autoc idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0, boxes);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, boxes);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0, boxes);
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, boxes);
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, Vector{ 1.0, 0.0 }}
       },
@@ -294,8 +287,8 @@ void testCompileBox()
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](autoc&, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-      , [](autoc&, autoc&) -> bool { return true; }
+      , [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
+      , [](auto const&, auto const&) -> bool { return true; }
     );
   }
 
@@ -328,14 +321,14 @@ void testCompileBoxMap()
   using Map = std::unordered_map<int, BoundingBox>;
   using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth, OrthoTree::BaseGeometryType, Map>;
 
-  autoc key = OT::SI::GetHash(2, 3);
-  autoc noNode = OT::EstimateNodeNumber(100, 10, 3);
-  autoc aidGrid = OT::SI::Decode(key, 3);
-  autoc idGrid = OT::SI::Encode(aidGrid);
-  autoc fValid = OT::SI::IsValidKey(key);
-  autoc idChild = OT::SI::RemoveSentinelBit(key);
+  auto const key = OT::SI::GetHash(2, 3);
+  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  auto const aidGrid = OT::SI::Decode(key, 3);
+  auto const idGrid = OT::SI::Encode(aidGrid);
+  auto const fValid = OT::SI::IsValidKey(key);
+  auto const idChild = OT::SI::RemoveSentinelBit(key);
 
-  autoc boxes = Map{
+  auto const boxes = Map{
     { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
     { 12, BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
     { 17, BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }}},
@@ -347,49 +340,49 @@ void testCompileBoxMap()
 
   // const member functions
   {
-    autoc keyRoot = OT::SI::GetRootKey();
-    autoc center = tree.GetNodeCenter(keyRoot);
-    autoc size = tree.GetNodeSize(0);
+    auto const keyRoot = OT::SI::GetRootKey();
+    auto const center = tree.GetNodeCenter(keyRoot);
+    auto const size = tree.GetNodeSize(0);
 
-    autoc allidBFS = tree.CollectAllIdInBFS(keyRoot);
-    autoc allidDFS = tree.CollectAllIdInDFS(keyRoot);
+    auto const allidBFS = tree.CollectAllIdInBFS(keyRoot);
+    auto const allidDFS = tree.CollectAllIdInDFS(keyRoot);
 
-    autoc nodeSmallest = tree.FindSmallestNode(boxes.at(11));
+    auto const nodeSmallest = tree.FindSmallestNode(boxes.at(11));
 
-    autoc keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    autoc boxAll = tree.GetBox();
-    autoc nDepth = OT::SI::GetDepthID(keyRoot);
-    autoc nDepthMax = tree.GetDepthMax();
-    autoc nodeRoot = tree.GetNode(keyRoot);
-    autoc nodes = tree.GetNodes();
-    autoc grid = tree.GetResolutionMax();
+    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    auto const boxAll = tree.GetBox();
+    auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    auto const nDepthMax = tree.GetDepthMax();
+    auto const nodeRoot = tree.GetNode(keyRoot);
+    auto const nodes = tree.GetNodes();
+    auto const grid = tree.GetResolutionMax();
 
-    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
-    autoc vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
+    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)(boxes);
+    auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
-    autoc aidPick = tree.PickSearch({}, boxes);
-    autoc aidBoxesInRange = tree.RangeSearch(boxes.at(10), boxes);
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(10), boxes);
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(10), boxes);
+    auto const aidPick = tree.PickSearch({}, boxes);
+    auto const aidBoxesInRange = tree.RangeSearch(boxes.at(10), boxes);
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(10), boxes);
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(10), boxes);
 
-    autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
-    autoc idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
+    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
+    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
 
-    autoc idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    autoc idPlaneIntersectedP = tree.PlaneIntersection(
+    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    auto const idPlaneIntersectedP = tree.PlaneIntersection(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       boxes);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation(
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       boxes);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, Vector{ 1.0, 0.0 }}
     },
@@ -399,8 +392,8 @@ void testCompileBoxMap()
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(
       keyRoot,
-      [&vListIsAnyChild](autoc&, autoc& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
-      [](autoc&, autoc&) -> bool { return true; });
+      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
+      [](auto const&, auto const&) -> bool { return true; });
   }
 
   // non-const member functions
@@ -434,9 +427,9 @@ void testCompilePointC()
   using Plane = OrthoTree::PlaneND<N>;
   using OT = OrthoTree::TreePointContainerND<N>;
 
-  autoce vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
+  auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
-  autoce boxes = std::array
+  auto constexpr boxes = std::array
   {
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
@@ -452,20 +445,20 @@ void testCompilePointC()
     
   // const member functions
   {
-    autoc& treeCore = tree.GetCore();
-    autoc& data = tree.GetData();
+    auto const& treeCore = tree.GetCore();
+    auto const& data = tree.GetData();
 
-    autoc aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    autoc kNN = tree.GetNearestNeighbors({}, 2);
+    auto const kNN = tree.GetNearestNeighbors({}, 2);
 
-    autoc idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0);
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
@@ -499,7 +492,7 @@ void testCompilePointMapC()
   using Map = std::unordered_map<int, Point>;
   using OT = OrthoTree::TreePointContainerND<N, OrthoTree::BaseGeometryType, Map>;
 
-  autoc vpt = Map{
+  auto const vpt = Map{
     { 10, Point{ 0.0 } },
     { 20, Point{ 1.0 } },
     { 30, Point{ 2.0 } },
@@ -507,7 +500,7 @@ void testCompilePointMapC()
     { 50, Point{ 4.0 } }
   };
 
-  autoce boxes = std::array{
+  auto constexpr boxes = std::array{
     BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }},
     BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }},
     BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }},
@@ -521,28 +514,28 @@ void testCompilePointMapC()
 #endif
   // const member functions
   {
-    autoc& treeCore = tree.GetCore();
-    autoc& data = tree.GetData();
+    auto const& treeCore = tree.GetCore();
+    auto const& data = tree.GetData();
 
-    autoc aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    autoc kNN = tree.GetNearestNeighbors({}, 2);
+    auto const kNN = tree.GetNearestNeighbors({}, 2);
 
-    autoc idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlaneIntersectedP = tree.PlaneSearch(
+    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlaneIntersectedP = tree.PlaneSearch(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation(
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
@@ -583,7 +576,7 @@ void testCompileBoxC()
   using Plane = OrthoTree::PlaneND<N>;
   using OT = OrthoTree::TreeBoxContainerND<N, nSplitStrategyAdditionalDepth>;
 
-  autoce boxes = std::array
+  auto constexpr boxes = std::array
   {
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
@@ -599,25 +592,25 @@ void testCompileBoxC()
     
   // const member functions
   {
-    autoc& treeCore = tree.GetCore();
-    autoc& data = tree.GetData();
+    auto const& treeCore = tree.GetCore();
+    auto const& data = tree.GetData();
 
-    autoc aidPick = tree.PickSearch({});
-    autoc aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    auto const aidPick = tree.PickSearch({});
+    auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
-    autoc vidCollisionTree = tree.CollisionDetection(tree);
+    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
+    auto const vidCollisionTree = tree.CollisionDetection(tree);
    
-    autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
-    autoc idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
+    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
+    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
 
-    autoc idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0);
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
@@ -662,7 +655,7 @@ void testCompileBoxMapC()
   using Map = std::unordered_map<int, BoundingBox>;
   using OT = OrthoTree::TreeBoxContainerND<N, nSplitStrategyAdditionalDepth, OrthoTree::BaseGeometryType, Map>;
 
-  autoc boxes = Map{
+  auto const boxes = Map{
     { 5, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
     { 10, BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
     { 20, BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }}},
@@ -678,33 +671,33 @@ void testCompileBoxMapC()
     
   // const member functions
   {
-    autoc& treeCore = tree.GetCore();
-    autoc& data = tree.GetData();
+    auto const& treeCore = tree.GetCore();
+    auto const& data = tree.GetData();
 
-    autoc aidPick = tree.PickSearch({});
-    autoc aidBoxesInRange = tree.RangeSearch(boxes.at(30));
-    autoc aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(30));
-    autoc aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(30));
+    auto const aidPick = tree.PickSearch({});
+    auto const aidBoxesInRange = tree.RangeSearch(boxes.at(30));
+    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(30));
+    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(30));
 
-    autoc vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
-    autoc vidCollisionTree = tree.CollisionDetection(tree);
+    auto const vidCollision = tree. EXEC_POL_TEMPLATE_ADD(CollisionDetection)();
+    auto const vidCollisionTree = tree.CollisionDetection(tree);
 
-    autoc idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
-    autoc idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
+    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
+    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
 
-    autoc idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlaneIntersectedP = tree.PlaneIntersection(
+    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlaneIntersectedP = tree.PlaneIntersection(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    autoc idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    autoc idPlanePosSegP = tree.PlanePositiveSegmentation(
+    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    autoc idFrustum = tree.FrustumCulling(
+    auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
@@ -741,7 +734,7 @@ void testCompileBoxMapC()
 template<typename execution_policy_type, uint32_t nSplitStrategyAdditionalDepth = 2>
 void testCompileBoxBatchDimension()
 {
-  autoce isPlatform64 = sizeof(std::size_t) == 8;
+  auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
 
   // Core types
   {
@@ -855,12 +848,6 @@ inline void testCompileBoxBatchSplitStrategy()
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
-#endif
-
-#ifdef autoc_remove
-#undef autoc_remove
-#undef autoc
-#undef autoce
 #endif
 
 #endif // ORTHOTREE_COMPILE_TEST_GUARD

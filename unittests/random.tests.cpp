@@ -32,7 +32,7 @@ namespace RandomTests
 
     size_t iNumber = 2;
 
-    autoc length = rMax - rMin;
+    auto const length = rMax - rMin;
     auto ptMin = PointND<DIMENSION_NO, TGeometry>{};
     for (int iDim = 0; iDim < DIMENSION_NO; ++iDim)
       ptMin[iDim] = rMin;
@@ -62,7 +62,7 @@ namespace RandomTests
           aPoint[iNumber][iDim] = rMin + TGeometry(double(rand() % 1000) * (double(length) * 0.001));
     }
     /*
-    [[maybe_unused]] autoc box = Adaptor::GetBoxOfPoints(aPoint);
+    [[maybe_unused]] auto const box = Adaptor::GetBoxOfPoints(aPoint);
     assert(Adaptor::ArePointsEqual(box.Max, ptMax, 0.0001));
     assert(Adaptor::ArePointsEqual(box.Min, ptMin, 0.0001));
     */
@@ -76,8 +76,8 @@ namespace RandomTests
     if (nNumber == 0)
       return {};
 
-    autoc rSize = rMax - rMin;
-    autoc rUnit = std::min(TGeometry(1), rSize);
+    auto const rSize = rMax - rMin;
+    auto const rUnit = std::min(TGeometry(1), rSize);
     auto aBox = vector<BoundingBoxND<DIMENSION_NO, TGeometry>>(nNumber);
 
     for (int iDim = 0; iDim < DIMENSION_NO; ++iDim)
@@ -112,17 +112,17 @@ namespace RandomTests
     }
 
     {
-      autoc getRandom = [&] {
-        autoc randomInt = rand() % 1000;
-        autoc scaledRandom = TGeometry(double(randomInt) * double(rSize) * 0.001);
+      auto const getRandom = [&] {
+        auto const randomInt = rand() % 1000;
+        auto const scaledRandom = TGeometry(double(randomInt) * double(rSize) * 0.001);
         return scaledRandom;
       };
 
-      autoc getRandomSize = [&] {
+      auto const getRandomSize = [&] {
         return std::max<TGeometry>(rUnit, getRandom());
       };
 
-      autoc getRandomPos = [&] {
+      auto const getRandomPos = [&] {
         return rMin + getRandom();
       };
 
@@ -141,7 +141,7 @@ namespace RandomTests
             Max
           };
         };
-        autoc type = (rand() % EType::Max);
+        auto const type = (rand() % EType::Max);
 
         auto sizes = std::array<TGeometry, DIMENSION_NO>{};
         sizes[0] = getRandomSize();
@@ -152,8 +152,8 @@ namespace RandomTests
             sizes[iDim] = sizes[0];
             continue;
           }
-          autoc rSizeDim = getRandomSize();
-          autoc getClampedSize = [&](double factor) {
+          auto const rSizeDim = getRandomSize();
+          auto const getClampedSize = [&](double factor) {
             return TGeometry(std::clamp(double(rSizeDim), double(sizes[0]) / factor, double(sizes[0]) * factor));
           };
           switch (type)
@@ -183,14 +183,14 @@ namespace RandomTests
   template<typename TVector, typename TBox, typename TRay, typename TPlane, typename execution_policy_type = std::execution::unsequenced_policy>
   std::vector<std::pair<std::size_t, std::size_t>> SelfConflicthNaive(std::span<TBox const> const& vBox)
   {
-    autoc nEntity = vBox.size();
+    auto const nEntity = vBox.size();
 
     auto vidCheck = vector<std::size_t>(nEntity);
     std::iota(std::begin(vidCheck), std::end(vidCheck), 0);
 
     auto vvidCollision = vector<vector<std::size_t>>(vidCheck.size());
     auto ep = execution_policy_type{};
-    std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](autoc idCheck) -> vector<std::size_t> {
+    std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](auto const idCheck) -> vector<std::size_t> {
       auto sidFound = vector<std::size_t>();
       for (size_t i = idCheck + 1; i < nEntity; ++i)
         if (AdaptorGeneral<N, TVector, TBox, TRay, TPlane>::AreBoxesOverlapped(vBox[idCheck], vBox[i], false))
@@ -203,8 +203,8 @@ namespace RandomTests
     if (nEntity > 10)
       vPair.reserve(nEntity / 10);
 
-    for (autoc idCheck : vidCheck)
-      for (autoc idCollide : vvidCollision[idCheck])
+    for (auto const idCheck : vidCheck)
+      for (auto const idCollide : vvidCollision[idCheck])
         vPair.emplace_back(idCheck, idCollide);
 
     return vPair;
@@ -214,7 +214,7 @@ namespace RandomTests
   template<int DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry>
   std::vector<std::size_t> RangeSearchNaive(TBox const& boxSearch, std::span<TBox const> const& vBox)
   {
-    autoc n = vBox.size();
+    auto const n = vBox.size();
     auto vElementFound = vector<std::size_t>();
     vElementFound.reserve(n);
 
@@ -229,7 +229,7 @@ namespace RandomTests
   template<int DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry>
   std::vector<std::size_t> RangeSearchNaive(TBox const& searchBox, std::span<TVector const> const& points)
   {
-    autoc n = points.size();
+    auto const n = points.size();
     auto vElementFound = vector<std::size_t>();
     vElementFound.reserve(n);
 
@@ -247,19 +247,19 @@ namespace RandomTests
   using TRay = RayND<DIMENSION_NO, TGeometry>;
   using TPlane = PlaneND<DIMENSION_NO, TGeometry>;
 
-  autoc points = CreatePoints_Random<DIMENSION_NO, TGeometry>(pointsNo, rMin, rMax);
-  autoc boxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(boxesNo, rMin, rMax);
+  auto const points = CreatePoints_Random<DIMENSION_NO, TGeometry>(pointsNo, rMin, rMax);
+  auto const boxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(boxesNo, rMin, rMax);
 
-  autoc treeCore = OrthoTree::TreePointND<DIMENSION_NO, TGeometry>(points);
-  autoc treeContainer = OrthoTree::TreePointContainerND<DIMENSION_NO, TGeometry>(points);
+  auto const treeCore = OrthoTree::TreePointND<DIMENSION_NO, TGeometry>(points);
+  auto const treeContainer = OrthoTree::TreePointContainerND<DIMENSION_NO, TGeometry>(points);
 
-  for (autoc& box : boxes)
+  for (auto const& box : boxes)
   {
     auto elementIDsTreeCore = treeCore.RangeSearch(box, points);
-    autoc elementIDsTreeContainer = treeContainer.RangeSearch(box);
+    auto const elementIDsTreeContainer = treeContainer.RangeSearch(box);
     Assert::IsTrue(elementIDsTreeCore == elementIDsTreeContainer);
 
-    autoc elementIDsNaive = RangeSearchNaive<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>(box, points);
+    auto const elementIDsNaive = RangeSearchNaive<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>(box, points);
     std::ranges::sort(elementIDsTreeCore);
     assert(elementIDsNaive == elementIDsTreeCore);
     Assert::IsTrue(elementIDsNaive == elementIDsTreeCore);
@@ -269,15 +269,15 @@ namespace RandomTests
 template<typename TGeometry>
 void PointT_RangeSearch()
 {
-  autoce isPlatform64 = sizeof(std::size_t) == 8;
+  auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
 
-  for (autoc pointsNo : { 32, 100, 1000 })
+  for (auto const pointsNo : { 32, 100, 1000 })
   {
-    autoc boxNo = std::min(300, std::max(4, pointsNo / 10));
+    auto const boxNo = std::min(300, std::max(4, pointsNo / 10));
 
-    autoc rMin = TGeometry(rand() % 110 - 50);
-    autoc rLength = TGeometry(20.0 + double(rand() % 100));
-    autoc rMax = TGeometry(rMin + rLength);
+    auto const rMin = TGeometry(rand() % 110 - 50);
+    auto const rLength = TGeometry(20.0 + double(rand() % 100));
+    auto const rMax = TGeometry(rMin + rLength);
 
     PointND_RangeSearch<1, TGeometry>(pointsNo, boxNo, rMin, rMax);
     PointND_RangeSearch<2, TGeometry>(pointsNo, boxNo, rMin, rMax);
@@ -303,18 +303,18 @@ void BoxND_RangeSearch(size_t boxNo, size_t searchboxNo, TGeometry rMin, TGeomet
   using TRay = RayND<DIMENSION_NO, TGeometry>;
   using TPlane = PlaneND<DIMENSION_NO, TGeometry>;
 
-  autoc entityBoxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(boxNo, rMin, rMax);
-  autoc searchBoxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(searchboxNo, rMin, rMax);
+  auto const entityBoxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(boxNo, rMin, rMax);
+  auto const searchBoxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(searchboxNo, rMin, rMax);
 
-  autoc treeCore = OrthoTree::TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>(entityBoxes);
-  autoc treeContainer = OrthoTree::TreeBoxContainerND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>(entityBoxes);
-  for (autoc& searchBox : searchBoxes)
+  auto const treeCore = OrthoTree::TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>(entityBoxes);
+  auto const treeContainer = OrthoTree::TreeBoxContainerND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>(entityBoxes);
+  for (auto const& searchBox : searchBoxes)
   {
     auto elementIDsTreeCore = treeCore.template RangeSearch<false>(searchBox, entityBoxes);
-    autoc elementIDsTreeContainer = treeContainer.template RangeSearch<false>(searchBox);
+    auto const elementIDsTreeContainer = treeContainer.template RangeSearch<false>(searchBox);
     Assert::IsTrue(elementIDsTreeCore == elementIDsTreeContainer);
 
-    autoc elementIDsNaive = RangeSearchNaive<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>(searchBox, entityBoxes);
+    auto const elementIDsNaive = RangeSearchNaive<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>(searchBox, entityBoxes);
     std::ranges::sort(elementIDsTreeCore);
     assert(elementIDsNaive == elementIDsTreeCore);
     Assert::IsTrue(elementIDsNaive == elementIDsTreeCore);
@@ -324,15 +324,15 @@ void BoxND_RangeSearch(size_t boxNo, size_t searchboxNo, TGeometry rMin, TGeomet
 template<typename TGeometry>
 void BoxT_RangeSearch()
 {
-  autoce isPlatform64 = sizeof(std::size_t) == 8;
+  auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
 
-  for (autoc pointsNo : { 32, 100, 1000 })
+  for (auto const pointsNo : { 32, 100, 1000 })
   {
-    autoc boxNo = std::min(300, std::max(4, pointsNo / 10));
+    auto const boxNo = std::min(300, std::max(4, pointsNo / 10));
 
-    autoc rMin = TGeometry(rand() % 110 - 50);
-    autoc rLength = TGeometry(20.0 + double(rand() % 100));
-    autoc rMax = TGeometry(rMin + rLength);
+    auto const rMin = TGeometry(rand() % 110 - 50);
+    auto const rLength = TGeometry(20.0 + double(rand() % 100));
+    auto const rMax = TGeometry(rMin + rLength);
 
     BoxND_RangeSearch<1, 0, TGeometry>(pointsNo, boxNo, rMin, rMax);
     BoxND_RangeSearch<2, 0, TGeometry>(pointsNo, boxNo, rMin, rMax);

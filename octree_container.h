@@ -130,7 +130,7 @@ namespace OrthoTree
     bool Add(TEntity const& data, bool doInsertToLeaf = false) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     {
-      autoc entityID = TEntityID(m_geometryCollection.size());
+      auto const entityID = TEntityID(m_geometryCollection.size());
       if (m_tree.Insert(entityID, data, doInsertToLeaf))
       {
         m_geometryCollection.emplace_back(data);

@@ -16,7 +16,4 @@
 
 #endif //PCH_H
 
-#define autoc auto const
-#define autoce auto constexpr
-
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
