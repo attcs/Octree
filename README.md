@@ -205,10 +205,7 @@ Usage of Container types
         , true // Set std::execution::parallel_unsequenced_policy
       );
 
-      using namespace std::execution;
-      auto octreeUsingCreate = OctreeBoxC::Create<parallel_unsequenced_policy>(boxes
-        , 3
-      );
+      auto octreeUsingCreate = OctreeBoxC::Create<true>(boxes, 3);
     }
 
     
