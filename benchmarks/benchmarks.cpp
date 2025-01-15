@@ -519,11 +519,11 @@ namespace
   }
 
 
-  auto constexpr aSizeNonLog = array{ 100, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 8000, 10000 };
+  auto constexpr aSizeNonLog = array{ 50, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 8000, 10000 };
   //auto constexpr aSizeNonLog = array{ 10000 };
 
   auto constexpr nSizeNonLog = aSizeNonLog.size();
-  auto constexpr aRepeatNonLog = array{ 100 * NR, 10 * NR, 10 * NR, 10 * NR, 10 * NR, 10 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR };
+  auto constexpr aRepeatNonLog = array{ 100 * NR, 100 * NR, 50*NR, 10 * NR, 10 * NR, 5 * NR, 5 * NR, 5 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR };
   //auto constexpr aRepeatNonLog = array{ 1 * NR };
 
   static_assert(nSizeNonLog == aRepeatNonLog.size());
@@ -672,7 +672,7 @@ namespace
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
       vTask.push_back(MeasurementTask<BoundingBoxND<N>>
-        { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepth, false, aBox_.subspan(0, aSizeNonLog[iSize])
+        { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize] / 50, nDepth, false, aBox_.subspan(0, aSizeNonLog[iSize])
         , [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
           {
             auto const vvElem = RangeSearchNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox, aBox);
@@ -695,7 +695,7 @@ namespace
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
       vTask.push_back(MeasurementTask<BoundingBoxND<N>>
-    { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], 0, false, aBox_.subspan(0, aSizeNonLog[iSize])
+    { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize] / 50, 0, false, aBox_.subspan(0, aSizeNonLog[iSize])
         , [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
     {
       if (!fPar)
