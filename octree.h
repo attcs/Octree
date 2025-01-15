@@ -646,7 +646,7 @@ namespace OrthoTree
   using bitset_arithmetic = std::bitset<N>;
 
   template<std::size_t N>
-  auto operator<=>(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
+  constexpr auto operator<=>(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
   {
     using R = std::strong_ordering;
     for (std::size_t i = 0, id = N - 1; i < N; ++i, --id)
@@ -656,64 +656,46 @@ namespace OrthoTree
     return R::equal;
   }
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wbitwise-instead-of-logical"
+#endif
   template<std::size_t N>
   bitset_arithmetic<N> operator+(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
   {
+    auto result = bitset_arithmetic<N>();
     bool carry = false;
-    auto ans = bitset_arithmetic<N>();
     for (std::size_t i = 0; i < N; ++i)
     {
-      auto const sum = (lhs[i] ^ rhs[i]) ^ carry;
-      carry = (lhs[i] && rhs[i]) || (lhs[i] && carry) || (rhs[i] && carry);
-      ans[i] = sum;
+      result.set(i, (lhs[i] ^ rhs[i]) ^ carry);
+      carry = (lhs[i] & rhs[i]) | (lhs[i] & carry) | (rhs[i] & carry);
     }
 
     assert(!carry); // unhandled overflow
-    return ans;
+    return result;
   }
+
+  template<std::size_t N>
+  constexpr bitset_arithmetic<N> operator-(bitset_arithmetic<N> result, bitset_arithmetic<N> const& rhs) noexcept
+  {
+    bool borrow = false;
+    for (std::size_t index = 0; index < N; ++index)
+    {
+      bool lhsBit = result[index];
+      bool rhsBit = rhs[index];
+      result.set(index, lhsBit ^ rhsBit ^ borrow);
+      borrow = (!lhsBit & (rhsBit | borrow)) | (lhsBit & rhsBit & borrow);
+    }
+    return result;
+  }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
   template<std::size_t N>
   bitset_arithmetic<N> operator+(bitset_arithmetic<N> const& lhs, std::size_t rhs) noexcept
   {
     return lhs + bitset_arithmetic<N>(rhs);
-  }
-
-  template<std::size_t N>
-  bitset_arithmetic<N> operator-(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
-  {
-    auto ret = lhs;
-    bool borrow = false;
-    for (std::size_t i = 0; i < N; ++i)
-    {
-      if (borrow)
-      {
-        if (ret[i])
-        {
-          ret[i] = rhs[i];
-          borrow = rhs[i];
-        }
-        else
-        {
-          ret[i] = !rhs[i];
-          borrow = true;
-        }
-      }
-      else
-      {
-        if (ret[i])
-        {
-          ret[i] = !rhs[i];
-          borrow = false;
-        }
-        else
-        {
-          ret[i] = rhs[i];
-          borrow = rhs[i];
-        }
-      }
-    }
-
-    return ret;
   }
 
   template<std::size_t N>
@@ -725,22 +707,16 @@ namespace OrthoTree
   template<std::size_t N>
   bitset_arithmetic<N> operator*(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
   {
-    auto ret = bitset_arithmetic<N>{};
-
-    if (lhs.count() < rhs.count())
-    {
+    auto constexpr mult = [](bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) {
+      auto result = bitset_arithmetic<N>{};
       for (std::size_t i = 0; i < N; ++i)
         if (lhs[i])
-          ret = ret + (rhs << i);
-    }
-    else
-    {
-      for (std::size_t i = 0; i < N; ++i)
-        if (rhs[i])
-          ret = ret + (lhs << i);
-    }
+          result = result + (rhs << i);
 
-    return ret;
+      return result;
+    };
+
+    return lhs.count() < rhs.count() ? mult(lhs, rhs) : mult(rhs, lhs);
   }
 
   template<std::size_t N>
@@ -755,69 +731,10 @@ namespace OrthoTree
     return lhs * bitset_arithmetic<N>(rhs);
   }
 
-  template<std::size_t N>
-  static std::tuple<bitset_arithmetic<N>, bitset_arithmetic<N>> gf2_div(bitset_arithmetic<N> const& dividend, bitset_arithmetic<N> divisor) noexcept
-  {
-    if (divisor.none())
-    {
-      assert(false);
-      return {};
-    }
-
-    if (dividend.none())
-      return {};
-
-    auto quotent = bitset_arithmetic<N>{ 0 };
-    if (dividend == divisor)
-      return { bitset_arithmetic<N>(1), quotent };
-
-    if (dividend < divisor)
-      return { quotent, dividend };
-
-
-    std::size_t sig_dividend = 0;
-    for (std::size_t i = 0, id = N - 1; i < N; ++i, --id)
-      if (dividend[id])
-      {
-        sig_dividend = id;
-        break;
-      }
-
-    std::size_t sig_divisor = 0;
-    for (std::size_t i = 0, id = N - 1; i < N; ++i, --id)
-      if (divisor[id])
-      {
-        sig_divisor = id;
-        break;
-      }
-
-    std::size_t nAlignment = (sig_dividend - sig_divisor);
-    divisor <<= nAlignment;
-    nAlignment += 1;
-    auto remainder = dividend;
-    while (nAlignment--)
-    {
-      if (divisor <= remainder)
-      {
-        quotent[nAlignment] = true;
-        remainder = remainder - divisor;
-      }
-      divisor >>= 1;
-    }
-
-    return { quotent, remainder };
-  }
-
-  template<std::size_t N>
-  bitset_arithmetic<N> operator/(bitset_arithmetic<N> const& dividend, bitset_arithmetic<N> const& divisor) noexcept
-  {
-    return std::get<0>(gf2_div(dividend, divisor));
-  }
-
   struct bitset_arithmetic_compare final
   {
     template<std::size_t N>
-    bool operator()(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) const noexcept
+    constexpr bool operator()(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) const noexcept
     {
       return lhs < rhs;
     }
@@ -1446,7 +1363,7 @@ namespace OrthoTree
         {
           auto childID = NodeID{};
           for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-            childID[dimensionID] = key[dimensionID];
+            childID.set(dimensionID, key[dimensionID]);
 
           return CastMortonIDToChildID(childID);
         }
@@ -1522,7 +1439,7 @@ namespace OrthoTree
               if constexpr (IS_LINEAR_TREE)
                 locationID |= static_cast<LocationID>(gridID[dimensionID] & mask) << (shift - i);
               else
-                locationID[shift] = gridID[dimensionID] & mask;
+                locationID.set(shift, gridID[dimensionID] & mask);
             }
           }
           return locationID;

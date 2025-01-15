@@ -97,35 +97,43 @@ namespace BitsetArithmeticTest
     }
 
 
-    TEST_METHOD(Div_17_16__1)
+    TEST_METHOD(Mult_2_3__6)
     {
-      auto const bs = bitset_arithmetic<10>(17) / bitset_arithmetic<10>(16);
+      auto const bs = bitset_arithmetic<10>(2) * bitset_arithmetic<10>(3);
       auto const n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(1, n);
+      Assert::AreEqual<uint32_t>(6, n);
     }
 
 
-    TEST_METHOD(Div_16_17__0)
+    TEST_METHOD(Mult_5_5__25)
     {
-      auto const bs = bitset_arithmetic<10>(16) / bitset_arithmetic<10>(17);
+      auto const bs = bitset_arithmetic<10>(5) * bitset_arithmetic<10>(5);
       auto const n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(0, n);
+      Assert::AreEqual<uint32_t>(25, n);
     }
 
 
-    TEST_METHOD(Div_2578_156__16)
+    TEST_METHOD(Mult_10_10__100)
     {
-      auto const bs = bitset_arithmetic<13>(2578) / bitset_arithmetic<13>(156);
+      auto const bs = bitset_arithmetic<10>(10) * bitset_arithmetic<10>(10);
       auto const n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(16, n);
+      Assert::AreEqual<uint32_t>(100, n);
     }
 
 
-    TEST_METHOD(Div_156_2578__0)
+    TEST_METHOD(Mult_15_15__225)
     {
-      auto const bs = bitset_arithmetic<13>(156) / bitset_arithmetic<13>(2578);
+      auto const bs = bitset_arithmetic<10>(15) * bitset_arithmetic<10>(15);
       auto const n = bs.to_ulong();
-      Assert::AreEqual<uint32_t>(0, n);
+      Assert::AreEqual<uint32_t>(225, n);
+    }
+
+
+    TEST_METHOD(Mult_20_20__400)
+    {
+      auto const bs = bitset_arithmetic<10>(20) * bitset_arithmetic<10>(20);
+      auto const n = bs.to_ulong();
+      Assert::AreEqual<uint32_t>(400, n);
     }
   };
 }
