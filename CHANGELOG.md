@@ -1,20 +1,41 @@
 # Changelog
 
-## 2024-12-26
+## Latest
+Interface changes
+* `std::execution` is dropped from the interface. `bool IS_PARALLEL_EXEC` is used instead.
+* `Id` is replaced to `Entity`: `CollectAllEntitiesInDFS`/`BFS` `EraseEntity`
+
+## 2025-01-14 v2.4
+Refactorizations
+* Morton Z-order space indexing separation
+* Grid space indexing separation
+
+Bugfixes
+* Container type move constructor fix
+
+## 2024-12-26 v2.3
 New features
 * Support of abstract classes
 
 Refactorizations
 * Internal geometry module
 
-Maintenance
-* Support compilers w/o std::execution (e.g. Apple Clang)
+## 2024-12-22 v2.2
+New features
+* Allowing associative container type for the entity-geometries
 
-## 2024-03-26
+Maintenance
+* Support compilers w/o `std::execution` (e.g. Apple Clang)
+
+## 2024-07-28 v2.1
+New features
+* Rebalancing insert
+* Removing empty nodes during `Erase`
+
+## 2024-03-24 v2.0
 New features
 * New adaptors: glm, boost, CGAL
 * Built-in `Ray` and `Plane` types
-* Rebalancing insert
 
 Refactorizations
 * New, more capable adaptor concept
@@ -44,11 +65,11 @@ Refactorizations
 * Bugfixes
 
 ## 2023-01-11
-* Split strategy performace upgrade
+* Split strategy performance upgrade
 * GCC support
 * Bugfixes
 
-## 2022-01-30
+## 2022-01-30 v1.0
 New features
 * Container type
 * Split strategy for boundingbox-type tree
