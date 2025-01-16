@@ -2735,8 +2735,8 @@ namespace OrthoTree
       return this->template InsertWithRebalancingBase<true>(parentNodeKey, parentDepthID, entityNodeKey, entityDepth, newEntityID, points);
     }
 
-    // Insert item into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
-    bool Insert(TEntityID entityID, TVector const& newPoint, bool doInsertToLeaf = false) noexcept
+    // Insert entity into a node. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
+    bool Insert(TEntityID newEntityID, TVector const& newPoint, bool doInsertToLeaf = false) noexcept
     {
       if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
@@ -2746,7 +2746,30 @@ namespace OrthoTree
       if (!SI::IsValidKey(smallestNodeKey))
         return false;
 
-      return this->template InsertWithoutRebalancingBase<true>(smallestNodeKey, entityNodeKey, entityID, doInsertToLeaf);
+      return this->template InsertWithoutRebalancingBase<true>(smallestNodeKey, entityNodeKey, newEntityID, doInsertToLeaf);
+    }
+
+    // Insert entity into a node, if there is no entity within the same location by tolerance.
+    template<bool DO_INSERT_TO_LEAF = false>
+    bool InsertUnique(TEntityID newEntityID, TVector const& newPoint, TGeometry tolerance, TContainer const& points, bool doInsertToLeaf = false)
+    {
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
+        return false;
+
+      auto const [entityDepth, entityLocation] = this->GetDepthAndLocationID(newPoint);
+      auto const entityNodeKey = SI::GetHash(entityDepth, entityLocation);
+      auto const [parentNodeKey, parentDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
+      if (!SI::IsValidKey(parentNodeKey))
+        return false;
+
+      auto const nearestEntityList = this->GetNearestNeighbors(newPoint, 1, tolerance, points);
+      if (!nearestEntityList.empty())
+        return false;
+
+      if constexpr (DO_INSERT_TO_LEAF)
+        return this->template InsertWithoutRebalancingBase<true>(parentNodeKey, entityNodeKey, newEntityID, DO_INSERT_TO_LEAF);
+      else
+        return this->template InsertWithRebalancingBase<true>(parentNodeKey, parentDepthID, entityNodeKey, entityDepth, newEntityID, points);
     }
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
@@ -2914,8 +2937,8 @@ namespace OrthoTree
   private: // K Nearest Neighbor helpers
     static void CreateEntityDistance(Node const& node, TVector const& searchPoint, TContainer const& points, std::multiset<EntityDistance>& neighborEntities) noexcept
     {
-      for (auto const id : node.Entities)
-        neighborEntities.insert({ { AD::Distance(searchPoint, detail::at(points, id)) }, id });
+      for (auto const entityID : node.Entities)
+        neighborEntities.insert({ { AD::Distance(searchPoint, detail::at(points, entityID)) }, entityID });
     }
 
     static IGM::Geometry GetFarestDistance(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
@@ -2926,19 +2949,25 @@ namespace OrthoTree
       return std::next(neighborEntities.begin(), neighborNo - 1)->Distance;
     }
 
-    static std::vector<TEntityID> ConvertEntityDistanceToList(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
+    static std::vector<TEntityID> ConvertEntityDistanceToList(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo, TGeometry maxDistance) noexcept
     {
+      auto entityIDs = std::vector<TEntityID>();
       auto const entityNo = std::min(neighborNo, neighborEntities.size());
-      auto entityIDs = std::vector<TEntityID>(entityNo);
-      std::transform(neighborEntities.begin(), std::next(neighborEntities.begin(), entityNo), entityIDs.begin(), [](auto const& ed) {
-        return ed.EntityID;
-      });
+      if (entityNo == 0)
+        return entityIDs;
+
+      auto lastIt = std::next(neighborEntities.begin(), entityNo);
+      if (std::prev(lastIt)->Distance >= maxDistance)
+        lastIt = std::partition_point(neighborEntities.begin(), lastIt, [maxDistance](auto const& ed) { return ed.Distance < maxDistance; });
+
+      entityIDs.reserve(entityNo);
+      std::transform(neighborEntities.begin(), lastIt, std::back_inserter(entityIDs), [](auto const& ed) { return ed.EntityID; });
       return entityIDs;
     }
 
   public:
     // K Nearest Neighbor
-    std::vector<TEntityID> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, TContainer const& points) const noexcept
+    std::vector<TEntityID> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, TGeometry maxDistance, TContainer const& points) const noexcept
     {
       auto neighborEntities = std::multiset<EntityDistance>();
       auto const [smallestNodeKey, smallesDepthID] = this->FindSmallestNodeKeyWithDepth(this->template GetNodeID<true>(searchPoint));
@@ -2954,7 +2983,7 @@ namespace OrthoTree
         CreateEntityDistance(smallestNode, searchPoint, points, neighborEntities);
         if (!smallestNode.IsAnyChildExist())
           if (GetFarestDistance(neighborEntities, neighborNo) < wallDistance)
-            return ConvertEntityDistanceToList(neighborEntities, neighborNo);
+            return ConvertEntityDistanceToList(neighborEntities, neighborNo, maxDistance);
       }
 
       auto nodeMinDistances = std::multiset<BoxDistance>();
@@ -2983,7 +3012,12 @@ namespace OrthoTree
         }
       }
 
-      return ConvertEntityDistanceToList(neighborEntities, neighborNo);
+      return ConvertEntityDistanceToList(neighborEntities, neighborNo, maxDistance);
+    }
+
+    inline std::vector<TEntityID> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, TContainer const& points) const noexcept
+    {
+      return this->GetNearestNeighbors(searchPoint, neighborNo, std::numeric_limits<TGeometry>::max(), points);
     }
   };
 

@@ -1768,6 +1768,28 @@ namespace Tree2DTest
       Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{17, 18, 14, 16}, vnn));
     }
 
+    TEST_METHOD(N103_k4_within0__empty)
+    {
+      auto constexpr N = 2;
+      auto constexpr points = getPointSetNo1<N>();
+      auto const tree = TreePointND<N>(points, 3, std::nullopt, 3);
+
+      auto constexpr pt = PointND<N>{ 3.5, 5.5 };
+      auto const vnn = tree.GetNearestNeighbors(pt, 4, 0, points);
+      Assert::IsTrue(vnn.empty());
+    }
+
+    TEST_METHOD(N103_k5_within1__14_17_18)
+    {
+      auto constexpr N = 2;
+      auto constexpr points = getPointSetNo1<N>();
+      auto const tree = TreePointND<N>(points, 3, std::nullopt, 3);
+
+      auto constexpr pt = PointND<N>{ 3.5, 5.5 };
+      auto const vnn = tree.GetNearestNeighbors(pt, 5, 1.0, points);
+      Assert::IsTrue(std::ranges::is_permutation(vector<size_t>{ 17, 18, 14 }, vnn));
+    }
+
     TEST_METHOD(N103_k100_OverTheContainingElements__All)
     {
       auto constexpr N = 2;
@@ -2366,6 +2388,23 @@ namespace Tree3DTest
         ++pointNo;
       }
 
+      // InsertUnique
+      {
+        auto const p1 = Point3D{ +3.75, +3.75, +3.76 };
+        auto const isP1Inserted = tree.InsertUnique(pointNo, p1, 0.01, points);
+        Assert::IsFalse(isP1Inserted);
+
+        points.emplace_back(Point3D{ +3.75, +3.75, +3.75 });
+        auto const isP2Inserted = tree.InsertUnique(pointNo, points.back(), 0.0, points);
+        Assert::IsTrue(isP2Inserted);
+        ++pointNo;
+
+        points.emplace_back(Point3D{ +3.75, +3.75, +3.77 });
+        auto const isP3Inserted = tree.InsertUnique(pointNo, points.back(), 0.001, points);
+        Assert::IsTrue(isP3Inserted);
+        ++pointNo;
+      }
+
       tree.Update(2, Point3D{ +2.0, +2.2, +2.0 });
       auto const nodeID_2_u1 = tree.GetNodeIDByEntity(2);
 
@@ -2403,7 +2442,7 @@ namespace Tree3DTest
       Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_9_u1, 523783);
       Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_8_u1, 65508);
 
-      Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 1, 2, 3, 10, 8, 4, 12, 11, 9, 13, 0, 6, 7, 5 });
+      Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 1, 2, 3, 10, 8, 4, 11, 9, 13, 0, 6, 7, 5, 12, 14, 15 });
     }
   };
 
