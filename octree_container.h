@@ -119,35 +119,60 @@ namespace OrthoTree
 
     TEntity const& Get(TEntityID entityID) const noexcept { return detail::at(m_geometryCollection, entityID); }
 
-    bool Add(TEntity const& data, bool doInsertToLeaf = false) noexcept
+    bool Add(TEntity const& newEntity, bool doInsertToLeaf = false) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     {
-      auto const entityID = TEntityID(m_geometryCollection.size());
-      if (m_tree.Insert(entityID, data, doInsertToLeaf))
-      {
-        m_geometryCollection.emplace_back(data);
-        return true;
-      }
+      auto const newEntityID = TEntityID(m_geometryCollection.size());
+      if (!m_tree.Insert(newEntityID, newEntity, doInsertToLeaf))
+        return false;
 
-      return false;
+      m_geometryCollection.emplace_back(newEntity);
+      return true;
     }
 
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(TEntityID entityID, TEntity const& data, bool doInsertToLeaf = false) noexcept
+    bool Add(TEntityID newEntityID, TEntity const& newEntity, bool doInsertToLeaf = false) noexcept
+      requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     {
       if constexpr (CHECK_ID_FOR_CONTAINMENT)
       {
-        if (m_geometryCollection.contains(entityID))
+        if (m_geometryCollection.contains(newEntityID))
           return false;
       }
 
-      if (m_tree.Insert(entityID, data, doInsertToLeaf))
+      if (!m_tree.Insert(newEntityID, newEntity, doInsertToLeaf))
+        return false;
+
+      m_geometryCollection.emplace(newEntityID, newEntity);
+      return true;
+    }
+
+    bool AddAndRebalance(TEntity const& newEntity) noexcept
+      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    {
+      auto const newEntityID = TEntityID(m_geometryCollection.size());
+      if (!m_tree.InsertWithRebalance(newEntityID, newEntity))
+        return false;
+
+      m_geometryCollection.emplace_back(newEntity);
+      return true;
+    }
+
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool AddAndRebalance(TEntityID newEntityID, TEntity const& newEntity) noexcept
+      requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    {
+      if constexpr (CHECK_ID_FOR_CONTAINMENT)
       {
-        m_geometryCollection.emplace(entityID, data);
-        return true;
+        if (m_geometryCollection.contains(newEntityID))
+          return false;
       }
 
-      return false;
+      if (!m_tree.InsertWithRebalance(newEntityID, newEntity))
+        return false;
+
+      m_geometryCollection.emplace(newEntityID, newEntity);
+      return true;
     }
 
     bool Update(TEntityID entityID, TEntity const& newData, bool doInsertToLeaf = false) noexcept
@@ -290,6 +315,34 @@ namespace OrthoTree
       });
     }
 
+  public:
+    bool AddUnique(TEntity const& newEntity, TGeometry tolerance, bool doInsertToLeaf = false) noexcept
+      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    {
+      auto const newEntityID = TEntityID(this->m_geometryCollection.size());
+      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_geometryCollection, doInsertToLeaf))
+        return false;
+
+      this->m_geometryCollection.emplace_back(newEntity);
+      return true;
+    }
+
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool AddUnique(TEntityID newEntityID, TEntity const& newEntity, TGeometry tolerance, bool doInsertToLeaf = false) noexcept
+      requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    {
+      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      {
+        if (this->m_geometryCollection.contains(newEntityID))
+          return false;
+      }
+
+      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_geometryCollection, doInsertToLeaf))
+        return false;
+
+      this->m_geometryCollection.emplace(newEntityID, newEntity);
+      return true;
+    }
 
   public:
     // Range search
