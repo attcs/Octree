@@ -843,15 +843,26 @@ namespace OrthoTree
         return value;
       }
 
+      template<typename TGeometryRange, typename TGeometryBox>
+      static constexpr bool DoesRangeContainBox(TGeometryRange rangeMin, TGeometryRange rangeMax, TGeometryBox boxMin, TGeometryBox boxMax) noexcept
+      {
+        if (rangeMin > boxMin || boxMin > rangeMax)
+          return false;
+
+        if (rangeMin > boxMax || boxMax > rangeMax)
+          return false;
+
+        return true;
+      }
+
       static constexpr bool DoesRangeContainBoxAD(TBox const& range, Box const& box) noexcept
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          if (AD::GetBoxMinC(range, dimensionID) > box.Min[dimensionID] || box.Min[dimensionID] > AD::GetBoxMaxC(range, dimensionID))
+          if (!DoesRangeContainBox(AD::GetBoxMinC(range, dimensionID), AD::GetBoxMaxC(range, dimensionID), box.Min[dimensionID], box.Max[dimensionID]))
+          {
             return false;
-
-          if (AD::GetBoxMinC(range, dimensionID) > box.Max[dimensionID] || box.Max[dimensionID] > AD::GetBoxMaxC(range, dimensionID))
-            return false;
+          }
         }
         return true;
       }
@@ -860,11 +871,22 @@ namespace OrthoTree
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          if (range.Min[dimensionID] > AD::GetBoxMinC(box, dimensionID) || AD::GetBoxMinC(box, dimensionID) > range.Max[dimensionID])
+          if (!DoesRangeContainBox(range.Min[dimensionID], range.Max[dimensionID], AD::GetBoxMinC(box, dimensionID), AD::GetBoxMaxC(box, dimensionID)))
+          {
             return false;
+          }
+        }
+        return true;
+      }
 
-          if (range.Min[dimensionID] > AD::GetBoxMaxC(box, dimensionID) || AD::GetBoxMaxC(box, dimensionID) > range.Max[dimensionID])
+      static constexpr bool DoesRangeContainBoxAD(Box const& range, Box const& box) noexcept
+      {
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          if (!DoesRangeContainBox(range.Min[dimensionID], range.Max[dimensionID], box.Min[dimensionID], box.Max[dimensionID]))
+          {
             return false;
+          }
         }
         return true;
       }
@@ -1068,6 +1090,26 @@ namespace OrthoTree
         else
           return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
       }
+
+      static constexpr Geometry GetVolumeAD(Box const& range) noexcept
+      {
+        Geometry volume = 1.0;
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          volume *= range.Max[dimensionID] - range.Min[dimensionID];
+        }
+        return volume;
+      }
+
+      static constexpr Geometry GetVolumeAD(TBox const& range) noexcept
+      {
+        Geometry volume = 1.0;
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          volume *= Geometry(AD::GetBoxMaxC(range, dimensionID) - AD::GetBoxMinC(range, dimensionID));
+        }
+        return volume;
+      }
     };
 
 
@@ -1096,9 +1138,7 @@ namespace OrthoTree
           m_rasterizerFactors[dimensionID] = isFlat ? IGM_Geometry(1.0) : (subDivisionNoFactor / m_sizeInDimensions[dimensionID]);
         }
 
-        m_volumeOfOverallSpace = 1;
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          m_volumeOfOverallSpace *= m_sizeInDimensions[dimensionID];
+        m_volumeOfOverallSpace = IGM::GetVolumeAD(m_boxSpace);
       }
 
       constexpr IGM::Vector const& GetSizes() const noexcept { return m_sizeInDimensions; }
@@ -1160,16 +1200,26 @@ namespace OrthoTree
         return pointMinMaxGridID;
       }
 
-      template<bool DO_POINT_LIKE_CLASSIFICATION = false>
-      constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox const& box) const noexcept
+      template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = TBox>
+      constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox_ const& box) const noexcept
       {
         auto gridID = std::array<DimArray<GridID>, 2>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          auto const minComponentRasterID =
-            (IGM_Geometry(AD::GetBoxMinC(box, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
-          auto const maxComponentRasterID =
-            (IGM_Geometry(AD::GetBoxMaxC(box, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
+          IGM_Geometry boxMin, boxMax;
+          if constexpr (std::is_same_v<TBox_, TBox>)
+          {
+            boxMin = IGM_Geometry(AD::GetBoxMinC(box, dimensionID));
+            boxMax = IGM_Geometry(AD::GetBoxMaxC(box, dimensionID));
+          }
+          else
+          {
+            boxMin = box.Min[dimensionID];
+            boxMax = box.Max[dimensionID];
+          }
+
+          auto const minComponentRasterID = (boxMin - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
+          auto const maxComponentRasterID = (boxMax - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
 
           if constexpr (DO_POINT_LIKE_CLASSIFICATION)
           {
@@ -1315,6 +1365,8 @@ namespace OrthoTree
       }
 
       static constexpr NodeID GetRootKey() noexcept { return NodeID{ 1 }; }
+
+      static constexpr NodeID GetNoneKey() noexcept { return NodeID{ 0 }; }
 
       static constexpr bool IsValidKey(LinearLocationID key) noexcept { return key > 0; }
 
@@ -1778,10 +1830,10 @@ namespace OrthoTree
       return { this->m_maxDepthNo, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(point) };
     }
 
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr SI::DepthAndLocationID GetDepthAndLocationID(TBox const& box) const noexcept
+    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false, typename TBoxItem = TBox>
+    constexpr SI::DepthAndLocationID GetDepthAndLocationID(TBoxItem const& box) const noexcept
     {
-      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
+      return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY, TBoxItem>(box));
     }
 
     static inline TBox GetBoxInvertedInit() noexcept
@@ -2446,18 +2498,16 @@ namespace OrthoTree
       }
 
       // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (AD::GetBoxMinC(range, dimensionID) >= AD::GetBoxMaxC(range, dimensionID))
-          return false;
+      const auto rangeVolume = IGM::GetVolumeAD(range);
+      if (rangeVolume <= 0.0)
+      {
+        return false;
+      }
 
       auto const rangeKey = this->GetNodeID<!IS_BOX_TYPE>(range);
       auto smallestNodeKey = this->FindSmallestNodeKey(rangeKey);
       if (!SI::IsValidKey(smallestNodeKey))
         return false;
-
-      auto rangeVolume = 1.0;
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        rangeVolume *= AD::GetBoxMaxC(range, dimensionID) - AD::GetBoxMinC(range, dimensionID);
 
       auto const foundEntityNoEstimation =
         this->m_grid.GetVolume() < 0.01 ? 10 : static_cast<std::size_t>((rangeVolume * entityNo) / this->m_grid.GetVolume());
@@ -2472,6 +2522,39 @@ namespace OrthoTree
       }
 
       return true;
+    }
+
+    template<typename TBoxRange = TBox>
+    std::vector<MortonNodeID> RangeSearchNodes(TBoxRange const& range, MortonNodeIDCR excludeNodeKey = SI::GetNoneKey()) const noexcept
+    {
+      std::vector<MortonNodeID> foundNodes;
+
+      auto const rangeVolume = IGM::GetVolumeAD(range);
+      if (rangeVolume <= 0.0)
+      {
+        return foundNodes;
+      }
+
+      auto const rangeKey = SI::GetHash(this->GetDepthAndLocationID<!IS_BOX_TYPE, TBoxRange>(range));
+      auto smallestNodeKey = this->FindSmallestNodeKey(rangeKey);
+      if (!SI::IsValidKey(smallestNodeKey))
+      {
+        return foundNodes;
+      }
+
+      VisitNodes(
+        smallestNodeKey,
+        [&](MortonNodeIDCR key, Node const& node) { foundNodes.push_back(key); },
+        [&](MortonNodeIDCR key, Node const& node) {
+          return key != excludeNodeKey && IGM::DoesRangeContainBoxAD(GetNodeBox(SI::GetDepthID(key), GetNodeCenterMacro(this, key, node)), range);
+        });
+
+      for (auto parentNodeKey = SI::GetParentKey(smallestNodeKey); SI::IsValidKey(parentNodeKey); parentNodeKey = SI::GetParentKey(parentNodeKey))
+      {
+        foundNodes.push_back(parentNodeKey);
+      }
+
+      return foundNodes;
     }
 
     static PlaneRelation GetEntityPlaneRelation(TEntity const& entity, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance)
@@ -2971,44 +3054,104 @@ namespace OrthoTree
     {
       auto neighborEntities = std::multiset<EntityDistance>();
       auto const [smallestNodeKey, smallesDepthID] = this->FindSmallestNodeKeyWithDepth(this->template GetNodeID<true>(searchPoint));
-      if (SI::IsValidKey(smallestNodeKey))
+      if (!SI::IsValidKey(smallestNodeKey))
+        return {};
+
+      auto const& smallestNode = this->GetNode(smallestNodeKey);
+
+      auto const& halfSize = this->GetNodeSize(smallesDepthID + 1);
+      auto const& centerPoint = GetNodeCenterMacro(this, smallestNodeKey, smallestNode);
+
+      auto const distance = IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize);
+      auto const wallDistance = *std::min(distance.begin(), distance.end());
+      CreateEntityDistance(smallestNode, searchPoint, points, neighborEntities);
+      if (!smallestNode.IsAnyChildExist())
       {
-        auto const& smallestNode = this->GetNode(smallestNodeKey);
-
-        auto const& halfSize = this->GetNodeSize(smallesDepthID + 1);
-        auto const& centerPoint = GetNodeCenterMacro(this, smallestNodeKey, smallestNode);
-
-        auto const distance = IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize);
-        auto const wallDistance = *std::min(distance.begin(), distance.end());
-        CreateEntityDistance(smallestNode, searchPoint, points, neighborEntities);
-        if (!smallestNode.IsAnyChildExist())
-          if (GetFarestDistance(neighborEntities, neighborNo) < wallDistance)
-            return ConvertEntityDistanceToList(neighborEntities, neighborNo, maxDistance);
+        if (GetFarestDistance(neighborEntities, neighborNo) < wallDistance)
+        {
+          return ConvertEntityDistanceToList(neighborEntities, neighborNo, maxDistance);
+        }
       }
 
-      auto nodeMinDistances = std::multiset<BoxDistance>();
-      std::for_each(this->m_nodes.begin(), this->m_nodes.end(), [&](auto const& pairOfKeyAndNode) {
-        auto const& [key, node] = pairOfKeyAndNode;
-        if (node.Entities.empty() || key == smallestNodeKey)
-          return;
-
-        auto const depthID = SI::GetDepthID(key);
-        auto const& halfSize = this->GetNodeSize(depthID + 1);
-        auto const& centerPoint = GetNodeCenterMacro(this, key, node);
-        nodeMinDistances.insert({ { IGM::Size(IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize)) }, key, node });
-      });
-
-      if (!nodeMinDistances.empty())
+      // BFS search in iterative way
+      using VisitedNodesMap =
+        std::conditional_t<SI::IS_LINEAR_TREE, std::unordered_set<MortonChildID>, std::set<MortonNodeID, bitset_arithmetic_compare>>;
+      VisitedNodesMap visitedNodes = { smallestNodeKey };
+      auto traversedChildNodeKey = smallestNodeKey;
+      auto parentDepthID = smallesDepthID - 1;
+      for (auto parentNodeKey = SI::GetParentKey(smallestNodeKey); SI::IsValidKey(parentNodeKey);
+           traversedChildNodeKey = parentNodeKey, parentNodeKey = SI::GetParentKey(parentNodeKey), --parentDepthID)
       {
-        auto rLatestNodeDist = GetFarestDistance(neighborEntities, neighborNo);
-        for (auto const& nodeDist : nodeMinDistances)
-        {
-          auto const n = neighborEntities.size();
-          if (neighborNo <= n && rLatestNodeDist < nodeDist.Distance)
-            break;
+        auto nodeMinDistances = std::multiset<BoxDistance>();
+        auto const addNodeWallDistance = [&](MortonLocationIDCR key, Node const& node) {
+          auto const depthID = SI::GetDepthID(key);
+          auto const& halfSize = this->GetNodeSize(depthID + 1);
+          auto const& centerPoint = GetNodeCenterMacro(this, key, node);
+          nodeMinDistances.insert({ { IGM::Size(IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize)) }, key, node });
+        };
 
-          CreateEntityDistance(nodeDist.NodeReference, searchPoint, points, neighborEntities);
-          rLatestNodeDist = GetFarestDistance(neighborEntities, neighborNo);
+        // Search siblings
+
+        auto nodesToVisit = std::queue<MortonNodeID>{};
+        for (nodesToVisit.push(parentNodeKey); !nodesToVisit.empty(); nodesToVisit.pop())
+        {
+          MortonLocationIDCR nodeKey = nodesToVisit.front();
+          if (nodeKey == traversedChildNodeKey)
+          {
+            continue;
+          }
+
+          auto const& node = this->GetNode(nodeKey);
+          for (MortonLocationIDCR child : node.GetChildren())
+          {
+            nodesToVisit.push(child);
+          }
+
+          if (!visitedNodes.contains(nodeKey))
+          {
+            addNodeWallDistance(nodeKey, node);
+            visitedNodes.insert(nodeKey);
+          }
+        }
+
+        // Search non-siblings
+
+        auto const& parentSize = this->GetNodeSize(parentDepthID);
+        auto searchBox = typename IGM::Box{};
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          auto const size = parentSize[dimensionID] * 2;
+          searchBox.Min[dimensionID] = AD::GetPointC(searchPoint, dimensionID) - size;
+          searchBox.Max[dimensionID] = AD::GetPointC(searchPoint, dimensionID) + size;
+        }
+
+        auto const nonSiblingNeighbours = this->RangeSearchNodes(searchBox, parentNodeKey);
+        for (MortonLocationIDCR nonSiblingKey : nonSiblingNeighbours)
+        {
+          if (!visitedNodes.contains(nonSiblingKey))
+          {
+            addNodeWallDistance(nonSiblingKey, this->GetNode(nonSiblingKey));
+          }
+        }
+        visitedNodes.insert(nonSiblingNeighbours.begin(), nonSiblingNeighbours.end());
+
+        // Evaluate the nodes
+
+        auto farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
+        for (auto const& nodeDistance : nodeMinDistances)
+        {
+          if (maxDistance <= nodeDistance.Distance)
+          {
+            break;
+          }
+
+          if (neighborNo <= neighborEntities.size() && farestEntityDistance < nodeDistance.Distance)
+          {
+            break;
+          }
+
+          CreateEntityDistance(nodeDistance.NodeReference, searchPoint, points, neighborEntities);
+          farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
         }
       }
 
