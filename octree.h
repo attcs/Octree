@@ -1327,7 +1327,7 @@ namespace OrthoTree
       class ChildLocationGenerator
       {
       public:
-        constexpr ChildLocationGenerator(LocationIDCR startLocationID, depth_t examinedLevel) noexcept
+        inline constexpr ChildLocationGenerator(LocationIDCR startLocationID, depth_t examinedLevel) noexcept
         : m_shift(examinedLevel * DIMENSION_NO)
         , m_startLocationID(startLocationID)
         , m_startLocationIDOnExaminedLevel(startLocationID >> m_shift)
@@ -1336,20 +1336,20 @@ namespace OrthoTree
         }
 
         // LocationID is on the base grid level
-        constexpr ChildID GetChildID(LocationIDCR locationID) const noexcept
+        inline constexpr ChildID GetChildID(LocationIDCR locationID) const noexcept
         {
           return CastMortonIDToChildID((locationID - m_startLocationID) >> m_shift);
         }
 
         // LocationID is on a custom depth
-        constexpr ChildID GetChildID(DepthAndLocationID const& depthAndLocation, depth_t examinationDepthID) const noexcept
+        inline constexpr ChildID GetChildID(DepthAndLocationID const& depthAndLocation, depth_t examinationDepthID) const noexcept
         {
           assert(examinationDepthID <= depthAndLocation.DepthID);
           auto const locationIDOnExaminationLevel = GetLocationIDOnExaminedLevel(depthAndLocation.LocID, depthAndLocation.DepthID - examinationDepthID);
           return CastMortonIDToChildID(locationIDOnExaminationLevel - m_startLocationIDOnExaminedLevel);
         }
 
-        constexpr LocationID GetStartLocationID(ChildID childID) const noexcept { return m_startLocationID + LocationID(childID) * m_stepNo; }
+        inline constexpr LocationID GetStartLocationID(ChildID childID) const noexcept { return m_startLocationID + LocationID(childID) * m_stepNo; }
 
       private:
         UnderlyingInt m_shift;
@@ -1361,12 +1361,12 @@ namespace OrthoTree
       class ChildKeyGenerator
       {
       public:
-        explicit constexpr ChildKeyGenerator(NodeIDCR parentNodeKey) noexcept
+        explicit inline constexpr ChildKeyGenerator(NodeIDCR parentNodeKey) noexcept
         : m_parentFlag(parentNodeKey << DIMENSION_NO)
         {
         }
 
-        constexpr NodeID GetChildNodeKey(ChildID childID) const noexcept { return m_parentFlag | NodeID(childID); }
+        inline constexpr NodeID GetChildNodeKey(ChildID childID) const noexcept { return m_parentFlag | NodeID(childID); }
 
       private:
         NodeID m_parentFlag;
@@ -1386,33 +1386,32 @@ namespace OrthoTree
         UnderlyingInt m_shift;
       };
 
-      static constexpr NodeID GetHash(auto&& location) noexcept
+      static inline constexpr NodeID GetHash(auto&& location) noexcept
       {
         assert(location.LocID < (NodeID(1) << (location.DepthID * DIMENSION_NO)));
         return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | location.LocID;
       }
 
-      static constexpr NodeID GetHash(depth_t depth, LocationIDCR locationID) noexcept
+      static inline constexpr NodeID GetHash(depth_t depth, LocationIDCR locationID) noexcept
       {
         assert(locationID < (NodeID(1) << (depth * DIMENSION_NO)));
         return (NodeID{ 1 } << (depth * DIMENSION_NO)) | locationID;
       }
 
-      static constexpr NodeID GetRootKey() noexcept { return NodeID{ 1 }; }
+      static inline constexpr NodeID GetRootKey() noexcept { return NodeID{ 1 }; }
 
-      static constexpr NodeID GetNoneKey() noexcept { return NodeID{ 0 }; }
+      static inline constexpr NodeID GetNoneKey() noexcept { return NodeID{ 0 }; }
 
-      static constexpr bool IsValidKey(LinearLocationID key) noexcept { return key > 0; }
+      static inline constexpr bool IsValidKey(LinearLocationID key) noexcept { return key > 0; }
 
       static inline bool IsValidKey(NonLinearLocationID const& key) noexcept { return key.any(); }
 
-      static constexpr NodeID GetParentKey(NodeIDCR key) noexcept { return key >> DIMENSION_NO; }
+      static inline constexpr NodeID GetParentKey(NodeIDCR key) noexcept { return key >> DIMENSION_NO; }
 
-      static constexpr LocationID GetParentGridID(LocationIDCR locationID) noexcept { return locationID >> DIMENSION_NO; }
+      static inline constexpr LocationID GetParentGridID(LocationIDCR locationID) noexcept { return locationID >> DIMENSION_NO; }
 
-      static constexpr depth_t GetDepthID(NodeID key) noexcept
+      static inline constexpr depth_t GetDepthID(NodeID key) noexcept
       {
-        // Keep shifting off DIMENSION_NO bits at a time, increasing depth counter
         for (depth_t d = 0; IsValidKey(key); ++d, key = GetParentKey(key))
           if (key == 1) // If only sentinel bit remains, exit with node depth
             return d;
@@ -1420,8 +1419,8 @@ namespace OrthoTree
         CRASH(); // Bad key
         return 0;
       }
-
-      static constexpr NodeID RemoveSentinelBit(NodeIDCR key, std::optional<depth_t> depthIDOptional = std::nullopt) noexcept
+  
+      static inline constexpr NodeID RemoveSentinelBit(NodeIDCR key, std::optional<depth_t> depthIDOptional = std::nullopt) noexcept
       {
         if constexpr (IS_LINEAR_TREE)
         {
@@ -1438,12 +1437,12 @@ namespace OrthoTree
         }
       }
 
-      static constexpr LocationID GetLocationIDOnExaminedLevel(LocationIDCR locationID, depth_t examinationLevel) noexcept
+      static inline constexpr LocationID GetLocationIDOnExaminedLevel(LocationIDCR locationID, depth_t examinationLevel) noexcept
       {
         return locationID >> (examinationLevel * DIMENSION_NO);
       }
 
-      static constexpr bool IsAllChildTouched(std::array<LocationID, 2> const& locationIDRange, depth_t examinationLevel) noexcept
+      static inline constexpr bool IsAllChildTouched(std::array<LocationID, 2> const& locationIDRange, depth_t examinationLevel) noexcept
       {
         return IsValidKey((locationIDRange[1] - locationIDRange[0]) >> (examinationLevel * DIMENSION_NO - 1));
       }
@@ -1460,7 +1459,9 @@ namespace OrthoTree
         {
           auto childID = NodeID{};
           for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          {
             childID.set(dimensionID, key[dimensionID]);
+          }
 
           return CastMortonIDToChildID(childID);
         }
@@ -1689,23 +1690,23 @@ namespace OrthoTree
         return bs.to_ullong();
       }
 
-      static constexpr ChildID CastMortonIDToChildID(LinearLocationID morton) noexcept { return morton; }
+      static inline constexpr ChildID CastMortonIDToChildID(LinearLocationID morton) noexcept { return morton; }
 
-      static constexpr ChildID GetChildIDByDepth(depth_t parentDepth, depth_t childDepth, LocationIDCR childNodeKey)
+      static inline constexpr ChildID GetChildIDByDepth(depth_t parentDepth, depth_t childDepth, LocationIDCR childNodeKey)
       {
         auto const depthDifference = childDepth - parentDepth;
         assert(depthDifference > 0);
         return GetKeyChildPart(childNodeKey >> (DIMENSION_NO * (depthDifference - 1)));
       }
 
-      static constexpr bool IsChildInGreaterSegment(ChildID childID, dim_t dimensionID) noexcept { return (ChildID{ 1 } << dimensionID) & childID; }
+      static inline constexpr bool IsChildInGreaterSegment(ChildID childID, dim_t dimensionID) noexcept { return (ChildID{ 1 } << dimensionID) & childID; }
 
-      static constexpr std::array<LocationID, 2> GetRangeLocationID(std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
+      static inline constexpr std::array<LocationID, 2> GetRangeLocationID(std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
         return { Encode(gridIDRange[0]), Encode(gridIDRange[1]) };
       }
 
-      static constexpr DepthAndLocationID GetDepthAndLocationID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
+      static inline constexpr DepthAndLocationID GetDepthAndLocationID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
         auto dl = DepthAndLocationID{ maxDepthNo, locationIDRange[0] };
 
@@ -1715,22 +1716,22 @@ namespace OrthoTree
         return dl;
       }
 
-      static constexpr DepthAndLocationID GetDepthAndLocationID(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
+      static inline constexpr DepthAndLocationID GetDepthAndLocationID(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
         return GetDepthAndLocationID(maxDepthNo, GetRangeLocationID(gridIDRange));
       }
 
-      static constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
+      static inline constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
         return GetHash(GetDepthAndLocationID(maxDepthNo, gridIDRange));
       }
 
-      static constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
+      static inline constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
         return GetHash(GetDepthAndLocationID(maxDepthNo, locationIDRange));
       }
 
-      static constexpr auto IsLess(DepthAndLocationID const& leftLocation, DepthAndLocationID const& rightLocation) noexcept
+      static inline constexpr auto IsLess(DepthAndLocationID const& leftLocation, DepthAndLocationID const& rightLocation) noexcept
       {
         if (leftLocation.DepthID == rightLocation.DepthID)
           return leftLocation.LocID < rightLocation.LocID;
