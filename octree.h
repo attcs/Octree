@@ -37,30 +37,39 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #ifndef ORTHOTREE_GUARD
 #define ORTHOTREE_GUARD
 
+#include <assert.h>
+#include <math.h>
+
 #include <algorithm>
+#include <array>
+#include <bit>
+#include <bitset>
 #include <concepts>
 #include <execution>
 #include <functional>
 #include <iterator>
+#include <map>
 #include <numeric>
 #include <optional>
-#include <stdexcept>
-#include <type_traits>
-#include <version>
-
-#include <array>
-#include <bitset>
-#include <map>
 #include <queue>
 #include <set>
 #include <span>
+#include <stdexcept>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <version>
 
-#include <assert.h>
-#include <math.h>
+#ifdef __has_include
+#if __has_include(<immintrin.h>)
+#include <immintrin.h>
+#if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_WIN64) || defined(__x86_64__) || defined(__amd64__))
+#define BMI2_PDEP_AVAILABLE 1
+#endif
+#endif
+#endif
 
 #if defined(__clang__)
 #define LOOPIVDEP
@@ -323,10 +332,10 @@ namespace OrthoTree
 
 
   // Type of the dimension
-  using dim_t = int;
+  using dim_t = uint32_t;
 
   // Type of depth
-  using depth_t = int;
+  using depth_t = uint32_t;
 
   // Grid id
   using GridID = uint32_t;
@@ -1261,14 +1270,17 @@ namespace OrthoTree
     template<dim_t DIMENSION_NO>
     struct MortonSpaceIndexing
     {
+      static auto constexpr IS_32BIT_LOCATION = DIMENSION_NO < 4;
+      static auto constexpr IS_64BIT_LOCATION = !IS_32BIT_LOCATION && DIMENSION_NO < 15;
+
       // Indexing can be solved with integral types (above this, internal container will be changed to std::map)
-      static auto constexpr IS_LINEAR_TREE = DIMENSION_NO < 15;
+      static auto constexpr IS_LINEAR_TREE = IS_32BIT_LOCATION || IS_64BIT_LOCATION;
 
       // Max number of children
       static auto constexpr CHILD_NO = detail::pow2_ce<DIMENSION_NO>();
 
       // Max value: 2 ^ DIMENSION_NO
-      using UnderlyingInt = std::conditional_t < DIMENSION_NO<4, uint32_t, uint64_t>;
+      using UnderlyingInt = std::conditional_t<IS_32BIT_LOCATION, uint32_t, uint64_t>;
       using ChildID = UnderlyingInt;
 
       // Max value: 2 ^ nDepth ^ DIMENSION_NO * 2 (signal bit)
@@ -1389,8 +1401,19 @@ namespace OrthoTree
 
       static constexpr NodeID RemoveSentinelBit(NodeIDCR key, std::optional<depth_t> depthIDOptional = std::nullopt) noexcept
       {
-        auto const depthID = depthIDOptional ? *depthIDOptional : GetDepthID(key);
-        return key - (NodeID{ 1 } << depthID);
+        if constexpr (IS_LINEAR_TREE)
+        {
+          constexpr depth_t bitCount = sizeof(NodeID) * CHAR_BIT;
+          auto const leadingZeros = std::countl_zero(key);
+          auto const sentinelBitPosition = bitCount - leadingZeros - 1;
+          return key - (NodeID{ 1 } << sentinelBitPosition);
+        }
+        else
+        {
+          auto const depthID = depthIDOptional.has_value() ? depthIDOptional.value() : GetDepthID(key);
+          auto const sentinelBitPosition = depthID * DIMENSION_NO;
+          return key - (NodeID{ 1 } << sentinelBitPosition);
+        }
       }
 
       static constexpr LocationID GetLocationIDOnExaminedLevel(LocationIDCR locationID, depth_t examinationLevel) noexcept
@@ -1421,59 +1444,149 @@ namespace OrthoTree
         }
       }
 
-      static constexpr LocationID Part1By2(GridID n) noexcept
+      // Separates low 16/32 bits of input by 1 bit
+      static constexpr LocationID Part1By1(GridID gridID) noexcept
       {
-        // n = ----------------------9876543210 : Bits initially
-        // n = ------98----------------76543210 : After (1)
-        // n = ------98--------7654--------3210 : After (2)
-        // n = ------98----76----54----32----10 : After (3)
-        // n = ----9--8--7--6--5--4--3--2--1--0 : After (4)
-        n = (n ^ (n << 16)) & 0xff0000ff; // (1)
-        n = (n ^ (n << 8)) & 0x0300f00f;  // (2)
-        n = (n ^ (n << 4)) & 0x030c30c3;  // (3)
-        n = (n ^ (n << 2)) & 0x09249249;  // (4)
-        if constexpr (IS_LINEAR_TREE)
+        static_assert(sizeof(GridID) == 4);
+
+        auto locationID = LocationID{ gridID };
+        if constexpr (sizeof(LocationID) == 4)
         {
-          return n;
+          // 15 bits can be used
+          // n = ----------------fedcba9876543210 : Bits initially
+          // n = --------fedcba98--------76543210 : After (1)
+          // n = ----fedc----ba98----7654----3210 : After (2)
+          // n = --fe--dc--ba--98--76--54--32--10 : After (3)
+          // n = -f-e-d-c-b-a-9-8-7-6-5-4-3-2-1-0 : After (4)
+          locationID = (locationID ^ (locationID << 8)) & LocationID{ 0x00ff00ff }; // (1)
+          locationID = (locationID ^ (locationID << 4)) & LocationID{ 0x0f0f0f0f }; // (2)
+          locationID = (locationID ^ (locationID << 2)) & LocationID{ 0x33333333 }; // (3)
+          locationID = (locationID ^ (locationID << 1)) & LocationID{ 0x55555555 }; // (4)
+        }
+        else if constexpr (sizeof(LocationID) == 8)
+        {
+          // 31 bits can be used
+          // n = --------------------------------xytsrqponmlkjihgfedcba9876543210 : Bits initially
+          // n = ----------------xytsrqponmlkjihg----------------fedcba9876543210 : After (1)
+          // n = ----xyts----rqpo----nmlk----jihg----fedc----ba98----7654----3210 : After (2)
+          // n = --xy--ts--rq--po--nm--lk--ji--hg--fe--dc--ba--98--76--54--32--10 : After (3)
+          // n = -x-y-t-s-r-q-p-o-n-m-l-k-j-i-h-g-f-e-d-c-b-a-9-8-7-6-5-4-3-2-1-0 : After (4)
+          locationID = (locationID ^ (locationID << 16)) & LocationID{ 0x0000ffff0000ffff }; // (1)
+          locationID = (locationID ^ (locationID << 8)) & LocationID{ 0x00ff00ff00ff00ff };  // (2)
+          locationID = (locationID ^ (locationID << 4)) & LocationID{ 0x0f0f0f0f0f0f0f0f };  // (3)
+          locationID = (locationID ^ (locationID << 2)) & LocationID{ 0x3333333333333333 };  // (4)
+          locationID = (locationID ^ (locationID << 1)) & LocationID{ 0x5555555555555555 };  // (5)
         }
         else
         {
-          return LocationID(n);
+          static_assert(sizeof(LocationID) == 4 || sizeof(LocationID) == 8, "Unsupported LocationID size");
         }
+
+        return locationID;
       }
 
-      // Separates low 16 bits of input by one bit
-      static constexpr LocationID Part1By1(GridID n) noexcept
+      // Separates low 16/32 bits of input by 2 bit
+      static constexpr LocationID Part1By2(GridID gridID) noexcept
       {
-        // n = ----------------fedcba9876543210 : Bits initially
-        // n = --------fedcba98--------76543210 : After (1)
-        // n = ----fedc----ba98----7654----3210 : After (2)
-        // n = --fe--dc--ba--98--76--54--32--10 : After (3)
-        // n = -f-e-d-c-b-a-9-8-7-6-5-4-3-2-1-0 : After (4)
-        n = (n ^ (n << 8)) & 0x00ff00ff; // (1)
-        n = (n ^ (n << 4)) & 0x0f0f0f0f; // (2)
-        n = (n ^ (n << 2)) & 0x33333333; // (3)
-        n = (n ^ (n << 1)) & 0x55555555; // (4)
+        static_assert(sizeof(GridID) == 4);
 
-        if constexpr (IS_LINEAR_TREE)
+        auto locationID = LocationID{ gridID };
+        if constexpr (sizeof(LocationID) == 4)
         {
-          return n;
+          // 10 bits can be used
+          // n = ----------------------9876543210 : Bits initially
+          // n = ------98----------------76543210 : After (1)
+          // n = ------98--------7654--------3210 : After (2)
+          // n = ------98----76----54----32----10 : After (3)
+          // n = ----9--8--7--6--5--4--3--2--1--0 : After (4)
+          locationID = (locationID ^ (locationID << 16)) & LocationID{ 0xff0000ff }; // (1)
+          locationID = (locationID ^ (locationID << 8)) & LocationID{ 0x0300f00f };  // (2)
+          locationID = (locationID ^ (locationID << 4)) & LocationID{ 0x030c30c3 };  // (3)
+          locationID = (locationID ^ (locationID << 2)) & LocationID{ 0x09249249 };  // (4)
+        }
+        else if constexpr (sizeof(LocationID) == 8)
+        {
+          // 21 bits can be used
+          // n = -------------------------------------------lkjhgfedcba9876543210 : Bits initially
+          // n = -----------lkjhg--------------------------------fedcba9876543210 : After (1)
+          // n = -----------lkjhg----------------fedcba98----------------76543210 : After (2)
+          // n = ---l--------kjhg--------fedc--------ba98--------7654--------3210 : After (3)
+          // n = ---l----kj----hg----fe----dc----ba----98----76----54----32----10 : After (4)
+          // n = ---l--k--j--i--h--g--f--e--d--c--b--a--9--7--6--5--4--3--2--1--0 : After (5)
+          locationID = (locationID ^ (locationID << 32)) & LocationID{ 0xffff00000000ffff }; // (1)
+          locationID = (locationID ^ (locationID << 16)) & LocationID{ 0x00ff0000ff0000ff }; // (2)
+          locationID = (locationID ^ (locationID << 8)) & LocationID{ 0xf00f00f00f00f00f };  // (3)
+          locationID = (locationID ^ (locationID << 4)) & LocationID{ 0x30c30c30c30c30c3 };  // (4)
+          locationID = (locationID ^ (locationID << 2)) & LocationID{ 0x9249249249249249 };  // (5)
         }
         else
         {
-          return LocationID(n);
+          static_assert(sizeof(LocationID) == 4 || sizeof(LocationID) == 8, "Unsupported LocationID size");
         }
+
+        return locationID;
+      }
+
+      static consteval LocationID GetBitPattern()
+      {
+        constexpr auto size = sizeof(LocationID) * CHAR_BIT;
+        constexpr auto maxDepth = (size - 1) / DIMENSION_NO;
+
+        auto bitPattern = LocationID{ 0 };
+        auto shift = LocationID{ 0 };
+        for (dim_t depthID = 0; depthID < maxDepth; ++depthID, shift += DIMENSION_NO)
+          bitPattern |= LocationID{ 1 } << shift;
+
+        return bitPattern;
+      }
+
+      static consteval std::array<LocationID, DIMENSION_NO> GetBitPatterns()
+      {
+        constexpr auto bitPattern = GetBitPattern();
+
+        std::array<LocationID, DIMENSION_NO> bitPatterns;
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          bitPatterns[dimensionID] = bitPattern << dimensionID;
+
+        return bitPatterns;
       }
 
     public:
       static inline LocationID Encode(DimArray<GridID> const& gridID) noexcept
       {
         if constexpr (DIMENSION_NO == 1)
+        {
           return LocationID(gridID[0]);
+        }
         else if constexpr (DIMENSION_NO == 2)
+        {
+#ifdef BMI2_PDEP_AVAILABLE
+          return _pdep_u32(gridID[1], 0b10101010'10101010'10101010'10101010) | _pdep_u32(gridID[0], 0b01010101'01010101'01010101'01010101);
+#else
           return (Part1By1(gridID[1]) << 1) + Part1By1(gridID[0]);
+#endif
+        }
         else if constexpr (DIMENSION_NO == 3)
+        {
+#ifdef BMI2_PDEP_AVAILABLE
+          return _pdep_u32(gridID[2], 0b00100100'10010010'01001001'00100100) | _pdep_u32(gridID[1], 0b10010010'01001001'00100100'10010010) |
+                 _pdep_u32(gridID[0], 0b01001001'00100100'10010010'01001001);
+#else
           return (Part1By2(gridID[2]) << 2) + (Part1By2(gridID[1]) << 1) + Part1By2(gridID[0]);
+#endif
+        }
+#ifdef BMI2_PDEP_AVAILABLE
+        else if constexpr (IS_64BIT_LOCATION)
+        {
+          static constexpr auto bitPatterns = GetBitPatterns();
+
+          auto locationID = LocationID{};
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+            locationID |= _pdep_u64(gridID[dimensionID], bitPatterns[dimensionID]);
+
+          return locationID;
+        }
+#endif
         else
         {
           auto msb = gridID[0];
@@ -1489,9 +1602,13 @@ namespace OrthoTree
             {
               auto const shift = dimensionID + i * DIMENSION_NO;
               if constexpr (IS_LINEAR_TREE)
+              {
                 locationID |= static_cast<LocationID>(gridID[dimensionID] & mask) << (shift - i);
+              }
               else
+              {
                 locationID.set(shift, gridID[dimensionID] & mask);
+              }
             }
           }
           return locationID;
@@ -1502,7 +1619,27 @@ namespace OrthoTree
       {
         auto gridID = DimArray<GridID>{};
         if constexpr (DIMENSION_NO == 1)
-          return { RemoveSentinelBit(nodeKey) << (maxDepthNo - GetDepthID(nodeKey)) };
+        {
+          return { static_cast<GridID>(RemoveSentinelBit(nodeKey)) };
+        }
+#ifdef BMI2_PDEP_AVAILABLE
+        else if constexpr (IS_LINEAR_TREE)
+        {
+          static constexpr auto bitPatterns = GetBitPatterns();
+          const auto locationID = RemoveSentinelBit(nodeKey);
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          {
+            if constexpr (IS_32BIT_LOCATION)
+            {
+              gridID[dimensionID] = _pext_u32(locationID, bitPatterns[dimensionID]);
+            }
+            else
+            {
+              gridID[dimensionID] = GridID(_pext_u64(locationID, bitPatterns[dimensionID]));
+            }
+          }
+        }
+#endif
         else
         {
           auto const depthID = GetDepthID(nodeKey);
