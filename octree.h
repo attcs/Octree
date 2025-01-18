@@ -83,6 +83,28 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #define LOOPIVDEP
 #endif
 
+#ifndef CRASH
+#define CRASH_UNDEF
+#define CRASH()       \
+  do                  \
+  {                   \
+    assert(false);    \
+    std::terminate(); \
+  } while (0)
+#endif // !CRASH
+
+#ifndef CRASH_IF
+#define CRASH_IF_UNDEF
+#define CRASH_IF(cond) \
+  do                   \
+  {                    \
+    if (cond)          \
+    {                  \
+      CRASH();         \
+    }                  \
+  } while (0)
+#endif // !CRASH_IF
+
 #ifdef __cpp_lib_execution
 #define EXEC_POL_DEF(e) \
   std::conditional_t<IS_PARALLEL_EXEC, std::execution::parallel_unsequenced_policy, std::execution::unsequenced_policy> constexpr e
@@ -1395,7 +1417,7 @@ namespace OrthoTree
           if (key == 1) // If only sentinel bit remains, exit with node depth
             return d;
 
-        assert(false); // Bad key
+        CRASH(); // Bad key
         return 0;
       }
 
@@ -2252,13 +2274,13 @@ namespace OrthoTree
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
     constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
     {
-      assert(this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already builded
-                                     // tree is wanted to be reset, use the Reset() function before init.
-      assert(maxDepthNo > 1);
-      assert(maxDepthNo <= SI::MAX_THEORETICAL_DEPTH);
-      assert(maxDepthNo < std::numeric_limits<uint8_t>::max());
-      assert(maxElementNo > 1);
-      assert(CHAR_BIT * sizeof(GridID) >= m_maxDepthNo);
+      CRASH_IF(!this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already
+                                        // builded tree is wanted to be reset, use the Reset() function before init.
+      CRASH_IF(maxDepthNo < 2);
+      CRASH_IF(maxDepthNo > SI::MAX_THEORETICAL_DEPTH);
+      CRASH_IF(maxDepthNo >= std::numeric_limits<uint8_t>::max());
+      CRASH_IF(maxElementNo <= 1);
+      CRASH_IF(CHAR_BIT * sizeof(GridID) < m_maxDepthNo);
 
       this->m_grid = detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD>(maxDepthNo, boxSpace);
       this->m_maxDepthNo = maxDepthNo;
@@ -4490,5 +4512,13 @@ namespace OrthoTree
 #include "octree_container.h"
 
 #undef LOOPIVDEP
+#ifdef CRASH_UNDEF
+#undef CRASH_UNDEF
+#undef CRASH
+#endif // CRASH_UNDEF
+#ifdef CRASH_IF_UNDEF
+#undef CRASH_IF_UNDEF
+#undef CRASH_IF
+#endif // CRASH_IF_UNDEF
 
 #endif // ORTHOTREE_GUARD
