@@ -18,10 +18,10 @@ jobs:
       - name: Cache Benchmark library
         uses: actions/cache@v4
         with:
-          path: automatic_benchmarks
+          path: benchmarks/automatic
           key: ${{ runner.os }}-googlebenchmark-v1.5.0
       - name: Run benchmark
-        run: cd automatic_benchmarks && make json
+        run: cd benchmarks/automatic && make json
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
