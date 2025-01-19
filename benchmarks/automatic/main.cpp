@@ -54,7 +54,7 @@ namespace
         using NodeID = typename TreePointND<DIMENSION_NO>::MortonNodeID;
         std::vector<NodeID> entityIDs;
         for (auto const& point : points)
-          entityIDs.emplace_back(tree.GetNodeID(points[0]));
+          entityIDs.emplace_back(tree.GetNodeID(point));
 
         std::vector<depth_t> depthIDs(entityNo);
         for (auto _ : state)
@@ -122,7 +122,6 @@ namespace
         auto boxSpace = BoundingBoxND<DIMENSION_NO>{};
         boxSpace.Max.fill(rMax);
 
-        using NodeID = typename TreePointND<DIMENSION_NO>::MortonNodeID;
         for (auto _ : state)
         {
           auto tree = TreePointND<DIMENSION_NO>();
