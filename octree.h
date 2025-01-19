@@ -1699,7 +1699,15 @@ namespace OrthoTree
         return GetKeyChildPart(childNodeKey >> (DIMENSION_NO * (depthDifference - 1)));
       }
 
-      static inline constexpr bool IsChildInGreaterSegment(ChildID childID, dim_t dimensionID) noexcept { return (ChildID{ 1 } << dimensionID) & childID; }
+      static inline constexpr bool IsChildInGreaterSegment(LinearLocationID locationID, dim_t dimensionID) noexcept
+      {
+        return locationID & (LocationID{ 1 } << dimensionID);
+      }
+
+      static inline constexpr bool IsChildInGreaterSegment(NonLinearLocationID const& locationID, dim_t dimensionID) noexcept
+      {
+        return locationID[dimensionID];
+      }
 
       static inline constexpr std::array<LocationID, 2> GetRangeLocationID(std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
@@ -1954,9 +1962,8 @@ namespace OrthoTree
     constexpr IGM::Box GetNodeBox(MortonNodeIDCR key) const noexcept { return this->GetNodeBox(SI::GetDepthID(key), this->GetNodeCenter(key)); }
 
   protected:
-    inline Node& CreateChild(Node& parentNode, MortonChildID childID, MortonNodeIDCR childKey) noexcept
+    inline Node& CreateChild(Node& parentNode, MortonNodeIDCR childKey) noexcept
     {
-      assert(childID < SI::CHILD_NO);
       auto& nodeChild = m_nodes[childKey];
 
 #ifndef ORTHOTREE__DISABLED_NODECENTER
@@ -1968,7 +1975,7 @@ namespace OrthoTree
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        auto const isGreater = SI::IsChildInGreaterSegment(childID, dimensionID);
+        auto const isGreater = SI::IsChildInGreaterSegment(childKey, dimensionID);
         auto const sign = IGM_Geometry(isGreater * 2 - 1);
         childCenter[dimensionID] = parentCenter[dimensionID] + sign * halfSizes[dimensionID];
       }
@@ -2064,7 +2071,7 @@ namespace OrthoTree
         auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
         parentNode.AddChildInOrder(childNodeKey);
-        auto& childNode = this->CreateChild(parentNode, childID, childNodeKey);
+        auto& childNode = this->CreateChild(parentNode, childNodeKey);
         childNode.Entities.emplace_back(newEntityID);
 
         break;
@@ -2079,7 +2086,7 @@ namespace OrthoTree
           auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
           parentNode.AddChildInOrder(childNodeKey);
-          auto& childNode = this->CreateChild(parentNode, childID, childNodeKey);
+          auto& childNode = this->CreateChild(parentNode, childNodeKey);
           childNode.Entities.emplace_back(newEntityID);
         }
 
@@ -2102,7 +2109,7 @@ namespace OrthoTree
           else
           {
             parentNode.AddChildInOrder(childNodeKey);
-            auto& childNode = this->CreateChild(parentNode, childID, childNodeKey);
+            auto& childNode = this->CreateChild(parentNode, childNodeKey);
             childNode.Entities.emplace_back(entityID);
           }
 
@@ -2189,7 +2196,7 @@ namespace OrthoTree
           auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
           parentNode.AddChildInOrder(childNodeKey);
-          auto& nodeChild = this->CreateChild(parentNode, childID, childNodeKey);
+          auto& nodeChild = this->CreateChild(parentNode, childNodeKey);
           nodeChild.Entities.emplace_back(entityID);
         }
         else
@@ -2920,7 +2927,7 @@ namespace OrthoTree
 
         auto const childKey = keyGenerator.GetChildNodeKey(actualChildID);
         parentNode.AddChild(childKey);
-        auto& childNode = this->CreateChild(parentNode, actualChildID, childKey);
+        auto& childNode = this->CreateChild(parentNode, childKey);
         this->CreateChildNodes(
           childNode, childKey, locationBeginIterator, actualEndIterator, locationGenerator.GetStartLocationID(actualChildID), remainingDepth);
       }
@@ -3444,7 +3451,7 @@ namespace OrthoTree
         auto const childKey = keyGenerator.GetChildNodeKey(actualChildID);
 
         parentNode.AddChild(childKey);
-        auto& nodeChild = this->CreateChild(parentNode, actualChildID, childKey);
+        auto& nodeChild = this->CreateChild(parentNode, childKey);
         this->CreateChildNodes(
           nodeChild, childKey, beginLocationIterator, actualEndLocationIterator, locationGenerator.GetStartLocationID(actualChildID), remainingDepthNo);
       }
