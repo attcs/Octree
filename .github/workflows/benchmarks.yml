@@ -11,28 +11,44 @@ permissions:
 
 jobs:
   benchmark:
-    name: Run Google Benchmark
+    name: Build and Run Benchmarks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Cache Benchmark library
-        uses: actions/cache@v4
+      # Checkout repository and submodules
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          path: benchmarks/automatic
-          key: ${{ runner.os }}-googlebenchmark-v1.5.0
-      - name: Run benchmark
-        run: cd benchmarks/automatic && make json
+          submodules: true
 
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ make
+          sudo apt-get install libtbb-dev
+
+      # Build Benchmark project and link with Google Benchmark
+      - name: Build project
+        run: |
+          mkdir -p benchmarks/automatic/build && cd benchmarks/automatic/build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make -j$(nproc)
+
+      # Run benchmarks and save results to JSON
+      - name: Run benchmarks
+        run: |
+          ./benchmarks/automatic/build/benchmarks --benchmark_out=benchmarks/automatic/benchmark_result.json --benchmark_out_format=json
+
+      # Store benchmark result on a branch
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: C++ Benchmark
           tool: 'googlecpp'
-          output-file-path: automatic_benchmarks/benchmark_result.json
+          output-file-path: benchmarks/automatic/benchmark_result.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
-          auto-push-branch: gh-pages
-          # Show alert with commit comment on detecting possible performance regression
+          auto-push-branch: gh_pages
           alert-threshold: '200%'
           comment-on-alert: true
           fail-on-alert: true
