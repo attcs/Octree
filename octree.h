@@ -2941,9 +2941,10 @@ namespace OrthoTree
 
       auto const maxDepthNo = (!maxDepthNoIn || maxDepthNoIn == 0) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthNoIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
-      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthNo, maxElementNoInNode));
       if (points.empty())
         return;
+
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthNo, maxElementNoInNode));
 
       auto pointLocations = std::vector<Location>(pointNo);
       EXEC_POL_DEF(ept); // GCC 11.3
