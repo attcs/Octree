@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(benchmarks)
 find_package(TBB QUIET)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTBB_ENABLE_IPO=off -std=c++20")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTBB_ENABLE_IPO=off -std=c++20 -march=native -mavx2 -O3 -ffast-math")
 set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE BOOL "Download Google Benchmark dependencies")
 
 include_directories(../)
