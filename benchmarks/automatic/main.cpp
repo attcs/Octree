@@ -136,6 +136,34 @@ namespace
         }
       }
 
+      static void InsertUnique(benchmark::State& state)
+      {
+        constexpr dim_t DIMENSION_NO = 3;
+        constexpr depth_t depth = 5;
+
+        size_t entityNo = state.range();
+
+        const auto points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        auto boxSpace = BoundingBoxND<DIMENSION_NO>{};
+        boxSpace.Max.fill(rMax);
+
+        for (auto _ : state)
+        {
+          auto tree = TreePointND<DIMENSION_NO>();
+          tree.Init(boxSpace, depth);
+
+          std::size_t entityID = 0;
+          for (auto const& point : points)
+          {
+            if (tree.InsertUnique(entityID, point, rMax / 100.0, points))
+            {
+              ++entityID;
+            }
+          }
+        }
+      }
+
+      
       static void Update(benchmark::State& state)
       {
         constexpr dim_t DIMENSION_NO = 3;
@@ -177,6 +205,26 @@ namespace
         }
       }
 
+      static void FrustumCulling(benchmark::State& state)
+      {
+        constexpr dim_t DIMENSION_NO = 3;
+        constexpr depth_t depth = 5;
+
+        size_t entityNo = state.range();
+
+        const auto points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        const auto tree = TreePointND<DIMENSION_NO>(points, depth);
+
+        const auto planes = std::vector{
+          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 1.0, 0.0, 0.0 } },
+          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 1.0, 0.0 } },
+          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 0.0, 1.0 } }
+        };
+        for (auto _ : state)
+        {
+          tree.FrustumCulling(planes, 0.1, points);
+        }
+      }
 
     } // namespace
   } // namespace Benchmarks
@@ -189,8 +237,10 @@ BENCHMARK(Benchmarks::Point::Create<false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)
 BENCHMARK(Benchmarks::Point::Create<true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000);
 BENCHMARK(Benchmarks::Point::InsertToLeaf)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000);
 BENCHMARK(Benchmarks::Point::InsertWithRebalancing)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000);
+BENCHMARK(Benchmarks::Point::InsertUnique)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000);
 BENCHMARK(Benchmarks::Point::Update)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000);
-BENCHMARK(Benchmarks::Point::GetNearestNeighbors)->Arg(10000);
+BENCHMARK(Benchmarks::Point::GetNearestNeighbors)->Arg(1000)->Arg(10000);
+BENCHMARK(Benchmarks::Point::FrustumCulling)->Arg(1000)->Arg(10000);
 
 // Run the benchmark
 BENCHMARK_MAIN();
