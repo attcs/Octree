@@ -3,7 +3,10 @@
 <br>
 Lightweight, parallelizable C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
 <br>
-What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
+What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree <br>
+What is Morton Z space filling curve? https://en.wikipedia.org/wiki/Z-order_curve
+
+[CHANGELOG](./CHANGELOG.md)
 
 ## Features
 * Adaptable to any existing geometric system
@@ -37,12 +40,13 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
 * Use `PlaneSearch()` / `PlaneIntersection()` / `PlanePositiveSegmentation()` member functions for hyperplane related searches
 * Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
 * Use `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
+* Use `InsertUnique` if tolerance-based unique insertion is needed for points
+* Use `InsertWithRebalance()` for rebalancing the tree during insertion
 * Use `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
 * Use `CollisionDetection()` member function for bounding box overlap examination.
 * Use `VisitNodes()` / `VisitNodesInDFS()` to traverse the tree from up to down (former is breadth-first search) with user-defined `selector()` and `procedure()`.
 * Use `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
 * Use `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
-
 
 ## Notes
 * Header only implementation.
@@ -52,9 +56,9 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree
   * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
   * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapC`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contigous container.
   * `s` means adjustable `SPLIT_DEPTH_INCREASEMENT` for box-types.
-* If `int` is preferred for indexig instead of `std::size_t`, declare `#define ORTHOTREE_INDEX_T__INT`.
+* If `int` is preferred for indexing instead of `std::size_t`, declare `#define ORTHOTREE_INDEX_T__INT`.
 * Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `SPLIT_DEPTH_INCREASEMENT` template parameter, these boxes can be splitted then placed on the deeper level of the tree. The `SPLIT_DEPTH_INCREASEMENT` default is 2 and this split method is applied by default.
-* Edit functions are available but not recommended to majorly build the tree.
+* Edit functions are available but not recommended to fully build the tree with them.
 * If less element is collected in a node than the max element then the child node won't be created.
 * The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
