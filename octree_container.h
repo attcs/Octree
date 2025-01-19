@@ -188,8 +188,11 @@ namespace OrthoTree
 
     bool Erase(TEntityID entityID) noexcept
     {
-      if (m_geometryCollection.size() <= entityID)
-        return false;
+      if (OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+      {
+        if (m_geometryCollection.size() <= entityID)
+          return false;
+      }
 
       if (!m_tree.Erase(entityID, detail::at(m_geometryCollection, entityID)))
         return false;
