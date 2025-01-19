@@ -11,7 +11,7 @@
 #include <vector>
 #include <random>
 
-#include "../octree.h"
+#include "../../octree.h"
 #include "OrthoTreePointDynamicGeneral.h"
 
 
