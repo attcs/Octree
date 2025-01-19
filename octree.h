@@ -65,7 +65,7 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #ifdef __has_include
 #if __has_include(<immintrin.h>)
 #include <immintrin.h>
-#if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_WIN64) || defined(__x86_64__) || defined(__amd64__))
+#if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_M_X64) || defined(__x86_64__) || defined(__amd64__))
 #define BMI2_PDEP_AVAILABLE 1
 #endif
 #endif
