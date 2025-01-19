@@ -4,9 +4,9 @@
 Lightweight, parallelizable C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
 <br>
 What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree <br>
-What is Morton Z space filling curve? https://en.wikipedia.org/wiki/Z-order_curve
+What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curve
 
-[CHANGELOG](./CHANGELOG.md)
+[CHANGELOG](./CHANGELOG.md) | [BENCHMARKS](https://attcs.github.io/Octree/dev/bench/)
 
 ## Features
 * Adaptable to any existing geometric system
@@ -41,11 +41,11 @@ What is Morton Z space filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
 * Use `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
 * Use `InsertUnique` if tolerance-based unique insertion is needed for points
-* Use `InsertWithRebalance()` for rebalancing the tree during insertion
+* Use `InsertWithRebalancing()` for rebalancing the tree during insertion
 * Use `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
 * Use `CollisionDetection()` member function for bounding box overlap examination.
 * Use `VisitNodes()` / `VisitNodesInDFS()` to traverse the tree from up to down (former is breadth-first search) with user-defined `selector()` and `procedure()`.
-* Use `GetNearestNeighbors()` for kNN search in point based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
+* Use `GetNearestNeighbors()` for kNN search in point-based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
 * Use `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
 
 ## Notes
