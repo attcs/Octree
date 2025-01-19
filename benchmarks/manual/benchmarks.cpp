@@ -45,29 +45,6 @@ namespace
   auto constexpr degree_to_rad(double degree) { return degree / 180.0 * std::numbers::pi; }
 
 
-  template<size_t DIMENSION_NO>
-  static constexpr PointND<DIMENSION_NO> CreateBoxMax(PointND<DIMENSION_NO> const& pt, double size)
-  {
-    auto ptMax = pt;
-    for (size_t iDim = 0; iDim < DIMENSION_NO; ++iDim)
-      Adaptor::SetPointC(ptMax, static_cast<dim_t>(iDim), Adaptor::GetPointC(pt, static_cast<dim_t>(iDim)) + size);
-
-    return ptMax;
-  }
-
-
-  template<dim_t DIMENSION_NO>
-  static BoundingBoxND<DIMENSION_NO> CreateSearcBox(double rBegin, double rSize)
-  {
-    auto box = BoundingBoxND<DIMENSION_NO>{};
-    for (dim_t iDim = 0; iDim < DIMENSION_NO; ++iDim)
-      box.Min[iDim] = rBegin;
-
-    box.Max = CreateBoxMax<DIMENSION_NO>(box.Min, rSize);
-    return box;
-  }
-
-
   template<dim_t DIMENSION_NO, size_t nNumber>
   static vector<PointND<DIMENSION_NO>> CreatePoints_Diagonal()
   {
@@ -199,55 +176,6 @@ namespace
     return aBox;
   }
 
-  template<dim_t DIMENSION_NO, size_t nNumber>
-  static vector<BoundingBoxND<DIMENSION_NO>> CreateBoxes_Random()
-  {
-    if (nNumber == 0)
-      return {};
-
-    auto constexpr rMax = 8.0;
-    auto constexpr rUnit = 1.0;
-    auto aBox = vector<BoundingBoxND<DIMENSION_NO>>(nNumber);
-    aBox[0].Max = CreateBoxMax(PointND<DIMENSION_NO>(), rMax);
-    if (nNumber == 1)
-      return aBox;
-
-    size_t iNumber = 1;
-
-    // Corner points
-    {
-      for (dim_t iDim = 0; iDim < DIMENSION_NO && iNumber < nNumber; ++iDim, ++iNumber)
-      {
-        aBox[iNumber].Min[iDim] = rMax - rUnit;
-        aBox[iNumber].Max = CreateBoxMax(aBox[iNumber].Min, rUnit);
-      }
-      if (iNumber == nNumber)
-        return aBox;
-
-
-      for (dim_t iDim = 0; iDim < DIMENSION_NO; ++iDim)
-        aBox[iNumber].Min[iDim] = rMax - rUnit;
-
-      aBox[iNumber].Max = CreateBoxMax(aBox[iNumber].Min, rUnit);
-
-      ++iNumber;
-    }
-
-    srand(0);
-
-    {
-      for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
-      {
-        auto const iNumberBox = nNumber - iNumber - 1;
-        for (dim_t iDim = 0; iDim < DIMENSION_NO && iNumber < nNumber; ++iDim)
-          aBox[iNumberBox].Min[iDim] = double(rand() % 100) * ((rMax - 1.0) / 100.0);
-
-        aBox[iNumberBox].Max = CreateBoxMax(aBox[iNumberBox].Min, double(rand() % 100) * (1.0 * rUnit / 100.0));
-      }
-    }
-
-    return aBox;
-  }
 
   template<dim_t DIMENSION_NO, size_t nNumber>
   static vector<BoundingBoxND<DIMENSION_NO>> CreateBoxes_CylindricalSemiRandom()
@@ -754,7 +682,7 @@ int main()
 
   {
     auto const szName = string("Random placed boxes");
-    auto const aPointDiag_100M = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Random<N, 100 * N1M>(); }, szName, 100, report);
+    auto const aPointDiag_100M = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return GenerateBoxesRandom<N>(100 * N1M); }, szName, 100, report);
     auto const vTask = GenerateBoxTasks<N>(nDepth, szName, aPointDiag_100M);
     RunTasks(vTask, report);
   }
@@ -769,8 +697,8 @@ int main()
   // Morton vs Dynamic
   {
     auto const szName = string("Cylindrical semi-random placed points Morton vs Dynamic");
-    auto const aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return GeneratePointsRandom<N, N1M>(); }, szName, 100, report);
-    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Random<N, N1M>(); }, szName, 100, report);
+    auto const aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return GeneratePointsRandom<N>(N1M); }, szName, 100, report);
+    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return GenerateBoxesRandom<N>(N1M); }, szName, 100, report);
 
     auto const vTaskMortonP = GeneratePointTasks<N>(nDepth, "Morton point", aPoint);
     auto const vTaskDynP = GeneratePointDynTasks_NonLog<N>(nDepth, "Dynamic point", aPoint);
