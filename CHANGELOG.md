@@ -1,9 +1,18 @@
 # Changelog
 
-## Latest
+## 2025-01-19 v2.5
 Interface changes
 * `std::execution` is dropped from the interface. `bool IS_PARALLEL_EXEC` is used instead.
 * `Id` is replaced to `Entity`: `CollectAllEntitiesInDFS`/`BFS` `EraseEntity`
+
+New features
+* `InsertUnique()` for unique insertion of points
+* `RangeSearchNodes()` for range search of nodes
+* `BMI2` instruction set to enhance `Morton` `Encode()`/`Decode()` (Use `AVX2`)
+
+Maintenance
+* Increased performance of `GetNearestNeighbor()`
+* `AddAndRebalance` and `AddUnique` is added to the `Container`
 
 ## 2025-01-14 v2.4
 Refactorizations
