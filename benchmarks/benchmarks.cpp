@@ -136,7 +136,7 @@ namespace
     {
       for (; iNumber < nNumber; ++iNumber)
         for (dim_t iDim = 0; iDim < nDim; ++iDim)
-          aPoint[iNumber][iDim] = (rand() % 100) * (rMax / 100.0);
+          aPoint[iNumber][iDim] = double(rand() % 100) * (rMax / 100.0);
 
     }
 
@@ -170,12 +170,12 @@ namespace
       for (; iNumber < nNumber; ++iNumber)
       {
         auto const rAngle = degree_to_rad(static_cast<double>(rand() % 360));
-        auto const rRadius = rMax / 4.0 + (rand() % 100) * 0.01;
+        auto const rRadius = rMax / 4.0 + double(rand() % 100) * 0.01;
         aPoint[iNumber][0] = cos(rAngle) * rRadius + rMax / 2.0;
         aPoint[iNumber][1] = sin(rAngle) * rRadius + rMax / 2.0;
 
         for (dim_t iDim = 2; iDim < nDim; ++iDim)
-          aPoint[iNumber][iDim] = (rand() % 100) * rMax / 100.0;
+          aPoint[iNumber][iDim] = double(rand() % 100) * rMax / 100.0;
       }
     }
 
@@ -275,9 +275,9 @@ namespace
       {
         auto const iNumberBox = nNumber - iNumber - 1;
         for (dim_t iDim = 0; iDim < nDim && iNumber < nNumber; ++iDim)
-          aBox[iNumberBox].Min[iDim] = (rand() % 100) * ((rMax - 1.0) / 100.0);
+          aBox[iNumberBox].Min[iDim] = double(rand() % 100) * ((rMax - 1.0) / 100.0);
 
-        aBox[iNumberBox].Max = CreateBoxMax(aBox[iNumberBox].Min, (rand() % 100) * (1.0 * rUnit / 100.0));
+        aBox[iNumberBox].Max = CreateBoxMax(aBox[iNumberBox].Min, double(rand() % 100) * (1.0 * rUnit / 100.0));
       }
     }
 
@@ -329,7 +329,7 @@ namespace
         aBox[iNumber].Min[1] = sin(rAngle) * rRadius + rMax / 2.0 - rSize / 2.0;
 
         for (dim_t iDim = 2; iDim < nDim; ++iDim)
-          aBox[iNumber].Min[iDim] = (rand() % 100) * 0.01 * (rMax - 2.0 * rUnit) + rUnit - rSize / 2.0;
+          aBox[iNumber].Min[iDim] = double(rand() % 100) * 0.01 * (rMax - 2.0 * rUnit) + rUnit - rSize / 2.0;
 
         aBox[iNumber].Max = CreateBoxMax(aBox[iNumber].Min, rSize);
 
@@ -820,8 +820,8 @@ int main()
   // Morton vs Dynamic
   {
     auto const szName = string("Cylindrical semi-random placed points Morton vs Dynamic");
-    auto const aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Random<N, 100*N1M>(); }, szName, 100, report);
-    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Random<N, 100 * N1M>(); }, szName, 100, report);
+    auto const aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Random<N, N1M>(); }, szName, 100, report);
+    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Random<N, N1M>(); }, szName, 100, report);
 
     auto const vTaskMortonP = GeneratePointTasks<N>(nDepth, "Morton point", aPoint);
     auto const vTaskDynP = GeneratePointDynTasks_NonLog<N>(nDepth, "Dynamic point", aPoint);
