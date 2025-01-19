@@ -416,19 +416,19 @@ namespace OrthoTree
   template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TGeometry = double>
   struct AdaptorGeneralBasics
   {
-    static constexpr TGeometry GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
-    static constexpr void SetPointC(TVector& point, dim_t dimensionID, TGeometry value) noexcept { point[dimensionID] = value; }
+    static inline constexpr TGeometry GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+    static inline constexpr void SetPointC(TVector& point, dim_t dimensionID, TGeometry value) noexcept { point[dimensionID] = value; }
 
-    static constexpr TGeometry GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return box.Min[dimensionID]; }
-    static constexpr TGeometry GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return box.Max[dimensionID]; }
-    static constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { box.Min[dimensionID] = value; }
-    static constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { box.Max[dimensionID] = value; }
+    static inline constexpr TGeometry GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return box.Min[dimensionID]; }
+    static inline constexpr TGeometry GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return box.Max[dimensionID]; }
+    static inline constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { box.Min[dimensionID] = value; }
+    static inline constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { box.Max[dimensionID] = value; }
 
-    static constexpr TVector const& GetRayDirection(TRay const& ray) noexcept { return ray.Direction; }
-    static constexpr TVector const& GetRayOrigin(TRay const& ray) noexcept { return ray.Origin; }
+    static inline constexpr TVector const& GetRayDirection(TRay const& ray) noexcept { return ray.Direction; }
+    static inline constexpr TVector const& GetRayOrigin(TRay const& ray) noexcept { return ray.Origin; }
 
-    static constexpr TVector const& GetPlaneNormal(TPlane const& plane) noexcept { return plane.Normal; }
-    static constexpr TGeometry GetPlaneOrigoDistance(TPlane const& plane) noexcept { return plane.OrigoDistance; }
+    static inline constexpr TVector const& GetPlaneNormal(TPlane const& plane) noexcept { return plane.Normal; }
+    static inline constexpr TGeometry GetPlaneOrigoDistance(TPlane const& plane) noexcept { return plane.OrigoDistance; }
   };
 
 
@@ -692,7 +692,7 @@ namespace OrthoTree
 #pragma clang diagnostic ignored "-Wbitwise-instead-of-logical"
 #endif
   template<std::size_t N>
-  bitset_arithmetic<N> operator+(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
+  inline bitset_arithmetic<N> operator+(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
   {
     auto result = bitset_arithmetic<N>();
     bool carry = false;
@@ -707,7 +707,7 @@ namespace OrthoTree
   }
 
   template<std::size_t N>
-  constexpr bitset_arithmetic<N> operator-(bitset_arithmetic<N> result, bitset_arithmetic<N> const& rhs) noexcept
+  inline constexpr bitset_arithmetic<N> operator-(bitset_arithmetic<N> result, bitset_arithmetic<N> const& rhs) noexcept
   {
     bool borrow = false;
     for (std::size_t index = 0; index < N; ++index)
@@ -724,19 +724,19 @@ namespace OrthoTree
 #endif
 
   template<std::size_t N>
-  bitset_arithmetic<N> operator+(bitset_arithmetic<N> const& lhs, std::size_t rhs) noexcept
+  inline bitset_arithmetic<N> operator+(bitset_arithmetic<N> const& lhs, std::size_t rhs) noexcept
   {
     return lhs + bitset_arithmetic<N>(rhs);
   }
 
   template<std::size_t N>
-  bitset_arithmetic<N> operator-(bitset_arithmetic<N> const& lhs, std::size_t rhs) noexcept
+  inline bitset_arithmetic<N> operator-(bitset_arithmetic<N> const& lhs, std::size_t rhs) noexcept
   {
     return lhs - bitset_arithmetic<N>(rhs);
   }
 
   template<std::size_t N>
-  bitset_arithmetic<N> operator*(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
+  inline bitset_arithmetic<N> operator*(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) noexcept
   {
     auto constexpr mult = [](bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) {
       auto result = bitset_arithmetic<N>{};
@@ -751,13 +751,13 @@ namespace OrthoTree
   }
 
   template<std::size_t N>
-  bitset_arithmetic<N> operator*(bitset_arithmetic<N> const& lhs, std::size_t rhs) noexcept
+  inline bitset_arithmetic<N> operator*(bitset_arithmetic<N> const& lhs, std::size_t rhs) noexcept
   {
     return lhs * bitset_arithmetic<N>(rhs);
   }
 
   template<std::size_t N>
-  bitset_arithmetic<N> operator*(std::size_t rhs, bitset_arithmetic<N> const& lhs) noexcept
+  inline bitset_arithmetic<N> operator*(std::size_t rhs, bitset_arithmetic<N> const& lhs) noexcept
   {
     return lhs * bitset_arithmetic<N>(rhs);
   }
@@ -765,7 +765,7 @@ namespace OrthoTree
   struct bitset_arithmetic_compare final
   {
     template<std::size_t N>
-    constexpr bool operator()(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) const noexcept
+    inline constexpr bool operator()(bitset_arithmetic<N> const& lhs, bitset_arithmetic<N> const& rhs) const noexcept
     {
       return lhs < rhs;
     }
@@ -786,7 +786,7 @@ namespace OrthoTree
         Vector Min, Max;
       };
 
-      static constexpr Geometry Size2(Vector const& vector) noexcept
+      static inline constexpr Geometry Size2(Vector const& vector) noexcept
       {
         auto d2 = Geometry{ 0 };
         LOOPIVDEP
@@ -796,9 +796,9 @@ namespace OrthoTree
         return d2;
       }
 
-      static Geometry Size(Vector const& vector) noexcept { return std::sqrt(Size2(vector)); }
+      static inline Geometry Size(Vector const& vector) noexcept { return std::sqrt(Size2(vector)); }
 
-      static constexpr Vector GetBoxCenter(Box const& box) noexcept
+      static inline constexpr Vector GetBoxCenter(Box const& box) noexcept
       {
         Vector center;
         LOOPIVDEP
@@ -808,7 +808,7 @@ namespace OrthoTree
         return center;
       }
 
-      static constexpr Vector GetBoxCenterAD(TBox const& box) noexcept
+      static inline constexpr Vector GetBoxCenterAD(TBox const& box) noexcept
       {
         Vector center;
         LOOPIVDEP
@@ -818,7 +818,7 @@ namespace OrthoTree
         return center;
       }
 
-      static constexpr Vector GetBoxHalfSizeAD(TBox const& box) noexcept
+      static inline constexpr Vector GetBoxHalfSizeAD(TBox const& box) noexcept
       {
         Vector halfSize;
         LOOPIVDEP
@@ -828,7 +828,7 @@ namespace OrthoTree
         return halfSize;
       }
 
-      static bool AreBoxesOverlappingByCenter(Vector const& centerLhs, Vector const& centerRhs, Vector const& sizeLhs, Vector const& sizeRhs) noexcept
+      static inline bool AreBoxesOverlappingByCenter(Vector const& centerLhs, Vector const& centerRhs, Vector const& sizeLhs, Vector const& sizeRhs) noexcept
       {
         Vector distance;
         LOOPIVDEP
@@ -847,14 +847,14 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr void MoveAD(Vector& v, TVector const& moveVector) noexcept
+      static inline constexpr void MoveAD(Vector& v, TVector const& moveVector) noexcept
       {
         LOOPIVDEP
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           v[dimensionID] += AD::GetPointC(moveVector, dimensionID);
       }
 
-      static constexpr void MoveAD(Box& box, TVector const& moveVector) noexcept
+      static inline constexpr void MoveAD(Box& box, TVector const& moveVector) noexcept
       {
         LOOPIVDEP
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -864,7 +864,7 @@ namespace OrthoTree
         }
       }
 
-      static constexpr TGeometry DotAD(TVector const& ptL, Vector const& ptR) noexcept
+      static inline constexpr TGeometry DotAD(TVector const& ptL, Vector const& ptR) noexcept
       {
         auto value = TGeometry{};
         LOOPIVDEP
@@ -875,7 +875,7 @@ namespace OrthoTree
       }
 
       template<typename TGeometryRange, typename TGeometryBox>
-      static constexpr bool DoesRangeContainBox(TGeometryRange rangeMin, TGeometryRange rangeMax, TGeometryBox boxMin, TGeometryBox boxMax) noexcept
+      static inline constexpr bool DoesRangeContainBox(TGeometryRange rangeMin, TGeometryRange rangeMax, TGeometryBox boxMin, TGeometryBox boxMax) noexcept
       {
         if (rangeMin > boxMin || boxMin > rangeMax)
           return false;
@@ -886,7 +886,7 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr bool DoesRangeContainBoxAD(TBox const& range, Box const& box) noexcept
+      static inline constexpr bool DoesRangeContainBoxAD(TBox const& range, Box const& box) noexcept
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
@@ -898,7 +898,7 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr bool DoesRangeContainBoxAD(Box const& range, TBox const& box) noexcept
+      static inline constexpr bool DoesRangeContainBoxAD(Box const& range, TBox const& box) noexcept
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
@@ -910,7 +910,7 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr bool DoesRangeContainBoxAD(Box const& range, Box const& box) noexcept
+      static inline constexpr bool DoesRangeContainBoxAD(Box const& range, Box const& box) noexcept
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
@@ -922,7 +922,7 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr PlaneRelation GetBoxPlaneRelationAD(
+      static inline constexpr PlaneRelation GetBoxPlaneRelationAD(
         Vector const& center, Vector const& halfSize, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) noexcept
       {
         assert(AD::IsNormalizedVector(planeNormal));
@@ -964,7 +964,7 @@ namespace OrthoTree
       }
 
       template<typename TContainer>
-      static constexpr Box GetBoxOfPointsAD(TContainer const& points) noexcept
+      static inline constexpr Box GetBoxOfPointsAD(TContainer const& points) noexcept
       {
         auto ext = BoxInvertedInit();
         for (auto const& e : points)
@@ -983,7 +983,7 @@ namespace OrthoTree
       }
 
       template<typename TContainer>
-      static constexpr Box GetBoxOfBoxesAD(TContainer const& boxes) noexcept
+      static inline constexpr Box GetBoxOfBoxesAD(TContainer const& boxes) noexcept
       {
         auto ext = BoxInvertedInit();
         for (auto const& e : boxes)
@@ -1001,7 +1001,7 @@ namespace OrthoTree
         return ext;
       }
 
-      static constexpr bool DoesBoxContainPointAD(Box const& box, TVector const& point, TGeometry tolerance = 0) noexcept
+      static inline constexpr bool DoesBoxContainPointAD(Box const& box, TVector const& point, TGeometry tolerance = 0) noexcept
       {
         if (tolerance != 0.0)
         {
@@ -1020,7 +1020,7 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr bool DoesBoxContainPointAD(Vector const& center, Vector const& halfSizes, TVector const& point, TGeometry tolerance = 0) noexcept
+      static inline constexpr bool DoesBoxContainPointAD(Vector const& center, Vector const& halfSizes, TVector const& point, TGeometry tolerance = 0) noexcept
       {
         if (tolerance != 0.0)
         {
@@ -1057,7 +1057,7 @@ namespace OrthoTree
         return distance;
       }
 
-      static constexpr std::optional<double> GetRayBoxDistanceAD(
+      static inline constexpr std::optional<double> GetRayBoxDistanceAD(
         Vector const& center, Vector const& halfSizes, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) noexcept
       {
         if (DoesBoxContainPointAD(center, halfSizes, rayBasePoint, tolerance))
@@ -1122,7 +1122,7 @@ namespace OrthoTree
           return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
       }
 
-      static constexpr Geometry GetVolumeAD(Box const& range) noexcept
+      static inline constexpr Geometry GetVolumeAD(Box const& range) noexcept
       {
         Geometry volume = 1.0;
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1132,7 +1132,7 @@ namespace OrthoTree
         return volume;
       }
 
-      static constexpr Geometry GetVolumeAD(TBox const& range) noexcept
+      static inline constexpr Geometry GetVolumeAD(TBox const& range) noexcept
       {
         Geometry volume = 1.0;
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1145,18 +1145,19 @@ namespace OrthoTree
 
 
     template<dim_t DIMENSION_NO, typename TGeometry, typename TVector, typename TBox, typename AD>
-    struct GridSpaceIndexing
+    class GridSpaceIndexing
     {
+    public:
       template<typename T>
       using DimArray = std::array<T, DIMENSION_NO>;
 
       using IGM = InternalGeometryModule<DIMENSION_NO, TGeometry, TVector, TBox, AD>;
       using IGM_Geometry = typename IGM::Geometry;
 
+    public:
+      inline constexpr GridSpaceIndexing() = default;
 
-      constexpr GridSpaceIndexing() = default;
-
-      constexpr GridSpaceIndexing(depth_t maxDepthNo, IGM::Box const& boxSpace) noexcept
+      inline constexpr GridSpaceIndexing(depth_t maxDepthNo, IGM::Box const& boxSpace) noexcept
       : m_maxRasterResolution(detail::pow2<depth_t, GridID>(maxDepthNo))
       , m_maxRasterID(m_maxRasterResolution - 1)
       , m_boxSpace(boxSpace)
@@ -1172,17 +1173,17 @@ namespace OrthoTree
         m_volumeOfOverallSpace = IGM::GetVolumeAD(m_boxSpace);
       }
 
-      constexpr IGM::Vector const& GetSizes() const noexcept { return m_sizeInDimensions; }
+      inline constexpr IGM::Vector const& GetSizes() const noexcept { return m_sizeInDimensions; }
 
-      constexpr IGM::Geometry GetVolume() const noexcept { return m_volumeOfOverallSpace; }
+      inline constexpr IGM::Geometry GetVolume() const noexcept { return m_volumeOfOverallSpace; }
 
-      constexpr IGM::Box const& GetBoxSpace() const noexcept { return m_boxSpace; }
+      inline constexpr IGM::Box const& GetBoxSpace() const noexcept { return m_boxSpace; }
 
-      constexpr void Move(IGM::Vector const& moveVector) noexcept { IGM::MoveAD(m_boxSpace, moveVector); }
+      inline constexpr void Move(IGM::Vector const& moveVector) noexcept { IGM::MoveAD(m_boxSpace, moveVector); }
 
-      constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
+      inline constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
 
-      constexpr IGM::Vector CalculateCenter(DimArray<GridID> const& gridID, depth_t centerLevel) const noexcept
+      inline constexpr IGM::Vector CalculateCenter(DimArray<GridID> const& gridID, depth_t centerLevel) const noexcept
       {
         using IGM_Vector = typename IGM::Vector;
 
@@ -1197,7 +1198,7 @@ namespace OrthoTree
       }
 
       template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-      constexpr DimArray<GridID> GetPointGridID(TVector const& point) const noexcept
+      inline constexpr DimArray<GridID> GetPointGridID(TVector const& point) const noexcept
       {
         auto gridIDs = DimArray<GridID>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1219,7 +1220,7 @@ namespace OrthoTree
         return gridIDs;
       }
 
-      constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(TVector const& point) const noexcept
+      inline constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(TVector const& point) const noexcept
       {
         auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1232,7 +1233,7 @@ namespace OrthoTree
       }
 
       template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = TBox>
-      constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox_ const& box) const noexcept
+      inline constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox_ const& box) const noexcept
       {
         auto gridID = std::array<DimArray<GridID>, 2>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -1419,7 +1420,7 @@ namespace OrthoTree
         CRASH(); // Bad key
         return 0;
       }
-  
+
       static inline constexpr NodeID RemoveSentinelBit(NodeIDCR key, std::optional<depth_t> depthIDOptional = std::nullopt) noexcept
       {
         if constexpr (IS_LINEAR_TREE)
@@ -1819,9 +1820,9 @@ namespace OrthoTree
       constexpr void SetCenter(IGM::Vector&& center) noexcept { m_center = std::move(center); }
 #endif // !ORTHOTREE__DISABLED_NODECENTER
 
-      constexpr void AddChild(MortonNodeIDCR childKey) noexcept { m_children.emplace_back(childKey); }
+      inline constexpr void AddChild(MortonNodeIDCR childKey) noexcept { m_children.emplace_back(childKey); }
 
-      constexpr void AddChildInOrder(MortonNodeIDCR childKey) noexcept
+      inline constexpr void AddChildInOrder(MortonNodeIDCR childKey) noexcept
       {
         auto it = std::end(m_children);
         if constexpr (SI::IS_LINEAR_TREE)
@@ -1835,7 +1836,7 @@ namespace OrthoTree
         m_children.insert(it, childKey);
       }
 
-      constexpr bool HasChild(MortonNodeIDCR childKey) const noexcept
+      inline constexpr bool HasChild(MortonNodeIDCR childKey) const noexcept
       {
         if constexpr (SI::IS_LINEAR_TREE)
           return std::binary_search(m_children.begin(), m_children.end(), childKey);
@@ -1843,7 +1844,7 @@ namespace OrthoTree
           return std::binary_search(m_children.begin(), m_children.end(), childKey, bitset_arithmetic_compare{});
       }
 
-      constexpr bool IsChildNodeEnabled(MortonChildID childID) const noexcept
+      inline constexpr bool IsChildNodeEnabled(MortonChildID childID) const noexcept
       {
         auto const childMortonID = MortonNodeID(childID);
         return std::find_if(m_children.begin(), m_children.end(), [childMortonID](auto const& childKey) {
@@ -1851,7 +1852,7 @@ namespace OrthoTree
         });
       }
 
-      constexpr void RemoveChild(MortonNodeIDCR childKey) noexcept
+      inline constexpr void RemoveChild(MortonNodeIDCR childKey) noexcept
       {
         auto it = std::end(m_children);
         if constexpr (SI::IS_LINEAR_TREE)
@@ -1865,9 +1866,9 @@ namespace OrthoTree
         m_children.erase(it);
       }
 
-      constexpr bool IsAnyChildExist() const noexcept { return !m_children.empty(); }
+      inline constexpr bool IsAnyChildExist() const noexcept { return !m_children.empty(); }
 
-      constexpr std::vector<MortonNodeID> const& GetChildren() const noexcept { return m_children; }
+      inline constexpr std::vector<MortonNodeID> const& GetChildren() const noexcept { return m_children; }
     };
 
   protected: // Aid struct to partitioning and distance ordering
@@ -1939,10 +1940,10 @@ namespace OrthoTree
       return size;
     }
 #else
-    constexpr IGM::Vector const& GetNodeSize(depth_t depthID) const noexcept { return this->m_nodeSizes[depthID]; }
+    inline constexpr IGM::Vector const& GetNodeSize(depth_t depthID) const noexcept { return this->m_nodeSizes[depthID]; }
 #endif // ORTHOTREE__DISABLED_NODESIZE
 
-    constexpr IGM::Vector const& GetNodeSizeByKey(MortonNodeIDCR key) const noexcept { return this->GetNodeSize(SI::GetDepthID(key)); }
+    inline constexpr IGM::Vector const& GetNodeSizeByKey(MortonNodeIDCR key) const noexcept { return this->GetNodeSize(SI::GetDepthID(key)); }
 
     constexpr IGM::Box GetNodeBox(depth_t depthID, IGM::Vector const& center) const noexcept
     {
@@ -1959,7 +1960,10 @@ namespace OrthoTree
       return box;
     }
 
-    constexpr IGM::Box GetNodeBox(MortonNodeIDCR key) const noexcept { return this->GetNodeBox(SI::GetDepthID(key), this->GetNodeCenter(key)); }
+    inline constexpr IGM::Box GetNodeBox(MortonNodeIDCR key) const noexcept
+    {
+      return this->GetNodeBox(SI::GetDepthID(key), this->GetNodeCenter(key));
+    }
 
   protected:
     inline Node& CreateChild(Node& parentNode, MortonNodeIDCR childKey) noexcept
@@ -1986,35 +1990,21 @@ namespace OrthoTree
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr MortonLocationID GetLocationID(TVector const& point) const noexcept
+    inline constexpr MortonLocationID GetLocationID(TVector const& point) const noexcept
     {
       return SI::Encode(this->m_grid.template GetPointGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr SI::DepthAndLocationID GetDepthAndLocationID(TVector const& point) const noexcept
+    inline constexpr SI::DepthAndLocationID GetDepthAndLocationID(TVector const& point) const noexcept
     {
       return { this->m_maxDepthNo, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(point) };
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false, typename TBoxItem = TBox>
-    constexpr SI::DepthAndLocationID GetDepthAndLocationID(TBoxItem const& box) const noexcept
+    inline constexpr SI::DepthAndLocationID GetDepthAndLocationID(TBoxItem const& box) const noexcept
     {
       return SI::GetDepthAndLocationID(this->m_maxDepthNo, this->m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY, TBoxItem>(box));
-    }
-
-    static inline TBox GetBoxInvertedInit() noexcept
-    {
-      auto ext = TBox{};
-
-      LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        AD::SetBoxMinC(ext, dimensionID, std::numeric_limits<TGeometry>::max());
-        AD::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
-      }
-
-      return ext;
     }
 
     bool IsEveryEntityUnique() const noexcept
@@ -2262,12 +2252,12 @@ namespace OrthoTree
 
 
   public: // Getters
-    constexpr auto const& GetNodes() const noexcept { return m_nodes; }
+    inline constexpr auto const& GetNodes() const noexcept { return m_nodes; }
     inline bool HasNode(MortonNodeIDCR key) const noexcept { return m_nodes.contains(key); }
     inline auto const& GetNode(MortonNodeIDCR key) const noexcept { return m_nodes.at(key); }
-    constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
-    constexpr auto GetDepthMax() const noexcept { return m_maxDepthNo; }
-    constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
+    inline constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
+    inline constexpr auto GetDepthMax() const noexcept { return m_maxDepthNo; }
+    inline constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
     inline auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
       auto const it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](auto const& keyAndValue) {
@@ -2312,7 +2302,7 @@ namespace OrthoTree
 
   public: // Main service functions
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
+    inline constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
     {
       this->InitBase(IGM::GetBoxAD(box), maxDepthNo, maxElementNo);
     }
@@ -3396,7 +3386,7 @@ namespace OrthoTree
       TEntityID EntityID;
       SI::DepthAndLocationID DepthAndLocation;
 
-      constexpr auto operator<(Location const& rightLocation) const { return SI::IsLess(DepthAndLocation, rightLocation.DepthAndLocation); }
+      inline constexpr auto operator<(Location const& rightLocation) const { return SI::IsLess(DepthAndLocation, rightLocation.DepthAndLocation); }
     };
 
     using LocationContainer = std::vector<Location>;
@@ -4058,7 +4048,7 @@ namespace OrthoTree
   private:
     struct SweepAndPruneDatabase
     {
-      constexpr SweepAndPruneDatabase(TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
+      inline constexpr SweepAndPruneDatabase(TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
       : m_sortedEntityIDs(entityIDs)
       {
         std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&](auto const entityIDL, auto const entityIDR) {
@@ -4066,7 +4056,7 @@ namespace OrthoTree
         });
       }
 
-      constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
+      inline constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
 
     private:
       std::vector<TEntityID> m_sortedEntityIDs;
