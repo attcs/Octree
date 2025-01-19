@@ -2084,7 +2084,7 @@ namespace OrthoTree
         for (size_t i = 0; i < remainingEntityNo; ++i)
         {
           auto entityID = parentNode.Entities[i];
-          auto const [depthID, locationID] = this->GetDepthAndLocationID(geometryCollection[entityID]);
+          auto const [depthID, locationID] = this->GetDepthAndLocationID(detail::at(geometryCollection, entityID));
           if (depthID <= parentDepth)
             continue;
 
