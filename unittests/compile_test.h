@@ -105,7 +105,7 @@ void testCompilePoint()
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt);
   }
 }
 
@@ -215,7 +215,7 @@ void testCompilePointMap()
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt);
   }
 }
 
@@ -309,7 +309,7 @@ void testCompileBox()
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes);
   }
 }
 
@@ -416,7 +416,7 @@ void testCompileBoxMap()
     tree.Init(boxes.at(13), 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes, 4);
+    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes);
   }
 }
 
@@ -480,8 +480,8 @@ void testCompilePointC()
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt, 4);
-    tree = OT::template Create<IS_PARALLEL_EXEC>(std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } }, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } });
   }
 }
 
@@ -557,7 +557,7 @@ void testCompilePointMapC()
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt);
     tree = OT::template Create<IS_PARALLEL_EXEC>(
       Map{
         { 11, Point{ 0.0 } },
@@ -633,7 +633,7 @@ void testCompileBoxC()
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes);
     tree = OT::template Create<IS_PARALLEL_EXEC>(
       std::vector
       {
@@ -643,7 +643,7 @@ void testCompileBoxC()
         BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } },
         BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       }
-    , 4);
+    );
 
   }
 
@@ -665,10 +665,10 @@ void testCompileBoxMapC()
     { 30, BoundingBox{{ 1.2, 1.2 }, { 2.8, 2.8 }}}
   };
 
-  auto tree = OT(boxes, 3, std::nullopt, 2, false);
+  auto tree = OT(boxes, std::nullopt, std::nullopt, 2, false);
 
 #ifdef __cpp_lib_execution
-  [[maybe_unused]] auto treePar = OT(boxes, 3, std::nullopt, 2, true);
+  [[maybe_unused]] auto treePar = OT(boxes, std::nullopt, std::nullopt, 2, true);
 #endif
     
   // const member functions
@@ -719,7 +719,7 @@ void testCompileBoxMapC()
     tree.Init(boxes.at(5), 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes, 4);
+    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes);
     tree = OT::template Create<IS_PARALLEL_EXEC>(
       Map{
         { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},

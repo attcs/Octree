@@ -1966,7 +1966,7 @@ namespace Tree2DTest
 
       //Standard Tree
       auto tree = TreePointND<6>();
-      tree.Create(tree, poses, 10, inspection_space);
+      tree.Create(tree, poses, 9, inspection_space);
 
       auto const neighbors = tree.GetNearestNeighbors(search_point, 1, poses);
       auto const idMinExpected = std::distance(poses.begin(), itMinExpected);
