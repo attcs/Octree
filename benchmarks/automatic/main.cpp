@@ -171,8 +171,8 @@ namespace
 
         size_t entityNo = state.range();
 
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo * 10);
-        auto const updatePoints = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo * 100, 0);
+        auto const updatePoints = GeneratePointsRandom<DIMENSION_NO>(entityNo, 1);
 
         auto tree = TreePointND<DIMENSION_NO>(points, depth);
         for (auto _ : state)
@@ -233,10 +233,10 @@ namespace
 
         size_t entityNo = state.range();
 
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo, 0);
         auto const tree = TreePointND<DIMENSION_NO>(points, depth);
 
-        auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(std::max<std::size_t>(20, entityNo / 100));
+        auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(std::max<std::size_t>(20, entityNo / 100), 1);
         auto const pointNo = searchPoints.size();
         size_t pointID = 0;
         for (auto _ : state)
@@ -349,7 +349,7 @@ namespace
 
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo * 10);
-        auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
 
         auto tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
 
@@ -378,7 +378,7 @@ namespace
         auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
 
         constexpr size_t pointNo = 100;
-        auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(pointNo);
+        auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(pointNo, 1);
 
         size_t entityID = 0;
         for (auto _ : state)
@@ -402,7 +402,7 @@ namespace
         auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
 
         constexpr size_t boxNo = 100;
-        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo);
+        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1);
 
         size_t entityID = 0;
         for (auto _ : state)
@@ -462,8 +462,8 @@ namespace
         constexpr depth_t depth = 5;
 
         size_t entityNo = state.range();
-        auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
-        auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0);
+        auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree0 = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities0, depth, boxSpace);
         auto const tree1 = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities1, depth, boxSpace);
@@ -513,8 +513,8 @@ namespace
         auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
 
         size_t constexpr rayNo = 100;
-        auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo);
-        auto const rayDirections = GeneratePointsRandom<DIMENSION_NO>(rayNo);
+        auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo, 0);
+        auto const rayDirections = GeneratePointsRandom<DIMENSION_NO>(rayNo, 0);
 
         auto rays = std::vector<RayND<DIMENSION_NO>>{};
         for (size_t rayID = 0; rayID < rayNo; ++rayID)
