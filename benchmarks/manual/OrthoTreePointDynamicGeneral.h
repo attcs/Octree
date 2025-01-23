@@ -4,7 +4,7 @@
 #include <memory>
 #include <span>
 
-#include "../octree.h"
+#include "../../octree.h"
 
 using namespace std;
 using namespace OrthoTree;

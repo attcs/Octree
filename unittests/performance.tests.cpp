@@ -340,7 +340,7 @@ namespace PerformaceTest
 
     TEST_METHOD(Create_4D_1M_d4) { CreateTest<4>(4, PreCalculated::aBox4D_1M); }
 
-    TEST_METHOD(Create_63D_1M_d4) { CreateTest<63>(4, PreCalculated::aBox63D_1M, true); }
+    TEST_METHOD(Create_63D_1M_d4) { CreateTest<63>(3, PreCalculated::aBox63D_1M, true); }
 
     TEST_METHOD(RangeSearch_2D_10M)
     {

@@ -1302,13 +1302,14 @@ namespace OrthoTree
       // Max number of children
       static auto constexpr CHILD_NO = detail::pow2_ce<DIMENSION_NO>();
 
-      // Max value: 2 ^ DIMENSION_NO
+      static auto constexpr MAX_NONLINEAR_DEPTH = 4;
+
       using UnderlyingInt = std::conditional_t<IS_32BIT_LOCATION, uint32_t, uint64_t>;
       using ChildID = UnderlyingInt;
 
       // Max value: 2 ^ nDepth ^ DIMENSION_NO * 2 (signal bit)
       using LinearLocationID = UnderlyingInt;
-      using NonLinearLocationID = bitset_arithmetic<DIMENSION_NO * 4 + 1>;
+      using NonLinearLocationID = bitset_arithmetic<DIMENSION_NO * MAX_NONLINEAR_DEPTH + 1>;
       using LocationID = typename std::conditional_t<IS_LINEAR_TREE, LinearLocationID, NonLinearLocationID>;
       using NodeID = LocationID; // same as the LocationID, but depth is signed by a sentinel bit.
       using LocationIDCR = typename std::conditional_t<IS_LINEAR_TREE, LocationID const, LocationID const&>;
@@ -1317,7 +1318,8 @@ namespace OrthoTree
       using DimArray = std::array<T, DIMENSION_NO>;
 
       // Type system determined maximal depth.
-      static auto constexpr MAX_THEORETICAL_DEPTH = static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinal bit*/) / DIMENSION_NO);
+      static auto constexpr MAX_THEORETICAL_DEPTH =
+        IS_LINEAR_TREE ? static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinal bit*/)) / DIMENSION_NO : MAX_NONLINEAR_DEPTH;
 
       struct DepthAndLocationID
       {
@@ -1700,9 +1702,9 @@ namespace OrthoTree
         return GetKeyChildPart(childNodeKey >> (DIMENSION_NO * (depthDifference - 1)));
       }
 
-      static inline constexpr bool IsChildInGreaterSegment(LinearLocationID locationID, dim_t dimensionID) noexcept
+      static inline constexpr bool IsChildInGreaterSegment(ChildID childID, dim_t dimensionID) noexcept
       {
-        return locationID & (LocationID{ 1 } << dimensionID);
+        return (ChildID{ 1 } << dimensionID) & childID;
       }
 
       static inline constexpr bool IsChildInGreaterSegment(NonLinearLocationID const& locationID, dim_t dimensionID) noexcept
@@ -1757,6 +1759,8 @@ namespace OrthoTree
       }
     };
   } // namespace detail
+
+  static constexpr std::size_t DEFAULT_MAX_ELEMENT_IN_NODES = 21;
 
   // OrthoTrees
 
@@ -2247,7 +2251,7 @@ namespace OrthoTree
 
       auto const nLeaf = elementNo / maxElementNo;
       // nLeaf = (2^nDepth)^DIMENSION_NO
-      return std::clamp(static_cast<depth_t>(std::log2(nLeaf) / static_cast<double>(DIMENSION_NO)), depth_t(2), depth_t(10));
+      return std::clamp(static_cast<depth_t>(std::log2(nLeaf) / static_cast<double>(DIMENSION_NO)), depth_t(2), SI::MAX_THEORETICAL_DEPTH - 1);
     }
 
 
@@ -2275,7 +2279,7 @@ namespace OrthoTree
       CRASH_IF(!this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already
                                         // builded tree is wanted to be reset, use the Reset() function before init.
       CRASH_IF(maxDepthNo < 2);
-      CRASH_IF(maxDepthNo > SI::MAX_THEORETICAL_DEPTH);
+      CRASH_IF(maxDepthNo >= SI::MAX_THEORETICAL_DEPTH);
       CRASH_IF(maxDepthNo >= std::numeric_limits<uint8_t>::max());
       CRASH_IF(maxElementNo <= 1);
       CRASH_IF(CHAR_BIT * sizeof(GridID) < m_maxDepthNo);
@@ -2865,18 +2869,22 @@ namespace OrthoTree
     using TEntityID = typename Base::TEntityID;
     using TContainer = typename Base::TContainer;
 
-    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = DEFAULT_MAX_ELEMENT_IN_NODES;
 
   public: // Create
     // Ctors
     OrthoTreePoint() = default;
-    explicit OrthoTreePoint(
+    inline explicit OrthoTreePoint(
       TContainer const& points,
       std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT,
+      bool isParallelExec = false) noexcept
     {
-      Create(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      if (isParallelExec)
+        this->template Create<true>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      else
+        this->template Create<false>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
     }
 
   private: // Aid functions
@@ -2991,7 +2999,6 @@ namespace OrthoTree
     }
 
     // Insert entity into a node, if there is no entity within the same location by tolerance.
-    template<bool DO_INSERT_TO_LEAF = false>
     bool InsertUnique(TEntityID newEntityID, TVector const& newPoint, TGeometry tolerance, TContainer const& points, bool doInsertToLeaf = false)
     {
       if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
@@ -3007,14 +3014,14 @@ namespace OrthoTree
       if (!nearestEntityList.empty())
         return false;
 
-      if constexpr (DO_INSERT_TO_LEAF)
-        return this->template InsertWithoutRebalancingBase<true>(parentNodeKey, entityNodeKey, newEntityID, DO_INSERT_TO_LEAF);
+      if (doInsertToLeaf)
+        return this->template InsertWithoutRebalancingBase<true>(parentNodeKey, entityNodeKey, newEntityID, true);
       else
         return this->template InsertWithRebalancingBase<true>(parentNodeKey, parentDepthID, entityNodeKey, entityDepth, newEntityID, points);
     }
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
-    template<bool DO_UPDATE_ENTITY_IDS = std::is_same_v<TEntity, typename TContainer::value_type>>
+    template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
     constexpr bool EraseEntity(TEntityID entityID) noexcept
     {
       bool isErased = false;
@@ -3042,7 +3049,7 @@ namespace OrthoTree
     }
 
     // Erase id, aided with the original point
-    template<bool DO_UPDATE_ENTITY_IDS = std::is_same_v<TEntity, typename TContainer::value_type>>
+    template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
     bool Erase(TEntityID entitiyID, TVector const& entityOriginalPoint) noexcept
     {
       auto const nodeKey = this->FindSmallestNode(entityOriginalPoint);
@@ -3275,10 +3282,12 @@ namespace OrthoTree
         // Search non-siblings
 
         auto const& parentSize = this->GetNodeSize(parentDepthID);
+        bool isRangeSearchOverMaxDistance = true;
         auto searchBox = typename IGM::Box{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           auto const size = parentSize[dimensionID] * 2;
+          isRangeSearchOverMaxDistance &= size >= maxDistance;
           searchBox.Min[dimensionID] = AD::GetPointC(searchPoint, dimensionID) - size;
           searchBox.Max[dimensionID] = AD::GetPointC(searchPoint, dimensionID) + size;
         }
@@ -3310,6 +3319,11 @@ namespace OrthoTree
 
           CreateEntityDistance(nodeDistance.NodeReference, searchPoint, points, neighborEntities);
           farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
+        }
+
+        if (isRangeSearchOverMaxDistance)
+        {
+          break;
         }
       }
 
@@ -3367,17 +3381,21 @@ namespace OrthoTree
     using TEntityID = typename Base::TEntityID;
     using TContainer = typename Base::TContainer;
 
-    static constexpr std::size_t DEFAULT_MAX_ELEMENT = 21;
+    static constexpr std::size_t DEFAULT_MAX_ELEMENT = DEFAULT_MAX_ELEMENT_IN_NODES;
 
   public: // Ctors
     OrthoTreeBoundingBox() = default;
-    explicit OrthoTreeBoundingBox(
+    inline explicit OrthoTreeBoundingBox(
       TContainer const& boxes,
       std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT,
+      bool isParallelExec = false) noexcept
     {
-      Create(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
+      if (isParallelExec)
+        this->template Create<true>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
+      else
+        this->template Create<false>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
     }
 
   private: // Aid functions
@@ -3688,7 +3706,7 @@ namespace OrthoTree
 
   public:
     // Erase id, aided with the original bounding box
-    template<bool DO_UPDATE_ENTITY_IDS = true>
+    template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
     bool Erase(TEntityID entityIDToErase, TBox const& box) noexcept
     {
       auto const smallestNodeKey = this->FindSmallestNode(box);
@@ -3711,15 +3729,15 @@ namespace OrthoTree
 
 
     // Erase an id. Traverse all node if it is needed, which has major performance penalty.
-    template<bool DO_UPDATE_ENTITY_IDS = true>
-    constexpr bool EraseEntity(TEntityID idErase) noexcept
+    template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
+    constexpr bool EraseEntity(TEntityID entityID) noexcept
     {
       bool isErased = false;
       if constexpr (SPLIT_DEPTH_INCREASEMENT == 0)
       {
         for (auto& [nodeKey, node] : this->m_nodes)
         {
-          if (std::erase(node.Entities, idErase) > 0)
+          if (std::erase(node.Entities, entityID) > 0)
           {
             this->RemoveNodeIfPossible(nodeKey, node);
             isErased = true;
@@ -3732,7 +3750,7 @@ namespace OrthoTree
         auto erasableNodes = std::vector<MortonNodeID>{};
         for (auto& [nodeKey, node] : this->m_nodes)
         {
-          auto const isErasedInCurrent = std::erase(node.Entities, idErase) > 0;
+          auto const isErasedInCurrent = std::erase(node.Entities, entityID) > 0;
           if (isErasedInCurrent)
             erasableNodes.emplace_back(nodeKey);
 
@@ -3750,7 +3768,7 @@ namespace OrthoTree
       {
         for (auto& [key, node] : this->m_nodes)
           for (auto& id : node.Entities)
-            id -= idErase < id;
+            id -= entityID < id;
       }
 
       return true;
@@ -4288,7 +4306,7 @@ namespace OrthoTree
   public:
     // Get all box which is intersected by the ray in order
     std::vector<TEntityID> RayIntersectedAll(
-      TVector const& rayBasePointPoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance, TGeometry maxExaminationDistance = 0) const noexcept
+      TVector const& rayBasePointPoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance = {}, TGeometry maxExaminationDistance = {}) const noexcept
     {
       auto foundEntities = std::vector<EntityDistance>();
       foundEntities.reserve(20);
@@ -4308,9 +4326,14 @@ namespace OrthoTree
       return foundEntityIDs;
     }
 
+    // Get all box which is intersected by the ray in order
+    inline std::vector<TEntityID> RayIntersectedAll(TRay const& ray, TContainer const& boxes, TGeometry tolerance = {}, TGeometry maxExaminationDistance = {}) const noexcept
+    {
+      return RayIntersectedAll(ray.Origin, ray.Direction, boxes, tolerance, maxExaminationDistance);
+    }
 
     // Get first box which is intersected by the ray
-    std::optional<TEntityID> RayIntersectedFirst(TVector const& rayBasePoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance) const noexcept
+    std::optional<TEntityID> RayIntersectedFirst(TVector const& rayBasePoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance = {}) const noexcept
     {
       auto const distance = IGM::GetRayBoxDistanceAD(
         GetNodeCenterMacro(this, SI::GetRootKey(), this->GetNode(SI::GetRootKey())), this->GetNodeSize(1), rayBasePoint, rayHeading, tolerance);
@@ -4323,6 +4346,12 @@ namespace OrthoTree
         return std::nullopt;
 
       return foundEntities.begin()->EntityID;
+    }
+
+    // Get first box which is intersected by the ray
+    inline std::optional<TEntityID> RayIntersectedFirst(TRay const& ray, TContainer const& boxes, TGeometry tolerance) const noexcept
+    {
+      return RayIntersectedFirst(ray.Origin, ray.Direction, boxes, tolerance);
     }
   };
 

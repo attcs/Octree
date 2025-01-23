@@ -1,0 +1,55 @@
+name: Benchmarks
+on:
+  push:
+    branches:
+      - master
+      - google_benchmark
+
+permissions:
+  contents: write
+  deployments: write
+
+jobs:
+  benchmark:
+    name: Build and Run Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout repository and submodules
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ make
+          sudo apt-get install libtbb-dev
+
+      # Build Benchmark project and link with Google Benchmark
+      - name: Build project
+        run: |
+          mkdir -p benchmarks/automatic/build && cd benchmarks/automatic/build
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make -j$(nproc)
+
+      # Run benchmarks and save results to JSON
+      - name: Run benchmarks
+        run: |
+          ./benchmarks/automatic/build/benchmarks --benchmark_out=benchmarks/automatic/benchmark_result.json --benchmark_out_format=json
+
+      # Store benchmark result on a branch
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: C++ Benchmark
+          tool: 'googlecpp'
+          output-file-path: benchmarks/automatic/benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          auto-push-branch: gh_pages
+          alert-threshold: '200%'
+          comment-on-alert: true
+          fail-on-alert: true
+          alert-comment-cc-users: '@attcs'
