@@ -1891,7 +1891,7 @@ namespace OrthoTree
     struct BoxDistance : ItemDistance
     {
       MortonNodeID NodeKey;
-      Node const& NodeReference;
+      std::vector<TEntityID> const* Entities;
     };
 
 
@@ -3184,34 +3184,45 @@ namespace OrthoTree
 
   private: // K Nearest Neighbor helpers
     static inline void CreateEntityDistance(
-      Node const& node, TVector const& searchPoint, TContainer const& points, std::multiset<EntityDistance>& neighborEntities, TGeometry maxDistance) noexcept
+     std::vector<TEntityID> const& entities, TVector const& searchPoint, TContainer const& points, std::vector<EntityDistance>& neighborEntities, TGeometry maxDistance) noexcept
     {
-      for (auto const entityID : node.Entities)
+      for (auto const entityID : entities)
       {
         const auto distance = AD::Distance(searchPoint, detail::at(points, entityID));
         if (distance < maxDistance)
         {
-          neighborEntities.insert({ { distance }, entityID });
+          neighborEntities.push_back({ { distance }, entityID });
         }
       }
     }
 
-    static inline IGM::Geometry GetFarestDistance(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
+    static inline IGM::Geometry GetFarestDistance(std::vector<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
     {
       if (neighborEntities.size() < neighborNo)
+      {
         return std::numeric_limits<IGM_Geometry>::max();
+      }
 
-      return std::next(neighborEntities.begin(), neighborNo - 1)->Distance;
+      auto const farestNeighborID = neighborNo - 1;
+      std::nth_element(neighborEntities.begin(), std::next(neighborEntities.begin(), farestNeighborID), neighborEntities.end());
+      return neighborEntities[farestNeighborID].Distance;
     }
 
-    static std::vector<TEntityID> ConvertEntityDistanceToList(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo, TGeometry maxDistance) noexcept
+    static std::vector<TEntityID> ConvertEntityDistanceToList(std::vector<EntityDistance>& neighborEntities, std::size_t neighborNo, TGeometry maxDistance) noexcept
     {
       auto entityIDs = std::vector<TEntityID>();
-      auto const entityNo = std::min(neighborNo, neighborEntities.size());
-      if (entityNo == 0)
+      if (neighborEntities.empty())
+      {
         return entityIDs;
+      }
 
-      const auto lastIt = std::next(neighborEntities.begin(), entityNo);
+      if (neighborNo < neighborEntities.size())
+      {
+        std::nth_element(neighborEntities.begin(), std::next(neighborEntities.begin(), neighborNo - 1), neighborEntities.end());
+      }
+
+      auto const entityNo = std::min(neighborNo, neighborEntities.size());
+      auto const lastIt = std::next(neighborEntities.begin(), entityNo);
 
       entityIDs.reserve(entityNo);
       std::transform(neighborEntities.begin(), lastIt, std::back_inserter(entityIDs), [](auto const& ed) { return ed.EntityID; });
@@ -3222,10 +3233,12 @@ namespace OrthoTree
     // K Nearest Neighbor
     std::vector<TEntityID> GetNearestNeighbors(TVector const& searchPoint, std::size_t neighborNo, TGeometry maxDistance, TContainer const& points) const noexcept
     {
-      auto neighborEntities = std::multiset<EntityDistance>();
+      auto neighborEntities = std::vector<EntityDistance>();
       auto const [smallestNodeKey, smallesDepthID] = this->FindSmallestNodeKeyWithDepth(this->template GetNodeID<true>(searchPoint));
       if (!SI::IsValidKey(smallestNodeKey))
+      {
         return {};
+      }
 
       auto const& smallestNode = this->GetNode(smallestNodeKey);
 
@@ -3234,7 +3247,7 @@ namespace OrthoTree
 
       auto const distance = IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize);
       auto const wallDistance = *std::min(distance.begin(), distance.end());
-      CreateEntityDistance(smallestNode, searchPoint, points, neighborEntities, maxDistance);
+      CreateEntityDistance(smallestNode.Entities, searchPoint, points, neighborEntities, maxDistance);
       if (!smallestNode.IsAnyChildExist())
       {
         if (GetFarestDistance(neighborEntities, neighborNo) < wallDistance || maxDistance < wallDistance)
@@ -3252,12 +3265,16 @@ namespace OrthoTree
       for (auto parentNodeKey = SI::GetParentKey(smallestNodeKey); SI::IsValidKey(parentNodeKey);
            traversedChildNodeKey = parentNodeKey, parentNodeKey = SI::GetParentKey(parentNodeKey), --parentDepthID)
       {
-        auto nodeMinDistances = std::multiset<BoxDistance>();
+        auto nodeMinDistances = std::vector<BoxDistance>();
         auto const addNodeWallDistance = [&](MortonLocationIDCR key, Node const& node) {
           auto const depthID = SI::GetDepthID(key);
           auto const& halfSize = this->GetNodeSize(depthID + 1);
           auto const& centerPoint = GetNodeCenterMacro(this, key, node);
-          nodeMinDistances.insert({ { IGM::Size(IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize)) }, key, node });
+          auto const nodeMinDistance = IGM::Size(IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize));
+          if (nodeMinDistance < maxDistance)
+          {
+            nodeMinDistances.push_back({ { nodeMinDistance }, key, &node.Entities });
+          }
         };
 
         // Search siblings
@@ -3308,21 +3325,16 @@ namespace OrthoTree
         visitedNodes.insert(nonSiblingNeighbours.begin(), nonSiblingNeighbours.end());
 
         // Evaluate the nodes
-
         auto farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
+        std::sort(nodeMinDistances.begin(), nodeMinDistances.end());
         for (auto const& nodeDistance : nodeMinDistances)
         {
-          if (maxDistance <= nodeDistance.Distance)
-          {
-            break;
-          }
-
           if (neighborNo <= neighborEntities.size() && farestEntityDistance < nodeDistance.Distance)
           {
             break;
           }
 
-          CreateEntityDistance(nodeDistance.NodeReference, searchPoint, points, neighborEntities, maxDistance);
+          CreateEntityDistance(*nodeDistance.Entities, searchPoint, points, neighborEntities, maxDistance);
           farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
         }
 
@@ -4300,7 +4312,7 @@ namespace OrthoTree
         if (*distance > maxExaminationDistance)
           continue;
 
-        nodeDistances.insert({ { IGM_Geometry(distance.value()) }, childKey, nodeChild });
+        nodeDistances.insert({ { IGM_Geometry(distance.value()) }, childKey, &nodeChild.Entities });
       }
 
       for (auto const& nodeDistance : nodeDistances)
@@ -4311,7 +4323,11 @@ namespace OrthoTree
   public:
     // Get all box which is intersected by the ray in order
     std::vector<TEntityID> RayIntersectedAll(
-      TVector const& rayBasePointPoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance = {}, TGeometry maxExaminationDistance = {}) const noexcept
+      TVector const& rayBasePointPoint,
+      TVector const& rayHeading,
+      TContainer const& boxes,
+      TGeometry tolerance = {},
+      TGeometry maxExaminationDistance = {}) const noexcept
     {
       auto foundEntities = std::vector<EntityDistance>();
       foundEntities.reserve(20);
@@ -4332,13 +4348,15 @@ namespace OrthoTree
     }
 
     // Get all box which is intersected by the ray in order
-    inline std::vector<TEntityID> RayIntersectedAll(TRay const& ray, TContainer const& boxes, TGeometry tolerance = {}, TGeometry maxExaminationDistance = {}) const noexcept
+    inline std::vector<TEntityID> RayIntersectedAll(
+      TRay const& ray, TContainer const& boxes, TGeometry tolerance = {}, TGeometry maxExaminationDistance = {}) const noexcept
     {
       return RayIntersectedAll(ray.Origin, ray.Direction, boxes, tolerance, maxExaminationDistance);
     }
 
     // Get first box which is intersected by the ray
-    std::optional<TEntityID> RayIntersectedFirst(TVector const& rayBasePoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance = {}) const noexcept
+    std::optional<TEntityID> RayIntersectedFirst(
+      TVector const& rayBasePoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance = {}) const noexcept
     {
       auto const distance = IGM::GetRayBoxDistanceAD(
         GetNodeCenterMacro(this, SI::GetRootKey(), this->GetNode(SI::GetRootKey())), this->GetNodeSize(1), rayBasePoint, rayHeading, tolerance);
