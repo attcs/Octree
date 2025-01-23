@@ -3183,13 +3183,20 @@ namespace OrthoTree
 
 
   private: // K Nearest Neighbor helpers
-    static void CreateEntityDistance(Node const& node, TVector const& searchPoint, TContainer const& points, std::multiset<EntityDistance>& neighborEntities) noexcept
+    static inline void CreateEntityDistance(
+      Node const& node, TVector const& searchPoint, TContainer const& points, std::multiset<EntityDistance>& neighborEntities, TGeometry maxDistance) noexcept
     {
       for (auto const entityID : node.Entities)
-        neighborEntities.insert({ { AD::Distance(searchPoint, detail::at(points, entityID)) }, entityID });
+      {
+        const auto distance = AD::Distance(searchPoint, detail::at(points, entityID));
+        if (distance < maxDistance)
+        {
+          neighborEntities.insert({ { distance }, entityID });
+        }
+      }
     }
 
-    static IGM::Geometry GetFarestDistance(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
+    static inline IGM::Geometry GetFarestDistance(std::multiset<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
     {
       if (neighborEntities.size() < neighborNo)
         return std::numeric_limits<IGM_Geometry>::max();
@@ -3204,9 +3211,7 @@ namespace OrthoTree
       if (entityNo == 0)
         return entityIDs;
 
-      auto lastIt = std::next(neighborEntities.begin(), entityNo);
-      if (std::prev(lastIt)->Distance >= maxDistance)
-        lastIt = std::partition_point(neighborEntities.begin(), lastIt, [maxDistance](auto const& ed) { return ed.Distance < maxDistance; });
+      const auto lastIt = std::next(neighborEntities.begin(), entityNo);
 
       entityIDs.reserve(entityNo);
       std::transform(neighborEntities.begin(), lastIt, std::back_inserter(entityIDs), [](auto const& ed) { return ed.EntityID; });
@@ -3229,10 +3234,10 @@ namespace OrthoTree
 
       auto const distance = IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize);
       auto const wallDistance = *std::min(distance.begin(), distance.end());
-      CreateEntityDistance(smallestNode, searchPoint, points, neighborEntities);
+      CreateEntityDistance(smallestNode, searchPoint, points, neighborEntities, maxDistance);
       if (!smallestNode.IsAnyChildExist())
       {
-        if (GetFarestDistance(neighborEntities, neighborNo) < wallDistance)
+        if (GetFarestDistance(neighborEntities, neighborNo) < wallDistance || maxDistance < wallDistance)
         {
           return ConvertEntityDistanceToList(neighborEntities, neighborNo, maxDistance);
         }
@@ -3317,7 +3322,7 @@ namespace OrthoTree
             break;
           }
 
-          CreateEntityDistance(nodeDistance.NodeReference, searchPoint, points, neighborEntities);
+          CreateEntityDistance(nodeDistance.NodeReference, searchPoint, points, neighborEntities, maxDistance);
           farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
         }
 
