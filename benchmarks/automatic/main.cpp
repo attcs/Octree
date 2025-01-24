@@ -508,36 +508,36 @@ namespace
 
         size_t entityNo = state.range();
 
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 2);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
 
         size_t constexpr rayNo = 100;
-        auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo, 0);
-        auto const rayDirections = GeneratePointsRandom<DIMENSION_NO>(rayNo, 0);
+        auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo, 3);
+        auto const rayDirections = GeneratePointsRandom<DIMENSION_NO>(rayNo, 4);
 
         auto rays = std::vector<RayND<DIMENSION_NO>>{};
         for (size_t rayID = 0; rayID < rayNo; ++rayID)
         {
-          auto const direction = GetNormalized<DIMENSION_NO>(rayDirections[rayID]);
+          auto const direction = GetNormalized<DIMENSION_NO>(rayDirections[rayNo - 1 - rayID]);
           if (!direction)
           {
             continue;
           }
-          rays.push_back(RayND<DIMENSION_NO>{ .Origin = rayOrigins[rayNo], .Direction = *direction });
+          rays.push_back(RayND<DIMENSION_NO>{ .Origin = rayOrigins[rayID], .Direction = *direction });
         }
 
         size_t entityID = 0;
         for (auto _ : state)
         {
-          auto const [origin, direction] = rays[entityID % rayNo];
+          auto const& ray = rays[entityID % rays.size()];
           if constexpr (IS_FIRST)
           {
-            tree.RayIntersectedFirst(origin, direction, entities, 0);
+            tree.RayIntersectedFirst(ray.Origin, ray.Direction, entities, 0);
           }
           else
           {
-            tree.RayIntersectedAll(origin, direction, entities, 0);
+            tree.RayIntersectedAll(ray.Origin, ray.Direction, entities, 0);
           }
           ++entityID;
         }
