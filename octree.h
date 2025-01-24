@@ -1415,11 +1415,21 @@ namespace OrthoTree
 
       static inline constexpr depth_t GetDepthID(NodeID key) noexcept
       {
-        for (depth_t d = 0; IsValidKey(key); ++d, key = GetParentKey(key))
-          if (key == 1) // If only sentinel bit remains, exit with node depth
-            return d;
+        if constexpr (IS_LINEAR_TREE)
+        {
+          depth_t constexpr maxBitNo = IS_32BIT_LOCATION ? 32 : 64;
+          depth_t const leadingZeros = std::countl_zero(key);
+          depth_t const usedBitNo = maxBitNo - leadingZeros - 1;
+          return usedBitNo / DIMENSION_NO;
+        }
+        else
+        {
+          for (depth_t d = 0; IsValidKey(key); ++d, key = GetParentKey(key))
+            if (key == 1) // If only sentinel bit remains, exit with node depth
+              return d;
 
-        CRASH(); // Bad key
+          CRASH(); // Bad key
+        }
         return 0;
       }
 
@@ -1427,9 +1437,9 @@ namespace OrthoTree
       {
         if constexpr (IS_LINEAR_TREE)
         {
-          constexpr depth_t bitCount = sizeof(NodeID) * CHAR_BIT;
+          depth_t constexpr maxBitNo = sizeof(NodeID) * CHAR_BIT;
           auto const leadingZeros = std::countl_zero(key);
-          auto const sentinelBitPosition = bitCount - leadingZeros - 1;
+          auto const sentinelBitPosition = maxBitNo - leadingZeros - 1;
           return key - (NodeID{ 1 } << sentinelBitPosition);
         }
         else
