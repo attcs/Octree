@@ -1891,7 +1891,7 @@ namespace OrthoTree
     struct BoxDistance : ItemDistance
     {
       MortonNodeID NodeKey;
-      std::vector<TEntityID> const* Entities;
+      Node const* NodePtr;
     };
 
 
@@ -3273,7 +3273,7 @@ namespace OrthoTree
           auto const nodeMinDistance = IGM::Size(IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize));
           if (nodeMinDistance < maxDistance)
           {
-            nodeMinDistances.push_back({ { nodeMinDistance }, key, &node.Entities });
+            nodeMinDistances.push_back({ { nodeMinDistance }, key, &node });
           }
         };
 
@@ -3334,7 +3334,7 @@ namespace OrthoTree
             break;
           }
 
-          CreateEntityDistance(*nodeDistance.Entities, searchPoint, points, neighborEntities, maxDistance);
+          CreateEntityDistance(nodeDistance.NodePtr->Entities, searchPoint, points, neighborEntities, maxDistance);
           farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
         }
 
@@ -4275,48 +4275,48 @@ namespace OrthoTree
 
     void GetRayIntersectedFirstRecursive(
       depth_t depthID,
-      MortonNodeIDCR parentKey,
+      Node const& parentNode,
       TContainer const& boxes,
       TVector const& rayBasePoint,
       TVector const& rayHeading,
       TGeometry tolerance,
-      std::multiset<EntityDistance>& foundEntities) const noexcept
+      std::optional<EntityDistance>& foundEntity) const noexcept
     {
-      auto const& node = this->GetNode(parentKey);
-
-      auto const maxExaminationDistance =
-        foundEntities.empty() ? std::numeric_limits<typename IGM::Geometry>::infinity() : foundEntities.rbegin()->Distance;
-      for (auto const entityID : node.Entities)
+      for (auto const entityID : parentNode.Entities)
       {
         auto const distance = AD::GetRayBoxDistance(detail::at(boxes, entityID), rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
 
-        auto const distance_ = IGM_Geometry(*distance);
-        if (distance_ > maxExaminationDistance)
-          continue;
-
-        foundEntities.insert({ { distance_ }, entityID });
+        if (!foundEntity || foundEntity->Distance > *distance)
+          foundEntity = std::optional<EntityDistance>(std::in_place, EntityDistance{ { TGeometry(*distance) }, entityID });
       }
 
       ++depthID;
-      auto nodeDistances = std::multiset<BoxDistance>();
       auto const& halfSize = this->GetNodeSize(depthID + 1);
-      for (MortonNodeIDCR childKey : node.GetChildren())
+      auto nodeDistances = std::vector<BoxDistance>();
+      for (MortonNodeIDCR childKey : parentNode.GetChildren())
       {
         auto const& nodeChild = this->GetNode(childKey);
         auto const distance = IGM::GetRayBoxDistanceAD(GetNodeCenterMacro(this, childKey, nodeChild), halfSize, rayBasePoint, rayHeading, tolerance);
         if (!distance)
           continue;
 
-        if (*distance > maxExaminationDistance)
+        if (foundEntity && *distance > foundEntity->Distance)
           continue;
 
-        nodeDistances.insert({ { IGM_Geometry(distance.value()) }, childKey, &nodeChild.Entities });
+        nodeDistances.push_back({ { IGM_Geometry(distance.value()) }, childKey, &nodeChild });
       }
 
+      std::sort(nodeDistances.begin(), nodeDistances.end());
+
       for (auto const& nodeDistance : nodeDistances)
-        GetRayIntersectedFirstRecursive(depthID, nodeDistance.NodeKey, boxes, rayBasePoint, rayHeading, tolerance, foundEntities);
+      {
+        if (foundEntity && nodeDistance.Distance - tolerance >= foundEntity->Distance)
+          break;
+
+        GetRayIntersectedFirstRecursive(depthID, *nodeDistance.NodePtr, boxes, rayBasePoint, rayHeading, tolerance, foundEntity);
+      }
     }
 
 
@@ -4358,21 +4358,21 @@ namespace OrthoTree
     std::optional<TEntityID> RayIntersectedFirst(
       TVector const& rayBasePoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance = {}) const noexcept
     {
-      auto const distance = IGM::GetRayBoxDistanceAD(
-        GetNodeCenterMacro(this, SI::GetRootKey(), this->GetNode(SI::GetRootKey())), this->GetNodeSize(1), rayBasePoint, rayHeading, tolerance);
+      auto const& rootNode = this->GetNode(SI::GetRootKey());
+      auto const distance = IGM::GetRayBoxDistanceAD(GetNodeCenterMacro(this, SI::GetRootKey(), rootNode), this->GetNodeSize(1), rayBasePoint, rayHeading, tolerance);
       if (!distance)
         return std::nullopt;
 
-      auto foundEntities = std::multiset<EntityDistance>();
-      GetRayIntersectedFirstRecursive(0, SI::GetRootKey(), boxes, rayBasePoint, rayHeading, tolerance, foundEntities);
-      if (foundEntities.empty())
+      auto foundEntity = std::optional<EntityDistance>{};
+      GetRayIntersectedFirstRecursive(0, rootNode, boxes, rayBasePoint, rayHeading, tolerance, foundEntity);
+      if (!foundEntity)
         return std::nullopt;
 
-      return foundEntities.begin()->EntityID;
+      return foundEntity->EntityID;
     }
 
     // Get first box which is intersected by the ray
-    inline std::optional<TEntityID> RayIntersectedFirst(TRay const& ray, TContainer const& boxes, TGeometry tolerance) const noexcept
+    inline std::optional<TEntityID> RayIntersectedFirst(TRay const& ray, TContainer const& boxes, TGeometry tolerance = {}) const noexcept
     {
       return RayIntersectedFirst(ray.Origin, ray.Direction, boxes, tolerance);
     }
