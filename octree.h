@@ -3194,7 +3194,11 @@ namespace OrthoTree
 
   private: // K Nearest Neighbor helpers
     static inline void CreateEntityDistance(
-     std::vector<TEntityID> const& entities, TVector const& searchPoint, TContainer const& points, std::vector<EntityDistance>& neighborEntities, TGeometry maxDistance) noexcept
+      std::vector<TEntityID> const& entities,
+      TVector const& searchPoint,
+      TContainer const& points,
+      std::vector<EntityDistance>& neighborEntities,
+      TGeometry maxDistance) noexcept
     {
       for (auto const entityID : entities)
       {
@@ -3992,7 +3996,24 @@ namespace OrthoTree
       return this->FrustumCullingBase(boundaryPlanes, tolerance, boxes);
     }
 
+  private:
+    struct SweepAndPruneDatabase
+    {
+      inline constexpr SweepAndPruneDatabase(TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
+      : m_sortedEntityIDs(entityIDs)
+      {
+        std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&](auto const entityIDL, auto const entityIDR) {
+          return AD::GetBoxMinC(detail::at(boxes, entityIDL), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDR), 0);
+        });
+      }
 
+      inline constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
+
+    private:
+      std::vector<TEntityID> m_sortedEntityIDs;
+    };
+
+  public:
     // Client-defined Collision detector based on indices. AABB intersection is executed independently from this checker.
     using FCollisionDetector = std::function<bool(TEntityID, TEntityID)>;
 
@@ -4020,6 +4041,18 @@ namespace OrthoTree
       auto constexpr rootKey = SI::GetRootKey();
       auto const trees = std::array{ &leftTree, &rightTree };
 
+      auto entitiesInOrderCache = std::array<std::unordered_map<MortonNodeID, SweepAndPruneDatabase>, 2>{};
+      auto const getOrCreateEntitiesInOrder = [&](bool side, NodeIterator const& it, TContainer const& boxes) -> std::vector<TEntityID> const& {
+        auto itKeyAndSPD = entitiesInOrderCache[side].find(it->first);
+        if (itKeyAndSPD == entitiesInOrderCache[side].end())
+        {
+          bool isInserted = false;
+          std::tie(itKeyAndSPD, isInserted) = entitiesInOrderCache[side].emplace(it->first, SweepAndPruneDatabase(boxes, it->second.Entities));
+        }
+
+        return itKeyAndSPD->second.GetEntities();
+      };
+
       [[maybe_unused]] auto const pLeftTree = &leftTree;
       [[maybe_unused]] auto const pRightTree = &rightTree;
       auto nodePairToProceed = std::queue<ParentIteratorArray>{};
@@ -4032,11 +4065,28 @@ namespace OrthoTree
         auto const& parentNodePair = nodePairToProceed.front();
 
         // Check the current ascendant content
+
+        auto const& leftEntitiesInOrder = getOrCreateEntitiesInOrder(Left, parentNodePair[Left].Iterator, leftBoxes);
+        auto const& rightEntitiesInOrder = getOrCreateEntitiesInOrder(Right, parentNodePair[Right].Iterator, rightBoxes);
+
+        auto const rightEntityNo = rightEntitiesInOrder.size();
+        std::size_t iRightEntityBegin = 0;
+        for (auto const leftEntityID : leftEntitiesInOrder)
         {
-          for (auto const leftEntityID : parentNodePair[Left].Iterator->second.Entities)
-            for (auto const rightEntityID : parentNodePair[Right].Iterator->second.Entities)
-              if (AD::AreBoxesOverlapped(detail::at(leftBoxes, leftEntityID), detail::at(rightBoxes, rightEntityID), false))
-                results.emplace_back(leftEntityID, rightEntityID);
+          for (; iRightEntityBegin < rightEntityNo; ++iRightEntityBegin)
+            if (AD::GetBoxMaxC(detail::at(rightBoxes, rightEntitiesInOrder[iRightEntityBegin]), 0) >= AD::GetBoxMinC(detail::at(leftBoxes, leftEntityID), 0))
+              break; // sweep and prune optimization
+
+          for (std::size_t iRightEntity = iRightEntityBegin; iRightEntity < rightEntityNo; ++iRightEntity)
+          {
+            auto const rightEntityID = rightEntitiesInOrder[iRightEntity];
+
+            if (AD::GetBoxMaxC(detail::at(leftBoxes, leftEntityID), 0) < AD::GetBoxMinC(detail::at(rightBoxes, rightEntityID), 0))
+              break; // sweep and prune optimization
+
+            if (AD::AreBoxesOverlapped(detail::at(leftBoxes, leftEntityID), detail::at(rightBoxes, rightEntityID), false))
+              results.emplace_back(leftEntityID, rightEntityID);
+          }
         }
 
         // Collect children
@@ -4091,22 +4141,6 @@ namespace OrthoTree
     }
 
   private:
-    struct SweepAndPruneDatabase
-    {
-      inline constexpr SweepAndPruneDatabase(TContainer const& boxes, std::vector<TEntityID> const& entityIDs) noexcept
-      : m_sortedEntityIDs(entityIDs)
-      {
-        std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&](auto const entityIDL, auto const entityIDR) {
-          return AD::GetBoxMinC(detail::at(boxes, entityIDL), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDR), 0);
-        });
-      }
-
-      inline constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
-
-    private:
-      std::vector<TEntityID> m_sortedEntityIDs;
-    };
-
     template<typename TCollisionDetectionContainer>
     void InsertCollidedEntities(
       TContainer const& boxes, std::pair<MortonNodeID, Node> const& pairKeyNode, TCollisionDetectionContainer& collidedEntityPairsInsideNode) const noexcept
@@ -4369,7 +4403,8 @@ namespace OrthoTree
       TVector const& rayBasePoint, TVector const& rayHeading, TContainer const& boxes, TGeometry tolerance = {}) const noexcept
     {
       auto const& rootNode = this->GetNode(SI::GetRootKey());
-      auto const distance = IGM::GetRayBoxDistanceAD(GetNodeCenterMacro(this, SI::GetRootKey(), rootNode), this->GetNodeSize(1), rayBasePoint, rayHeading, tolerance);
+      auto const distance =
+        IGM::GetRayBoxDistanceAD(GetNodeCenterMacro(this, SI::GetRootKey(), rootNode), this->GetNodeSize(1), rayBasePoint, rayHeading, tolerance);
       if (!distance)
         return std::nullopt;
 
