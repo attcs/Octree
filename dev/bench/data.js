@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1737747680382,
+  "lastUpdate": 1737763672027,
   "repoUrl": "https://github.com/attcs/Octree",
   "entries": {
     "C++ Benchmark": [
@@ -6144,6 +6144,1110 @@ window.BENCHMARK_DATA = {
             "value": 0.2279285870748461,
             "unit": "ms/iter",
             "extra": "iterations: 2940\ncpu: 0.22792647380953793 ms\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "att.csikos@gmail.com",
+            "name": "attcs",
+            "username": "attcs"
+          },
+          "committer": {
+            "email": "att.csikos@gmail.com",
+            "name": "attcs",
+            "username": "attcs"
+          },
+          "distinct": true,
+          "id": "ee6a0ffb49c8944df4721e3d9b363fdd9b140526",
+          "message": "Add std::countl_zero() in GetDepthID()",
+          "timestamp": "2025-01-25T00:56:11+01:00",
+          "tree_id": "94043f65fb84d878d47c3a4a2930302122643722",
+          "url": "https://github.com/attcs/Octree/commit/ee6a0ffb49c8944df4721e3d9b363fdd9b140526"
+        },
+        "date": 1737763671716,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "Benchmarks::Base::GetNodeID/1000",
+            "value": 1780.3102639220801,
+            "unit": "ns/iter",
+            "extra": "iterations: 387425\ncpu: 1780.1659985803708 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Base::GetDepthID/1000",
+            "value": 712.6721478974656,
+            "unit": "ns/iter",
+            "extra": "iterations: 981653\ncpu: 712.6400876888268 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/10",
+            "value": 0.0002899853096313961,
+            "unit": "ms/iter",
+            "extra": "iterations: 2413418\ncpu: 0.00028997873306654717 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/20",
+            "value": 0.00034608665408409733,
+            "unit": "ms/iter",
+            "extra": "iterations: 2028733\ncpu: 0.0003460867842145813 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/50",
+            "value": 0.0012141836940145671,
+            "unit": "ms/iter",
+            "extra": "iterations: 574145\ncpu: 0.0012141497130515814 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/100",
+            "value": 0.0018370848147024597,
+            "unit": "ms/iter",
+            "extra": "iterations: 382304\ncpu: 0.0018368681546622584 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/1000",
+            "value": 0.02953822694282922,
+            "unit": "ms/iter",
+            "extra": "iterations: 23561\ncpu: 0.02953746479351472 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/10000",
+            "value": 0.8022818990825846,
+            "unit": "ms/iter",
+            "extra": "iterations: 872\ncpu: 0.8022714564220175 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/100000",
+            "value": 10.061939147058585,
+            "unit": "ms/iter",
+            "extra": "iterations: 68\ncpu: 10.061735279411767 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, false>/1000000",
+            "value": 67.48918810000077,
+            "unit": "ms/iter",
+            "extra": "iterations: 10\ncpu: 67.48755170000003 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/10",
+            "value": 0.0017237734730164334,
+            "unit": "ms/iter",
+            "extra": "iterations: 406062\ncpu: 0.0017237388847023327 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/20",
+            "value": 0.0025598269031532573,
+            "unit": "ms/iter",
+            "extra": "iterations: 274124\ncpu: 0.0025523822977922364 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/50",
+            "value": 0.0047236769037138585,
+            "unit": "ms/iter",
+            "extra": "iterations: 148578\ncpu: 0.004722009247667886 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/100",
+            "value": 0.006417624582504527,
+            "unit": "ms/iter",
+            "extra": "iterations: 109582\ncpu: 0.006417287127447934 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/1000",
+            "value": 0.04782934815270138,
+            "unit": "ms/iter",
+            "extra": "iterations: 14643\ncpu: 0.04782766543741035 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/10000",
+            "value": 0.6233919500891301,
+            "unit": "ms/iter",
+            "extra": "iterations: 1122\ncpu: 0.6233470775401071 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/100000",
+            "value": 6.7690532788460605,
+            "unit": "ms/iter",
+            "extra": "iterations: 104\ncpu: 6.769055634615384 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Create<3, true>/1000000",
+            "value": 33.558220666666976,
+            "unit": "ms/iter",
+            "extra": "iterations: 21\ncpu: 33.557197047618914 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertToLeaf/10",
+            "value": 0.0031439905678545734,
+            "unit": "ms/iter",
+            "extra": "iterations: 223279\ncpu: 0.003143991454637471 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertToLeaf/20",
+            "value": 0.006114836621433695,
+            "unit": "ms/iter",
+            "extra": "iterations: 114960\ncpu: 0.006114735142658323 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertToLeaf/50",
+            "value": 0.01592039563537146,
+            "unit": "ms/iter",
+            "extra": "iterations: 43990\ncpu: 0.01591999499886337 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertToLeaf/100",
+            "value": 0.04019596846768961,
+            "unit": "ms/iter",
+            "extra": "iterations: 17379\ncpu: 0.040195610046608106 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertToLeaf/1000",
+            "value": 0.3951685292779981,
+            "unit": "ms/iter",
+            "extra": "iterations: 1759\ncpu: 0.3951688573052872 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertToLeaf/10000",
+            "value": 2.84582181632649,
+            "unit": "ms/iter",
+            "extra": "iterations: 245\ncpu: 2.845715273469392 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertWithRebalancing/10",
+            "value": 0.0004555334927856968,
+            "unit": "ms/iter",
+            "extra": "iterations: 1540690\ncpu: 0.00045549937820067753 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertWithRebalancing/20",
+            "value": 0.0015844916782404054,
+            "unit": "ms/iter",
+            "extra": "iterations: 442094\ncpu: 0.001584434832863596 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertWithRebalancing/50",
+            "value": 0.0027971702038569564,
+            "unit": "ms/iter",
+            "extra": "iterations: 250764\ncpu: 0.0027970380317748973 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertWithRebalancing/100",
+            "value": 0.009214818829865875,
+            "unit": "ms/iter",
+            "extra": "iterations: 75752\ncpu: 0.009214595363818762 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertWithRebalancing/1000",
+            "value": 0.14080610929853654,
+            "unit": "ms/iter",
+            "extra": "iterations: 4904\ncpu: 0.14080460256933147 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertWithRebalancing/10000",
+            "value": 1.7241363333333481,
+            "unit": "ms/iter",
+            "extra": "iterations: 408\ncpu: 1.7240774901960747 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertUnique/10",
+            "value": 0.0011580233050145303,
+            "unit": "ms/iter",
+            "extra": "iterations: 603132\ncpu: 0.00115798944012256 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertUnique/20",
+            "value": 0.002739905845764832,
+            "unit": "ms/iter",
+            "extra": "iterations: 256271\ncpu: 0.0027398813170432775 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertUnique/50",
+            "value": 0.005321791088179398,
+            "unit": "ms/iter",
+            "extra": "iterations: 131017\ncpu: 0.005321796919483754 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertUnique/100",
+            "value": 0.0176645960754523,
+            "unit": "ms/iter",
+            "extra": "iterations: 39495\ncpu: 0.01766461541967343 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertUnique/1000",
+            "value": 0.43338603390874886,
+            "unit": "ms/iter",
+            "extra": "iterations: 1622\ncpu: 0.4333769845869287 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::InsertUnique/10000",
+            "value": 6.046053085470037,
+            "unit": "ms/iter",
+            "extra": "iterations: 117\ncpu: 6.045914333333343 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Update/10",
+            "value": 0.0004878127851782217,
+            "unit": "ms/iter",
+            "extra": "iterations: 1435725\ncpu: 0.00048779209597938044 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Update/20",
+            "value": 0.0009808114577184702,
+            "unit": "ms/iter",
+            "extra": "iterations: 882619\ncpu: 0.000980796688038665 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Update/50",
+            "value": 0.002265423410376741,
+            "unit": "ms/iter",
+            "extra": "iterations: 310734\ncpu: 0.0022654012499436983 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Update/100",
+            "value": 0.004816253562973562,
+            "unit": "ms/iter",
+            "extra": "iterations: 147419\ncpu: 0.004816256466262825 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Update/1000",
+            "value": 0.06202049092878481,
+            "unit": "ms/iter",
+            "extra": "iterations: 11079\ncpu: 0.0620192745735175 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Update/10000",
+            "value": 1.0856163750000203,
+            "unit": "ms/iter",
+            "extra": "iterations: 640\ncpu: 1.0855749109375035 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Contains/1000",
+            "value": 17.71153750938381,
+            "unit": "ns/iter",
+            "extra": "iterations: 39444969\ncpu: 17.711364356757542 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::Contains/10000",
+            "value": 31.771906306478012,
+            "unit": "ns/iter",
+            "extra": "iterations: 22126311\ncpu: 31.77164489823895 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::RangeSearch/100",
+            "value": 48.15064933061058,
+            "unit": "ns/iter",
+            "extra": "iterations: 15424423\ncpu: 48.150691860564365 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::RangeSearch/1000",
+            "value": 89.80816202157285,
+            "unit": "ns/iter",
+            "extra": "iterations: 7725243\ncpu: 89.80320942655183 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::RangeSearch/10000",
+            "value": 281.1519649604202,
+            "unit": "ns/iter",
+            "extra": "iterations: 2468523\ncpu: 281.1416138314294 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::RangeSearch/100000",
+            "value": 2060.267842046017,
+            "unit": "ns/iter",
+            "extra": "iterations: 348937\ncpu: 2060.17225745621 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::GetNearestNeighbors/1000",
+            "value": 0.009876016830945238,
+            "unit": "ms/iter",
+            "extra": "iterations: 71119\ncpu: 0.009876022806844829 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::GetNearestNeighbors/10000",
+            "value": 0.2165348030163116,
+            "unit": "ms/iter",
+            "extra": "iterations: 3249\ncpu: 0.21652658048630327 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::FrustumCulling/1000",
+            "value": 0.0015263517720978182,
+            "unit": "ms/iter",
+            "extra": "iterations: 463462\ncpu: 0.0015262608282879651 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Point::FrustumCulling/10000",
+            "value": 0.02473348872660187,
+            "unit": "ms/iter",
+            "extra": "iterations: 28208\ncpu: 0.024733158430232553 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/10",
+            "value": 0.0003682543269825251,
+            "unit": "ms/iter",
+            "extra": "iterations: 1900805\ncpu: 0.00036824463266878866 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/20",
+            "value": 0.0005395260789318154,
+            "unit": "ms/iter",
+            "extra": "iterations: 1299248\ncpu: 0.000539501169907511 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/50",
+            "value": 0.0018026199490211326,
+            "unit": "ms/iter",
+            "extra": "iterations: 383688\ncpu: 0.0018025348746898476 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/100",
+            "value": 0.003353653413299473,
+            "unit": "ms/iter",
+            "extra": "iterations: 209255\ncpu: 0.0033535315428544258 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/1000",
+            "value": 0.03595249160336997,
+            "unit": "ms/iter",
+            "extra": "iterations: 19353\ncpu: 0.03595015217278973 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/10000",
+            "value": 1.0096353063583754,
+            "unit": "ms/iter",
+            "extra": "iterations: 692\ncpu: 1.0089483063583762 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/100000",
+            "value": 9.759106583333319,
+            "unit": "ms/iter",
+            "extra": "iterations: 72\ncpu: 9.758357527777761 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, false>/1000000",
+            "value": 99.92735842857314,
+            "unit": "ms/iter",
+            "extra": "iterations: 7\ncpu: 99.92013728571435 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/10",
+            "value": 0.0019533347022816757,
+            "unit": "ms/iter",
+            "extra": "iterations: 358913\ncpu: 0.0019529700651689922 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/20",
+            "value": 0.0028454808264389243,
+            "unit": "ms/iter",
+            "extra": "iterations: 245729\ncpu: 0.002843243740055121 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/50",
+            "value": 0.005532042602328283,
+            "unit": "ms/iter",
+            "extra": "iterations: 126871\ncpu: 0.005528579565070039 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/100",
+            "value": 0.008806317928136938,
+            "unit": "ms/iter",
+            "extra": "iterations: 79735\ncpu: 0.00879491296168558 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/1000",
+            "value": 0.04806613283345946,
+            "unit": "ms/iter",
+            "extra": "iterations: 14537\ncpu: 0.04806462048565705 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/10000",
+            "value": 0.4820714038727605,
+            "unit": "ms/iter",
+            "extra": "iterations: 1446\ncpu: 0.48153815352697427 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/100000",
+            "value": 4.046723537572127,
+            "unit": "ms/iter",
+            "extra": "iterations: 173\ncpu: 4.0442932543352414 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 0, true>/1000000",
+            "value": 41.21526205882313,
+            "unit": "ms/iter",
+            "extra": "iterations: 17\ncpu: 41.20935647058843 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/10",
+            "value": 0.0007445981950335868,
+            "unit": "ms/iter",
+            "extra": "iterations: 917801\ncpu: 0.0007445082812069323 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/20",
+            "value": 0.002197769210760515,
+            "unit": "ms/iter",
+            "extra": "iterations: 319092\ncpu: 0.0021973908872676543 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/50",
+            "value": 0.005276139968542967,
+            "unit": "ms/iter",
+            "extra": "iterations: 132244\ncpu: 0.005275667183388276 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/100",
+            "value": 0.015031587083813944,
+            "unit": "ms/iter",
+            "extra": "iterations: 46794\ncpu: 0.015031214621532538 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/1000",
+            "value": 0.24044554036413704,
+            "unit": "ms/iter",
+            "extra": "iterations: 2911\ncpu: 0.240442094125729 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/10000",
+            "value": 3.020706318965522,
+            "unit": "ms/iter",
+            "extra": "iterations: 232\ncpu: 3.0206107370689788 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/100000",
+            "value": 29.53318249999981,
+            "unit": "ms/iter",
+            "extra": "iterations: 24\ncpu: 29.531882708333512 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, false>/1000000",
+            "value": 308.649486500002,
+            "unit": "ms/iter",
+            "extra": "iterations: 2\ncpu: 308.63590350000436 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/10",
+            "value": 0.004021483929537961,
+            "unit": "ms/iter",
+            "extra": "iterations: 171837\ncpu: 0.004016197885205155 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/20",
+            "value": 0.009265609652591716,
+            "unit": "ms/iter",
+            "extra": "iterations: 75876\ncpu: 0.009260023011228736 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/50",
+            "value": 0.018675403646594264,
+            "unit": "ms/iter",
+            "extra": "iterations: 37679\ncpu: 0.018546998248360962 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/100",
+            "value": 0.04271770587517533,
+            "unit": "ms/iter",
+            "extra": "iterations: 16391\ncpu: 0.0427041425172353 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/1000",
+            "value": 0.37214093238247886,
+            "unit": "ms/iter",
+            "extra": "iterations: 1893\ncpu: 0.3720716793449551 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/10000",
+            "value": 2.8316564769873853,
+            "unit": "ms/iter",
+            "extra": "iterations: 239\ncpu: 2.831446937238516 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/100000",
+            "value": 24.82867535714206,
+            "unit": "ms/iter",
+            "extra": "iterations: 28\ncpu: 24.826255071428502 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Create<3, 2, true>/1000000",
+            "value": 280.0510523333249,
+            "unit": "ms/iter",
+            "extra": "iterations: 3\ncpu: 279.8734943333301 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<0>/10",
+            "value": 0.0015452738283677756,
+            "unit": "ms/iter",
+            "extra": "iterations: 453598\ncpu: 0.0015449250173060858 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<0>/20",
+            "value": 0.003005577116543623,
+            "unit": "ms/iter",
+            "extra": "iterations: 232797\ncpu: 0.003005057144207223 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<0>/50",
+            "value": 0.006212112695870381,
+            "unit": "ms/iter",
+            "extra": "iterations: 113021\ncpu: 0.006211132072800578 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<0>/100",
+            "value": 0.011348016336625768,
+            "unit": "ms/iter",
+            "extra": "iterations: 61457\ncpu: 0.011347938640024535 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<0>/1000",
+            "value": 0.12488247754222881,
+            "unit": "ms/iter",
+            "extra": "iterations: 5566\ncpu: 0.12488123517786612 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<0>/10000",
+            "value": 1.0690644870228843,
+            "unit": "ms/iter",
+            "extra": "iterations: 655\ncpu: 1.0690249786259556 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<2>/10",
+            "value": 0.002574763781976131,
+            "unit": "ms/iter",
+            "extra": "iterations: 273328\ncpu: 0.002574764656383496 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<2>/20",
+            "value": 0.007092952624438028,
+            "unit": "ms/iter",
+            "extra": "iterations: 98764\ncpu: 0.007092894435219254 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<2>/50",
+            "value": 0.016681061348816594,
+            "unit": "ms/iter",
+            "extra": "iterations: 42022\ncpu: 0.016680620532102265 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<2>/100",
+            "value": 0.03853953165526783,
+            "unit": "ms/iter",
+            "extra": "iterations: 18275\ncpu: 0.03853922779753824 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<2>/1000",
+            "value": 0.383003039538703,
+            "unit": "ms/iter",
+            "extra": "iterations: 1821\ncpu: 0.3829994854475546 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertToLeaf<2>/10000",
+            "value": 3.1716145772727278,
+            "unit": "ms/iter",
+            "extra": "iterations: 220\ncpu: 3.1715840227272967 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<0>/10",
+            "value": 0.0005620654691349466,
+            "unit": "ms/iter",
+            "extra": "iterations: 1245228\ncpu: 0.0005620586262114262 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<0>/20",
+            "value": 0.0017300587392017888,
+            "unit": "ms/iter",
+            "extra": "iterations: 403887\ncpu: 0.0017300315632837755 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<0>/50",
+            "value": 0.0031536136970870265,
+            "unit": "ms/iter",
+            "extra": "iterations: 221945\ncpu: 0.0031536130527833484 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<0>/100",
+            "value": 0.007380010524320121,
+            "unit": "ms/iter",
+            "extra": "iterations: 94923\ncpu: 0.00737990906313537 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<0>/1000",
+            "value": 0.11708506239545143,
+            "unit": "ms/iter",
+            "extra": "iterations: 5978\ncpu: 0.11708510889929677 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<0>/10000",
+            "value": 1.6138464953704206,
+            "unit": "ms/iter",
+            "extra": "iterations: 432\ncpu: 1.6138228912037007 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<2>/10",
+            "value": 0.001654150856651452,
+            "unit": "ms/iter",
+            "extra": "iterations: 423276\ncpu: 0.00165412128256739 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<2>/20",
+            "value": 0.003238263200950001,
+            "unit": "ms/iter",
+            "extra": "iterations: 216367\ncpu: 0.003238217297462154 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<2>/50",
+            "value": 0.008088856685845719,
+            "unit": "ms/iter",
+            "extra": "iterations: 86900\ncpu: 0.00808879298043733 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<2>/100",
+            "value": 0.01831760006801919,
+            "unit": "ms/iter",
+            "extra": "iterations: 38224\ncpu: 0.018317601847007103 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<2>/1000",
+            "value": 0.303245921585516,
+            "unit": "ms/iter",
+            "extra": "iterations: 2321\ncpu: 0.30324304954761166 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::InsertWithRebalancing<2>/10000",
+            "value": 4.160353577381061,
+            "unit": "ms/iter",
+            "extra": "iterations: 168\ncpu: 4.160363380952349 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<0>/10",
+            "value": 0.0005170442048461785,
+            "unit": "ms/iter",
+            "extra": "iterations: 1355417\ncpu: 0.0005170411954402223 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<0>/20",
+            "value": 0.0011919574010217239,
+            "unit": "ms/iter",
+            "extra": "iterations: 587831\ncpu: 0.0011919464063650871 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<0>/50",
+            "value": 0.0035572615985303485,
+            "unit": "ms/iter",
+            "extra": "iterations: 195930\ncpu: 0.0035572029704486275 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<0>/100",
+            "value": 0.007652521493823584,
+            "unit": "ms/iter",
+            "extra": "iterations: 90747\ncpu: 0.007652359493977884 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<0>/1000",
+            "value": 0.16888807729338803,
+            "unit": "ms/iter",
+            "extra": "iterations: 3739\ncpu: 0.16887904921101862 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<0>/10000",
+            "value": 780.2623849999577,
+            "unit": "ms/iter",
+            "extra": "iterations: 1\ncpu: 780.2235780000046 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<2>/10",
+            "value": 0.0011472851651394417,
+            "unit": "ms/iter",
+            "extra": "iterations: 612119\ncpu: 0.0011472259070540172 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<2>/20",
+            "value": 0.003958797534116561,
+            "unit": "ms/iter",
+            "extra": "iterations: 176894\ncpu: 0.003958530645471253 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<2>/50",
+            "value": 0.014741159799354971,
+            "unit": "ms/iter",
+            "extra": "iterations: 47447\ncpu: 0.014740214639492582 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<2>/100",
+            "value": 0.043909259179807765,
+            "unit": "ms/iter",
+            "extra": "iterations: 15850\ncpu: 0.04390641135646722 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<2>/1000",
+            "value": 1.329518982986738,
+            "unit": "ms/iter",
+            "extra": "iterations: 529\ncpu: 1.3294465085066411 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::Update<2>/10000",
+            "value": 139.2014937499937,
+            "unit": "ms/iter",
+            "extra": "iterations: 4\ncpu: 139.19260324999883 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<0>/100",
+            "value": 71.00284325625913,
+            "unit": "ns/iter",
+            "extra": "iterations: 9853491\ncpu: 70.99757821872525 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<0>/1000",
+            "value": 356.32774531425605,
+            "unit": "ns/iter",
+            "extra": "iterations: 1951079\ncpu: 356.30692093964757 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<0>/10000",
+            "value": 10932.576836893026,
+            "unit": "ns/iter",
+            "extra": "iterations: 63817\ncpu: 10931.709920554094 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<0>/100000",
+            "value": 137496.0219237535,
+            "unit": "ns/iter",
+            "extra": "iterations: 5063\ncpu: 137489.24471657243 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<2>/100",
+            "value": 58.51079663697369,
+            "unit": "ns/iter",
+            "extra": "iterations: 12493520\ncpu: 58.508738450012736 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<2>/1000",
+            "value": 149.9035276683717,
+            "unit": "ns/iter",
+            "extra": "iterations: 4691314\ncpu: 149.89579337473504 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<2>/10000",
+            "value": 2121.7408736934303,
+            "unit": "ns/iter",
+            "extra": "iterations: 325652\ncpu: 2121.6944437620477 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::PickSearch<2>/100000",
+            "value": 38528.736929094775,
+            "unit": "ns/iter",
+            "extra": "iterations: 18151\ncpu: 38527.40780122326 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<0>/100",
+            "value": 78.34388807984072,
+            "unit": "ns/iter",
+            "extra": "iterations: 9010638\ncpu: 78.34247497236012 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<0>/1000",
+            "value": 377.1484754452042,
+            "unit": "ns/iter",
+            "extra": "iterations: 1853000\ncpu: 377.14174150026423 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<0>/10000",
+            "value": 10843.020162817025,
+            "unit": "ns/iter",
+            "extra": "iterations: 63384\ncpu: 10842.822983718139 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<0>/100000",
+            "value": 131738.9445387684,
+            "unit": "ns/iter",
+            "extra": "iterations: 5301\ncpu: 131736.12224108775 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<2>/100",
+            "value": 88.74726982401627,
+            "unit": "ns/iter",
+            "extra": "iterations: 8036112\ncpu: 88.74026780612348 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<2>/1000",
+            "value": 216.42260842323913,
+            "unit": "ns/iter",
+            "extra": "iterations: 3230442\ncpu: 216.40745136424448 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<2>/10000",
+            "value": 3579.7034283933767,
+            "unit": "ns/iter",
+            "extra": "iterations: 192510\ncpu: 3579.7038751234168 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RangeSearch<2>/100000",
+            "value": 45318.87465307262,
+            "unit": "ns/iter",
+            "extra": "iterations: 15493\ncpu: 45318.8313431883 ns\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::FrustumCulling<0>/1000",
+            "value": 0.002637920688712498,
+            "unit": "ms/iter",
+            "extra": "iterations: 267049\ncpu: 0.0026378534014357444 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::FrustumCulling<0>/10000",
+            "value": 0.06366210573992406,
+            "unit": "ms/iter",
+            "extra": "iterations: 11812\ncpu: 0.06366151710125426 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::FrustumCulling<2>/1000",
+            "value": 0.002369586209330304,
+            "unit": "ms/iter",
+            "extra": "iterations: 297549\ncpu: 0.002369519820264901 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::FrustumCulling<2>/10000",
+            "value": 0.07062495082627625,
+            "unit": "ms/iter",
+            "extra": "iterations: 9924\ncpu: 0.07062315840386799 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, false>/100",
+            "value": 0.002489619540502233,
+            "unit": "ms/iter",
+            "extra": "iterations: 282787\ncpu: 0.0024895955896133168 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, false>/1000",
+            "value": 0.529470655538711,
+            "unit": "ms/iter",
+            "extra": "iterations: 1318\ncpu: 0.5294520887708677 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, false>/10000",
+            "value": 39.16116566666814,
+            "unit": "ms/iter",
+            "extra": "iterations: 18\ncpu: 39.160438222222325 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, false>/100000",
+            "value": 6354.510782000034,
+            "unit": "ms/iter",
+            "extra": "iterations: 1\ncpu: 6354.3063660000025 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, true>/100",
+            "value": 0.00565250570864873,
+            "unit": "ms/iter",
+            "extra": "iterations: 123672\ncpu: 0.005652156179248446 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, true>/1000",
+            "value": 0.6105752053959702,
+            "unit": "ms/iter",
+            "extra": "iterations: 1149\ncpu: 0.6105593507397559 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, true>/10000",
+            "value": 39.5845553888863,
+            "unit": "ms/iter",
+            "extra": "iterations: 18\ncpu: 39.58286894444364 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<0, true>/100000",
+            "value": 6395.183716999953,
+            "unit": "ms/iter",
+            "extra": "iterations: 1\ncpu: 6394.94842900001 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, false>/100",
+            "value": 0.005512381227476668,
+            "unit": "ms/iter",
+            "extra": "iterations: 127921\ncpu: 0.0055123770295730104 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, false>/1000",
+            "value": 0.633719249094199,
+            "unit": "ms/iter",
+            "extra": "iterations: 1104\ncpu: 0.6336080307970956 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, false>/10000",
+            "value": 63.166855454550266,
+            "unit": "ms/iter",
+            "extra": "iterations: 11\ncpu: 63.15904672727222 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, false>/100000",
+            "value": 23011.255242000003,
+            "unit": "ms/iter",
+            "extra": "iterations: 1\ncpu: 22979.867759 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, true>/100",
+            "value": 0.013262053895279066,
+            "unit": "ms/iter",
+            "extra": "iterations: 52769\ncpu: 0.013261620061020978 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, true>/1000",
+            "value": 0.7094890884146698,
+            "unit": "ms/iter",
+            "extra": "iterations: 984\ncpu: 0.7094715823170684 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, true>/10000",
+            "value": 49.494044428570305,
+            "unit": "ms/iter",
+            "extra": "iterations: 14\ncpu: 49.49351007142866 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection<2, true>/100000",
+            "value": 16836.595173000034,
+            "unit": "ms/iter",
+            "extra": "iterations: 1\ncpu: 16765.951793 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<0>/100",
+            "value": 0.007540280920804362,
+            "unit": "ms/iter",
+            "extra": "iterations: 92745\ncpu: 0.007539793110140728 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<0>/1000",
+            "value": 2.322544834375151,
+            "unit": "ms/iter",
+            "extra": "iterations: 320\ncpu: 2.322482184374941 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<0>/10000",
+            "value": 196.38168100000541,
+            "unit": "ms/iter",
+            "extra": "iterations: 4\ncpu: 196.3729830000034 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<0>/100000",
+            "value": 23874.438823000048,
+            "unit": "ms/iter",
+            "extra": "iterations: 1\ncpu: 23873.474932999983 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<2>/100",
+            "value": 0.013173934970743836,
+            "unit": "ms/iter",
+            "extra": "iterations: 57082\ncpu: 0.013173176553028706 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<2>/1000",
+            "value": 1.738751087281771,
+            "unit": "ms/iter",
+            "extra": "iterations: 401\ncpu: 1.7386749800499062 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<2>/10000",
+            "value": 128.32367439999643,
+            "unit": "ms/iter",
+            "extra": "iterations: 5\ncpu: 128.32178259999978 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::CollisionDetection_WithOtherTree<2>/100000",
+            "value": 13608.489501999997,
+            "unit": "ms/iter",
+            "extra": "iterations: 1\ncpu: 13607.742059000004 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<0>/100",
+            "value": 0.0006349042011290736,
+            "unit": "ms/iter",
+            "extra": "iterations: 1106036\ncpu: 0.0006348807697036965 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<0>/1000",
+            "value": 0.003937371850847232,
+            "unit": "ms/iter",
+            "extra": "iterations: 178421\ncpu: 0.003937314677083843 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<0>/10000",
+            "value": 0.03704435326753776,
+            "unit": "ms/iter",
+            "extra": "iterations: 18745\ncpu: 0.03704329677247218 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<0>/100000",
+            "value": 0.3914430201117111,
+            "unit": "ms/iter",
+            "extra": "iterations: 1790\ncpu: 0.391437282681565 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<2>/100",
+            "value": 0.0004355567351169366,
+            "unit": "ms/iter",
+            "extra": "iterations: 1605399\ncpu: 0.00043553617761067263 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<2>/1000",
+            "value": 0.0011446629560672903,
+            "unit": "ms/iter",
+            "extra": "iterations: 612300\ncpu: 0.001144652190102885 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<2>/10000",
+            "value": 0.007267235254949651,
+            "unit": "ms/iter",
+            "extra": "iterations: 96117\ncpu: 0.007266978151627675 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedFirst<2>/100000",
+            "value": 0.06733685533141165,
+            "unit": "ms/iter",
+            "extra": "iterations: 10410\ncpu: 0.06733587444764713 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<0>/100",
+            "value": 0.000634451594372818,
+            "unit": "ms/iter",
+            "extra": "iterations: 1101938\ncpu: 0.0006344448952663285 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<0>/1000",
+            "value": 0.004981092482690519,
+            "unit": "ms/iter",
+            "extra": "iterations: 141540\ncpu: 0.004980796432104039 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<0>/10000",
+            "value": 0.049561552015787144,
+            "unit": "ms/iter",
+            "extra": "iterations: 14188\ncpu: 0.04956021807160927 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<0>/100000",
+            "value": 0.5250258551157497,
+            "unit": "ms/iter",
+            "extra": "iterations: 1339\ncpu: 0.5249559148618739 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<2>/100",
+            "value": 0.0004448277245915024,
+            "unit": "ms/iter",
+            "extra": "iterations: 1516264\ncpu: 0.00044481312159358493 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<2>/1000",
+            "value": 0.0023138662161540473,
+            "unit": "ms/iter",
+            "extra": "iterations: 304394\ncpu: 0.0023138246713140832 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<2>/10000",
+            "value": 0.022688729724481365,
+            "unit": "ms/iter",
+            "extra": "iterations: 30887\ncpu: 0.02268787687376523 ms\nthreads: 1"
+          },
+          {
+            "name": "Benchmarks::Box::RayIntersectedAll<2>/100000",
+            "value": 0.22894170293159535,
+            "unit": "ms/iter",
+            "extra": "iterations: 3070\ncpu: 0.22893767687295435 ms\nthreads: 1"
           }
         ]
       }
