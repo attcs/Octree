@@ -1183,7 +1183,7 @@ namespace OrthoTree
 
       inline constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
 
-      inline constexpr IGM::Vector CalculateCenter(DimArray<GridID> const& gridID, depth_t centerLevel) const noexcept
+      inline constexpr IGM::Vector CalculateGridCellCenter(DimArray<GridID> const& gridID, depth_t centerLevel) const noexcept
       {
         using IGM_Vector = typename IGM::Vector;
 
@@ -1971,11 +1971,11 @@ namespace OrthoTree
 
   public: // Node helpers
     // Calculate extent by box of the tree and the key of the node
-    constexpr IGM::Vector CalculateCenter(MortonNodeIDCR key) const noexcept
+    constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
     {
       auto const gridID = SI::Decode(key, GetDepthMax());
       auto const centerLevel = GetDepthMax() - SI::GetDepthID(key);
-      return m_grid.CalculateCenter(gridID, centerLevel);
+      return m_grid.CalculateGridCellCenter(gridID, centerLevel);
     }
 
 #ifdef ORTHOTREE__DISABLED_NODECENTER
@@ -2198,7 +2198,7 @@ namespace OrthoTree
         auto& newNode = this->m_nodes[entityNodeKey];
         newNode.AddEntity(entityID);
 #ifndef ORTHOTREE__DISABLED_NODECENTER
-        newNode.SetCenter(this->CalculateCenter(entityNodeKey));
+        newNode.SetCenter(this->CalculateNodeCenter(entityNodeKey));
 #endif
         // Create all child between the new (entityNodeKey) and the smallest existing one (parentNodeKey)
         auto newParentNodeKey = entityNodeKey;
@@ -2210,7 +2210,7 @@ namespace OrthoTree
           auto& newParentNode = this->m_nodes[newParentNodeKey];
           newParentNode.AddChildInOrder(childNodeKey);
 #ifndef ORTHOTREE__DISABLED_NODECENTER
-          newParentNode.SetCenter(this->CalculateCenter(newParentNodeKey));
+          newParentNode.SetCenter(this->CalculateNodeCenter(newParentNodeKey));
 #endif
 
         } while (newParentNodeKey != parentNodeKey);
