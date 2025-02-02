@@ -1183,7 +1183,7 @@ namespace OrthoTree
 
       inline constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
 
-      inline constexpr IGM::Vector CalculateGridCellCenter(DimArray<GridID> const& gridID, depth_t centerLevel) const noexcept
+      inline constexpr IGM::Vector CalculateGridCellCenter(DimArray<GridID>&& gridID, depth_t&& centerLevel) const noexcept
       {
         using IGM_Vector = typename IGM::Vector;
 
@@ -1973,9 +1973,7 @@ namespace OrthoTree
     // Calculate extent by box of the tree and the key of the node
     constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
     {
-      auto const gridID = SI::Decode(key, GetDepthMax());
-      auto const centerLevel = GetDepthMax() - SI::GetDepthID(key);
-      return m_grid.CalculateGridCellCenter(gridID, centerLevel);
+      return m_grid.CalculateGridCellCenter(SI::Decode(key, GetDepthMax()), GetDepthMax() - SI::GetDepthID(key));
     }
 
 #ifdef ORTHOTREE__DISABLED_NODECENTER
