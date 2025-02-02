@@ -67,6 +67,81 @@ namespace
         }
         SetIterationNo(state, entityNo);
       }
+
+      static void GetNodeEntities(benchmark::State& state)
+      {
+        constexpr dim_t DIMENSION_NO = 3;
+        constexpr depth_t depth = 5;
+
+        using Node = typename TreePointND<DIMENSION_NO>::Node;
+
+        size_t entityNo = state.range();
+
+        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
+
+        auto const& nodes = tree.GetNodes();
+
+        auto nodePtrs = std::vector<Node const*>();
+        for (auto const& [key, node] : nodes)
+          nodePtrs.emplace_back(&node);
+
+        for (auto _ : state)
+        {
+          for (auto const * nodePtr : nodePtrs)
+            benchmark::DoNotOptimize(tree.GetNodeEntities(*nodePtr));
+        }
+        SetIterationNo(state, entityNo);
+      }
+
+      static void GridSpaceIndexing_GetPointGridID(benchmark::State& state)
+      {
+        constexpr dim_t DIMENSION_NO = 3;
+        constexpr depth_t depth = 5;
+        using GridSpaceIndexing =
+          detail::GridSpaceIndexing<DIMENSION_NO, OrthoTree::BaseGeometryType, VectorND<DIMENSION_NO>, BoundingBoxND<DIMENSION_NO>, AdaptorGeneralND<DIMENSION_NO>>;
+
+        size_t entityNo = state.range();
+        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+        auto const gsi = GridSpaceIndexing(depth, GridSpaceIndexing::IGM::GetBoxAD(boxSpace));
+
+        auto gridIDs = std::vector<std::array<GridID, DIMENSION_NO>>(entityNo);
+        for (auto _ : state)
+        {
+          for (std::size_t i = 0; i < entityNo; ++i)
+          {
+            gridIDs[i] = gsi.GetPointGridID(points[i]);
+          }
+        }
+
+        SetIterationNo(state, entityNo);
+      }
+
+      static void GridSpaceIndexing_GetBoxGridID(benchmark::State& state)
+      {
+        constexpr dim_t DIMENSION_NO = 3;
+        constexpr depth_t depth = 5;
+        using GridSpaceIndexing =
+          detail::GridSpaceIndexing<DIMENSION_NO, OrthoTree::BaseGeometryType, VectorND<DIMENSION_NO>, BoundingBoxND<DIMENSION_NO>, AdaptorGeneralND<DIMENSION_NO>>;
+
+        size_t entityNo = state.range();
+        auto const boxes = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+        auto const gsi = GridSpaceIndexing(depth, GridSpaceIndexing::IGM::GetBoxAD(boxSpace));
+
+        auto gridIDs = std::vector<std::array<std::array<GridID, DIMENSION_NO>, 2>>(entityNo);
+        for (auto _ : state)
+        {
+          for (std::size_t i = 0; i < entityNo; ++i)
+          {
+            gridIDs[i] = gsi.GetBoxGridID(boxes[i]);
+          }
+        }
+
+        SetIterationNo(state, entityNo);
+      }
+
     } // namespace Base
 
 
@@ -560,6 +635,9 @@ namespace
 
 BENCHMARK(Benchmarks::Base::GetNodeID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GetDepthID)->Arg(1000)->Unit(benchmark::kNanosecond);
+BENCHMARK(Benchmarks::Base::GetNodeEntities)->Arg(10000)->Unit(benchmark::kNanosecond);
+BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetPointGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
+BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetBoxGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Point::Create<3, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::Create<3, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::InsertToLeaf)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
