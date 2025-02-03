@@ -338,6 +338,192 @@ namespace OrthoTree
       assert(e >= 0 && e < (sizeof(TOut) * CHAR_BIT));
       return TOut{ 1 } << e;
     }
+
+    template<typename T>
+    class PagedVectorSimple
+    {
+    public:
+      using PoolID = std::size_t;
+      using PoolView = std::span<T>;
+      using PoolViewConst = std::span<T const>;
+
+      static constexpr std::size_t INVALID_POOLID = std::numeric_limits<PoolID>::max();
+
+    public:
+      PagedVectorSimple() = default;
+      PagedVectorSimple(std::size_t size)
+      {
+        // TODO: reserve
+      }
+
+    public:
+      inline constexpr PoolID AddPool(std::size_t capacity, std::size_t size = 0)
+      {
+        m_pools.push_back({ m_pages.size(), 0, size, capacity });
+        auto& page = m_pages.emplace_back();
+        page.reserve(capacity);
+        if (size > 0)
+          page.resize(size);
+
+        return m_pools.size() - 1;
+      }
+
+      inline constexpr PoolID AddPool(auto beginIt, auto endIt, auto&& transform)
+      {
+        auto const size = std::distance(beginIt, endIt);
+        if (size == 0)
+          return INVALID_POOLID;
+
+        auto const poolID = AddPool(std::size_t(double(size) * 1.6), size);
+        auto const& pool = m_pools[poolID];
+        auto& page = m_pages[pool.beginPageID];
+        std::transform(beginIt, endIt, page.begin() + pool.beginPosition, transform);
+        return poolID;
+      }
+
+      inline constexpr PoolViewConst GetPool(PoolID poolID) const
+      {
+        if (poolID == INVALID_POOLID)
+          return {};
+
+        auto const& pool = m_pools[poolID];
+        return PoolViewConst(m_pages[pool.beginPageID].begin(), pool.size);
+      }
+
+      inline constexpr PoolView GetPool(PoolID poolID)
+      {
+        if (poolID == INVALID_POOLID)
+          return {};
+
+        auto const& pool = m_pools[poolID];
+        return PoolView(m_pages[pool.beginPageID].begin(), pool.size);
+      }
+
+      inline constexpr void ReplacePool(PoolID& poolID, std::vector<T>&& newPool)
+      {
+        if (poolID == INVALID_POOLID)
+        {
+          m_pools.push_back({ m_pages.size(), 0, newPool.size(), newPool.capacity() });
+          m_pages.emplace_back(std::move(newPool));
+          poolID = m_pools.size() - 1;
+        }
+        else
+        {
+          auto& pool = m_pools[poolID];
+          pool.size = newPool.size();
+          pool.capacity = newPool.capacity();
+          m_pages[pool.beginPageID] = std::move(newPool);
+        }
+      }
+
+      inline constexpr void RemovePool(PoolID& poolID)
+      {
+        if (poolID == INVALID_POOLID)
+          return;
+
+        auto& pool = m_pools[poolID];
+        for (auto poolIDNext = poolID; poolID < m_pools.size(); ++poolIDNext)
+        {
+          auto& poolNext = m_pools[poolIDNext];
+          --poolNext.beginPageID;
+        }
+
+        m_pages.erase(m_pages.begin() + poolID);
+        pool = { .beginPageID = INVALID_POOLID }; // -> std::unordered_map
+        poolID = INVALID_POOLID;
+      }
+
+
+      inline constexpr T& EmplaceBack(PoolID& poolID, T&& value)
+      {
+        if (poolID == INVALID_POOLID)
+          poolID = AddPool(10);
+
+        auto& pool = m_pools[poolID];
+        if (pool.size == pool.capacity)
+        {
+          pool.capacity = std::size_t(double(pool.capacity) * 1.6);
+          m_pages[pool.beginPageID].reserve(pool.capacity);
+        }
+
+        ++pool.size;
+        return m_pages[pool.beginPageID].emplace_back(std::move(value));
+      }
+
+      inline constexpr bool RemoveElement(PoolID& poolID, T&& entityID) noexcept
+      {
+        if (poolID == INVALID_POOLID)
+          return false;
+
+        auto& pool = m_pools[poolID];
+        auto& page = m_pages[pool.beginPageID];
+        auto const endIteratorAfterRemove = std::remove(page.begin(), page.end(), entityID);
+        if (endIteratorAfterRemove == page.end())
+          return false; // it was not registered previously.
+
+
+        page.erase(endIteratorAfterRemove, page.end());
+        pool.size = page.size();
+        return true;
+      }
+
+      inline constexpr std::size_t GetPoolSize(PoolID poolID) const noexcept { 
+        if (poolID == INVALID_POOLID)
+          return 0;
+
+        return m_pools[poolID].size; 
+      }
+      
+      inline constexpr void ResizePool(PoolID& poolID, std::size_t newSize) noexcept
+      {
+        if (poolID == INVALID_POOLID && newSize == 0)
+          return;
+
+        if (poolID == INVALID_POOLID)
+          poolID = AddPool(newSize);
+        
+        auto& pool = m_pools[poolID];
+        auto& page = m_pages[pool.beginPageID];
+        if (newSize > pool.size)
+        {
+          if (newSize > pool.capacity)
+          {
+            pool.capacity = newSize;
+            page.reserve(pool.capacity);
+          }
+          pool.size = newSize;
+        }
+        else if (newSize == 0)
+        {
+          pool.size = 0;
+          pool.capacity = 0;
+          page = {};
+        }
+        else
+        {
+          pool.size = newSize;
+          page.resize(pool.size);
+        }
+      }
+      
+      inline constexpr void Clear() noexcept 
+      {
+        m_pools.clear();
+        m_pages.clear();  
+      }
+
+    private:
+      struct Pool
+      {
+        std::size_t beginPageID = 0;
+        std::size_t beginPosition = 0;
+        std::size_t size = 0;
+        std::size_t capacity = 0;
+      };
+      std::vector<Pool> m_pools;
+      std::vector<std::vector<T>> m_pages;
+    };
+
   } // namespace detail
 
 #ifdef _MSC_VER
@@ -1816,13 +2002,89 @@ namespace OrthoTree
     using MortonLocationIDCR = typename SI::LocationIDCR;
     using MortonChildID = typename SI::ChildID;
 
+  private:
+    using EntityIDContainer = detail::PagedVectorSimple<TEntityID>;
+
   public:
+    class EntityManager;
+    class Node;
+
+    class EntityManager
+    {
+    public:
+      inline constexpr auto const GetEntities(Node const& node) const noexcept { return m_entities.GetPool(node.m_entitiesPoolID); }
+
+      inline constexpr bool ContainsEntity(Node const& node, TEntityID entityID) const noexcept
+      {
+        auto const& entities = GetEntities(node);
+        return std::find(entities.begin(), entities.end(), entityID) != entities.end();
+      }
+
+      inline constexpr std::size_t GetEntitiesSize(Node const& node) const noexcept { return m_entities.GetPoolSize(node.m_entitiesPoolID); }
+
+      inline constexpr bool IsEntitiesEmpty(Node const& node) const noexcept { return m_entities.GetPoolSize(node.m_entitiesPoolID) == 0; }
+
+      inline constexpr void SetEntities(Node& node, std::vector<TEntityID>&& entities) noexcept
+      {
+        node.m_entitiesPoolID = m_entities.AddPool(std::move(entities));
+      }
+
+      inline constexpr void SetEntities(Node& node, auto beginIt, auto endIt, auto&& transform) noexcept
+      {
+        node.m_entitiesPoolID = m_entities.AddPool(beginIt, endIt, std::move(transform));
+      }
+
+      inline constexpr void ReplaceEntities(Node& node, std::vector<TEntityID>&& entities) noexcept
+      {
+        m_entities.ReplacePool(node.m_entitiesPoolID, std::move(entities));
+      }
+
+      inline constexpr void AddEntity(Node& node, TEntityID entityID) noexcept 
+      {
+        m_entities.EmplaceBack(node.m_entitiesPoolID, std::move(entityID)); 
+      }
+
+      inline constexpr bool RemoveEntity(Node& node, TEntityID entityID) noexcept
+      {
+        return m_entities.RemoveElement(node.m_entitiesPoolID, std::move(entityID));
+      }
+
+      inline constexpr void DecreaseEntityIDs(Node const& node, TEntityID removedEntityID) noexcept
+      {
+        auto entities = m_entities.GetPool(node.m_entitiesPoolID);
+        for (auto& entityID : entities)
+          entityID -= removedEntityID < entityID;
+      }
+
+      inline constexpr void SortAndUniqueEntities(Node& node) noexcept 
+      { 
+        if (node.m_entitiesPoolID == EntityIDContainer::INVALID_POOLID)
+          return;
+
+        auto entities = m_entities.GetPool(node.m_entitiesPoolID);
+        std::sort(entities.begin(), entities.end());
+        auto newEndIt = std::unique(entities.begin(), entities.end());
+        m_entities.ResizePool(node.m_entitiesPoolID, std::distance(entities.begin(), newEndIt));
+      }
+
+      inline constexpr void ClearEntities(Node& node) noexcept 
+      { 
+        m_entities.RemovePool(node.m_entitiesPoolID);
+      }
+
+      inline constexpr void Clear() noexcept { m_entities.Clear(); }
+
+    private:
+      EntityIDContainer m_entities;
+    };
+
     class Node
     {
       friend OrthoTreeBase;
+      friend class EntityManager;
 
     private:
-      std::vector<TEntityID> m_entities = {};
+      typename EntityIDContainer::PoolID m_entitiesPoolID = EntityIDContainer::INVALID_POOLID;
 
       std::vector<MortonNodeID> m_children;
 #ifndef ORTHOTREE__DISABLED_NODECENTER
@@ -1836,12 +2098,14 @@ namespace OrthoTree
 
       void Clear() noexcept
       {
-        m_entities.clear();
+        m_entitiesPoolID = EntityIDContainer::INVALID_POOLID;
         m_children.clear();
       }
 
     private: // Entity handling
-      inline constexpr auto const& GetEntities() const noexcept { return m_entities; }
+      /*
+      inline constexpr auto const& GetEntities(EntityIDContainer) const noexcept { return m_entities; }
+
 
       inline constexpr std::size_t GetEntitiesSize() const noexcept { return m_entities.size(); }
 
@@ -1883,7 +2147,7 @@ namespace OrthoTree
       }
 
       inline constexpr void SortAndUniqueEntities() noexcept { detail::sortAndUnique(m_entities); }
-
+*/
     public: // Child handling
       inline constexpr void AddChild(MortonNodeIDCR childKey) noexcept { m_children.emplace_back(childKey); }
 
@@ -1967,6 +2231,7 @@ namespace OrthoTree
 
   protected: // Member variables
     UnderlyingContainer<Node> m_nodes;
+    EntityManager m_entityManager;
 
     std::size_t m_maxElementNo = 11;
     depth_t m_maxDepthNo = {};
@@ -1976,20 +2241,22 @@ namespace OrthoTree
     detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD> m_grid;
 
   public: // Node helpers
-    inline constexpr auto const& GetNodeEntities(Node const& node) const noexcept { return node.GetEntities(); }
+    inline constexpr auto GetNodeEntities(Node const& node) const noexcept { return m_entityManager.GetEntities(node); }
 
-    inline constexpr auto const& GetNodeEntities(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntities(GetNode(nodeKey)); }
+    inline constexpr auto GetNodeEntities(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntities(GetNode(nodeKey)); }
 
-    inline constexpr std::size_t GetNodeEntitiesSize(Node const& node) const noexcept { return node.GetEntitiesSize(); }
+    inline constexpr std::size_t GetNodeEntitiesSize(Node const& node) const noexcept { return m_entityManager.GetEntitiesSize(node); }
 
     inline constexpr std::size_t GetNodeEntitiesSize(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntitiesSize(GetNode(nodeKey)); }
 
-    inline constexpr bool IsNodeEntitiesEmpty(Node const& node) const noexcept { return node.IsEntitiesEmpty(); }
+    inline constexpr bool IsNodeEntitiesEmpty(Node const& node) const noexcept { return m_entityManager.IsEntitiesEmpty(node); }
 
     inline constexpr bool IsNodeEntitiesEmpty(MortonNodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNode(nodeKey)); }
 
+    inline constexpr EntityManager const& GetEntityManager() noexcept { return m_entityManager; }
+
     // Calculate extent by box of the tree and the key of the node
-    constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
+    inline constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
     {
       return m_grid.CalculateGridCellCenter(SI::Decode(key, GetDepthMax()), GetDepthMax() - SI::GetDepthID(key));
     }
@@ -2087,7 +2354,7 @@ namespace OrthoTree
       auto ids = std::vector<TEntityID>();
       ids.reserve(100);
       std::for_each(m_nodes.begin(), m_nodes.end(), [&](auto& node) {
-        auto const& entities = GetNodeEntities(node.second);
+        auto const entities = GetNodeEntities(node.second);
         ids.insert(ids.end(), entities.begin(), entities.end());
       });
 
@@ -2137,8 +2404,8 @@ namespace OrthoTree
         auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
         parentNode.AddChildInOrder(childNodeKey);
-        auto& childNode = this->CreateChild(parentNode, childNodeKey);
-        childNode.AddEntity(newEntityID);
+        auto& childNode = CreateChild(parentNode, childNodeKey);
+        m_entityManager.AddEntity(childNode, newEntityID);
 
         break;
       }
@@ -2152,8 +2419,8 @@ namespace OrthoTree
           auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
           parentNode.AddChildInOrder(childNodeKey);
-          auto& childNode = this->CreateChild(parentNode, childNodeKey);
-          childNode.AddEntity(newEntityID);
+          auto& childNode = CreateChild(parentNode, childNodeKey);
+          m_entityManager.AddEntity(childNode, newEntityID);
         }
 
         auto parentEntities = std::vector<TEntityID>{}; // Box entities could be stuck in the parent node.
@@ -2179,21 +2446,21 @@ namespace OrthoTree
           else
           {
             parentNode.AddChildInOrder(childNodeKey);
-            auto& childNode = this->CreateChild(parentNode, childNodeKey);
-            childNode.AddEntity(entityID);
+            auto& childNode = CreateChild(parentNode, childNodeKey);
+            m_entityManager.AddEntity(childNode, entityID);
           }
         }
 
-        parentNode.ReplaceEntities(std::move(parentEntities));
+        m_entityManager.ReplaceEntities(parentNode, std::move(parentEntities));
         break;
       }
 
       case ControlFlow::InsertInParentNode:
-      default: parentNode.AddEntity(newEntityID); break;
+      default: m_entityManager.AddEntity(parentNode, newEntityID); break;
       }
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-        assert(this->IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
+        assert(IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
 
       return true;
     }
@@ -2203,7 +2470,9 @@ namespace OrthoTree
     {
       if (entityNodeKey == parentNodeKey)
       {
-        detail::at(this->m_nodes, entityNodeKey).AddEntity(entityID);
+        auto& node = detail::at(this->m_nodes, entityNodeKey);
+        
+        m_entityManager.AddEntity(node, entityID);
         if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
           assert(this->IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
         return true;
@@ -2212,7 +2481,7 @@ namespace OrthoTree
       if (doInsertToLeaf)
       {
         auto& newNode = this->m_nodes[entityNodeKey];
-        newNode.AddEntity(entityID);
+        m_entityManager.AddEntity(newNode, entityID);
 #ifndef ORTHOTREE__DISABLED_NODECENTER
         newNode.SetCenter(this->CalculateNodeCenter(entityNodeKey));
 #endif
@@ -2243,10 +2512,10 @@ namespace OrthoTree
 
           parentNode.AddChildInOrder(childNodeKey);
           auto& nodeChild = this->CreateChild(parentNode, childNodeKey);
-          nodeChild.AddEntity(entityID);
+          m_entityManager.AddEntity(nodeChild, entityID);
         }
         else
-          parentNode.AddEntity(entityID);
+          m_entityManager.AddEntity(parentNode, entityID);
       }
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
@@ -2260,7 +2529,7 @@ namespace OrthoTree
       if (nodeKey == SI::GetRootKey())
         return;
 
-      if (node.IsAnyChildExist() || !node.IsEntitiesEmpty())
+      if (node.IsAnyChildExist() || !IsNodeEntitiesEmpty(node))
         return;
 
       auto const parentKey = SI::GetParentKey(nodeKey);
@@ -2314,9 +2583,11 @@ namespace OrthoTree
     inline constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
     inline constexpr auto GetDepthMax() const noexcept { return m_maxDepthNo; }
     inline constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
-    inline auto GetNodeIDByEntity(TEntityID entityID) const noexcept
+    inline constexpr auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
-      auto const it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](auto const& keyAndValue) { return keyAndValue.second.ContainsEntity(entityID); });
+      auto const it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](auto const& keyAndValue) {
+        return m_entityManager.ContainsEntity(keyAndValue.second, entityID);
+      });
 
       return it == m_nodes.end() ? MortonNodeID{} : it->first;
     }
@@ -2470,19 +2741,20 @@ namespace OrthoTree
 
       EXEC_POL_DEF(ep);
       std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&](auto& node) {
-        auto newEntities = std::vector<TEntityID>{};
-        auto const& nodeEntities = GetNodeEntities(node.second);
-        newEntities.reserve(nodeEntities.size());
-        for (auto const entityID : nodeEntities)
+        auto const originalEntityIDs = GetNodeEntities(node.second);
+
+        auto updatedEntityIDs = std::vector<TEntityID>{};
+        updatedEntityIDs.reserve(originalEntityIDs.size());
+        for (auto const entityID : originalEntityIDs)
         {
           auto const it = updateMap.find(entityID);
           if (it == updateMapEndIterator)
-            newEntities.emplace_back(entityID);
+            updatedEntityIDs.emplace_back(entityID);
           else if (it->second)
-            newEntities.emplace_back(*it->second);
+            updatedEntityIDs.emplace_back(*it->second);
         }
 
-        node.second.ReplaceEntities(std::move(newEntities));
+        m_entityManager.ReplaceEntities(node.second, std::move(updatedEntityIDs));
       });
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
@@ -2502,6 +2774,7 @@ namespace OrthoTree
     void Clear() noexcept
     {
       std::erase_if(m_nodes, [](auto const& p) { return p.first != SI::GetRootKey(); });
+      m_entityManager.Clear();
       detail::at(m_nodes, SI::GetRootKey()).Clear();
     }
 
@@ -2584,7 +2857,7 @@ namespace OrthoTree
       bool isErased = false;
       for (auto& [nodeKey, node] : this->m_nodes)
       {
-        if (!node.RemoveEntity(entityID))
+        if (!m_entityManager.RemoveEntity(node, entityID))
           continue;
 
         isErased = true;
@@ -2611,7 +2884,7 @@ namespace OrthoTree
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
         for (auto& [key, node] : this->m_nodes)
-          node.DecreaseEntityIDs(entityID);
+          this->m_entityManager.DecreaseEntityIDs(node, entityID);
       }
 
       return true;
@@ -3000,7 +3273,7 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
       if (elementNo < this->m_maxElementNo || remainingDepth == 0)
       {
-        parentNode.SetEntities(locationBeginIterator, locationEndIterator, [](auto const& item) { return item.EntityID; });
+        this->m_entityManager.SetEntities(parentNode, locationBeginIterator, locationEndIterator, [](auto const& item) { return item.EntityID; });
         locationBeginIterator = locationEndIterator;
         return;
       }
@@ -3121,7 +3394,7 @@ namespace OrthoTree
     template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
     constexpr bool EraseEntity(TEntityID entityID) noexcept
     {
-      return this->EraseEntityBase<false, DO_UPDATE_ENTITY_IDS>(entityID);
+      return this->template EraseEntityBase<false, DO_UPDATE_ENTITY_IDS>(entityID);
     }
 
 
@@ -3134,14 +3407,14 @@ namespace OrthoTree
         return false; // old box is not in the handled space domain
 
       auto& node = detail::at(this->m_nodes, nodeKey);
-      bool const isEntityRemoved = node.RemoveEntity(entitiyID);
+      bool const isEntityRemoved = this->m_entityManager.RemoveEntity(node, entitiyID);
       if (!isEntityRemoved)
         return false; // id was not registered previously.
 
       if constexpr (DO_UPDATE_ENTITY_IDS)
       {
         for (auto& [key, node] : this->m_nodes)
-          node.DecreaseEntityIDs(entitiyID);
+          this->m_entityManager.DecreaseEntityIDs(node, entitiyID);
       }
 
       this->RemoveNodeIfPossible(nodeKey, node);
@@ -3512,7 +3785,7 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
       if (elementNo < this->m_maxElementNo || remainingDepthNo == 0)
       {
-        parentNode.SetEntities(beginLocationIterator, endLocationIterator, [](auto const& item) { return item.EntityID; });
+        this->m_entityManager.SetEntities(parentNode, beginLocationIterator, endLocationIterator, [](auto const& item) { return item.EntityID; });
         beginLocationIterator = endLocationIterator;
         return;
       }
@@ -3525,7 +3798,7 @@ namespace OrthoTree
           return location.DepthAndLocation.DepthID == it->DepthAndLocation.DepthID;
         });
 
-        parentNode.SetEntities(it, beginLocationIterator, [](auto const& item) { return item.EntityID; });
+        this->m_entityManager.SetEntities(parentNode, it, beginLocationIterator, [](auto const& item) { return item.EntityID; });
       }
 
       ++currentDepthID;
@@ -3706,8 +3979,8 @@ namespace OrthoTree
       {
         // Eliminate duplicates. Not all sub-nodes will be created due to the maxElementNoInNode, which cause duplicates in the parent nodes.
         EXEC_POL_DEF(epsp); // GCC 11.3
-        std::for_each(EXEC_POL_ADD(epsp) tree.m_nodes.begin(), tree.m_nodes.end(), [](auto& pairOfKeyAndNode) {
-          pairOfKeyAndNode.second.SortAndUniqueEntities();
+        std::for_each(EXEC_POL_ADD(epsp) tree.m_nodes.begin(), tree.m_nodes.end(), [&](auto& pairOfKeyAndNode) {
+          tree.m_entityManager.SortAndUniqueEntities(pairOfKeyAndNode.second);
         });
       }
     }
@@ -3764,7 +4037,7 @@ namespace OrthoTree
     bool DoEraseRec(MortonNodeIDCR nodeKey, TEntityID entityID) noexcept
     {
       auto& node = detail::at(this->m_nodes, nodeKey);
-      auto isThereAnyErased = node.RemoveEntity(entityID);
+      auto isThereAnyErased = this->m_entityManager.RemoveEntity(node, entityID);
       if constexpr (REMAINING_DEPTH > 0)
       {
         auto const childKeys = node.GetChildren(); // Copy required because of RemoveNodeIfPossible()
@@ -3791,7 +4064,7 @@ namespace OrthoTree
         if constexpr (DO_UPDATE_ENTITY_IDS)
         {
           for (auto& [key, node] : this->m_nodes)
-            node.DecreaseEntityIDs(entityIDToErase);
+            this->m_entityManager.DecreaseEntityIDs(node, entityIDToErase);
         }
         return true;
       }
@@ -3804,7 +4077,7 @@ namespace OrthoTree
     template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
     constexpr bool EraseEntity(TEntityID entityID) noexcept
     {
-      return this->EraseEntityBase<SPLIT_DEPTH_INCREASEMENT != 0, false>(entityID);
+      return this->template EraseEntityBase<SPLIT_DEPTH_INCREASEMENT != 0, false>(entityID);
     }
 
     // Update id by the new bounding box information
