@@ -2689,7 +2689,7 @@ namespace OrthoTree
       TBox const& range,
       TContainer const& geometryCollection,
       depth_t depthID,
-      MortonNodeIDCR const& currentNodeKey,
+      MortonNodeIDCR currentNodeKey,
       std::vector<TEntityID>& foundEntities) const noexcept
     {
       auto const& currentNode = this->GetNode(currentNodeKey);
