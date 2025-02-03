@@ -155,7 +155,7 @@ namespace AdaptorTest
 
       auto const& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
-      Assert::IsTrue(tree.GetNodeEntities(QuadtreePointCustom::SI::GetHash(2, 15)) == vector<size_t>{ 3, 4 });
+      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(QuadtreePointCustom::SI::GetHash(2, 15)), vector<size_t>{ 3, 4 }));
     }
 
     TEST_METHOD(Contains__1__True)
