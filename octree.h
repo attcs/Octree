@@ -339,6 +339,39 @@ namespace OrthoTree
       return TOut{ 1 } << e;
     }
 
+    template<typename TContainer, typename TValue, typename TComparator>
+    constexpr void sortedInsert(TContainer& container, TValue&& value, TComparator&& cmp) noexcept
+    {
+      auto const it = std::partition_point(container.begin(), container.end(), cmp);
+      container.insert(it, value);
+    }
+
+    template<class T>
+    struct UninitializingAllocator : public std::allocator<T>
+    {
+      using Base = std::allocator<T>;
+      using value_type = typename Base::value_type;
+
+      // Allocate memory, but do not initialize
+      T* allocate(std::size_t n) { return static_cast<T*>(::operator new(n * sizeof(T))); }
+
+      // Deallocate memory
+      void deallocate(T* p, std::size_t) { ::operator delete(p); }
+
+      // Disable default construction when vector::resize() is called
+      template<class U, class... Args>
+      inline constexpr void construct(U* ptr, Args&&... args)
+      {
+        if constexpr (sizeof...(args) > 0)
+        {
+          ::new (static_cast<void*>(ptr)) U(std::forward<Args>(args)...);
+        }
+      }
+    };
+
+    template<typename T>
+    using std_vector_uninit = std::vector<T, UninitializingAllocator<T>>;
+
     template<typename T>
     class PagedVectorSimple
     {
@@ -399,7 +432,7 @@ namespace OrthoTree
         return PoolView(m_pages[pool.beginPageID].begin(), pool.size);
       }
 
-      inline constexpr void ReplacePool(PoolID& poolID, std::vector<T>&& newPool)
+      inline constexpr void ReplacePool(PoolID& poolID, std_vector_uninit<T>&& newPool)
       {
         if (poolID == INVALID_POOLID)
         {
@@ -467,13 +500,14 @@ namespace OrthoTree
         return true;
       }
 
-      inline constexpr std::size_t GetPoolSize(PoolID poolID) const noexcept { 
+      inline constexpr std::size_t GetPoolSize(PoolID poolID) const noexcept
+      {
         if (poolID == INVALID_POOLID)
           return 0;
 
-        return m_pools[poolID].size; 
+        return m_pools[poolID].size;
       }
-      
+
       inline constexpr void ResizePool(PoolID& poolID, std::size_t newSize) noexcept
       {
         if (poolID == INVALID_POOLID && newSize == 0)
@@ -481,7 +515,7 @@ namespace OrthoTree
 
         if (poolID == INVALID_POOLID)
           poolID = AddPool(newSize);
-        
+
         auto& pool = m_pools[poolID];
         auto& page = m_pages[pool.beginPageID];
         if (newSize > pool.size)
@@ -505,11 +539,11 @@ namespace OrthoTree
           page.resize(pool.size);
         }
       }
-      
-      inline constexpr void Clear() noexcept 
+
+      inline constexpr void Clear() noexcept
       {
         m_pools.clear();
-        m_pages.clear();  
+        m_pages.clear();
       }
 
     private:
@@ -520,8 +554,293 @@ namespace OrthoTree
         std::size_t size = 0;
         std::size_t capacity = 0;
       };
-      std::vector<Pool> m_pools;
-      std::vector<std::vector<T>> m_pages;
+      std_vector_uninit<Pool> m_pools;
+      std::vector<std_vector_uninit<T>> m_pages;
+    };
+
+    template<typename T>
+    class PagedVector
+    {
+    public:
+      using PoolID = std::size_t;
+      using PoolView = std::span<T>;
+      using PoolViewConst = std::span<T const>;
+
+      static constexpr std::size_t INVALID_POOLID = std::numeric_limits<PoolID>::max();
+      static constexpr std::size_t MIN_POOL_SIZE = 10;
+
+    private:
+      struct Pool
+      {
+        std::size_t beginPageID = 0;
+        std::size_t beginPosition = 0;
+        std::size_t size = 0;
+        std::size_t capacity = 0;
+      };
+
+    public:
+      PagedVector() = default;
+
+    public:
+      void Init(std::size_t firstPageSize, std::size_t generalPageSize = 512)
+      {
+        m_generalPageSize = generalPageSize;
+        m_pages.reserve(10);
+        auto& page = m_pages.emplace_back();
+        auto const capacity = std::max(generalPageSize, std::max(MIN_POOL_SIZE, std::size_t(double(firstPageSize) * 1.2)));
+        page.resize(capacity);
+        m_freePools.reserve(10);
+        m_freePools.emplace_back(Pool{ 0, 0, firstPageSize, capacity });
+      }
+
+      inline constexpr PoolID AddPool(std::size_t capacity, std::size_t size = 0)
+      {
+        assert(size <= capacity);
+
+        auto freePoolIt =
+          std::partition_point(m_freePools.begin(), m_freePools.end(), [capacity](auto const& pool) { return pool.capacity < capacity; });
+
+        Pool pool;
+        if (freePoolIt != m_freePools.end())
+        {
+          pool.beginPageID = freePoolIt->beginPageID;
+          pool.beginPosition = freePoolIt->beginPosition;
+          pool.size = size;
+          if (freePoolIt->capacity - capacity < MIN_POOL_SIZE)
+          {
+            pool.capacity = freePoolIt->capacity;
+            m_freePools.erase(freePoolIt);
+          }
+          else
+          {
+            pool.capacity = capacity;
+            freePoolIt->beginPosition += capacity;
+            freePoolIt->capacity -= capacity;
+          }
+        }
+        else // new page is required
+        {
+          pool.beginPageID = m_pages.size();
+          pool.beginPosition = 0;
+          pool.size = size;
+          pool.capacity = capacity;
+
+          auto& page = m_pages.emplace_back();
+          if (capacity + MIN_POOL_SIZE > m_generalPageSize)
+          {
+            page.resize(capacity);
+          }
+          else
+          {
+            pool.capacity = capacity;
+            page.resize(m_generalPageSize);
+
+            sortedInsert(m_freePools, Pool{ pool.beginPageID, pool.capacity, 0, m_generalPageSize - pool.capacity }, [capacity](auto const& otherFreePool) {
+              return otherFreePool.capacity < capacity;
+            });
+          }
+        }
+         
+        auto poolID = m_pools.size();
+        if (m_poolIDToReuse.empty())
+        {
+          m_pools.emplace_back(std::move(pool));
+        }
+        else
+        {
+          poolID = m_poolIDToReuse.back();
+          m_pools[poolID] = std::move(pool);
+          m_poolIDToReuse.resize(m_poolIDToReuse.size() - 1);
+        }
+
+        return poolID;
+      }
+
+      inline constexpr PoolID AddPool(auto beginIt, auto endIt, auto&& transform)
+      {
+        auto const size = std::distance(beginIt, endIt);
+        if (size == 0)
+          return INVALID_POOLID;
+
+        auto const poolID = AddPool(size + std::max(MIN_POOL_SIZE, std::size_t(double(size) * 0.1)), size);
+        auto const& pool = m_pools[poolID];
+        auto& page = m_pages[pool.beginPageID];
+        std::transform(beginIt, endIt, GetPoolBegin(pool), transform);
+        return poolID;
+      }
+
+      inline constexpr PoolViewConst GetPool(PoolID poolID) const
+      {
+        if (poolID == INVALID_POOLID)
+          return {};
+
+        auto const& pool = m_pools[poolID];
+        return PoolViewConst(GetPoolBegin(pool), pool.size);
+      }
+
+      inline constexpr PoolView GetPool(PoolID poolID)
+      {
+        if (poolID == INVALID_POOLID)
+          return {};
+
+        auto const& pool = m_pools[poolID];
+        return PoolView(GetPoolBegin(pool), pool.size);
+      }
+
+      inline constexpr void ReplacePool(PoolID& poolID, std_vector_uninit<T>&& newPool)
+      {
+        // newPool allocation is already happened, nothing will be gained with a dedication page allocation and copy.
+        m_pages.emplace_back(std::move(newPool));
+
+        if (poolID == INVALID_POOLID)
+        {
+          poolID = m_pools.size();
+          m_pools.push_back({ m_pages.size() - 1, 0, newPool.size(), newPool.capacity() });
+        }
+        else
+        {
+          auto& pool = m_pools[poolID];
+          FreePage(pool);
+          pool.beginPageID = m_pages.size() - 1;
+          pool.size = newPool.size();
+          pool.capacity = newPool.capacity();
+        }
+      }
+
+
+      inline constexpr void RemovePool(PoolID& poolID) noexcept
+      {
+        if (poolID == INVALID_POOLID)
+          return;
+
+        auto& pool = m_pools[poolID];
+        FreePage(pool);
+        m_poolIDToReuse.push_back(poolID);
+        poolID = INVALID_POOLID;
+      }
+
+
+      inline constexpr T& EmplaceBack(PoolID& poolID, T&& value)
+      {
+        if (poolID == INVALID_POOLID)
+          poolID = AddPool(10);
+
+        if (m_pools[poolID].size == m_pools[poolID].capacity)
+        {
+          FreePage(m_pools[poolID]);
+          poolID = AddPool(10);
+        }
+        auto& pool = m_pools[poolID];
+
+        auto& val = *(GetPoolBegin(pool) + pool.size) = std::move(value);
+        ++pool.size;
+        return val;
+      }
+
+      inline constexpr bool RemoveElement(PoolID& poolID, T&& entityID) noexcept
+      {
+        if (poolID == INVALID_POOLID)
+          return false;
+
+        auto& pool = m_pools[poolID];
+        auto& page = m_pages[pool.beginPageID];
+        auto const endIteratorAfterRemove = std::remove(GetPoolBegin(pool), GetPoolEnd(pool), entityID);
+        if (endIteratorAfterRemove == GetPoolEnd(pool))
+          return false; // it was not registered previously.
+
+        pool.size = endIteratorAfterRemove - GetPoolBegin(pool);
+        if (pool.size == 0)
+        {
+          FreePage(pool);
+          m_poolIDToReuse.push_back(poolID);
+          poolID = INVALID_POOLID;
+        }
+        return true;
+      }
+
+      inline constexpr std::size_t GetPoolSize(PoolID poolID) const noexcept
+      {
+        if (poolID == INVALID_POOLID)
+          return 0;
+
+        return m_pools[poolID].size;
+      }
+
+      inline constexpr void ResizePool(PoolID& poolID, std::size_t newSize) noexcept
+      {
+        if (poolID == INVALID_POOLID && newSize == 0)
+          return;
+
+        if (poolID == INVALID_POOLID)
+          poolID = AddPool(newSize);
+
+        auto& pool = m_pools[poolID];
+        auto& page = m_pages[pool.beginPageID];
+        if (newSize > pool.size)
+        {
+          auto newPoolID = AddPool(newSize, newSize);
+          auto& newPool = m_pools[newPoolID];
+          auto itNew = GetPoolBegin(newPool);
+          for (auto itOld = GetPoolBegin(pool); itOld != GetPoolEnd(pool); ++itOld, ++itNew)
+            *itNew = std::move(*itOld);
+
+          FreePage(pool);
+        }
+        else if (newSize == 0)
+        {
+          FreePage(pool);
+          m_poolIDToReuse.push_back(poolID);
+          poolID = INVALID_POOLID;
+        }
+        else
+        {
+          pool.size = newSize;
+        }
+      }
+
+      inline constexpr void Clear() noexcept
+      {
+        m_pools.clear();
+        m_pages.clear();
+      }
+
+    private:
+      inline constexpr auto GetPoolBegin(Pool const& pool) const noexcept { return m_pages[pool.beginPageID].cbegin() + pool.beginPosition; }
+      inline constexpr auto GetPoolBegin(Pool const& pool) noexcept { return m_pages[pool.beginPageID].begin() + pool.beginPosition; }
+      inline constexpr auto GetPoolEnd(Pool const& pool) const noexcept
+      {
+        return m_pages[pool.beginPageID].cbegin() + pool.beginPosition + pool.size;
+      }
+      inline constexpr auto GetPoolEnd(Pool const& pool) noexcept { return m_pages[pool.beginPageID].begin() + pool.beginPosition + pool.size; }
+
+      void FreePage(Pool& pool)
+      {
+        auto const pageID = pool.beginPageID;
+
+        pool.beginPageID = INVALID_POOLID;
+        auto pageIt = std::find_if(m_pools.begin(), m_pools.end(), [pageID](auto const& otherPool) { return otherPool.beginPageID == pageID; });
+        if (pageIt == m_pools.end())
+        {
+          for (auto& poolOther : m_pools)
+            poolOther.beginPageID -= (poolOther.beginPageID >= pageID);
+
+          m_pages.erase(m_pages.begin() + pageID);
+          std::erase_if(m_freePools, [pageID](auto const& freePool) { return freePool.beginPageID == pageID; });
+        }
+        else
+        {
+          // TODO: find freepools in page and merge them if possible
+          sortedInsert(m_freePools, Pool{ pageID, pool.capacity, 0, pool.capacity }, [&pool](auto const& otherFreePool) {
+            return otherFreePool.capacity < pool.capacity;
+          });
+        }
+      }
+
+      std::size_t m_generalPageSize = 512;
+      std_vector_uninit<Pool> m_pools;
+      std_vector_uninit<PoolID> m_poolIDToReuse;
+      std_vector_uninit<Pool> m_freePools;
+      std::vector<std_vector_uninit<T>> m_pages;
     };
 
   } // namespace detail
@@ -2003,7 +2322,7 @@ namespace OrthoTree
     using MortonChildID = typename SI::ChildID;
 
   private:
-    using EntityIDContainer = detail::PagedVectorSimple<TEntityID>;
+    using EntityIDContainer = detail::PagedVector<TEntityID>;
 
   public:
     class EntityManager;
@@ -2012,7 +2331,11 @@ namespace OrthoTree
     class EntityManager
     {
     public:
+      void Init(std::size_t firstPageSize = 0, std::size_t pageSize = 0) noexcept { m_entities.Init(firstPageSize, pageSize); }
+
       inline constexpr auto const GetEntities(Node const& node) const noexcept { return m_entities.GetPool(node.m_entitiesPoolID); }
+
+      inline constexpr auto GetEntities(Node const& node) noexcept { return m_entities.GetPool(node.m_entitiesPoolID); }
 
       inline constexpr bool ContainsEntity(Node const& node, TEntityID entityID) const noexcept
       {
@@ -2022,6 +2345,11 @@ namespace OrthoTree
 
       inline constexpr std::size_t GetEntitiesSize(Node const& node) const noexcept { return m_entities.GetPoolSize(node.m_entitiesPoolID); }
 
+      inline constexpr void SetEntitiesSize(Node& node, std::size_t size) noexcept
+      {
+        node.m_entitiesPoolID = m_entities.AddPool(size + 10, size);
+      }
+
       inline constexpr bool IsEntitiesEmpty(Node const& node) const noexcept { return m_entities.GetPoolSize(node.m_entitiesPoolID) == 0; }
 
       inline constexpr void SetEntities(Node& node, std::vector<TEntityID>&& entities) noexcept
@@ -2029,20 +2357,12 @@ namespace OrthoTree
         node.m_entitiesPoolID = m_entities.AddPool(std::move(entities));
       }
 
-      inline constexpr void SetEntities(Node& node, auto beginIt, auto endIt, auto&& transform) noexcept
-      {
-        node.m_entitiesPoolID = m_entities.AddPool(beginIt, endIt, std::move(transform));
-      }
-
-      inline constexpr void ReplaceEntities(Node& node, std::vector<TEntityID>&& entities) noexcept
+      inline constexpr void ReplaceEntities(Node& node, detail::std_vector_uninit<TEntityID>&& entities) noexcept
       {
         m_entities.ReplacePool(node.m_entitiesPoolID, std::move(entities));
       }
 
-      inline constexpr void AddEntity(Node& node, TEntityID entityID) noexcept 
-      {
-        m_entities.EmplaceBack(node.m_entitiesPoolID, std::move(entityID)); 
-      }
+      inline constexpr void AddEntity(Node& node, TEntityID entityID) noexcept { m_entities.EmplaceBack(node.m_entitiesPoolID, std::move(entityID)); }
 
       inline constexpr bool RemoveEntity(Node& node, TEntityID entityID) noexcept
       {
@@ -2056,8 +2376,8 @@ namespace OrthoTree
           entityID -= removedEntityID < entityID;
       }
 
-      inline constexpr void SortAndUniqueEntities(Node& node) noexcept 
-      { 
+      inline constexpr void SortAndUniqueEntities(Node& node) noexcept
+      {
         if (node.m_entitiesPoolID == EntityIDContainer::INVALID_POOLID)
           return;
 
@@ -2067,10 +2387,7 @@ namespace OrthoTree
         m_entities.ResizePool(node.m_entitiesPoolID, std::distance(entities.begin(), newEndIt));
       }
 
-      inline constexpr void ClearEntities(Node& node) noexcept 
-      { 
-        m_entities.RemovePool(node.m_entitiesPoolID);
-      }
+      inline constexpr void ClearEntities(Node& node) noexcept { m_entities.RemovePool(node.m_entitiesPoolID); }
 
       inline constexpr void Clear() noexcept { m_entities.Clear(); }
 
@@ -2423,7 +2740,7 @@ namespace OrthoTree
           m_entityManager.AddEntity(childNode, newEntityID);
         }
 
-        auto parentEntities = std::vector<TEntityID>{}; // Box entities could be stuck in the parent node.
+        auto parentEntities = detail::std_vector_uninit<TEntityID>{}; // Box entities could be stuck in the parent node.
         for (auto const entityID : GetNodeEntities(parentNode))
         {
           auto const [depthID, locationID] = this->GetDepthAndLocationID(detail::at(geometryCollection, entityID));
@@ -2471,7 +2788,7 @@ namespace OrthoTree
       if (entityNodeKey == parentNodeKey)
       {
         auto& node = detail::at(this->m_nodes, entityNodeKey);
-        
+
         m_entityManager.AddEntity(node, entityID);
         if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
           assert(this->IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
@@ -2594,7 +2911,7 @@ namespace OrthoTree
 
   protected:
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
+    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthNo, std::size_t maxElementNo, std::size_t entityNo) noexcept
     {
       CRASH_IF(!this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already
                                         // builded tree is wanted to be reset, use the Reset() function before init.
@@ -2622,13 +2939,15 @@ namespace OrthoTree
       for (depth_t depthID = 1; depthID < examinedDepthSize; ++depthID, factor *= multiplier)
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           this->m_nodeSizes[depthID][dimensionID] *= factor;
+
+      m_entityManager.Init(entityNo);
     }
 
   public: // Main service functions
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    inline constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
+    inline constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11, std::size_t entityNo = 128) noexcept
     {
-      this->InitBase(IGM::GetBoxAD(box), maxDepthNo, maxElementNo);
+      this->InitBase(IGM::GetBoxAD(box), maxDepthNo, maxElementNo, entityNo);
     }
 
     using FProcedure = std::function<void(MortonNodeIDCR, Node const&)>;
@@ -2743,7 +3062,7 @@ namespace OrthoTree
       std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&](auto& node) {
         auto const originalEntityIDs = GetNodeEntities(node.second);
 
-        auto updatedEntityIDs = std::vector<TEntityID>{};
+        auto updatedEntityIDs = detail::std_vector_uninit<TEntityID>{};
         updatedEntityIDs.reserve(originalEntityIDs.size());
         for (auto const entityID : originalEntityIDs)
         {
@@ -3273,8 +3592,13 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
       if (elementNo < this->m_maxElementNo || remainingDepth == 0)
       {
-        this->m_entityManager.SetEntities(parentNode, locationBeginIterator, locationEndIterator, [](auto const& item) { return item.EntityID; });
-        locationBeginIterator = locationEndIterator;
+
+        this->m_entityManager.SetEntitiesSize(parentNode, elementNo);
+        auto entities = this->m_entityManager.GetEntities(parentNode);
+        LOOPIVDEP
+        for (std::size_t i = 0; locationBeginIterator != locationEndIterator; ++locationBeginIterator, ++i)
+          entities[i] = locationBeginIterator->EntityID;
+        
         return;
       }
 
@@ -3311,7 +3635,7 @@ namespace OrthoTree
       auto const pointNo = points.size();
 
       auto const maxDepthNo = (!maxDepthNoIn || maxDepthNoIn == 0) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthNoIn;
-      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
+      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode, pointNo);
       if (points.empty())
         return;
 
@@ -3785,8 +4109,12 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
       if (elementNo < this->m_maxElementNo || remainingDepthNo == 0)
       {
-        this->m_entityManager.SetEntities(parentNode, beginLocationIterator, endLocationIterator, [](auto const& item) { return item.EntityID; });
-        beginLocationIterator = endLocationIterator;
+        this->m_entityManager.SetEntitiesSize(parentNode, elementNo);
+        auto entities = this->m_entityManager.GetEntities(parentNode);
+        LOOPIVDEP
+        for (std::size_t i = 0; beginLocationIterator != endLocationIterator; ++beginLocationIterator, ++i)
+          entities[i] = beginLocationIterator->EntityID;
+
         return;
       }
 
@@ -3798,7 +4126,12 @@ namespace OrthoTree
           return location.DepthAndLocation.DepthID == it->DepthAndLocation.DepthID;
         });
 
-        this->m_entityManager.SetEntities(parentNode, it, beginLocationIterator, [](auto const& item) { return item.EntityID; });
+        std::size_t const stuckedElementNo = std::distance(it, beginLocationIterator);
+        this->m_entityManager.SetEntitiesSize(parentNode, stuckedElementNo);
+        auto entities = this->m_entityManager.GetEntities(parentNode);
+        LOOPIVDEP
+        for (std::size_t i = 0; it != beginLocationIterator; ++it, ++i)
+          entities[i] = it->EntityID;
       }
 
       ++currentDepthID;
@@ -3906,7 +4239,7 @@ namespace OrthoTree
       auto const boxSpace = boxSpaceOptional.has_value() ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::GetBoxOfBoxesAD(boxes);
       auto const entityNo = boxes.size();
       auto const maxDepthNo = (!maxDepthIn || maxDepthIn == 0) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
-      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
+      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode, entityNo);
 
       detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
       if (entityNo == 0)
