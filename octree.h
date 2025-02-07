@@ -400,10 +400,10 @@ namespace OrthoTree
     public:
       void Init(std::size_t firstPageSize = DEFAULT_PAGE_SIZE)
       {
-        m_pages.reserve(10);
-        auto& page = m_pages.emplace_back();
         auto const capacity = std::max(DEFAULT_PAGE_SIZE, std::size_t(double(firstPageSize) * 1.2));
-        page.resize(capacity);
+
+        m_pages.reserve(10);
+        m_pages.emplace_back(capacity);
         m_freeSectionsOnMainPage.reserve(10);
         m_freeSectionsOnMainPage.emplace_back(FreePool{ 0, capacity });
       }
@@ -548,7 +548,6 @@ namespace OrthoTree
           return false;
 
         auto& pool = m_pools[poolID];
-        auto& page = m_pages[pool.pageID];
         auto const endIteratorAfterRemove = std::remove(GetPoolBegin(pool), GetPoolEnd(pool), entityID);
         if (endIteratorAfterRemove == GetPoolEnd(pool))
           return false; // it was not registered previously.
@@ -2417,7 +2416,6 @@ namespace OrthoTree
     detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD> m_grid;
 
   public: // Node helpers
-
     // Get EntityIDs of the node
     inline constexpr auto GetNodeEntities(Node const& node) const noexcept { return m_entityManager.GetEntities(node); }
 
