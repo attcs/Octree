@@ -2787,6 +2787,9 @@ namespace OrthoTree
       };
 
       auto const cf = [&] {
+        if (parentDepth == entityDepth)
+          return ControlFlow::InsertInParentNode;
+
         if (parentDepth < this->m_maxDepthNo)
         {
           auto const isParentNotLeafNode = parentNode.IsAnyChildExist();
