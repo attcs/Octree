@@ -373,179 +373,6 @@ namespace OrthoTree
     using std_vector_uninit = std::vector<T, UninitializingAllocator<T>>;
 
     template<typename T>
-    class PagedVectorSimple
-    {
-    public:
-      using PoolID = std::size_t;
-      using PoolView = std::span<T>;
-      using PoolViewConst = std::span<T const>;
-
-      static constexpr std::size_t INVALID_POOLID = std::numeric_limits<PoolID>::max();
-
-    public:
-      PagedVectorSimple() = default;
-      PagedVectorSimple(std::size_t size)
-      {
-        // TODO: reserve
-      }
-
-    public:
-      inline constexpr PoolID AddPool(std::size_t capacity, std::size_t size = 0)
-      {
-        m_pools.push_back({ m_pages.size(), 0, size, capacity });
-        auto& page = m_pages.emplace_back();
-        page.reserve(capacity);
-        if (size > 0)
-          page.resize(size);
-
-        return m_pools.size() - 1;
-      }
-
-      inline constexpr PoolViewConst GetPool(PoolID poolID) const
-      {
-        if (poolID == INVALID_POOLID)
-          return {};
-
-        auto const& pool = m_pools[poolID];
-        return PoolViewConst(m_pages[pool.beginPageID].begin(), pool.size);
-      }
-
-      inline constexpr PoolView GetPool(PoolID poolID)
-      {
-        if (poolID == INVALID_POOLID)
-          return {};
-
-        auto const& pool = m_pools[poolID];
-        return PoolView(m_pages[pool.beginPageID].begin(), pool.size);
-      }
-
-      inline constexpr void ReplacePool(PoolID& poolID, std_vector_uninit<T>&& newPool)
-      {
-        if (poolID == INVALID_POOLID)
-        {
-          m_pools.push_back({ m_pages.size(), 0, newPool.size(), newPool.capacity() });
-          m_pages.emplace_back(std::move(newPool));
-          poolID = m_pools.size() - 1;
-        }
-        else
-        {
-          auto& pool = m_pools[poolID];
-          pool.size = newPool.size();
-          pool.capacity = newPool.capacity();
-          m_pages[pool.beginPageID] = std::move(newPool);
-        }
-      }
-
-      inline constexpr void RemovePool(PoolID& poolID)
-      {
-        if (poolID == INVALID_POOLID)
-          return;
-
-        auto& pool = m_pools[poolID];
-        for (auto poolIDNext = poolID; poolID < m_pools.size(); ++poolIDNext)
-        {
-          auto& poolNext = m_pools[poolIDNext];
-          --poolNext.beginPageID;
-        }
-
-        m_pages.erase(m_pages.begin() + poolID);
-        pool = { .beginPageID = INVALID_POOLID }; // -> std::unordered_map
-        poolID = INVALID_POOLID;
-      }
-
-
-      inline constexpr T& EmplaceBack(PoolID& poolID, T&& value)
-      {
-        if (poolID == INVALID_POOLID)
-          poolID = AddPool(10);
-
-        auto& pool = m_pools[poolID];
-        if (pool.size == pool.capacity)
-        {
-          pool.capacity = std::size_t(double(pool.capacity) * 1.6);
-          m_pages[pool.beginPageID].reserve(pool.capacity);
-        }
-
-        ++pool.size;
-        return m_pages[pool.beginPageID].emplace_back(std::move(value));
-      }
-
-      inline constexpr bool RemoveElement(PoolID& poolID, T&& entityID) noexcept
-      {
-        if (poolID == INVALID_POOLID)
-          return false;
-
-        auto& pool = m_pools[poolID];
-        auto& page = m_pages[pool.beginPageID];
-        auto const endIteratorAfterRemove = std::remove(page.begin(), page.end(), entityID);
-        if (endIteratorAfterRemove == page.end())
-          return false; // it was not registered previously.
-
-
-        page.erase(endIteratorAfterRemove, page.end());
-        pool.size = page.size();
-        return true;
-      }
-
-      inline constexpr std::size_t GetPoolSize(PoolID poolID) const noexcept
-      {
-        if (poolID == INVALID_POOLID)
-          return 0;
-
-        return m_pools[poolID].size;
-      }
-
-      inline constexpr void ResizePool(PoolID& poolID, std::size_t newSize) noexcept
-      {
-        if (poolID == INVALID_POOLID && newSize == 0)
-          return;
-
-        if (poolID == INVALID_POOLID)
-          poolID = AddPool(newSize);
-
-        auto& pool = m_pools[poolID];
-        auto& page = m_pages[pool.beginPageID];
-        if (newSize > pool.size)
-        {
-          if (newSize > pool.capacity)
-          {
-            pool.capacity = newSize;
-            page.reserve(pool.capacity);
-          }
-          pool.size = newSize;
-        }
-        else if (newSize == 0)
-        {
-          pool.size = 0;
-          pool.capacity = 0;
-          page = {};
-        }
-        else
-        {
-          pool.size = newSize;
-          page.resize(pool.size);
-        }
-      }
-
-      inline constexpr void Clear() noexcept
-      {
-        m_pools.clear();
-        m_pages.clear();
-      }
-
-    private:
-      struct Pool
-      {
-        std::size_t beginPageID = 0;
-        std::size_t beginPosition = 0;
-        std::size_t size = 0;
-        std::size_t capacity = 0;
-      };
-      std_vector_uninit<Pool> m_pools;
-      std::vector<std_vector_uninit<T>> m_pages;
-    };
-
-    template<typename T>
     class PagedVector
     {
     public:
@@ -718,7 +545,6 @@ namespace OrthoTree
           ResizePool(poolID, GetPoolSize(poolID) + 1);
 
         auto& pool = m_pools[poolID];
-
         auto& val = *(GetPoolBegin(pool) + pool.size - 1) = std::move(value);
         return val;
       }
@@ -813,7 +639,6 @@ namespace OrthoTree
       inline constexpr auto GetPoolBegin(Pool const& pool) noexcept { return m_pages[pool.pageID].begin() + pool.begin; }
       inline constexpr auto GetPoolEnd(Pool const& pool) const noexcept { return m_pages[pool.pageID].cbegin() + pool.begin + pool.size; }
       inline constexpr auto GetPoolEnd(Pool const& pool) noexcept { return m_pages[pool.pageID].begin() + pool.begin + pool.size; }
-
 
       using FreePoolIt = typename std_vector_uninit<FreePool>::iterator;
       FreePoolIt GetMergedFreePool(FreePoolIt const& freePoolCheckIt)
