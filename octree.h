@@ -563,14 +563,14 @@ namespace OrthoTree
       struct Pool
       {
         std::size_t pageID = 0;
-        std::size_t beginPosition = 0;
+        std::size_t begin = 0;
         std::size_t size = 0;
         std::size_t capacity = 0;
       };
 
       struct FreePool
       {
-        std::size_t beginPosition = 0;
+        std::size_t begin = 0;
         std::size_t capacity = 0;
       };
 
@@ -600,7 +600,7 @@ namespace OrthoTree
         if (freePoolIt != m_freeSectionsOnMainPage.end())
         {
           pool.pageID = MAIN_PAGEID;
-          pool.beginPosition = freePoolIt->beginPosition;
+          pool.begin = freePoolIt->begin;
           pool.size = size;
 
           assert(freePoolIt->capacity >= capacity);
@@ -625,14 +625,14 @@ namespace OrthoTree
               *freePoolIt = std::move(*freePoolItPrev);
             }
 
-            freePoolItPrev->beginPosition = pool.beginPosition + pool.capacity;
+            freePoolItPrev->begin = pool.begin + pool.capacity;
             freePoolItPrev->capacity = freeCapacity;
           }
         }
         else // new page is required
         {
           pool.pageID = m_pages.size();
-          pool.beginPosition = 0;
+          pool.begin = 0;
           pool.size = size;
           pool.capacity = capacity;
           m_pages.emplace_back(capacity);
@@ -809,32 +809,32 @@ namespace OrthoTree
       }
 
     private:
-      inline constexpr auto GetPoolBegin(Pool const& pool) const noexcept { return m_pages[pool.pageID].cbegin() + pool.beginPosition; }
-      inline constexpr auto GetPoolBegin(Pool const& pool) noexcept { return m_pages[pool.pageID].begin() + pool.beginPosition; }
-      inline constexpr auto GetPoolEnd(Pool const& pool) const noexcept { return m_pages[pool.pageID].cbegin() + pool.beginPosition + pool.size; }
-      inline constexpr auto GetPoolEnd(Pool const& pool) noexcept { return m_pages[pool.pageID].begin() + pool.beginPosition + pool.size; }
+      inline constexpr auto GetPoolBegin(Pool const& pool) const noexcept { return m_pages[pool.pageID].cbegin() + pool.begin; }
+      inline constexpr auto GetPoolBegin(Pool const& pool) noexcept { return m_pages[pool.pageID].begin() + pool.begin; }
+      inline constexpr auto GetPoolEnd(Pool const& pool) const noexcept { return m_pages[pool.pageID].cbegin() + pool.begin + pool.size; }
+      inline constexpr auto GetPoolEnd(Pool const& pool) noexcept { return m_pages[pool.pageID].begin() + pool.begin + pool.size; }
 
 
       using FreePoolIt = typename std_vector_uninit<FreePool>::iterator;
       FreePoolIt GetMergedFreePool(FreePoolIt const& freePoolCheckIt)
       {
-        auto const endPosition = freePoolCheckIt->beginPosition + freePoolCheckIt->capacity;
+        auto const endPosition = freePoolCheckIt->begin + freePoolCheckIt->capacity;
 
         for (FreePoolIt freePoolIt = m_freeSectionsOnMainPage.begin(); freePoolIt != m_freeSectionsOnMainPage.end(); ++freePoolIt)
         {
           if (freePoolCheckIt == freePoolIt)
             continue;
 
-          if (freePoolIt->beginPosition + freePoolIt->capacity != freePoolCheckIt->beginPosition && freePoolIt->beginPosition != endPosition)
+          if (freePoolIt->begin + freePoolIt->capacity != freePoolCheckIt->begin && freePoolIt->begin != endPosition)
             continue;
 
-          if (freePoolIt->beginPosition < freePoolCheckIt->beginPosition)
+          if (freePoolIt->begin < freePoolCheckIt->begin)
           {
             freePoolIt->capacity += freePoolCheckIt->capacity;
           }
           else
           {
-            freePoolIt->beginPosition = freePoolCheckIt->beginPosition;
+            freePoolIt->begin = freePoolCheckIt->begin;
             freePoolIt->capacity += freePoolCheckIt->capacity;
           }
           return freePoolIt;
@@ -849,7 +849,7 @@ namespace OrthoTree
         pool.pageID = INVALID_PAGEID;
         if (pageID == MAIN_PAGEID)
         {
-          m_freeSectionsOnMainPage.emplace_back(FreePool{ pool.beginPosition, pool.capacity });
+          m_freeSectionsOnMainPage.emplace_back(FreePool{ pool.begin, pool.capacity });
           FreePoolIt lastIt = m_freeSectionsOnMainPage.begin() + (m_freeSectionsOnMainPage.size() - 1);
           FreePoolIt freeSectionMergedWithLast = GetMergedFreePool(lastIt);
           if (freeSectionMergedWithLast != m_freeSectionsOnMainPage.end())
@@ -880,10 +880,10 @@ namespace OrthoTree
           return false;
 
         auto const requiredAdditionalCapacity = capacity - pool.capacity;
-        auto const freeBegin = pool.beginPosition + pool.size;
+        auto const freeBegin = pool.begin + pool.size;
         for (auto freePoolIt = m_freeSectionsOnMainPage.begin(); freePoolIt != m_freeSectionsOnMainPage.end(); ++freePoolIt)
         {
-          if (freePoolIt->beginPosition != freeBegin)
+          if (freePoolIt->begin != freeBegin)
             continue; // capacity order
 
           if (freePoolIt->capacity < requiredAdditionalCapacity)
@@ -909,7 +909,7 @@ namespace OrthoTree
               *freePoolIt = std::move(*freePoolItPrev);
             }
 
-            freePoolItPrev->beginPosition = pool.beginPosition + pool.capacity;
+            freePoolItPrev->begin = pool.begin + pool.capacity;
             freePoolItPrev->capacity = freeCapacity;
           }
 
