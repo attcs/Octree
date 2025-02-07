@@ -3124,7 +3124,7 @@ namespace OrthoTree
     template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
     constexpr bool EraseEntity(TEntityID entityID) noexcept
     {
-      return this->EraseEntityBase<false, DO_UPDATE_ENTITY_IDS>(entityID);
+      return this->template EraseEntityBase<false, DO_UPDATE_ENTITY_IDS>(entityID);
     }
 
 
@@ -3159,7 +3159,7 @@ namespace OrthoTree
       if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))
         return false;
 
-      if (!this->EraseEntity<false>(entityID))
+      if (!this->template EraseEntity<false>(entityID))
         return false;
 
       return this->Insert(entityID, newPoint, doesInsertToLeaf);
@@ -3807,7 +3807,7 @@ namespace OrthoTree
     template<bool DO_UPDATE_ENTITY_IDS = Base::IS_CONTIGOUS_CONTAINER>
     constexpr bool EraseEntity(TEntityID entityID) noexcept
     {
-      return this->EraseEntityBase<SPLIT_DEPTH_INCREASEMENT != 0, false>(entityID);
+      return this->template EraseEntityBase<SPLIT_DEPTH_INCREASEMENT != 0, false>(entityID);
     }
 
     // Update id by the new bounding box information
@@ -3816,7 +3816,7 @@ namespace OrthoTree
       if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), boxNew))
         return false;
 
-      if (!this->EraseEntity<false>(entityID))
+      if (!this->template EraseEntity<false>(entityID))
         return false;
 
       return this->Insert(entityID, boxNew, doInsertToLeaf);
