@@ -1,5 +1,20 @@
 # Changelog
 
+# Latest
+Interface changes
+* Exposing of Node's entities responsibility was moved to the Tree class
+
+Performance improvements
+* `CollisionDetection()` (between different trees) 
+* `RayIntersectedFirst()`
+* `GetNearestNeighbors()`
+
+Miscellaneous
+* Automatic Benchmark is added
+
+Bugfixes
+* Minor bugfixes in `InsertWithRebalance()`
+
 ## 2025-01-19 v2.5
 Interface changes
 * `std::execution` is dropped from the interface. `bool IS_PARALLEL_EXEC` is used instead.

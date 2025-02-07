@@ -62,8 +62,16 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * If less element is collected in a node than the max element then the child node won't be created.
 * The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
 * Original geometry data is not stored, so any search function needs them as an input.
-* Unit tests are attached. (Microsoft Unit Testing Framework for C++)
-* Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3
+* Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3, AppleClang 16.0.0
+
+## Recommendations
+* If the geometrical entities are already available, build the tree using the Constructor or Create, rather than entity-wise Insertions. This can result in a significant performance gain.
+* For tree building, `InsertWithRebalancing()` offers much better performance than Insert() with leaf-node settings.
+* If the box tree is used only for collision detection, set `SPLIT_DEPTH_INCREASEMENT = 0` (`OctreeBox` uses 2 by default). Both creation and collision detection will be significantly faster.
+* For `Pick`/`Range`/`Ray`/`Plane` related search, the default `SPLIT_DEPTH_INCREASEMENT = 2` is recommended.
+* If the overall modeling space size changes dynamically, this tool cannot be applied directly. However, you can combine it with sparse grid-based spatial partitioning, where each cell contains an `Orthotree`.
+* After calling `Init()`, the max depth cannot be changed, and the tree cannot be deepened further.
+* See the **BENCHMARKS** page for performance-related graphs.
 
 ## Attached adapters
 * Default: 2D, 3D...63D; `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
