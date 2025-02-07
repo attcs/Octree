@@ -135,7 +135,7 @@ namespace AdaptorTest
       auto const tree = QuadtreePointCustom(vector<MyPoint2D>{}, 2);
       auto const& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.size() == 1);
-      Assert::IsTrue(nodes.at(1).Entities.empty());
+      Assert::IsTrue(tree.IsNodeEntitiesEmpty(1));
 
       auto const& box = tree.GetBox();
       Assert::IsTrue(AreEqualAlmost(
@@ -155,7 +155,7 @@ namespace AdaptorTest
 
       auto const& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
-      Assert::IsTrue(nodes.at(QuadtreePointCustom::SI::GetHash(2, 15)).Entities == vector<size_t>{ 3, 4 });
+      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(QuadtreePointCustom::SI::GetHash(2, 15)), vector<size_t>{ 3, 4 }));
     }
 
     TEST_METHOD(Contains__1__True)
