@@ -339,13 +339,6 @@ namespace OrthoTree
       return TOut{ 1 } << e;
     }
 
-    template<typename TContainer, typename TValue, typename TComparator>
-    constexpr void sortedInsert(TContainer& container, TValue&& value, TComparator&& cmp) noexcept
-    {
-      auto const it = std::partition_point(container.begin(), container.end(), cmp);
-      container.insert(it, value);
-    }
-
     template<class T>
     struct UninitializingAllocator : public std::allocator<T>
     {
