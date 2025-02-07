@@ -2331,52 +2331,6 @@ namespace OrthoTree
         m_children.clear();
       }
 
-    private: // Entity handling
-      /*
-      inline constexpr auto const& GetEntities(EntityIDContainer) const noexcept { return m_entities; }
-
-
-      inline constexpr std::size_t GetEntitiesSize() const noexcept { return m_entities.size(); }
-
-      inline constexpr bool IsEntitiesEmpty() const noexcept { return m_entities.empty(); }
-
-    public: // Entity handling
-      inline constexpr bool ContainsEntity(TEntityID entityID) const noexcept
-      {
-        return std::find(m_entities.begin(), m_entities.end(), entityID) != m_entities.end();
-      }
-
-      inline constexpr void SetEntities(std::vector<TEntityID>&& entities) noexcept { m_entities = std::move(entities); }
-
-      inline constexpr void SetEntities(auto beginIt, auto endIt, auto&& transform) noexcept
-      {
-        auto const size = std::distance(beginIt, endIt);
-        m_entities.resize(size);
-        std::transform(beginIt, endIt, m_entities.begin(), transform);
-      }
-
-      inline constexpr void ReplaceEntities(std::vector<TEntityID>&& entities) noexcept { m_entities = std::move(entities); }
-
-      inline constexpr void AddEntity(TEntityID entityID) noexcept { m_entities.push_back(entityID); }
-
-      inline constexpr bool RemoveEntity(TEntityID entityID) noexcept
-      {
-        auto const endIteratorAfterRemove = std::remove(m_entities.begin(), m_entities.end(), entityID);
-        if (endIteratorAfterRemove == m_entities.end())
-          return false; // id was not registered previously.
-
-        m_entities.erase(endIteratorAfterRemove, m_entities.end());
-        return true;
-      }
-
-      inline constexpr void DecreaseEntityIDs(TEntityID removedEntityID) noexcept
-      {
-        for (auto& id : m_entities)
-          id -= removedEntityID < id;
-      }
-
-      inline constexpr void SortAndUniqueEntities() noexcept { detail::sortAndUnique(m_entities); }
-*/
     public: // Child handling
       inline constexpr void AddChild(MortonNodeIDCR childKey) noexcept { m_children.emplace_back(childKey); }
 
@@ -2470,19 +2424,27 @@ namespace OrthoTree
     detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD> m_grid;
 
   public: // Node helpers
+
+    // Get EntityIDs of the node
     inline constexpr auto GetNodeEntities(Node const& node) const noexcept { return m_entityManager.GetEntities(node); }
 
+    // Get EntityIDs of the node
     inline constexpr auto GetNodeEntities(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntities(GetNode(nodeKey)); }
 
+    // Get EntityIDs number of the node
     inline constexpr std::size_t GetNodeEntitiesSize(Node const& node) const noexcept { return m_entityManager.GetEntitiesSize(node); }
 
+    // Get EntityIDs number of the node
     inline constexpr std::size_t GetNodeEntitiesSize(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntitiesSize(GetNode(nodeKey)); }
 
+    // Is the node has any entity
     inline constexpr bool IsNodeEntitiesEmpty(Node const& node) const noexcept { return m_entityManager.IsEntitiesEmpty(node); }
 
+    // Is the node has any entity
     inline constexpr bool IsNodeEntitiesEmpty(MortonNodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNode(nodeKey)); }
 
-    inline constexpr EntityManager const& GetEntityManager() noexcept { return m_entityManager; }
+    // Get the entityIDs main container
+    inline constexpr EntityManager const& GetEntityManager() const noexcept { return m_entityManager; }
 
     // Calculate extent by box of the tree and the key of the node
     inline constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
@@ -2495,6 +2457,7 @@ namespace OrthoTree
 #define GetNodeCenterMacro(inst, key, node) inst->GetNodeCenter(key)
 #else
     inline IGM::Vector const& GetNodeCenter(MortonNodeIDCR key) const noexcept { return GetNode(key).GetCenter(); }
+
 #define GetNodeCenterMacro(inst, key, node) node.GetCenter()
 #endif // ORTHOTREE__DISABLED_NODECENTER
 
