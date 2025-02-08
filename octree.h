@@ -1057,13 +1057,13 @@ namespace OrthoTree
         return distance;
       }
 
-      static inline constexpr std::optional<double> GetRayBoxDistanceAD(
+      static inline constexpr std::optional<Geometry> GetRayBoxDistanceAD(
         Vector const& center, Vector const& halfSizes, TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance) noexcept
       {
         if (DoesBoxContainPointAD(center, halfSizes, rayBasePoint, tolerance))
-          return 0.0;
+          return Geometry{};
 
-        auto constexpr inf = std::numeric_limits<double>::max();
+        auto constexpr inf = std::numeric_limits<Geometry>::max();
 
         auto minBoxDistances = Vector{};
         auto maxBoxDistances = Vector{};
@@ -1101,7 +1101,7 @@ namespace OrthoTree
           {
             auto const pointComp = Geometry(AD::GetPointC(rayBasePoint, dimensionID));
             auto const dirCompRecip = Geometry(1.0) / dirComp;
-            if (dirComp < 0.0)
+            if (dirComp < Geometry{})
             {
               minBoxDistances[dimensionID] = (maxBox - pointComp) * dirCompRecip;
               maxBoxDistances[dimensionID] = (minBox - pointComp) * dirCompRecip;
