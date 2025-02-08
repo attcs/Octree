@@ -1327,37 +1327,48 @@ namespace OrthoTree
         LocationID LocID;
       };
 
-      class ChildLocationGenerator
+      class ChildCheckerFixedDepth
       {
       public:
-        inline constexpr ChildLocationGenerator(LocationIDCR startLocationID, depth_t examinedLevel) noexcept
-        : m_shift(examinedLevel * DIMENSION_NO)
-        , m_startLocationID(startLocationID)
-        , m_startLocationIDOnExaminedLevel(startLocationID >> m_shift)
-        , m_stepNo(LocationID{ 1 } << m_shift)
+        inline constexpr ChildCheckerFixedDepth(depth_t examinedLevel, LocationIDCR locationID) noexcept
+        : m_mask((LocationID(CHILD_NO - 1)) << (examinedLevel * DIMENSION_NO))
+        , m_childFlag(locationID & m_mask)
         {}
 
-        // LocationID is on the base grid level
-        inline constexpr ChildID GetChildID(LocationIDCR locationID) const noexcept
+        inline ChildID GetChildID(depth_t examinedLevel) const noexcept
         {
-          return CastMortonIDToChildID((locationID - m_startLocationID) >> m_shift);
+          return CastMortonIDToChildID(m_childFlag >> (examinedLevel * DIMENSION_NO));
         }
 
-        // LocationID is on a custom depth
-        inline constexpr ChildID GetChildID(DepthAndLocationID const& depthAndLocation, depth_t examinationDepthID) const noexcept
-        {
-          assert(examinationDepthID <= depthAndLocation.DepthID);
-          auto const locationIDOnExaminationLevel = GetLocationIDOnExaminedLevel(depthAndLocation.LocID, depthAndLocation.DepthID - examinationDepthID);
-          return CastMortonIDToChildID(locationIDOnExaminationLevel - m_startLocationIDOnExaminedLevel);
-        }
-
-        inline constexpr LocationID GetStartLocationID(ChildID childID) const noexcept { return m_startLocationID + LocationID(childID) * m_stepNo; }
+        inline constexpr bool Test(LocationIDCR locationID) const noexcept { return (locationID & m_mask) == m_childFlag; }
 
       private:
-        UnderlyingInt m_shift;
-        LocationIDCR m_startLocationID;
-        LocationID m_startLocationIDOnExaminedLevel;
-        LocationID m_stepNo;
+        LocationID m_mask;
+        LocationID m_childFlag;
+      };
+
+
+      class ChildCheckerVariableDepth
+      {
+      public:
+        inline constexpr ChildCheckerVariableDepth(depth_t examinedLevel, depth_t maxDepthNo, DepthAndLocationID const& depthAndLocation) noexcept
+        : m_examinedDepthID(maxDepthNo - examinedLevel)
+        , m_childID(GetLocationIDOnExaminedLevel(depthAndLocation.LocID, depthAndLocation.DepthID - m_examinedDepthID) & m_mask)
+        {}
+
+        inline constexpr ChildID GetChildID() const noexcept { return CastMortonIDToChildID(m_childID); }
+
+        inline constexpr bool Test(DepthAndLocationID const& depthAndLocation) const noexcept
+        {
+          assert(m_examinedDepthID <= depthAndLocation.DepthID);
+          auto const locationIDOnExaminationLevel = GetLocationIDOnExaminedLevel(depthAndLocation.LocID, depthAndLocation.DepthID - m_examinedDepthID);
+          return (locationIDOnExaminationLevel & m_mask) == m_childID;
+        }
+
+      private:
+        static constexpr LocationID m_mask = CHILD_NO - 1;
+        depth_t m_examinedDepthID;
+        LocationID m_childID;
       };
 
       class ChildKeyGenerator
@@ -2993,12 +3004,7 @@ namespace OrthoTree
 
     using LocationIterator = typename std::vector<Location>::iterator;
     void CreateChildNodes(
-      Node& parentNode,
-      MortonNodeIDCR parentKey,
-      LocationIterator& locationBeginIterator,
-      LocationIterator const& locationEndIterator,
-      MortonLocationIDCR startLocationID,
-      depth_t remainingDepth) noexcept
+      Node& parentNode, MortonNodeIDCR parentKey, LocationIterator& locationBeginIterator, LocationIterator const& locationEndIterator, depth_t remainingDepth) noexcept
     {
       std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
       if (elementNo < this->m_maxElementNo || remainingDepth == 0)
@@ -3015,20 +3021,17 @@ namespace OrthoTree
 
       --remainingDepth;
       auto const keyGenerator = typename SI::ChildKeyGenerator(parentKey);
-      auto const locationGenerator = typename SI::ChildLocationGenerator(startLocationID, remainingDepth);
 
       while (locationBeginIterator != locationEndIterator)
       {
-        auto const actualChildID = locationGenerator.GetChildID(locationBeginIterator->LocationID);
-        auto const actualEndIterator = std::partition_point(locationBeginIterator, locationEndIterator, [&](auto const& location) {
-          return actualChildID == locationGenerator.GetChildID(location.LocationID);
-        });
+        auto const childChecker = typename SI::ChildCheckerFixedDepth(remainingDepth, locationBeginIterator->LocationID);
+        auto const actualEndIterator =
+          std::partition_point(locationBeginIterator, locationEndIterator, [&](auto const& location) { return childChecker.Test(location.LocationID); });
 
-        auto const childKey = keyGenerator.GetChildNodeKey(actualChildID);
+        auto const childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(remainingDepth));
         parentNode.AddChild(childKey);
         auto& childNode = this->CreateChild(parentNode, childKey);
-        this->CreateChildNodes(
-          childNode, childKey, locationBeginIterator, actualEndIterator, locationGenerator.GetStartLocationID(actualChildID), remainingDepth);
+        this->CreateChildNodes(childNode, childKey, locationBeginIterator, actualEndIterator, remainingDepth);
       }
     }
 
@@ -3067,7 +3070,7 @@ namespace OrthoTree
       auto& nodeRoot = detail::at(tree.m_nodes, rootKey);
 
       auto beginIterator = pointLocations.begin();
-      tree.CreateChildNodes(nodeRoot, rootKey, beginIterator, pointLocations.end(), MortonNodeID{ 0 }, maxDepthNo);
+      tree.CreateChildNodes(nodeRoot, rootKey, beginIterator, pointLocations.end(), maxDepthNo);
     }
 
   public: // Edit functions
@@ -3514,7 +3517,6 @@ namespace OrthoTree
       MortonNodeIDCR parentKey,
       LocationIterator& beginLocationIterator,
       LocationIterator const& endLocationIterator,
-      MortonLocationIDCR startLocationID,
       depth_t remainingDepthNo) noexcept
     {
       std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
@@ -3552,21 +3554,18 @@ namespace OrthoTree
       --remainingDepthNo;
 
       auto const keyGenerator = typename SI::ChildKeyGenerator(parentKey);
-      auto const locationGenerator = typename SI::ChildLocationGenerator(startLocationID, remainingDepthNo);
       while (beginLocationIterator != endLocationIterator)
       {
-        auto const actualChildID = locationGenerator.GetChildID(beginLocationIterator->DepthAndLocation, currentDepthID);
+        auto const childChecker = typename SI::ChildCheckerVariableDepth(remainingDepthNo, this->m_maxDepthNo, beginLocationIterator->DepthAndLocation);
         auto const actualEndLocationIterator = std::partition_point(beginLocationIterator, endLocationIterator, [&](auto const& location) {
-          auto const childID = locationGenerator.GetChildID(location.DepthAndLocation, currentDepthID);
-          return actualChildID == childID;
+          return childChecker.Test(location.DepthAndLocation);
         });
 
-        auto const childKey = keyGenerator.GetChildNodeKey(actualChildID);
+        auto const childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID());
 
         parentNode.AddChild(childKey);
         auto& nodeChild = this->CreateChild(parentNode, childKey);
-        this->CreateChildNodes(
-          nodeChild, childKey, beginLocationIterator, actualEndLocationIterator, locationGenerator.GetStartLocationID(actualChildID), remainingDepthNo);
+        this->CreateChildNodes(nodeChild, childKey, beginLocationIterator, actualEndLocationIterator, remainingDepthNo);
       }
     }
 
@@ -3721,7 +3720,7 @@ namespace OrthoTree
       std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
 
       auto beginLocationIterator = locations.begin();
-      tree.CreateChildNodes(nodeRoot, rootKey, beginLocationIterator, locations.end(), MortonNodeID{ 0 }, maxDepthNo);
+      tree.CreateChildNodes(nodeRoot, rootKey, beginLocationIterator, locations.end(), maxDepthNo);
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
       {
         // Eliminate duplicates. Not all sub-nodes will be created due to the maxElementNoInNode, which cause duplicates in the parent nodes.
