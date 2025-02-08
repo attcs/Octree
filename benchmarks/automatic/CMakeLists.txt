@@ -30,11 +30,6 @@ if (ENABLE_OPTIMIZATIONS)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_options(benchmarks PRIVATE -DTBB_ENABLE_IPO=off -march=native -mavx2 -O3 -ffast-math)
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        target_compile_options(benchmarks PRIVATE 
-            $<$<CONFIG:Debug>:/Od /Zi /D_DEBUG>
-        )
-        target_compile_options(benchmarks PRIVATE 
-            $<$<CONFIG:Release>: /O2 /fp:fast>
-        )
+        target_compile_options(benchmarks PRIVATE /O2 /fp:fast)
     endif()
 endif()
