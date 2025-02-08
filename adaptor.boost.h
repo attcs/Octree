@@ -225,11 +225,7 @@ namespace boost::geometry
   template<int DIMENSION_NO, typename TGeometry = double, typename TContainer = std::span<model::pointNd_t<DIMENSION_NO, TGeometry> const>>
   using orthotree_point_t = BoostOrthoTreePoint<DIMENSION_NO, TGeometry, TContainer>;
 
-  template<
-    int DIMENSION_NO,
-    uint32_t SPLIT_DEPTH_INCREASEMENT = 2,
-    typename TGeometry = double,
-    typename TContainer = std::span<model::boxNd_t<DIMENSION_NO, TGeometry> const>>
+  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double, typename TContainer = std::span<model::boxNd_t<DIMENSION_NO, TGeometry> const>>
   using orthotree_box_t = BoostOrthoTreeBoundingBox<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, TContainer>;
 
 
@@ -325,7 +321,8 @@ namespace boost::geometry
   // Container types
 
   template<int DIMENSION_NO, typename TGeometry = double>
-  using orthotree_point_map_c_t = OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TGeometry, map_container<model::pointNd_t<DIMENSION_NO, TGeometry>>>>;
+  using orthotree_point_map_c_t =
+    OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TGeometry, map_container<model::pointNd_t<DIMENSION_NO, TGeometry>>>>;
 
   using quadtree_point_map_c_d = orthotree_point_map_c_t<2, double>;
   using quadtree_point_map_c_f = orthotree_point_map_c_t<2, float>;
@@ -339,7 +336,8 @@ namespace boost::geometry
 
 
   template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double>
-  using orthotree_box_map_c_t = OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, map_container<model::boxNd_t<DIMENSION_NO, TGeometry>>>>;
+  using orthotree_box_map_c_t =
+    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, map_container<model::boxNd_t<DIMENSION_NO, TGeometry>>>>;
 
   template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
   using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, SPLIT_DEPTH_INCREASEMENT, double>;

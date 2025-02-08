@@ -126,8 +126,7 @@ namespace UnrealDummyTypes
     FVectorTemplate2(geometry_type X, geometry_type Y)
     : X(X)
     , Y(Y)
-    {
-    }
+    {}
   };
 
   template<typename geometry_type>
@@ -142,8 +141,7 @@ namespace UnrealDummyTypes
     : X(X)
     , Y(Y)
     , Z(Z)
-    {
-    }
+    {}
   };
 
   template<typename FVector_>
@@ -157,14 +155,12 @@ namespace UnrealDummyTypes
     FBoxTemplate(FVector_&& Min, FVector_&& Max)
     : Min(Min)
     , Max(Max)
-    {
-    }
+    {}
 
     FBoxTemplate(FVector_ const& Min, FVector_ const& Max)
     : Min(Min)
     , Max(Max)
-    {
-    }
+    {}
 
     FVector_ GetCenter() const
     {

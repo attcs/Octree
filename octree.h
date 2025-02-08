@@ -1335,8 +1335,7 @@ namespace OrthoTree
         , m_startLocationID(startLocationID)
         , m_startLocationIDOnExaminedLevel(startLocationID >> m_shift)
         , m_stepNo(LocationID{ 1 } << m_shift)
-        {
-        }
+        {}
 
         // LocationID is on the base grid level
         inline constexpr ChildID GetChildID(LocationIDCR locationID) const noexcept
@@ -1366,8 +1365,7 @@ namespace OrthoTree
       public:
         explicit inline constexpr ChildKeyGenerator(NodeIDCR parentNodeKey) noexcept
         : m_parentFlag(parentNodeKey << DIMENSION_NO)
-        {
-        }
+        {}
 
         inline constexpr NodeID GetChildNodeKey(ChildID childID) const noexcept { return m_parentFlag | NodeID(childID); }
 
@@ -1380,8 +1378,7 @@ namespace OrthoTree
       public:
         explicit GridConverter(depth_t examinedLevel)
         : m_shift(examinedLevel * DIMENSION_NO)
-        {
-        }
+        {}
 
         LocationID GetLocationID(DimArray<GridID> const& gridID) const noexcept { return Encode(gridID) >> m_shift; }
 
@@ -2233,7 +2230,6 @@ namespace OrthoTree
 #ifndef ORTHOTREE__DISABLED_NODECENTER
           newParentNode.SetCenter(this->CalculateNodeCenter(newParentNodeKey));
 #endif
-
         } while (newParentNodeKey != parentNodeKey);
       }
       else
