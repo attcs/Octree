@@ -1347,30 +1347,6 @@ namespace OrthoTree
         LocationID m_childFlag;
       };
 
-
-      class ChildCheckerVariableDepth
-      {
-      public:
-        inline constexpr ChildCheckerVariableDepth(depth_t examinedLevel, depth_t maxDepthNo, DepthAndLocationID const& depthAndLocation) noexcept
-        : m_examinedDepthID(maxDepthNo - examinedLevel)
-        , m_childID(GetLocationIDOnExaminedLevel(depthAndLocation.LocID, depthAndLocation.DepthID - m_examinedDepthID) & m_mask)
-        {}
-
-        inline constexpr ChildID GetChildID() const noexcept { return CastMortonIDToChildID(m_childID); }
-
-        inline constexpr bool Test(DepthAndLocationID const& depthAndLocation) const noexcept
-        {
-          assert(m_examinedDepthID <= depthAndLocation.DepthID);
-          auto const locationIDOnExaminationLevel = GetLocationIDOnExaminedLevel(depthAndLocation.LocID, depthAndLocation.DepthID - m_examinedDepthID);
-          return (locationIDOnExaminationLevel & m_mask) == m_childID;
-        }
-
-      private:
-        static constexpr LocationID m_mask = CHILD_NO - 1;
-        depth_t m_examinedDepthID;
-        LocationID m_childID;
-      };
-
       class ChildKeyGenerator
       {
       public:
@@ -1384,18 +1360,10 @@ namespace OrthoTree
         NodeID m_parentFlag;
       };
 
-      class GridConverter
+      static inline constexpr NodeID GetHashAtDepth(auto&& location, depth_t maxDepthNo) noexcept
       {
-      public:
-        explicit GridConverter(depth_t examinedLevel)
-        : m_shift(examinedLevel * DIMENSION_NO)
-        {}
-
-        LocationID GetLocationID(DimArray<GridID> const& gridID) const noexcept { return Encode(gridID) >> m_shift; }
-
-      private:
-        UnderlyingInt m_shift;
-      };
+        return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | (location.LocID >> ((maxDepthNo - location.DepthID) * DIMENSION_NO));
+      }
 
       static inline constexpr NodeID GetHash(auto&& location) noexcept
       {
@@ -1738,9 +1706,24 @@ namespace OrthoTree
       static inline constexpr DepthAndLocationID GetDepthAndLocationID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
         auto dl = DepthAndLocationID{ maxDepthNo, locationIDRange[0] };
+        if (locationIDRange[0] != locationIDRange[1])
+        {
+          depth_t levelID = 0;
+          if constexpr (false)
+          {
+            auto const differentBitNo = std::bit_width(locationIDRange[0] ^ locationIDRange[1]);
+            levelID = (differentBitNo + DIMENSION_NO - 1) / DIMENSION_NO;
+          }
+          else
+          {
+            for (auto diffLocationFlag = locationIDRange[0] ^ locationIDRange[1]; diffLocationFlag != 0; diffLocationFlag >>= DIMENSION_NO)
+              ++levelID;
+          }
 
-        for (auto diffLocationFlag = locationIDRange[0] ^ locationIDRange[1]; IsValidKey(diffLocationFlag); diffLocationFlag >>= DIMENSION_NO, --dl.DepthID)
-          dl.LocID = GetParentGridID(dl.LocID);
+          dl.DepthID -= levelID;
+          dl.LocID >>= levelID * DIMENSION_NO;
+          dl.LocID <<= levelID * DIMENSION_NO;
+        }
 
         return dl;
       }
@@ -1757,23 +1740,13 @@ namespace OrthoTree
 
       static inline constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
-        return GetHash(GetDepthAndLocationID(maxDepthNo, locationIDRange));
+        return GetHashAtDepth(GetDepthAndLocationID(maxDepthNo, locationIDRange), maxDepthNo);
       }
 
       static inline constexpr auto IsLess(DepthAndLocationID const& leftLocation, DepthAndLocationID const& rightLocation) noexcept
       {
-        if (leftLocation.DepthID == rightLocation.DepthID)
-          return leftLocation.LocID < rightLocation.LocID;
-        else if (leftLocation.DepthID < rightLocation.DepthID)
-        {
-          auto const locationIDRight = GetLocationIDOnExaminedLevel(rightLocation.LocID, rightLocation.DepthID - leftLocation.DepthID);
-          return leftLocation.LocID <= locationIDRight;
-        }
-        else
-        {
-          auto const locationIDLeft = GetLocationIDOnExaminedLevel(leftLocation.LocID, leftLocation.DepthID - rightLocation.DepthID);
-          return locationIDLeft < rightLocation.LocID;
-        }
+        return (leftLocation.LocID < rightLocation.LocID) ||
+               ((leftLocation.LocID == rightLocation.LocID) && (leftLocation.DepthID < rightLocation.DepthID));
       }
     };
   } // namespace detail
@@ -2169,8 +2142,8 @@ namespace OrthoTree
         auto parentEntities = std::vector<TEntityID>{}; // Box entities could be stuck in the parent node.
         for (auto const entityID : GetNodeEntities(parentNode))
         {
-          auto const [depthID, locationID] = this->GetDepthAndLocationID(detail::at(geometryCollection, entityID));
-          if (depthID <= parentDepth)
+          auto depthAndLocation = this->GetDepthAndLocationID(detail::at(geometryCollection, entityID));
+          if (depthAndLocation.DepthID <= parentDepth)
           {
             parentEntities.emplace_back(entityID);
             continue;
@@ -2178,13 +2151,13 @@ namespace OrthoTree
 
           // i-th entity should be moved to a child node
 
-          auto const childID = SI::GetChildIDByDepth(parentDepth, depthID, locationID);
+          auto const childID = SI::GetChildIDByDepth(parentDepth, m_maxDepthNo, depthAndLocation.LocID);
           auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
           if (parentNode.HasChild(childNodeKey))
           {
-            auto const entitiyNodeKey_ = SI::GetHash(depthID, locationID);
+            auto const entitiyNodeKey_ = SI::GetHashAtDepth(depthAndLocation, m_maxDepthNo);
             auto const [parentNodeKey_, parentDepthID_] = FindSmallestNodeKeyWithDepth(entitiyNodeKey_);
-            InsertWithRebalancingBase<false>(parentNodeKey_, parentDepthID_, entitiyNodeKey_, depthID, entityID, geometryCollection);
+            InsertWithRebalancingBase<false>(parentNodeKey_, parentDepthID_, entitiyNodeKey_, depthAndLocation.DepthID, entityID, geometryCollection);
           }
           else
           {
@@ -2565,7 +2538,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     MortonNodeID GetNodeID(TBox const& box) const noexcept
     {
-      return SI::GetHash(this->GetDepthAndLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(box));
+      return SI::GetHashAtDepth(this->GetDepthAndLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(box), m_maxDepthNo);
     }
 
     // Find smallest node which contains the box
@@ -2801,7 +2774,7 @@ namespace OrthoTree
         return foundNodes;
       }
 
-      auto const rangeKey = SI::GetHash(this->GetDepthAndLocationID<!IS_BOX_TYPE, TBoxRange>(range));
+      auto const rangeKey = SI::GetHashAtDepth(this->GetDepthAndLocationID<!IS_BOX_TYPE, TBoxRange>(range), m_maxDepthNo);
       auto smallestNodeKey = this->FindSmallestNodeKey(rangeKey);
       if (!SI::IsValidKey(smallestNodeKey))
       {
@@ -3552,12 +3525,12 @@ namespace OrthoTree
       auto const keyGenerator = typename SI::ChildKeyGenerator(parentKey);
       while (beginLocationIterator != endLocationIterator)
       {
-        auto const childChecker = typename SI::ChildCheckerVariableDepth(remainingDepthNo, this->m_maxDepthNo, beginLocationIterator->DepthAndLocation);
+        auto const childChecker = typename SI::ChildCheckerFixedDepth(remainingDepthNo, beginLocationIterator->DepthAndLocation.LocID);
         auto const actualEndLocationIterator = std::partition_point(beginLocationIterator, endLocationIterator, [&](auto const& location) {
-          return childChecker.Test(location.DepthAndLocation);
+          return childChecker.Test(location.DepthAndLocation.LocID);
         });
 
-        auto const childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID());
+        auto const childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(remainingDepthNo));
 
         parentNode.AddChild(childKey);
         auto& nodeChild = this->CreateChild(parentNode, childKey);
@@ -3595,11 +3568,10 @@ namespace OrthoTree
       Base::template ConstructGridIDListRecursively<DIMENSION_NO>(gridStepNo, gridBoundaries, temporaryGridID, gridIDs);
 
       auto const boxNo = gridIDs.size();
-      auto const gridGenerator = typename SI::GridConverter(remainingDepthNo);
 
       // First element into locationID
       location.DepthAndLocation.DepthID = depthID;
-      location.DepthAndLocation.LocID = gridGenerator.GetLocationID(gridIDs[0]);
+      location.DepthAndLocation.LocID = SI::Encode(gridIDs[0]);
       auto const entityID = location.EntityID;
 
       auto const additionalBoxNo = boxNo - 1;
@@ -3612,7 +3584,7 @@ namespace OrthoTree
         auto& location = additionalLocations.at(locationNo + iBox);
         location.EntityID = entityID;
         location.DepthAndLocation.DepthID = depthID;
-        location.DepthAndLocation.LocID = gridGenerator.GetLocationID(gridIDs[iBox + 1]);
+        location.DepthAndLocation.LocID = SI::Encode(gridIDs[iBox + 1]);
       }
     }
 
@@ -3738,7 +3710,7 @@ namespace OrthoTree
 
       for (auto const& location : locations)
       {
-        auto const entityNodeKey = SI::GetHash(location.DepthAndLocation);
+        auto const entityNodeKey = SI::GetHashAtDepth(location.DepthAndLocation, this->GetDepthMax());
         auto const parentNodeKey = this->FindSmallestNodeKey(entityNodeKey);
 
         if (!this->template InsertWithRebalancingBase<SPLIT_DEPTH_INCREASEMENT == 0>(
@@ -3765,7 +3737,7 @@ namespace OrthoTree
 
       for (auto const& location : locations)
       {
-        auto const entityNodeKey = SI::GetHash(location.DepthAndLocation);
+        auto const entityNodeKey = SI::GetHashAtDepth(location.DepthAndLocation, this->GetDepthMax());
         if (!this->template InsertWithoutRebalancingBase<SPLIT_DEPTH_INCREASEMENT == 0>(smallestNodeKey, entityNodeKey, newEntityID, doInsertToLeaf))
           return false;
       }
