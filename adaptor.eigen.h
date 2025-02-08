@@ -151,7 +151,7 @@ namespace OrthoTree
         if (box.intersects(rayBasePointBox))
           return 0.0;
 
-        auto constexpr inf = std::numeric_limits<double>::infinity();
+        auto constexpr inf = std::numeric_limits<double>::max();
 
         auto minBoxDistances = std::array<double, AmbientDim_>{};
         auto maxBoxDistances = std::array<double, AmbientDim_>{};

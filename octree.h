@@ -583,7 +583,7 @@ namespace OrthoTree
       if (DoesBoxContainPoint(box, rayBasePoint, tolerance))
         return 0.0;
 
-      auto constexpr inf = std::numeric_limits<double>::infinity();
+      auto constexpr inf = std::numeric_limits<double>::max();
 
       auto minBoxDistances = std::array<double, DIMENSION_NO>{};
       auto maxBoxDistances = std::array<double, DIMENSION_NO>{};
@@ -1063,7 +1063,7 @@ namespace OrthoTree
         if (DoesBoxContainPointAD(center, halfSizes, rayBasePoint, tolerance))
           return 0.0;
 
-        auto constexpr inf = std::numeric_limits<double>::infinity();
+        auto constexpr inf = std::numeric_limits<double>::max();
 
         auto minBoxDistances = Vector{};
         auto maxBoxDistances = Vector{};
