@@ -1827,8 +1827,6 @@ namespace OrthoTree
   public:
     class Node
     {
-      friend OrthoTreeBase;
-
     public:
       using EntityContainer = typename std::vector<TEntityID>;
 
@@ -1851,20 +1849,19 @@ namespace OrthoTree
         m_children.clear();
       }
 
-    private: // Entity handling
+    public: // Entity handling
       inline constexpr auto const& GetEntities() const noexcept { return m_entities; }
+
+      inline constexpr auto& GetEntities() noexcept { return m_entities; }
 
       inline constexpr std::size_t GetEntitiesSize() const noexcept { return m_entities.size(); }
 
       inline constexpr bool IsEntitiesEmpty() const noexcept { return m_entities.empty(); }
 
-    public: // Entity handling
       inline constexpr bool ContainsEntity(TEntityID entityID) const noexcept
       {
         return std::find(m_entities.begin(), m_entities.end(), entityID) != m_entities.end();
       }
-
-      inline constexpr void SetEntities(EntityContainer&& entities) noexcept { m_entities = std::move(entities); }
 
       inline constexpr void ReplaceEntities(EntityContainer&& entities) noexcept { m_entities = std::move(entities); }
 
@@ -2483,7 +2480,7 @@ namespace OrthoTree
 
       EXEC_POL_DEF(ep);
       std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&](auto& node) {
-        auto& entityIDs = node.second.m_entities;
+        auto& entityIDs = node.second.GetEntities();
         auto entityNo = entityIDs.size();
         for (std::size_t i = 0; i < entityNo; ++i)
         {
@@ -3009,13 +3006,13 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
       if (elementNo < this->m_maxElementNo || remainingDepth == 0)
       {
-        auto entityIDs = typename Node::EntityContainer(elementNo);
+        auto& entityIDs = parentNode.GetEntities();
+        entityIDs.resize(elementNo);
 
         LOOPIVDEP
         for (std::size_t i = 0; locationBeginIterator != locationEndIterator; ++locationBeginIterator, ++i)
           entityIDs[i] = locationBeginIterator->EntityID;
 
-        parentNode.SetEntities(std::move(entityIDs));
         return;
       }
 
@@ -3522,13 +3519,13 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
       if (elementNo < this->m_maxElementNo || remainingDepthNo == 0)
       {
-        auto entityIDs = typename Node::EntityContainer(elementNo);
+        auto& entityIDs = parentNode.GetEntities();
+        entityIDs.resize(elementNo);
 
         LOOPIVDEP
         for (std::size_t i = 0; beginLocationIterator != endLocationIterator; ++beginLocationIterator, ++i)
           entityIDs[i] = beginLocationIterator->EntityID;
 
-        parentNode.SetEntities(std::move(entityIDs));
         return;
       }
 
@@ -3541,13 +3538,12 @@ namespace OrthoTree
 
         std::size_t const stuckedElementNo = std::distance(beginLocationIterator, stuckedEndLocationIterator);
 
-        auto entityIDs = typename Node::EntityContainer(stuckedElementNo);
+        auto& entityIDs = parentNode.GetEntities();
+        entityIDs.resize(stuckedElementNo);
 
         LOOPIVDEP
         for (std::size_t i = 0; beginLocationIterator != stuckedEndLocationIterator; ++beginLocationIterator, ++i)
           entityIDs[i] = beginLocationIterator->EntityID;
-
-        parentNode.SetEntities(std::move(entityIDs));
       }
 
       ++currentDepthID;
