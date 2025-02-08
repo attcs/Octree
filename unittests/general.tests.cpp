@@ -2466,7 +2466,7 @@ namespace Tree3DTest
       // This gives a tree with 9 nodes.
       std::vector<BoundingBox3D> boxes = {
         {{ -2.0, -2.0, -2.0 }, { -1.0, -1.0, +2.0 }}, // split to 8 and 12
-        {{ +2.0, +2.0, +2.0 }, { +4.0, +1.0, +1.0 }}, // 127
+        {{ +2.0, +2.0, +2.0 }, { +4.0, +1.0, +1.0 }}, // 15
         {{ +2.0, +2.0, +2.0 }, { +3.1, +3.1, +3.1 }}, // 127
       };
       auto boxNo = boxes.size();
@@ -2479,6 +2479,11 @@ namespace Tree3DTest
           {+4, +4, +4}
         },
         2);
+
+      Assert::AreEqual<OctreeBox::MortonNodeID>(tree.GetNodeIDByEntity(0), 8);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(tree.GetNodeIDByEntity(2), 127);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(tree.GetNodeIDByEntity(1), 15);
+
       tree.UpdateIndexes({});
 
       auto const isOutsiderInserted = tree.Insert(
