@@ -1821,8 +1821,11 @@ namespace OrthoTree
     {
       friend OrthoTreeBase;
 
+    public:
+      using EntityContainer = typename std::vector<TEntityID>;
+
     private:
-      std::vector<TEntityID> m_entities = {};
+      EntityContainer m_entities = {};
 
       std::vector<MortonNodeID> m_children;
 #ifndef ORTHOTREE__DISABLED_NODECENTER
@@ -1853,16 +1856,9 @@ namespace OrthoTree
         return std::find(m_entities.begin(), m_entities.end(), entityID) != m_entities.end();
       }
 
-      inline constexpr void SetEntities(std::vector<TEntityID>&& entities) noexcept { m_entities = std::move(entities); }
+      inline constexpr void SetEntities(EntityContainer&& entities) noexcept { m_entities = std::move(entities); }
 
-      inline constexpr void SetEntities(auto beginIt, auto endIt, auto&& transform) noexcept
-      {
-        auto const size = std::distance(beginIt, endIt);
-        m_entities.resize(size);
-        std::transform(beginIt, endIt, m_entities.begin(), transform);
-      }
-
-      inline constexpr void ReplaceEntities(std::vector<TEntityID>&& entities) noexcept { m_entities = std::move(entities); }
+      inline constexpr void ReplaceEntities(EntityContainer&& entities) noexcept { m_entities = std::move(entities); }
 
       inline constexpr void AddEntity(TEntityID entityID) noexcept { m_entities.push_back(entityID); }
 
@@ -1976,16 +1972,22 @@ namespace OrthoTree
     detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD> m_grid;
 
   public: // Node helpers
+    // Get EntityIDs of the node
     inline constexpr auto const& GetNodeEntities(Node const& node) const noexcept { return node.GetEntities(); }
 
+    // Get EntityIDs of the node
     inline constexpr auto const& GetNodeEntities(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntities(GetNode(nodeKey)); }
 
+    // Get EntityIDs number of the node
     inline constexpr std::size_t GetNodeEntitiesSize(Node const& node) const noexcept { return node.GetEntitiesSize(); }
 
+    // Get EntityIDs number of the node
     inline constexpr std::size_t GetNodeEntitiesSize(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntitiesSize(GetNode(nodeKey)); }
 
+    // Is the node has any entity
     inline constexpr bool IsNodeEntitiesEmpty(Node const& node) const noexcept { return node.IsEntitiesEmpty(); }
 
+    // Is the node has any entity
     inline constexpr bool IsNodeEntitiesEmpty(MortonNodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNode(nodeKey)); }
 
     // Calculate extent by box of the tree and the key of the node
@@ -2263,7 +2265,7 @@ namespace OrthoTree
       if (nodeKey == SI::GetRootKey())
         return;
 
-      if (node.IsAnyChildExist() || !node.IsEntitiesEmpty())
+      if (node.IsAnyChildExist() || !IsNodeEntitiesEmpty(node))
         return;
 
       auto const parentKey = SI::GetParentKey(nodeKey);
@@ -2317,7 +2319,7 @@ namespace OrthoTree
     inline constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
     inline constexpr auto GetDepthMax() const noexcept { return m_maxDepthNo; }
     inline constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
-    inline auto GetNodeIDByEntity(TEntityID entityID) const noexcept
+    inline constexpr auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
       auto const it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](auto const& keyAndValue) { return keyAndValue.second.ContainsEntity(entityID); });
 
@@ -2458,6 +2460,7 @@ namespace OrthoTree
     }
 
   public:
+    // Collect all entity id, traversing the tree in depth-first search pre-order
     std::vector<TEntityID> CollectAllEntitiesInDFS(MortonNodeIDCR parentKey = SI::GetRootKey()) const noexcept
     {
       auto entityIDs = std::vector<TEntityID>{};
@@ -2473,25 +2476,30 @@ namespace OrthoTree
 
       EXEC_POL_DEF(ep);
       std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&](auto& node) {
-        auto newEntities = std::vector<TEntityID>{};
-        auto const& nodeEntities = GetNodeEntities(node.second);
-        newEntities.reserve(nodeEntities.size());
-        for (auto const entityID : nodeEntities)
+        auto& entityIDs = node.second.m_entities;
+        auto entityNo = entityIDs.size();
+        for (std::size_t i = 0; i < entityNo; ++i)
         {
-          auto const it = updateMap.find(entityID);
+          auto const it = updateMap.find(entityIDs[i]);
           if (it == updateMapEndIterator)
-            newEntities.emplace_back(entityID);
-          else if (it->second)
-            newEntities.emplace_back(*it->second);
+            continue;
+
+          if (it->second)
+            entityIDs[i] = *it->second;
+          else
+          {
+            --entityNo;
+            entityIDs[i] = entityIDs[entityNo];
+            --i;
+          }
         }
 
-        node.second.ReplaceEntities(std::move(newEntities));
+        entityIDs.resize(entityNo);
       });
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
         assert(IsEveryEntityUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
     }
-
 
     // Reset the tree
     void Reset() noexcept
@@ -2689,11 +2697,7 @@ namespace OrthoTree
 
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
     void RangeSearchBase(
-      TBox const& range,
-      TContainer const& geometryCollection,
-      depth_t depthID,
-      MortonNodeIDCR currentNodeKey,
-      std::vector<TEntityID>& foundEntities) const noexcept
+      TBox const& range, TContainer const& geometryCollection, depth_t depthID, MortonNodeIDCR currentNodeKey, std::vector<TEntityID>& foundEntities) const noexcept
     {
       auto const& currentNode = this->GetNode(currentNodeKey);
       if (!currentNode.IsAnyChildExist())
@@ -3003,8 +3007,13 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
       if (elementNo < this->m_maxElementNo || remainingDepth == 0)
       {
-        parentNode.SetEntities(locationBeginIterator, locationEndIterator, [](auto const& item) { return item.EntityID; });
-        locationBeginIterator = locationEndIterator;
+        auto entityIDs = typename Node::EntityContainer(elementNo);
+
+        LOOPIVDEP
+        for (std::size_t i = 0; locationBeginIterator != locationEndIterator; ++locationBeginIterator, ++i)
+          entityIDs[i] = locationBeginIterator->EntityID;
+
+        parentNode.SetEntities(std::move(entityIDs));
         return;
       }
 
@@ -3515,20 +3524,32 @@ namespace OrthoTree
       std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
       if (elementNo < this->m_maxElementNo || remainingDepthNo == 0)
       {
-        parentNode.SetEntities(beginLocationIterator, endLocationIterator, [](auto const& item) { return item.EntityID; });
-        beginLocationIterator = endLocationIterator;
+        auto entityIDs = typename Node::EntityContainer(elementNo);
+
+        LOOPIVDEP
+        for (std::size_t i = 0; beginLocationIterator != endLocationIterator; ++beginLocationIterator, ++i)
+          entityIDs[i] = beginLocationIterator->EntityID;
+
+        parentNode.SetEntities(std::move(entityIDs));
         return;
       }
 
       depth_t currentDepthID = this->m_maxDepthNo - remainingDepthNo;
       if (beginLocationIterator->DepthAndLocation.DepthID == currentDepthID)
       {
-        auto it = beginLocationIterator;
-        beginLocationIterator = std::partition_point(it, endLocationIterator, [&](auto const& location) {
-          return location.DepthAndLocation.DepthID == it->DepthAndLocation.DepthID;
+        auto stuckedEndLocationIterator = std::partition_point(beginLocationIterator, endLocationIterator, [&](auto const& location) {
+          return location.DepthAndLocation.DepthID == beginLocationIterator->DepthAndLocation.DepthID;
         });
 
-        parentNode.SetEntities(it, beginLocationIterator, [](auto const& item) { return item.EntityID; });
+        std::size_t const stuckedElementNo = std::distance(beginLocationIterator, stuckedEndLocationIterator);
+
+        auto entityIDs = typename Node::EntityContainer(stuckedElementNo);
+
+        LOOPIVDEP
+        for (std::size_t i = 0; beginLocationIterator != stuckedEndLocationIterator; ++beginLocationIterator, ++i)
+          entityIDs[i] = beginLocationIterator->EntityID;
+
+        parentNode.SetEntities(std::move(entityIDs));
       }
 
       ++currentDepthID;
