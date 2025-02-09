@@ -2992,36 +2992,34 @@ namespace OrthoTree
         TEntityID EntityID;
         MortonLocationID LocationID;
       };
-      auto pointLocations = std::vector<Location>(pointNo);
+      auto locations = std::vector<Location>(pointNo);
       EXEC_POL_DEF(ept); // GCC 11.3
-      std::transform(EXEC_POL_ADD(ept) points.begin(), points.end(), pointLocations.begin(), [&](auto const& point) {
+      std::transform(EXEC_POL_ADD(ept) points.begin(), points.end(), locations.begin(), [&](auto const& point) {
         return Location{ detail::getKeyPart(points, point), tree.GetLocationID(detail::getValuePart(point)) };
       });
 
       if constexpr (IS_PARALLEL_EXEC)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) pointLocations.begin(), pointLocations.end(), [&](auto const& leftLocation, auto const& rightLocation) {
-          return leftLocation.LocationID < rightLocation.LocationID;
-        });
+        std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end(), [&](auto const& l, auto const& r) { return l.LocationID < r.LocationID; });
       }
 
-      // Build the tree in depth-first search order
+      // Build the tree in depth-first order
 
-      struct NodeData
+      struct NodeStackData
       {
         std::pair<MortonNodeID, Node> NodeInstance;
-        typename std::vector<Location>::iterator LocationEndIterator;
+        typename std::vector<Location>::iterator EndLocationIt;
       };
-      std::array<NodeData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
-      nodeStack[0] = NodeData{ *tree.m_nodes.find(SI::GetRootKey()), pointLocations.end() };
+      std::array<NodeStackData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
+      nodeStack[0] = NodeStackData{ *tree.m_nodes.find(SI::GetRootKey()), locations.end() };
       tree.m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
 
-      auto locationBeginIterator = pointLocations.begin();
+      auto beginLocationIt = locations.begin();
       for (int depthID = 0; depthID >= 0;)
       {
-        auto& [node, locationEndIterator] = nodeStack[depthID];
-        std::size_t const elementNo = std::distance(locationBeginIterator, locationEndIterator);
+        auto& [node, endLocationIt] = nodeStack[depthID];
+        std::size_t const elementNo = std::distance(beginLocationIt, endLocationIt);
         if (elementNo == 0)
         {
           tree.m_nodes.emplace(std::move(node));
@@ -3029,7 +3027,7 @@ namespace OrthoTree
           continue;
         }
 
-        if (((elementNo < tree.m_maxElementNo) && !node.second.IsAnyChildExist()) || depthID == maxDepthNo)
+        if ((elementNo < tree.m_maxElementNo && !node.second.IsAnyChildExist()) || depthID == maxDepthNo)
         {
           auto& entityIDs = node.second.GetEntities();
           entityIDs.resize(elementNo);
@@ -3037,8 +3035,8 @@ namespace OrthoTree
           LOOPIVDEP
           for (std::size_t i = 0; i < elementNo; ++i)
           {
-            entityIDs[i] = locationBeginIterator->EntityID;
-            ++locationBeginIterator;
+            entityIDs[i] = beginLocationIt->EntityID;
+            ++beginLocationIt;
           }
 
           tree.m_nodes.emplace(std::move(node));
@@ -3049,19 +3047,18 @@ namespace OrthoTree
         ++depthID;
         auto const examinedLevel = tree.GetDepthMax() - depthID;
         auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
-        auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, locationBeginIterator->LocationID);
+        auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->LocationID);
         auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevel));
         if constexpr (IS_PARALLEL_EXEC)
         {
-          nodeStack[depthID].LocationEndIterator = std::partition_point(locationBeginIterator, locationEndIterator, [&](auto const& location) {
-            return childChecker.Test(location.LocationID);
-          });
+          nodeStack[depthID].EndLocationIt =
+            std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.LocationID); });
           node.second.AddChild(childKey);
         }
         else
         {
-          nodeStack[depthID].LocationEndIterator =
-            std::partition(locationBeginIterator, locationEndIterator, [&](auto const& location) { return childChecker.Test(location.LocationID); });
+          nodeStack[depthID].EndLocationIt =
+            std::partition(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.LocationID); });
           node.second.AddChildInOrder(childKey);
         }
 
@@ -3509,68 +3506,6 @@ namespace OrthoTree
     using LocationContainer = std::vector<Location>;
     using LocationIterator = typename LocationContainer::iterator;
 
-    void CreateChildNodes(
-      Node& parentNode,
-      MortonNodeIDCR parentKey,
-      LocationIterator& beginLocationIterator,
-      LocationIterator const& endLocationIterator,
-      depth_t remainingDepthNo) noexcept
-    {
-      std::size_t const elementNo = std::distance(beginLocationIterator, endLocationIterator);
-      if (elementNo < this->m_maxElementNo || remainingDepthNo == 0)
-      {
-        auto& entityIDs = parentNode.GetEntities();
-        entityIDs.resize(elementNo);
-
-        LOOPIVDEP
-        for (std::size_t i = 0; i < elementNo; ++i)
-        {
-          entityIDs[i] = beginLocationIterator->EntityID;
-          ++beginLocationIterator;
-        }
-        return;
-      }
-
-      depth_t currentDepthID = this->m_maxDepthNo - remainingDepthNo;
-      if (beginLocationIterator->DepthAndLocation.DepthID == currentDepthID)
-      {
-        auto stuckedEndLocationIterator = std::partition_point(beginLocationIterator, endLocationIterator, [&](auto const& location) {
-          return location.DepthAndLocation.DepthID == beginLocationIterator->DepthAndLocation.DepthID;
-        });
-
-        std::size_t const stuckedElementNo = std::distance(beginLocationIterator, stuckedEndLocationIterator);
-
-        auto& entityIDs = parentNode.GetEntities();
-        entityIDs.resize(stuckedElementNo);
-
-        LOOPIVDEP
-        for (std::size_t i = 0; i < stuckedElementNo; ++i)
-        {
-          entityIDs[i] = beginLocationIterator->EntityID;
-          ++beginLocationIterator;
-        }
-      }
-
-      ++currentDepthID;
-      --remainingDepthNo;
-
-      auto const keyGenerator = typename SI::ChildKeyGenerator(parentKey);
-      while (beginLocationIterator != endLocationIterator)
-      {
-        auto const childChecker = typename SI::ChildCheckerFixedDepth(remainingDepthNo, beginLocationIterator->DepthAndLocation.LocID);
-        auto const actualEndLocationIterator = std::partition_point(beginLocationIterator, endLocationIterator, [&](auto const& location) {
-          return childChecker.Test(location.DepthAndLocation.LocID);
-        });
-
-        auto const childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(remainingDepthNo));
-
-        parentNode.AddChild(childKey);
-        auto [childNode, _] = this->m_nodes.emplace(childKey, this->CreateChild(parentNode, childKey));
-        this->CreateChildNodes(childNode->second, childKey, beginLocationIterator, actualEndLocationIterator, remainingDepthNo);
-      }
-    }
-
-
     void SplitEntityLocation(std::array<DimArray<GridID>, 2> const& boxMinMaxGridID, Location& location, LocationContainer& additionalLocations) const noexcept
     {
       depth_t depthID = location.DepthAndLocation.DepthID + SPLIT_DEPTH_INCREASEMENT;
@@ -3716,11 +3651,105 @@ namespace OrthoTree
           });
       }
 
-      EXEC_POL_DEF(eps); // GCC 11.3
-      std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
+      if constexpr (IS_PARALLEL_EXEC)
+      {
+        EXEC_POL_DEF(eps); // GCC 11.3
+        std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
+      }
 
-      auto beginLocationIterator = locations.begin();
-      tree.CreateChildNodes(nodeRoot, rootKey, beginLocationIterator, locations.end(), maxDepthNo);
+      // Build the tree in depth-first order
+
+      struct NodeStackData
+      {
+        std::pair<MortonNodeID, Node> NodeInstance;
+        typename std::vector<Location>::iterator EndLocationIt;
+      };
+      std::array<NodeStackData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
+      nodeStack[0] = NodeStackData{ *tree.m_nodes.find(SI::GetRootKey()), locations.end() };
+      tree.m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
+
+      auto beginLocationIt = locations.begin();
+      for (int depthID = 0; depthID >= 0;)
+      {
+        auto& [node, endLocationIt] = nodeStack[depthID];
+
+        std::size_t elementNo = std::distance(beginLocationIt, endLocationIt);
+
+        auto const hasNoChild = !node.second.IsAnyChildExist();
+        if ((elementNo > 0 && elementNo < tree.m_maxElementNo && hasNoChild) || depthID == maxDepthNo)
+        {
+          auto& entityIDs = node.second.GetEntities();
+          entityIDs.resize(elementNo);
+
+          LOOPIVDEP
+          for (std::size_t i = 0; i < elementNo; ++i)
+          {
+            entityIDs[i] = beginLocationIt->EntityID;
+            ++beginLocationIt;
+          }
+
+          elementNo = 0;
+        }
+        else if (hasNoChild)
+        {
+          typename std::vector<Location>::iterator stuckedEndLocationIt;
+          if constexpr (IS_PARALLEL_EXEC)
+          {
+            stuckedEndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [depthID](auto const& location) {
+              return location.DepthAndLocation.DepthID == depthID;
+            });
+          }
+          else
+          {
+            stuckedEndLocationIt =
+              std::partition(beginLocationIt, endLocationIt, [depthID](auto const& location) { return location.DepthAndLocation.DepthID == depthID; });
+          }
+
+          std::size_t const stuckedElementNo = std::distance(beginLocationIt, stuckedEndLocationIt);
+
+          auto& entityIDs = node.second.GetEntities();
+          entityIDs.resize(stuckedElementNo);
+
+          LOOPIVDEP
+          for (std::size_t i = 0; i < stuckedElementNo; ++i)
+          {
+            entityIDs[i] = beginLocationIt->EntityID;
+            ++beginLocationIt;
+          }
+
+          elementNo -= stuckedElementNo;
+        }
+
+        if (elementNo == 0)
+        {
+          tree.m_nodes.emplace(std::move(node));
+          --depthID;
+          continue;
+        }
+
+        ++depthID;
+        auto const examinedLevel = tree.GetDepthMax() - depthID;
+        auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
+        auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->DepthAndLocation.LocID);
+        auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevel));
+        if constexpr (IS_PARALLEL_EXEC)
+        {
+          nodeStack[depthID].EndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) {
+            return childChecker.Test(location.DepthAndLocation.LocID);
+          });
+          node.second.AddChild(childKey);
+        }
+        else
+        {
+          nodeStack[depthID].EndLocationIt =
+            std::partition(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.DepthAndLocation.LocID); });
+          node.second.AddChildInOrder(childKey);
+        }
+
+        nodeStack[depthID].NodeInstance.first = std::move(childKey);
+        nodeStack[depthID].NodeInstance.second = tree.CreateChild(node.second, childKey);
+      }
+
       if constexpr (SPLIT_DEPTH_INCREASEMENT > 0)
       {
         // Eliminate duplicates. Not all sub-nodes will be created due to the maxElementNoInNode, which cause duplicates in the parent nodes.
