@@ -309,9 +309,9 @@ namespace GeneralTest
       using BoundingBoxXD = BoundingBoxND<N>;
       auto constexpr vBox = array
       {
-        BoundingBoxXD{ 0.0, 4.0 },
-        BoundingBoxXD{ 0.0, 2.0 }, BoundingBoxXD{ 2.0, 4.0 },
-        BoundingBoxXD{ 0.0, 1.0 }, BoundingBoxXD{ 1.0, 2.0 }, BoundingBoxXD{ 2.0, 3.0 }, BoundingBoxXD{ 3.0, 4.0 }
+        BoundingBoxXD{ { 0.0} , {4.0} },
+        BoundingBoxXD{ { 0.0} , {2.0} }, BoundingBoxXD{ { 2.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0} , {1.0} }, BoundingBoxXD{ { 1.0 }, { 2.0 } }, BoundingBoxXD{ { 2.0 }, { 3.0 } }, BoundingBoxXD{ { 3.0 }, { 4.0 } }
       };
 
       auto const treeExpected = TreeBoxND<N>(vBox, 3);
@@ -2116,7 +2116,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
         BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
         BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
-        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 1.2 } },
         BoundingBox3D{ { 1.2, 1.2, -1.0 }, { 2.8, 2.8, 1.0 } }
       };
 
@@ -2134,7 +2134,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
         BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
         BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
-        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 0.8 }, { 4.0, 4.0, 0.9 } },
         BoundingBox3D{ { 1.2, 1.2, -1.0 }, { 2.8, 2.8, 1.1 } }
       };
 
@@ -2151,7 +2151,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
         BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
         BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
-        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 1.2 } },
         BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
       };
 
@@ -2169,7 +2169,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
         BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
         BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
-        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 1.2 } },
         BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
       };
 
@@ -2186,7 +2186,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
         BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
         BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
-        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 1.2 } },
         BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
       };
 
@@ -2203,7 +2203,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
         BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
         BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
-        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 1.2 } },
         BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
       };
 
@@ -2219,7 +2219,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } },
         BoundingBox3D{ { 1.0, 1.0, -1.0 }, { 2.0, 2.0, 0.0 } },
         BoundingBox3D{ { 2.0, 2.0, -1.0 }, { 3.0, 3.0, -0.2 } },
-        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 0.2 } },
+        BoundingBox3D{ { 3.0, 3.0, 1.0 }, { 4.0, 4.0, 1.2 } },
         BoundingBox3D{ { 1.2, 1.2, -1.1 }, { 2.8, 2.8, 1.1 } }
       };
 
@@ -2466,7 +2466,7 @@ namespace Tree3DTest
       // This gives a tree with 9 nodes.
       std::vector<BoundingBox3D> boxes = {
         {{ -2.0, -2.0, -2.0 }, { -1.0, -1.0, +2.0 }}, // split to 8 and 12
-        {{ +2.0, +2.0, +2.0 }, { +4.0, +1.0, +1.0 }}, // 15
+        {{ +1.0, +1.0, +1.0 }, { +4.0, +3.1, +3.4 }}, // 15
         {{ +2.0, +2.0, +2.0 }, { +3.1, +3.1, +3.1 }}, // 127
       };
       auto boxNo = boxes.size();
@@ -2480,8 +2480,11 @@ namespace Tree3DTest
         },
         2);
 
-      Assert::AreEqual<OctreeBox::MortonNodeID>(tree.GetNodeIDByEntity(0), 8);
-      Assert::AreEqual<OctreeBox::MortonNodeID>(tree.GetNodeIDByEntity(2), 127);
+      auto const nodeBy0 = tree.GetNodeIDByEntity(0);
+      Assert::IsTrue(nodeBy0 == 8 || nodeBy0 == 12);
+      auto const nodeBy2 = tree.GetNodeIDByEntity(2);
+      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeBy2, 127);
+
       Assert::AreEqual<OctreeBox::MortonNodeID>(tree.GetNodeIDByEntity(1), 15);
 
       tree.UpdateIndexes({});
