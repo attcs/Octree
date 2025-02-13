@@ -1235,7 +1235,8 @@ namespace OrthoTree
       template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = TBox>
       inline constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox_ const& box) const noexcept
       {
-        auto gridID = std::array<DimArray<GridID>, 2>{};
+        std::array<DimArray<GridID>, 2> gridID;
+        constexpr IGM_Geometry zero = IGM_Geometry{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           IGM_Geometry boxMin, boxMax;
@@ -1250,31 +1251,26 @@ namespace OrthoTree
             boxMax = box.Max[dimensionID];
           }
 
+          assert(boxMin <= boxMax && "Wrong bounding box. Input error.");
           auto const minComponentRasterID = (boxMin - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
           auto const maxComponentRasterID = (boxMax - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
 
           if constexpr (DO_POINT_LIKE_CLASSIFICATION)
           {
-            gridID[0][dimensionID] = std::min<GridID>(m_maxRasterID, static_cast<GridID>(minComponentRasterID));
-            gridID[1][dimensionID] = std::min<GridID>(m_maxRasterID, static_cast<GridID>(maxComponentRasterID));
+            gridID[0][dimensionID] = std::min(m_maxRasterID, static_cast<GridID>(minComponentRasterID));
+            gridID[1][dimensionID] = std::min(m_maxRasterID, static_cast<GridID>(maxComponentRasterID));
           }
           else
           {
-            if (minComponentRasterID < IGM_Geometry(1))
-              gridID[0][dimensionID] = 0;
-            else if (minComponentRasterID > m_maxRasterID)
-              gridID[0][dimensionID] = m_maxRasterID;
-            else
-              gridID[0][dimensionID] = static_cast<GridID>(minComponentRasterID);
+            auto const maxRasterID = IGM_Geometry(m_maxRasterID + 1);
 
-            if (maxComponentRasterID < IGM_Geometry(1))
-              gridID[1][dimensionID] = 0;
-            else if (maxComponentRasterID > m_maxRasterID)
-              gridID[1][dimensionID] = m_maxRasterID;
-            else if (minComponentRasterID != maxComponentRasterID && std::floor(maxComponentRasterID) == maxComponentRasterID)
-              gridID[1][dimensionID] = static_cast<GridID>(maxComponentRasterID) - 1;
-            else
-              gridID[1][dimensionID] = static_cast<GridID>(maxComponentRasterID);
+            gridID[0][dimensionID] = static_cast<GridID>(std::clamp(minComponentRasterID, zero, maxRasterID));
+            gridID[1][dimensionID] = static_cast<GridID>(std::clamp(maxComponentRasterID, zero, maxRasterID));
+
+            if (gridID[0][dimensionID] != gridID[1][dimensionID] && std::floor(maxComponentRasterID) == maxComponentRasterID)
+            {
+              gridID[1][dimensionID] -= 1;
+            }
           }
         }
         return gridID;
