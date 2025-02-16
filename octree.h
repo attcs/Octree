@@ -54,6 +54,7 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #include <queue>
 #include <set>
 #include <span>
+#include <stack>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
@@ -2205,9 +2206,9 @@ namespace OrthoTree
     }
 
     template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
-    bool InsertWithoutRebalancingBase(MortonNodeIDCR parentNodeKey, MortonNodeIDCR entityNodeKey, TEntityID entityID, bool doInsertToLeaf) noexcept
+    bool InsertWithoutRebalancingBase(MortonNodeIDCR existingParentNodeKey, MortonNodeIDCR entityNodeKey, TEntityID entityID, bool doInsertToLeaf) noexcept
     {
-      if (entityNodeKey == parentNodeKey)
+      if (entityNodeKey == existingParentNodeKey)
       {
         detail::at(this->m_nodes, entityNodeKey).AddEntity(entityID);
         if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
@@ -2217,33 +2218,36 @@ namespace OrthoTree
 
       if (doInsertToLeaf)
       {
-        auto& newNode = this->m_nodes[entityNodeKey];
-        newNode.AddEntity(entityID);
-#ifndef ORTHOTREE__DISABLED_NODECENTER
-        newNode.SetCenter(this->CalculateNodeCenter(entityNodeKey));
-#endif
-        // Create all child between the new (entityNodeKey) and the smallest existing one (parentNodeKey)
-        auto newParentNodeKey = entityNodeKey;
-        do
+        auto nonExistingNodeStack = std::stack<MortonNodeID, std::vector<MortonNodeID>>{};
+        auto parentNodeKey = entityNodeKey;
+        for (; parentNodeKey != existingParentNodeKey; parentNodeKey = SI::GetParentKey(nonExistingNodeStack.top()))
         {
-          auto childNodeKey = newParentNodeKey;
-          newParentNodeKey = SI::GetParentKey(newParentNodeKey);
-          assert(SI::IsValidKey(parentNodeKey));
-          auto& newParentNode = this->m_nodes[newParentNodeKey];
-          newParentNode.AddChildInOrder(childNodeKey);
-#ifndef ORTHOTREE__DISABLED_NODECENTER
-          newParentNode.SetCenter(this->CalculateNodeCenter(newParentNodeKey));
-#endif
-        } while (newParentNodeKey != parentNodeKey);
+          if (this->m_nodes.contains(parentNodeKey))
+            break;
+
+          nonExistingNodeStack.push(parentNodeKey);
+        }
+
+        auto parentNodeIt = this->m_nodes.find(parentNodeKey);
+        for (; !nonExistingNodeStack.empty(); nonExistingNodeStack.pop())
+        {
+          MortonNodeIDCR newParentNodeKey = nonExistingNodeStack.top();
+
+          [[maybe_unused]] bool isSuccessful = false;
+          parentNodeIt->second.AddChildInOrder(newParentNodeKey);
+          std::tie(parentNodeIt, isSuccessful) = this->m_nodes.emplace(newParentNodeKey, this->CreateChild(parentNodeIt->second, newParentNodeKey));
+          assert(isSuccessful);
+        }
+        parentNodeIt->second.AddEntity(entityID);
       }
       else
       {
-        auto& parentNode = detail::at(this->m_nodes, parentNodeKey);
+        auto& parentNode = detail::at(this->m_nodes, existingParentNodeKey);
         if (parentNode.IsAnyChildExist())
         {
-          auto const parentDepth = SI::GetDepthID(parentNodeKey);
+          auto const parentDepth = SI::GetDepthID(existingParentNodeKey);
           auto const childID = SI::GetChildIDByDepth(parentDepth, SI::GetDepthID(entityNodeKey), entityNodeKey);
-          auto const childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
+          auto const childGenerator = typename SI::ChildKeyGenerator(existingParentNodeKey);
           auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
           parentNode.AddChildInOrder(childNodeKey);
