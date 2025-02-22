@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <charconv>
 #include <fstream>
+#include <random>
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -3238,5 +3239,105 @@ namespace LongIntAdaptor
       }
     }
 
+    template<int nDim, typename TGeometry>
+    [[maybe_unused]] std::vector<PointND<nDim, TGeometry>> readPointCloud__DXF_CSV(std::filesystem::path const& path)
+    {
+      auto points = std::vector<PointND<nDim, TGeometry>>{};
+      auto file = std::ifstream(path, std::ios::in);
+      if (file.fail())
+        return points;
+
+      auto line = std::string{};
+      while (std::getline(file, line))
+      {
+        if (file.fail())
+          return points;
+
+        if (line.find("AcDbEntity:AcDbPoint") == std::string::npos)
+          continue;
+
+        // 4010.19212715855,6499.81094676128,0,"0",,AcDbEntity:AcDbPoint,,D21C,
+        auto& point = points.emplace_back();
+        auto sw = std::string_view(line);
+        for (int iDim = 0; iDim < nDim; ++iDim)
+        {
+          auto const [ptr, ec] = std::from_chars(sw.data(), sw.data() + sw.length(), point[iDim]);
+          if (ec != std::errc{})
+            return points;
+
+          sw.remove_prefix(ptr - sw.data());
+          if (iDim < nDim - 1)
+            sw.remove_prefix(1); // comma
+        }
+      }
+
+      return points;
+    }
+
+    std::vector<std::size_t> kNNSearchBruteForce(std::vector<Point2D> const& points, Point2D const& point, int k){ 
+
+      std::vector<std::size_t> ids(points.size());
+      std::iota(ids.begin(), ids.end(), 0);
+      std::partial_sort(ids.begin(), ids.begin() + k + 1, ids.end(), [&](auto const& i1, auto const& i2) {
+        return std::hypot(point[0] - points[i1][0], point[1] - points[i1][1]) < std::hypot(point[0] - points[i2][0], point[1] - points[i2][1]);
+      });
+
+      return std::vector<std::size_t>(ids.begin(), ids.begin() + k);
+    }
+
+    TEST_METHOD(Issue36)
+    {
+      auto pointsNo = 1000;
+      auto points = std::vector<Point2D>(pointsNo);
+      auto rng = std::mt19937(0); 
+      for (int i = 0; i < pointsNo; ++i)
+      {
+        points[i][0] = double(rng() % 100000) / 1000.0;
+        points[i][1] = double(rng() % 100000) / 1000.0;
+      }
+      
+      auto const searchPoints = std::vector<Point2D>{
+        {  35.0, 105.0 },
+        {  27.0,  50.0 },
+        {  27.0,  26.0 },
+        {  73.0,  53.0 },
+        {  77.0,  26.0 },
+        {  84.0,  72.0 },
+        {  74.0,  39.0 },
+        {  45.0,  27.0 },
+        {  30.0,   2.0 },
+        {  95.0,  17.0 },
+        {  37.0,  53.0 },
+        {  86.0,  71.0 },
+        {  18.0,  68.0 },
+        {  23.0,  26.0 },
+        {  22.0,  84.0 },
+        {  84.0,  70.0 },
+        {  96.0,  35.0 },
+        {  71.0,  56.0 },
+        {  72.0,  41.0 },
+        { 103.0,  90.0 },
+        {  10.0,  56.0 },
+        {  29.0,  17.0 },
+        {  97.0,  89.0 },
+        {  9.00,  89.0 },
+        {  37.0, 103.0 },
+        {  23.0,  25.0 },
+        {  50.0,   2.0 },
+        { 109.0,  90.0 },
+        {  14.0,  65.0 },
+        { 102.0,  88.0 },
+      };
+      
+      auto const tree = QuadtreePoint(points, 10, std::nullopt, 5, false);
+      auto const k = 4;
+      for (auto const& searchPoint : searchPoints)
+      {
+        auto const expected = kNNSearchBruteForce(points, searchPoint, k);
+        auto const actual = tree.GetNearestNeighbors(searchPoint, k, points);
+        auto const areResultsMatch = std::is_permutation(expected.begin(), expected.end(), actual.begin());
+        Assert::IsTrue(areResultsMatch);
+      }
+    }
   };
 }
