@@ -4,15 +4,10 @@
 #include "../octree.h"
 #include "../octree_container.h"
 
-#define UseBoost
-#ifdef UseBoost
 // Boost
 #include <boost/geometry.hpp>
 #include "../adaptor.boost.h"
-#endif
 
-#define UseCGAL
-#ifdef UseCGAL
 // CGAL
 #include <CGAL/Bbox_2.h>
 #include <CGAL/Bbox_3.h>
@@ -26,22 +21,15 @@
 #include <CGAL/basic.h>
 #include <CGAL/cartesian.h>
 #include "../adaptor.cgal.h"
-#endif
 
-#define UseEigen
-#ifdef UseEigen
 // Eigen
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include "../adaptor.eigen.h"
-#endif
 
-//#define glmAdapter
-#ifdef UseGlm
 // glm
 #include <glm/glm.hpp>
 #include "../adaptor.glm.h"
-#endif
 
 // XYZ
 #include "../adaptor.xyz.h"
@@ -94,7 +82,7 @@ namespace
 
 
   // Boost
-  #ifdef UseBoost
+
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, typename boost::geometry::model::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& rayA)
   {
@@ -108,10 +96,10 @@ namespace
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, planeA.normal);
     planeA.origo_distance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
   }
-  #endif
+
   
   // CGAL
-#ifdef UseCGAL
+
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, CGAL::Ray_2<CGAL::Cartesian<double>>& rayA)
   {
@@ -144,10 +132,9 @@ namespace
   {
     planeA = CGAL::Plane_3<CGAL::Cartesian<double>>(planeO.Normal[0], planeO.Normal[1], planeO.Normal[2], -planeO.OrigoDistance);
   }
-  #endif
 
   // Eigen
-#ifdef UseEigen
+
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, Eigen::ParametrizedLine<typename TOrthoTreeA::TGeometry, DIMENSION_NO>& rayA)
   {
@@ -162,10 +149,10 @@ namespace
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, normalA);
     planeA = Eigen::Hyperplane<typename TOrthoTreeA::TGeometry, DIMENSION_NO>(normalA, typename TOrthoTreeA::TGeometry(-planeO.OrigoDistance));
   }
-#endif
+
 
   // glm
-  #ifdef glmAdapter
+
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
   void rayConv(TRay const& rayO, typename glm::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& rayA)
   {
@@ -179,7 +166,7 @@ namespace
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, planeA.normal);
     planeA.origo_distance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
   }
-  #endif
+
 
   // Unreal
 
@@ -540,7 +527,7 @@ namespace XYZAdapter
     containerBoxTest2D<XYZ::QuadtreeBoxC>();
   }
 } // namespace XYZAdapter
-#ifdef UseBoost
+
 namespace BoostAdapter
 {
   TEST(Boost_CoreTest, Point3D)
@@ -553,8 +540,7 @@ namespace BoostAdapter
     containerBoxTest2D<boost::geometry::quadtree_box_c>();
   }
 } // namespace BoostAdapter
-#endif
-#ifdef UseCGAL
+
 namespace CGALAdapter
 {
   TEST(CGAL_CoreTest, Point3D)
@@ -567,9 +553,7 @@ namespace CGALAdapter
     containerBoxTest2D<CGAL::QuadtreeBoxC>();
   }
 } // namespace CGALAdapter
-#endif
 
-#ifdef UseEigen
 namespace EigenAdapter
 {
   TEST(Eigen_CoreTest, Point3D)
@@ -582,9 +566,8 @@ namespace EigenAdapter
     containerBoxTest2D<Eigen::QuadtreeBoxC2d>();
   }
 } // namespace EigenAdapter
-#endif
 
-#ifdef UseGlm
+
 namespace glmAdapter
 {
   TEST(glm_CoreTest, Point3D)
@@ -597,8 +580,6 @@ namespace glmAdapter
     containerBoxTest2D<glm::quadtree_box_c>();
   }
 } // namespace glmAdapter
-
-#endif
 
 namespace UnrealAdapter
 {
