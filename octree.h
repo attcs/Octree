@@ -180,7 +180,7 @@ namespace OrthoTree
     }
 
     template<typename TContainer>
-    constexpr typename TContainer::key_type getKeyPart(TContainer const& container, typename TContainer::value_type const& value) noexcept
+    constexpr typename TContainer::key_type getKeyPart(TContainer const&, typename TContainer::value_type const& value) noexcept
       requires(HasFirst<typename TContainer::value_type>)
     {
       return value.first;
@@ -322,7 +322,7 @@ namespace OrthoTree
     };
 
     template<typename TContainer>
-    inline constexpr void reserve(TContainer& c, std::size_t n) noexcept {};
+    inline constexpr void reserve(TContainer&, std::size_t) noexcept {};
 
     template<uint8_t e, typename TOut = std::size_t>
     consteval TOut pow2_ce()
@@ -1402,7 +1402,6 @@ namespace OrthoTree
 
           CRASH(); // Bad key
         }
-        return 0;
       }
 
       static inline constexpr NodeID RemoveSentinelBit(NodeIDCR key, std::optional<depth_t> depthIDOptional = std::nullopt) noexcept
@@ -2781,7 +2780,7 @@ namespace OrthoTree
 
       VisitNodes(
         smallestNodeKey,
-        [&](MortonNodeIDCR key, Node const& node) { foundNodes.push_back(key); },
+        [&](MortonNodeIDCR key, Node const&) { foundNodes.push_back(key); },
         [&](MortonNodeIDCR key, Node const& node) {
           return key != excludeNodeKey && IGM::DoesRangeContainBoxAD(GetNodeBox(SI::GetDepthID(key), GetNodeCenterMacro(this, key, node)), range);
         });
@@ -2976,7 +2975,7 @@ namespace OrthoTree
       auto const boxSpace = boxSpaceOptional.has_value() ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::GetBoxOfPointsAD(points);
       auto const pointNo = points.size();
 
-      auto const maxDepthNo = (!maxDepthNoIn || maxDepthNoIn == 0) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthNoIn;
+      auto const maxDepthNo = (!maxDepthNoIn || maxDepthNoIn == depth_t{}) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthNoIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
       if (points.empty())
         return;
@@ -3012,7 +3011,8 @@ namespace OrthoTree
       tree.m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
 
       auto beginLocationIt = locations.begin();
-      for (int depthID = 0; depthID >= 0;)
+      auto constexpr exitDepthID = depth_t(-1);
+      for (depth_t depthID = 0; depthID != exitDepthID;)
       {
         auto& [node, endLocationIt] = nodeStack[depthID];
         std::size_t const elementNo = std::distance(beginLocationIt, endLocationIt);
@@ -3134,8 +3134,8 @@ namespace OrthoTree
       if (!SI::IsValidKey(nodeKey))
         return false; // old box is not in the handled space domain
 
-      auto& node = detail::at(this->m_nodes, nodeKey);
-      bool const isEntityRemoved = node.RemoveEntity(entitiyID);
+      auto& entityNode = detail::at(this->m_nodes, nodeKey);
+      bool const isEntityRemoved = entityNode.RemoveEntity(entitiyID);
       if (!isEntityRemoved)
         return false; // id was not registered previously.
 
@@ -3145,7 +3145,7 @@ namespace OrthoTree
           node.DecreaseEntityIDs(entitiyID);
       }
 
-      this->RemoveNodeIfPossible(nodeKey, node);
+      this->RemoveNodeIfPossible(nodeKey, entityNode);
 
       return true;
     }
@@ -3544,10 +3544,10 @@ namespace OrthoTree
       LOOPIVDEP
       for (std::size_t iBox = 0; iBox < additionalBoxNo; ++iBox)
       {
-        auto& location = additionalLocations.at(locationNo + iBox);
-        location.EntityID = entityID;
-        location.DepthAndLocation.DepthID = depthID;
-        location.DepthAndLocation.LocID = SI::Encode(gridIDs[iBox + 1]);
+        auto& subLocation = additionalLocations.at(locationNo + iBox);
+        subLocation.EntityID = entityID;
+        subLocation.DepthAndLocation.DepthID = depthID;
+        subLocation.DepthAndLocation.LocID = SI::Encode(gridIDs[iBox + 1]);
       }
     }
 
@@ -3582,15 +3582,12 @@ namespace OrthoTree
     {
       auto const boxSpace = boxSpaceOptional.has_value() ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::GetBoxOfBoxesAD(boxes);
       auto const entityNo = boxes.size();
-      auto const maxDepthNo = (!maxDepthIn || maxDepthIn == 0) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
+      auto const maxDepthNo = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
 
       detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
       if (entityNo == 0)
         return;
-
-      auto constexpr rootKey = SI::GetRootKey();
-      auto& nodeRoot = detail::at(tree.m_nodes, rootKey);
 
       auto locations = LocationContainer(entityNo);
       auto constexpr NON_SPLITTED = SPLIT_DEPTH_INCREASEMENT == 0;
@@ -3665,7 +3662,8 @@ namespace OrthoTree
       tree.m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
 
       auto beginLocationIt = locations.begin();
-      for (int depthID = 0; depthID >= 0;)
+      auto constexpr exitDepthID = depth_t(-1);
+      for (depth_t depthID = 0; depthID != exitDepthID;)
       {
         auto& [node, endLocationIt] = nodeStack[depthID];
 
