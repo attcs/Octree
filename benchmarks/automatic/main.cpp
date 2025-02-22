@@ -650,6 +650,8 @@ BENCHMARK(Benchmarks::Point::GetNearestNeighbors)->Arg(1000)->Arg(10000)->Unit(b
 BENCHMARK(Benchmarks::Point::FrustumCulling)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 0, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 0, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::Create<3, 1, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::Create<3, 1, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 2, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 2, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertToLeaf<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
@@ -657,22 +659,31 @@ BENCHMARK(Benchmarks::Box::InsertToLeaf<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::Update<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::PickSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
+BENCHMARK(Benchmarks::Box::PickSearch<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::PickSearch<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::RangeSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
+BENCHMARK(Benchmarks::Box::RangeSearch<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::RangeSearch<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::FrustumCulling<0>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::FrustumCulling<1>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::FrustumCulling<2>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<0, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<0, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::CollisionDetection<1, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::CollisionDetection<1, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<2, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<2, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedFirst<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::RayIntersectedFirst<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedFirst<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedAll<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::RayIntersectedAll<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedAll<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 
 // Run the benchmark
