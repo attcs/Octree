@@ -89,7 +89,7 @@ namespace
         for (auto _ : state)
         {
           for (auto const * nodePtr : nodePtrs)
-            benchmark::DoNotOptimize(tree.GetNodeEntities(*nodePtr));
+            tree.GetNodeEntities(*nodePtr);
         }
         SetIterationNo(state, entityNo);
       }
