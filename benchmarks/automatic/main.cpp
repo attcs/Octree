@@ -351,6 +351,7 @@ namespace
       template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT, bool IS_PARALLEL_EXEC>
       void Create(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr depth_t depth = 5;
 
         size_t entityNo = state.range();
@@ -358,13 +359,14 @@ namespace
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         for (auto _ : state)
         {
-          auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES, IS_PARALLEL_EXEC);
+          auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES, IS_PARALLEL_EXEC);
         }
       }
 
       template<uint32_t SPLIT_DEPTH_INCREASEMENT>
       static void InsertToLeaf(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -375,7 +377,7 @@ namespace
 
         for (auto _ : state)
         {
-          auto tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>();
+          auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>();
           tree.Init(boxSpace, depth);
 
           std::size_t entityID = 0;
@@ -391,6 +393,7 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT>
       static void InsertWithRebalancing(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -401,7 +404,7 @@ namespace
 
         for (auto _ : state)
         {
-          auto tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>();
+          auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>();
           tree.Init(boxSpace, depth);
 
           std::size_t entityID = 0;
@@ -417,6 +420,7 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT = 0>
       static void Update(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -426,7 +430,7 @@ namespace
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo * 10);
         auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
 
-        auto tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
+        auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
         for (auto _ : state)
         {
@@ -443,6 +447,7 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT>
       static void PickSearch(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -450,7 +455,7 @@ namespace
 
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
+        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
         constexpr size_t pointNo = 100;
         auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(pointNo, 1);
@@ -467,6 +472,7 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT>
       static void RangeSearch(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -474,7 +480,7 @@ namespace
 
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
+        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
         constexpr size_t boxNo = 100;
         auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1);
@@ -491,6 +497,7 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT>
       static void FrustumCulling(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -498,7 +505,7 @@ namespace
 
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
+        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
         auto const planes = std::vector{
           PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 1.0, 0.0, 0.0 } },
@@ -515,13 +522,14 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT, bool IS_PARALLEL_EXEC>
       static void CollisionDetection(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
         size_t entityNo = state.range();
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
+        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
         for (auto _ : state)
         {
@@ -533,6 +541,7 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT>
       static void CollisionDetection_WithOtherTree(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -540,8 +549,8 @@ namespace
         auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0);
         auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree0 = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities0, depth, boxSpace);
-        auto const tree1 = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities1, depth, boxSpace);
+        auto const tree0 = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities0, depth, boxSpace);
+        auto const tree1 = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities1, depth, boxSpace);
 
         for (auto _ : state)
         {
@@ -578,6 +587,7 @@ namespace
       template<uint32_t SPLIT_DEPTH_INCREASEMENT, bool IS_FIRST>
       static void RayIntersectedGeneral(benchmark::State& state)
       {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
@@ -585,7 +595,7 @@ namespace
 
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 2);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>(entities, depth, boxSpace);
+        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
         size_t constexpr rayNo = 100;
         auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo, 3);
@@ -652,41 +662,28 @@ BENCHMARK(Benchmarks::Box::Create<3, 0, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(
 BENCHMARK(Benchmarks::Box::Create<3, 0, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 1, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 1, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Create<3, 2, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Create<3, 2, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertToLeaf<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertToLeaf<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::InsertToLeaf<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::InsertWithRebalancing<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Update<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::PickSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::PickSearch<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
-BENCHMARK(Benchmarks::Box::PickSearch<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::RangeSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::RangeSearch<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
-BENCHMARK(Benchmarks::Box::RangeSearch<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::FrustumCulling<0>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::FrustumCulling<1>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::FrustumCulling<2>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<0, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<0, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<1, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection<1, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection<2, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection<2, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedFirst<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedFirst<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::RayIntersectedFirst<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedAll<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedAll<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::RayIntersectedAll<2>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 
 // Run the benchmark
 BENCHMARK_MAIN();

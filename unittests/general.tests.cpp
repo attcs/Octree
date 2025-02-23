@@ -389,38 +389,46 @@ namespace GeneralTest
       auto const handledSpaceDomain = BoundingBox1D{ -2, +2 };
       tree.Init(handledSpaceDomain, 3, 10);
 
-      // Trying to add into the lead nodes
+      // Trying to add into the leaf nodes
       {
         auto const boxes = array
         {
-          BoundingBox1D{ -2.0, -1.0 },   // Fit in the leaf node
-          BoundingBox1D{ -1.0,  0.0 },    // Fit in the leaf node
-          BoundingBox1D{  0.0,  1.0 },    // Fit in the leaf node
-          BoundingBox1D{  1.0,  2.0 },    // Fit in the leaf node
-          BoundingBox1D{ -1.5,  1.5 } // Only fit in a parent node
+          BoundingBox1D{ -2.0, -1.0 }, // 0, [4] -> [8|9]
+          BoundingBox1D{ -1.0,  0.0 }, // 1, [5] -> [10|11]
+          BoundingBox1D{  0.0,  1.0 }, // 2, [6] -> [12|13]
+          BoundingBox1D{  1.0,  2.0 }, // 3, [7] -> [14|15]
+          BoundingBox1D{ -1.5,  1.5 }, // 4, [1] -> [2|3]
         };
 
-        for (auto const Box : boxes)
+        for (auto const& box : boxes)
         {
-          auto const isInsertedSuccessfully = tree.Add(Box, true /* Insert into leaf */);
-          Assert::IsTrue(isInsertedSuccessfully);
+          auto const isSuccessfullyInserted = tree.Add(box, true /* Insert into leaf */);
+          Assert::IsTrue(isSuccessfullyInserted);
         }
+
+        auto const& nodes = tree.GetCore().GetNodes();
+        auto const entitiesInBFS = tree.GetCore().CollectAllEntitiesInBFS();
+        auto const entitiesInDFS = tree.GetCore().CollectAllEntitiesInDFS();
+
+        Assert::AreEqual<size_t>(15, nodes.size());
+        AreContainersItemsEqual(std::vector<size_t>{ 4, 4, 0, 0, 1, 1, 2, 2, 3, 3 }, entitiesInBFS);
+        AreContainersItemsEqual(std::vector<size_t>{ 4, 0, 0, 1, 1, 4, 2, 2, 3, 3 }, entitiesInDFS);
       }
 
       // Adding nodes in the current structure
       {
         auto const boxes = array
         {
-          BoundingBox1D{ -1.5, -1.2 },    // Fit in the leaf node
-          BoundingBox1D{ -1.2,  0.2 },    // Not fit in the leaf node
-          BoundingBox1D{  0.0,  1.0 },    // Fit in the leaf node
-          BoundingBox1D{ -1.1,  1.2 }     // Only fit in the root
+          BoundingBox1D{ -1.5, -1.2 }, // 5, [8]
+          BoundingBox1D{ -1.2,  0.2 }, // 6, [1]
+          BoundingBox1D{  0.0,  1.0 }, // 7, [6]
+          BoundingBox1D{ -1.1,  1.2 }  // 8, [1]
         };
 
-        for (auto const Box : boxes)
+        for (auto const box : boxes)
         {
-          auto const isInsertedSuccessfully = tree.Add(Box, false /* Insert into the previously defined nodes */);
-          Assert::IsTrue(isInsertedSuccessfully);
+          auto const isSuccessfullyInserted = tree.Add(box, false /* Insert into the previously defined nodes */);
+          Assert::IsTrue(isSuccessfullyInserted);
         }
       }
 
@@ -428,18 +436,83 @@ namespace GeneralTest
       // Outside of the handled domain
       {
         auto const boxIsNotInTheHandledSpace = BoundingBox1D{ 1, 3 }; // Min point inside, max point outside
-        auto const isInsertedSuccessfully = tree.Add(boxIsNotInTheHandledSpace);
-        Assert::IsFalse(isInsertedSuccessfully);
+        auto const isSuccessfullyInserted = tree.Add(boxIsNotInTheHandledSpace);
+        Assert::IsFalse(isSuccessfullyInserted);
       }
 
       auto const& nodes = tree.GetCore().GetNodes();
-      Assert::AreEqual<size_t>(7, nodes.size());
+      auto const entitiesInBFS = tree.GetCore().CollectAllEntitiesInBFS();
+      auto const entitiesInDFS = tree.GetCore().CollectAllEntitiesInDFS();
+
+      Assert::AreEqual<size_t>(15, nodes.size());
+      AreContainersItemsEqual(std::vector<size_t>{6, 8, 4, 4, 7, 0, 0, 5, 1, 1, 2, 2, 3, 3}, entitiesInBFS);
+      AreContainersItemsEqual(std::vector<size_t>{6, 8, 4, 0, 0, 5, 1, 1, 4, 7, 2, 2, 3, 3}, entitiesInDFS);
 
       auto const idsActual = tree.RangeSearch<false /*overlap instead of fully contained*/>(BoundingBox1D{ -1.1, 0.9 });
       auto const idsExpected = vector<size_t>{ /* 1. phase */ 0, 1, 2, 4, /* 2. phase */ 6, 7, 8 };
       Assert::IsTrue(std::ranges::is_permutation(idsActual, idsExpected));
     }
 
+    TEST_METHOD(InitThenInsertToLeaf)
+    {
+      auto tree = TreeBoxND<3, false>();
+      tree.Init(
+        BoundingBox3D{
+          { 0.0, 0.0, 0.0 },
+          { 8.0, 8.0, 8.0 }
+      },
+        5);
+      auto const entity = BoundingBox3D
+      {
+        { 3.15, 5.95, 6.79 },
+        { 3.95, 6.75, 7.59 }
+      };
+
+      tree.Insert(0, entity, true);
+      Assert::AreEqual<size_t>(2, tree.GetNodes().size());
+    }
+
+    TEST_METHOD(InitThenInsertWithRebalancingParentSplit)
+    {
+      auto const entities = std::vector<BoundingBox3D>{
+        { { 6.160, 3.850, 3.290 }, { 6.560, 4.250, 3.690 } },
+        { { 0.770, 5.250, 2.520 }, { 0.960, 5.440, 2.710 } },
+        { { 0.700, 3.640, 3.360 }, { 1.260, 4.200, 3.920 } },
+        { { 1.330, 5.180, 1.470 }, { 1.550, 5.400, 1.690 } },
+        { { 5.040, 3.570, 3.780 }, { 5.740, 4.270, 4.480 } },
+        { { 6.370, 6.580, 4.270 }, { 6.700, 6.910, 4.600 } },
+        { { 0.910, 5.810, 4.130 }, { 1.340, 6.240, 4.560 } },
+        { { 3.290, 5.600, 3.290 }, { 3.570, 5.880, 3.570 } },
+        { { 1.820, 4.410, 2.800 }, { 2.440, 5.030, 3.420 } },
+        { { 1.680, 1.470, 0.490 }, { 2.640, 2.430, 1.450 } },
+        { { 1.610, 6.580, 4.760 }, { 2.050, 7.020, 5.200 } },
+        { { 0.980, 2.940, 5.320 }, { 1.250, 3.210, 5.589 } },
+        { { 5.670, 2.450, 4.690 }, { 6.270, 3.050, 5.290 } },
+        { { 4.060, 5.040, 2.100 }, { 4.400, 5.380, 2.439 } }
+      };
+
+      auto tree = TreeBoxND<3, true>();
+      tree.Init(
+        BoundingBox3D{
+          { 0.0, 0.0, 0.0 },
+          { 8.0, 8.0, 8.0 }
+      },
+        5, 11);
+
+               
+      std::size_t entityID = 0;
+      for (auto const& entity : entities)
+      {
+        tree.InsertWithRebalancing(entityID, entity, entities);
+        ++entityID;
+      }
+      auto const nodeNo = tree.GetNodes().size();
+      auto const idsInBFS = tree.CollectAllEntitiesInBFS();
+      auto const idsInDFS = tree.CollectAllEntitiesInDFS();
+      Assert::AreEqual<size_t>(9, nodeNo);
+      Assert::IsTrue(idsInBFS == vector<size_t>{ 2, 9, 0, 4, 1, 2, 3, 7, 8, 0, 4, 13, 11, 4, 12, 6, 10, 4, 5 });
+      Assert::IsTrue(idsInDFS == vector<size_t>{ 2, 9, 0, 4, 1, 2, 3, 7, 8, 0, 4, 13, 11, 4, 12, 6, 10, 4, 5 });
+    }
 
     TEST_METHOD(EraseFromEmpty)
     {
@@ -982,11 +1055,11 @@ namespace GeneralTest
 
       auto constexpr boxes = array
       {
-        BoundingBox2D{ { 2.0, 0.0 }, { 3.0, 1.0 } },
-        BoundingBox2D{ { 3.0, 1.0 }, { 4.0, 2.0 } },
-        BoundingBox2D{ { 3.0, 2.0 }, { 4.0, 3.0 } },
-        BoundingBox2D{ { 2.0, 3.0 }, { 4.0, 4.0 } },
-        BoundingBox2D{ { 2.5, 2.5 }, { 3.5, 3.5 } },
+        BoundingBox2D{ { 2.0, 0.0 }, { 3.0, 1.0 } }, // 0, [4] -> [4] (only one)
+        BoundingBox2D{ { 3.0, 1.0 }, { 4.0, 2.0 } }, // 1, [5] -> [5] (only one)
+        BoundingBox2D{ { 3.0, 2.0 }, { 4.0, 3.0 } }, // 2, [7] -> [28|29]
+        BoundingBox2D{ { 2.0, 3.0 }, { 4.0, 4.0 } }, // 3, [1] -> [6|7]
+        BoundingBox2D{ { 2.5, 2.5 }, { 3.5, 3.5 } }, // 4, [1] -> [6|7]
       };
 
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
@@ -1415,12 +1488,12 @@ namespace Tree1DTest
       Assert::AreEqual<size_t>(9, nodes.size());
 
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 4 }, quadtreebox.GetNodeEntities(1)));
-      Assert::IsTrue(quadtreebox.IsNodeEntitiesEmpty(4));
+      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5 }, quadtreebox.GetNodeEntities(4)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5 }, quadtreebox.GetNodeEntities(5)));
 
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 0, 6 }, quadtreebox.GetNodeEntities(16)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 6 }, quadtreebox.GetNodeEntities(17)));
-      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 5 }, quadtreebox.GetNodeEntities(19)));
+      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1 }, quadtreebox.GetNodeEntities(19)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 2 }, quadtreebox.GetNodeEntities(28)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 3 }, quadtreebox.GetNodeEntities(31)));
     }
@@ -1451,12 +1524,12 @@ namespace Tree1DTest
       Assert::AreEqual<size_t>(9, nodes.size());
 
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 4 }, quadtreebox.GetNodeEntities(1)));
-      Assert::IsTrue(quadtreebox.IsNodeEntitiesEmpty(4));
+      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5 }, quadtreebox.GetNodeEntities(4)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 5 }, quadtreebox.GetNodeEntities(5)));
 
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 0, 6 }, quadtreebox.GetNodeEntities(16)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 6 }, quadtreebox.GetNodeEntities(17)));
-      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1, 5 }, quadtreebox.GetNodeEntities(19)));
+      Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 1 }, quadtreebox.GetNodeEntities(19)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 2 }, quadtreebox.GetNodeEntities(28)));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{ 3 }, quadtreebox.GetNodeEntities(31)));
     }
@@ -1572,8 +1645,12 @@ namespace Tree1DTest
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 1.0, 3.0 }, true));
 
       auto const& nodes = tree.GetNodes();
+      auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+      auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
+
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(1), vector<size_t>{ 4 }));
+      Assert::IsTrue(AreContainersItemsEqual(entitiesInBFS, vector<size_t>{ 4, 4, 0, 1, 2, 3 }));
+      Assert::IsTrue(AreContainersItemsEqual(entitiesInDFS, vector<size_t>{ 4, 0, 1, 4, 2, 3 }));
     }
 
 
@@ -1585,8 +1662,12 @@ namespace Tree1DTest
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 0.0, 2.0 }, true));
 
       auto const& nodes = tree.GetNodes();
+      auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+      auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
+
       Assert::AreEqual<size_t>(nodes.size(), 7);
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(2), vector<size_t>{ 4 }));
+      Assert::IsTrue(AreContainersItemsEqual(entitiesInBFS, vector<size_t>{ 0, 4, 1, 4, 2, 3 }));
+      Assert::IsTrue(AreContainersItemsEqual(entitiesInDFS, vector<size_t>{ 0, 4, 1, 4, 2, 3 }));
     }
 
 
@@ -2330,24 +2411,43 @@ namespace Tree3DTest
         Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_10, 1023); // It should stuck on a parent level
         ++pointNo;
 
-        points.emplace_back(Point3D{ +3.0, +3.0, +3.15 });
-        tree.Insert(pointNo, points.back(), false);
-        auto const nodeID_11 = tree.GetNodeIDByEntity(pointNo);
-        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_11, 1023); // It should stuck on a parent level
-        ++pointNo;
+        {
+          points.emplace_back(Point3D{ +3.0, +3.0, +3.15 });
+          tree.Insert(pointNo, points.back(), false);
+          auto const nodeID_11 = tree.GetNodeIDByEntity(pointNo);
+          Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_11, 1023); // It should stuck on a parent level
+          ++pointNo;
 
-        points.emplace_back(Point3D{ +3.75, +3.75, +3.75});
-        tree.InsertWithRebalancing(pointNo, points.back(), points);
-        auto const nodeID_12 = tree.GetNodeIDByEntity(pointNo);
-        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_12, 8191); // It should reoder the elements
-        ++pointNo;
+          auto const& nodes = tree.GetNodes();
+          auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+          auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
 
-        auto const nodeID_9_u = tree.GetNodeIDByEntity(9);
-        auto const nodeID_10_u = tree.GetNodeIDByEntity(10);
-        auto const nodeID_11_u = tree.GetNodeIDByEntity(11);
-        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_9_u, 523783);
-        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_10_u, 8188);
-        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_11_u, 523780);
+          Assert::AreEqual<size_t>(14, nodes.size());
+          Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 0, 1, 3, 5, 6, 8, 9, 10, 11, 2, 4, 7 });
+          Assert::IsTrue(entitiesInDFS == std::vector<std::size_t>{ 0, 1, 3, 2, 7, 4, 5, 6, 8, 9, 10, 11 });
+        }
+
+        {
+          points.emplace_back(Point3D{ +3.75, +3.75, +3.75 });
+          tree.InsertWithRebalancing(pointNo, points.back(), points);
+          auto const nodeID_12 = tree.GetNodeIDByEntity(pointNo);
+          Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_12, 8191); // It should reoder the elements
+          ++pointNo;
+
+          auto const nodeID_9_u = tree.GetNodeIDByEntity(9);
+          auto const nodeID_10_u = tree.GetNodeIDByEntity(10);
+          auto const nodeID_11_u = tree.GetNodeIDByEntity(11);
+          auto const& nodes = tree.GetNodes();
+          auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+          auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
+
+          Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_9_u, 523783);
+          Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_10_u, 8188);
+          Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_11_u, 523780);
+          Assert::AreEqual<size_t>(26, nodes.size());
+          Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 0, 1, 3, 2, 4, 10, 12, 6, 11, 9, 7, 8, 5 });
+          Assert::IsTrue(entitiesInDFS == std::vector<std::size_t>{ 0, 1, 3, 2, 7, 4, 6, 11, 9, 8, 5, 10, 12 });
+        }
 
         points.emplace_back(Point3D{ -2.0, -2.0, -2.0 });
         tree.InsertWithRebalancing(pointNo, points.back(), points);
@@ -2398,20 +2498,25 @@ namespace Tree3DTest
       tree.Update(4, oldbox4, points[4], points); // It should move and erase 1016
       auto const nodeID_4_u1 = tree.GetNodeIDByEntity(4);
       auto const nodeID_9_u1 = tree.GetNodeIDByEntity(9);
+      {
+        points[8] = { +3.0, +3.0, +3.75 };
+        tree.Update(8, points[8], points);
+        auto const nodeID_8_u1 = tree.GetNodeIDByEntity(8);
 
-      points[8] = { +3.0, +3.0, +3.75 };
-      tree.Update(8, points[8], points);
-      auto const nodeID_8_u1 = tree.GetNodeIDByEntity(8);
+        auto const& nodes = tree.GetNodes();
+        auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+        auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
 
-      auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_6_u1, 18612224);
+        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_2_u3, 69);
+        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_4_u1, 65528);
+        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_9_u1, 523783);
+        Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_8_u1, 65508);
 
-      Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_6_u1, 18612224);    
-      Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_2_u3, 69);   
-      Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_4_u1, 65528);
-      Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_9_u1, 523783);
-      Assert::AreEqual<OctreePoint::MortonNodeID>(nodeID_8_u1, 65508);
-
-      Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 1, 2, 3, 10, 8, 4, 11, 9, 13, 0, 6, 7, 5, 12, 14, 15 });
+        Assert::AreEqual<size_t>(38, nodes.size());
+        Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 1, 2, 3, 10, 8, 4, 11, 9, 0, 13, 6, 7, 5, 12, 14, 15 });
+        Assert::IsTrue(entitiesInDFS == std::vector<std::size_t>{ 2, 0, 13, 6, 1, 3, 7, 11, 9, 5, 10, 8, 4, 12, 14, 15 });
+      }
     }
   };
 
@@ -2500,23 +2605,42 @@ namespace Tree3DTest
 
       Assert::IsFalse(isOutsiderInserted);
 
-      boxes.emplace_back(BoundingBox3D{
-        {+3.0, +3.0, +3.0},
-        {+4.0, +4.0, +4.0}
-      });
-      tree.Insert(boxNo, boxes.back(), false);
-      auto const nodeID127 = tree.GetNodeIDByEntity(boxNo);
-      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID127, 127); // It should stuck on a parent level
-      ++boxNo;
+      {
+        boxes.emplace_back(BoundingBox3D{
+          { +3.0, +3.0, +3.0 },
+          { +4.0, +4.0, +4.0 }
+        });
+        tree.Insert(boxNo, boxes.back(), false);
+        auto const nodeID127 = tree.GetNodeIDByEntity(boxNo);
+        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID127, 127); // It should stuck on a parent level
+        ++boxNo;
 
-      boxes.emplace_back(BoundingBox3D{
-        {+2.0, +2.0, +2.0},
-        {+3.0, +3.0, +3.0}
-      });
-      tree.Insert(boxNo, boxes.back(), true);
-      auto const nodeID1016 = tree.GetNodeIDByEntity(boxNo);
-      Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1016, 1016); // It should place in the leaf node
-      ++boxNo;
+        auto const& nodes = tree.GetNodes();
+        auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+        auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
+
+        Assert::AreEqual<size_t>(5, nodes.size());
+        AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3 }, entitiesInBFS);
+        AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3 }, entitiesInDFS);
+      }
+
+      {
+        boxes.emplace_back(BoundingBox3D{
+          { +2.0, +2.0, +2.0 },
+          { +3.0, +3.0, +3.0 }
+        });
+        tree.Insert(boxNo, boxes.back(), true);
+
+        auto const& nodes = tree.GetNodes();
+        auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+        auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
+
+        Assert::AreEqual<size_t>(14, nodes.size());
+        AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4 }, entitiesInBFS);
+        AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4 }, entitiesInDFS);
+
+        ++boxNo;
+      }
 
       boxes.emplace_back(BoundingBox3D{
         {+3.0, +3.0, +3.0},
@@ -2546,32 +2670,49 @@ namespace Tree3DTest
         auto const nodeID1023_2 = tree.GetNodeIDByEntity(boxNo);
         Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1023_2, 1023); // It should stuck on a parent level
         ++boxNo;
+        {
+          boxes.emplace_back(BoundingBox3D{
+            { +3.0, +3.0, +3.1 },
+            { +3.5, +3.5, +3.2 }
+          });
+          tree.Insert(boxNo, boxes.back(), false); // 8
+          auto const nodeID1023_3 = tree.GetNodeIDByEntity(boxNo);
+          Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1023_3, 1023); // It should stuck on a parent level
+          ++boxNo;
 
-        boxes.emplace_back(BoundingBox3D{
-          {+3.0, +3.0, +3.1},
-          {+3.5, +3.5, +3.2}
-        });
-        tree.Insert(boxNo, boxes.back(), false); // 8
-        auto const nodeID1023_3 = tree.GetNodeIDByEntity(boxNo);
-        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID1023_3, 1023); // It should stuck on a parent level
-        ++boxNo;
+          auto const& nodes = tree.GetNodes();
+          auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+          auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
 
-        boxes.emplace_back(BoundingBox3D{
-          {+3.75, +3.75, +3.75},
-          {+4.0, +4.0, +4.0}
-        });
-        tree.InsertWithRebalancing(boxNo, boxes.back(), boxes); // 9
-        auto const nodeID8191 = tree.GetNodeIDByEntity(boxNo);
-        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8191, 8191); // It should reoder the elements
-        ++boxNo;
+          Assert::AreEqual<size_t>(15, nodes.size());
+          AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3, 5, 6, 7, 8, 4, 4, 4, 4, 4, 4, 4, 4 }, entitiesInBFS);
+          AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 6, 7, 8 }, entitiesInDFS);
+        }
+
+        {
+          boxes.emplace_back(BoundingBox3D{
+            { +3.75, +3.75, +3.75 },
+            {  +4.0,  +4.0,  +4.0 }
+          }); // [65535] -> newly creates 8191
+          tree.InsertWithRebalancing(boxNo, boxes.back(), boxes); // 9
+          auto const nodeID8191 = tree.GetNodeIDByEntity(boxNo);
+          Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8191, 8191); // It should reoder the elements
+          ++boxNo;
+
+          auto const& nodes = tree.GetNodes();
+          auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
+          auto const entitiesInDFS = tree.CollectAllEntitiesInDFS();
+
+          Assert::AreEqual<size_t>(22, nodes.size());
+          AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3, 5, 4, 4, 4, 4, 4, 4, 4, 4, 6, 7, 9, 8, 8, 8, 8 }, entitiesInBFS);
+          AreContainersItemsEqual(std::vector<size_t>{ 0, 0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 6, 8, 8, 8, 8, 7, 9 }, entitiesInDFS);
+        }
 
         // It should reoder the elements
         auto const nodeID8184_6 = tree.GetNodeIDByEntity(6);
         Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8184_6, 8184); 
         auto const nodeID8188_7 = tree.GetNodeIDByEntity(7);
         Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8188_7, 8188);
-        auto const nodeID8184_8 = tree.GetNodeIDByEntity(8);
-        Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID8184_8, 8184); 
 
         boxes.emplace_back(BoundingBox3D{
           { -2.0, -2.0, -2.0},
@@ -2643,7 +2784,7 @@ namespace Tree3DTest
       Assert::AreEqual<OctreeBox::MortonNodeID>(nodeID_8_u1, 65508); // It should move
 
       auto const entitiesInBFS = tree.CollectAllEntitiesInBFS();
-      Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 6, 0, 0, 1, 10, 2, 3, 5, 7, 8, 4, 9, }); // [0] should be repetead, because it is splitted. 
+      Assert::IsTrue(entitiesInBFS == std::vector<std::size_t>{ 6, 0, 0, 1, 10, 2, 3, 5, 7, 8, 4, 9, }); // [0] should be repeated, because it is splitted. 
     }
 
 
@@ -2688,7 +2829,7 @@ namespace LongIntAdaptor
   template <size_t N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorBasicsCustom<N>>;
   template <size_t N> using OrthoTreePointCustom = OrthoTreePoint<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorCustom<N>>;
   template <size_t N> using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainerPoint<OrthoTreePointCustom<N>>;
-  template <size_t N, depth_t nSplit = 2> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, nSplit, AdaptorCustom<N>>;
+  template <size_t N, bool DO_SPLIT_PARENT_ENTITIES = true> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, DO_SPLIT_PARENT_ENTITIES, AdaptorCustom<N>>;
   template <size_t N> using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainerBox<OrthoTreeBoxCustom<N>>;
 
 
@@ -3180,7 +3321,7 @@ namespace LongIntAdaptor
       if (boxes.empty())
         return;
 
-      using Tree = TreeBoxContainerND<3, 2, float>;
+      using Tree = TreeBoxContainerND<3, true, float>;
       auto const tree = Tree(boxes, 4, std::nullopt, 21, false);
 
       const auto boxOfTree = tree.GetCore().GetBox();
