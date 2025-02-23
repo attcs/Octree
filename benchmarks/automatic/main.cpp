@@ -89,7 +89,7 @@ namespace
         for (auto _ : state)
         {
           for (auto const * nodePtr : nodePtrs)
-            benchmark::DoNotOptimize(tree.GetNodeEntities(*nodePtr));
+            tree.GetNodeEntities(*nodePtr);
         }
         SetIterationNo(state, entityNo);
       }
@@ -655,8 +655,10 @@ BENCHMARK(Benchmarks::Box::Create<3, 1, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(1
 BENCHMARK(Benchmarks::Box::Create<3, 2, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 2, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertToLeaf<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::InsertToLeaf<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertToLeaf<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::InsertWithRebalancing<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<2>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
