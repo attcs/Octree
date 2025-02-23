@@ -1797,8 +1797,8 @@ namespace OrthoTree
       {
         if constexpr (IS_LINEAR_TREE)
         {
-          auto constexpr maskLastBits1 = (NodeID{ 1 } << DIMENSION_NO) - 1;
-          return CastMortonIDToChildID(key & maskLastBits1);
+          auto constexpr childMask = LocationID(CHILD_MASK);
+          return CastMortonIDToChildID(key & childMask);
         }
         else
         {
@@ -1870,6 +1870,7 @@ namespace OrthoTree
           }
         }
 
+        assert(dl.DepthID < MAX_THEORETICAL_DEPTH);
         return dl;
       }
 
