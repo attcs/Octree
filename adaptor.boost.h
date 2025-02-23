@@ -202,7 +202,7 @@ namespace OrthoTree
       BoostAdaptorGeneral<DIMENSION_NO, TGeometry>,
       TContainer>;
 
-    template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT, typename TGeometry, typename TContainer = std::span<boost::geometry::model::boxNd_t<DIMENSION_NO, TGeometry> const>>
+    template<dim_t DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES, typename TGeometry, typename TContainer = std::span<boost::geometry::model::boxNd_t<DIMENSION_NO, TGeometry> const>>
     using BoostOrthoTreeBoundingBox = OrthoTreeBoundingBox<
       DIMENSION_NO,
       boost::geometry::model::pointNd_t<DIMENSION_NO, TGeometry>,
@@ -210,7 +210,7 @@ namespace OrthoTree
       boost::geometry::model::rayNd_t<DIMENSION_NO, TGeometry>,
       boost::geometry::model::planeNd_t<DIMENSION_NO, TGeometry>,
       TGeometry,
-      SPLIT_DEPTH_INCREASEMENT,
+      DO_SPLIT_PARENT_ENTITIES,
       BoostAdaptorGeneral<DIMENSION_NO, TGeometry>,
       TContainer>;
   } // namespace BoostAdaptor
@@ -225,8 +225,8 @@ namespace boost::geometry
   template<int DIMENSION_NO, typename TGeometry = double, typename TContainer = std::span<model::pointNd_t<DIMENSION_NO, TGeometry> const>>
   using orthotree_point_t = BoostOrthoTreePoint<DIMENSION_NO, TGeometry, TContainer>;
 
-  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double, typename TContainer = std::span<model::boxNd_t<DIMENSION_NO, TGeometry> const>>
-  using orthotree_box_t = BoostOrthoTreeBoundingBox<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, TContainer>;
+  template<int DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = double, typename TContainer = std::span<model::boxNd_t<DIMENSION_NO, TGeometry> const>>
+  using orthotree_box_t = BoostOrthoTreeBoundingBox<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry, TContainer>;
 
 
   using quadtree_point_d = BoostOrthoTreePoint<2, double>;
@@ -240,18 +240,18 @@ namespace boost::geometry
   using octree_point = octree_point_d;
 
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using quadtree_box_ds = BoostOrthoTreeBoundingBox<2, SPLIT_DEPTH_INCREASEMENT, double>;
-  using quadtree_box_d = BoostOrthoTreeBoundingBox<2, 2, double>;
-  using quadtree_box_f = BoostOrthoTreeBoundingBox<2, 2, float>;
-  using quadtree_box_i = BoostOrthoTreeBoundingBox<2, 2, int>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using quadtree_box_ds = BoostOrthoTreeBoundingBox<2, DO_SPLIT_PARENT_ENTITIES, double>;
+  using quadtree_box_d = BoostOrthoTreeBoundingBox<2, true, double>;
+  using quadtree_box_f = BoostOrthoTreeBoundingBox<2, true, float>;
+  using quadtree_box_i = BoostOrthoTreeBoundingBox<2, true, int>;
   using quadtree_box = quadtree_box_d;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using octree_box_ds = BoostOrthoTreeBoundingBox<3, SPLIT_DEPTH_INCREASEMENT, double>;
-  using octree_box_d = BoostOrthoTreeBoundingBox<3, 2, double>;
-  using octree_box_f = BoostOrthoTreeBoundingBox<3, 2, float>;
-  using octree_box_i = BoostOrthoTreeBoundingBox<3, 2, int>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using octree_box_ds = BoostOrthoTreeBoundingBox<3, DO_SPLIT_PARENT_ENTITIES, double>;
+  using octree_box_d = BoostOrthoTreeBoundingBox<3, true, double>;
+  using octree_box_f = BoostOrthoTreeBoundingBox<3, true, float>;
+  using octree_box_i = BoostOrthoTreeBoundingBox<3, true, int>;
   using octree_box = octree_box_d;
 
   // Container types
@@ -270,21 +270,21 @@ namespace boost::geometry
   using octree_point_c = octree_point_c_d;
 
 
-  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double>
-  using orthotree_box_c_t = OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>>;
+  template<int DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = double>
+  using orthotree_box_c_t = OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using quadtree_box_c_ds = orthotree_box_c_t<2, SPLIT_DEPTH_INCREASEMENT, double>;
-  using quadtree_box_c_d = orthotree_box_c_t<2, 2, double>;
-  using quadtree_box_c_f = orthotree_box_c_t<2, 2, float>;
-  using quadtree_box_c_i = orthotree_box_c_t<2, 2, int>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using quadtree_box_c_ds = orthotree_box_c_t<2, DO_SPLIT_PARENT_ENTITIES, double>;
+  using quadtree_box_c_d = orthotree_box_c_t<2, true, double>;
+  using quadtree_box_c_f = orthotree_box_c_t<2, true, float>;
+  using quadtree_box_c_i = orthotree_box_c_t<2, true, int>;
   using quadtree_box_c = quadtree_box_c_d;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using octree_box_c_ds = orthotree_box_c_t<3, SPLIT_DEPTH_INCREASEMENT, double>;
-  using octree_box_c_d = orthotree_box_c_t<3, 2, double>;
-  using octree_box_c_f = orthotree_box_c_t<3, 2, float>;
-  using octree_box_c_i = orthotree_box_c_t<3, 2, int>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using octree_box_c_ds = orthotree_box_c_t<3, DO_SPLIT_PARENT_ENTITIES, double>;
+  using octree_box_c_d = orthotree_box_c_t<3, true, double>;
+  using octree_box_c_f = orthotree_box_c_t<3, true, float>;
+  using octree_box_c_i = orthotree_box_c_t<3, true, int>;
   using octree_box_c = octree_box_c_d;
 
 
@@ -304,18 +304,18 @@ namespace boost::geometry
   using octree_point_map = octree_point_map_d;
 
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using quadtree_box_map_ds = BoostOrthoTreeBoundingBox<2, SPLIT_DEPTH_INCREASEMENT, double, map_container<model::boxNd_t<2, double>>>;
-  using quadtree_box_map_d = BoostOrthoTreeBoundingBox<2, 2, double, map_container<model::boxNd_t<2, double>>>;
-  using quadtree_box_map_f = BoostOrthoTreeBoundingBox<2, 2, float, map_container<model::boxNd_t<2, float>>>;
-  using quadtree_box_map_i = BoostOrthoTreeBoundingBox<2, 2, int, map_container<model::boxNd_t<2, int>>>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using quadtree_box_map_ds = BoostOrthoTreeBoundingBox<2, DO_SPLIT_PARENT_ENTITIES, double, map_container<model::boxNd_t<2, double>>>;
+  using quadtree_box_map_d = BoostOrthoTreeBoundingBox<2, true, double, map_container<model::boxNd_t<2, double>>>;
+  using quadtree_box_map_f = BoostOrthoTreeBoundingBox<2, true, float, map_container<model::boxNd_t<2, float>>>;
+  using quadtree_box_map_i = BoostOrthoTreeBoundingBox<2, true, int, map_container<model::boxNd_t<2, int>>>;
   using quadtree_box_map = quadtree_box_map_d;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using octree_box_map_ds = BoostOrthoTreeBoundingBox<3, SPLIT_DEPTH_INCREASEMENT, double, map_container<model::boxNd_t<3, double>>>;
-  using octree_box_map_d = BoostOrthoTreeBoundingBox<3, 2, double, map_container<model::boxNd_t<3, double>>>;
-  using octree_box_map_f = BoostOrthoTreeBoundingBox<3, 2, float, map_container<model::boxNd_t<3, float>>>;
-  using octree_box_map_i = BoostOrthoTreeBoundingBox<3, 2, int, map_container<model::boxNd_t<3, int>>>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using octree_box_map_ds = BoostOrthoTreeBoundingBox<3, DO_SPLIT_PARENT_ENTITIES, double, map_container<model::boxNd_t<3, double>>>;
+  using octree_box_map_d = BoostOrthoTreeBoundingBox<3, true, double, map_container<model::boxNd_t<3, double>>>;
+  using octree_box_map_f = BoostOrthoTreeBoundingBox<3, true, float, map_container<model::boxNd_t<3, float>>>;
+  using octree_box_map_i = BoostOrthoTreeBoundingBox<3, true, int, map_container<model::boxNd_t<3, int>>>;
   using octree_box_map = octree_box_map_d;
 
   // Container types
@@ -335,22 +335,22 @@ namespace boost::geometry
   using octree_point_map_c = octree_point_map_c_d;
 
 
-  template<int DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = double>
+  template<int DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = double>
   using orthotree_box_map_c_t =
-    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, map_container<model::boxNd_t<DIMENSION_NO, TGeometry>>>>;
+    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry, map_container<model::boxNd_t<DIMENSION_NO, TGeometry>>>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, SPLIT_DEPTH_INCREASEMENT, double>;
-  using quadtree_box_map_c_d = orthotree_box_map_c_t<2, 2, double>;
-  using quadtree_box_map_c_f = orthotree_box_map_c_t<2, 2, float>;
-  using quadtree_box_map_c_i = orthotree_box_map_c_t<2, 2, int>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, DO_SPLIT_PARENT_ENTITIES, double>;
+  using quadtree_box_map_c_d = orthotree_box_map_c_t<2, true, double>;
+  using quadtree_box_map_c_f = orthotree_box_map_c_t<2, true, float>;
+  using quadtree_box_map_c_i = orthotree_box_map_c_t<2, true, int>;
   using quadtree_box_map_c = quadtree_box_map_c_d;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using octree_box_map_c_ds = orthotree_box_map_c_t<3, SPLIT_DEPTH_INCREASEMENT, double>;
-  using octree_box_map_c_d = orthotree_box_map_c_t<3, 2, double>;
-  using octree_box_map_c_f = orthotree_box_map_c_t<3, 2, float>;
-  using octree_box_map_c_i = orthotree_box_map_c_t<3, 2, int>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using octree_box_map_c_ds = orthotree_box_map_c_t<3, DO_SPLIT_PARENT_ENTITIES, double>;
+  using octree_box_map_c_d = orthotree_box_map_c_t<3, true, double>;
+  using octree_box_map_c_f = orthotree_box_map_c_t<3, true, float>;
+  using octree_box_map_c_i = orthotree_box_map_c_t<3, true, int>;
   using octree_box_map_c = octree_box_map_c_d;
 
 } // namespace boost::geometry

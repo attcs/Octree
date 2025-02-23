@@ -529,76 +529,76 @@ namespace OrthoTree
   template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType, typename TContainer = VectorSpan<DIMENSION_NO, TGeometry>>
   using TreePointContainerND = OrthoTreeContainerPoint<TreePointND<DIMENSION_NO, TGeometry, TContainer>>;
 
-  template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename TGeometry = BaseGeometryType, typename TContainer = BoxSpan<DIMENSION_NO, TGeometry>>
-  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry, TContainer>>;
+  template<dim_t DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = BaseGeometryType, typename TContainer = BoxSpan<DIMENSION_NO, TGeometry>>
+  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry, TContainer>>;
 
   // Dualtree for points
   using DualtreePointC = TreePointContainerND<1, BaseGeometryType>;
 
   // Dualtree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using DualtreeBoxCs = TreeBoxContainerND<1, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
-  using DualtreeBoxC = TreeBoxContainerND<1, 2, BaseGeometryType>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using DualtreeBoxCs = TreeBoxContainerND<1, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  using DualtreeBoxC = TreeBoxContainerND<1, true, BaseGeometryType>;
 
   // Quadtree for points
   using QuadtreePointC = TreePointContainerND<2, BaseGeometryType>;
 
   // Quadtree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxCs = TreeBoxContainerND<2, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
-  using QuadtreeBoxC = TreeBoxContainerND<2, 2, BaseGeometryType>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  using QuadtreeBoxC = TreeBoxContainerND<2, true, BaseGeometryType>;
 
   // Octree for points
   using OctreePointC = TreePointContainerND<3, BaseGeometryType>;
 
   // Octree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxCs = TreeBoxContainerND<3, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
-  using OctreeBoxC = TreeBoxContainerND<3, 2, BaseGeometryType>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  using OctreeBoxC = TreeBoxContainerND<3, true, BaseGeometryType>;
 
 
   // std::unordered_map-based Dualtree for points
   using DualtreePointMapC = TreePointContainerND<1, BaseGeometryType, VectorMap<1>>;
 
   // std::unordered_map-based Dualtree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using DualtreeBoxMapCs = TreeBoxContainerND<1, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType, BoxMap<1>>;
-  using DualtreeBoxMapC = TreeBoxContainerND<1, 2, BaseGeometryType, BoxMap<1>>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using DualtreeBoxMapCs = TreeBoxContainerND<1, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, BoxMap<1>>;
+  using DualtreeBoxMapC = TreeBoxContainerND<1, true, BaseGeometryType, BoxMap<1>>;
 
   // std::unordered_map-based Quadtree for points
   using QuadtreePointMapC = TreePointContainerND<2, BaseGeometryType, VectorMap<2>>;
 
   // std::unordered_map-based Quadtree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxMapCs = TreeBoxContainerND<2, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType, BoxMap<2>>;
-  using QuadtreeBoxMapC = TreeBoxContainerND<2, 2, BaseGeometryType, BoxMap<2>>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxMapCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, BoxMap<2>>;
+  using QuadtreeBoxMapC = TreeBoxContainerND<2, true, BaseGeometryType, BoxMap<2>>;
 
   // std::unordered_map-based Octree for points
   using OctreePointMapC = TreePointContainerND<3, BaseGeometryType, VectorMap<3>>;
 
   // std::unordered_map-based Octree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxMapCs = TreeBoxContainerND<3, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType, BoxMap<3>>;
-  using OctreeBoxMapC = TreeBoxContainerND<3, 2, BaseGeometryType, BoxMap<3>>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxMapCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, BoxMap<3>>;
+  using OctreeBoxMapC = TreeBoxContainerND<3, true, BaseGeometryType, BoxMap<3>>;
 
   // User-defined container-based Quadtree for points
   template<typename TContainer>
   using QuadtreePointUDMapC = TreePointContainerND<2, BaseGeometryType, TContainer>;
 
   // User-defined container-based Quadtree for bounding boxes
-  template<typename TContainer, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxUDMapCs = TreeBoxContainerND<2, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType, TContainer>;
+  template<typename TContainer, bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxUDMapCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, TContainer>;
   template<typename TContainer>
-  using QuadtreeBoxUDMapC = TreeBoxContainerND<2, 2, BaseGeometryType, TContainer>;
+  using QuadtreeBoxUDMapC = TreeBoxContainerND<2, true, BaseGeometryType, TContainer>;
 
   // User-defined container-based Octree for points
   template<typename TContainer>
   using OctreePointUDMapC = TreePointContainerND<3, BaseGeometryType, TContainer>;
 
   // User-defined container-based Octree for bounding boxes
-  template<typename TContainer, uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxUDMapCs = TreeBoxContainerND<3, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType, TContainer>;
+  template<typename TContainer, bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxUDMapCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, TContainer>;
   template<typename TContainer>
-  using OctreeBoxUDMapC = TreeBoxContainerND<3, 2, BaseGeometryType, TContainer>;
+  using OctreeBoxUDMapC = TreeBoxContainerND<3, true, BaseGeometryType, TContainer>;
 } // namespace OrthoTree
 #endif // ORTHOTREE_CONTAINER_GUARD
