@@ -102,7 +102,7 @@ namespace CustomGeometryType
     MyRay2D, 
     MyPlane2D, 
     float, 
-    2, 
+    true, 
     AdaptorCustom>;
 }
 
@@ -550,7 +550,7 @@ namespace AdaptorTest
 
     using QuadtreePointCustom = OrthoTree::OrthoTreePoint<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, AdaptorCustom>;
 
-    using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, 2, AdaptorCustom>;
+    using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, true, AdaptorCustom>;
     using QuadtreeBoxCustomC = OrthoTreeContainerBox<QuadtreeBoxCustom>;
 
     TEST_CLASS(AbstractAdaptorTest)

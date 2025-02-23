@@ -190,29 +190,29 @@ namespace XYZ
   using QuadtreePoint =
     OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, std::span<XYPoint2D const>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
   using QuadtreeBox =
-    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYAdaptorGeneral, std::span<XYBoundingBox2D const>>;
+    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYAdaptorGeneral, std::span<XYBoundingBox2D const>>;
 
   using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<SPLIT_DEPTH_INCREASEMENT>>;
-  using QuadtreeBoxC = QuadtreeBoxCs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<DO_SPLIT_PARENT_ENTITIES>>;
+  using QuadtreeBoxC = QuadtreeBoxCs<true>;
 
   using OctreePoint =
     OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
   using OctreeBox =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
 
 
   using OcreePointC = OrthoTreeContainerPoint<OctreePoint>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxCs = OrthoTreeContainerBox<OctreeBox<SPLIT_DEPTH_INCREASEMENT>>;
-  using OctreeBoxC = OctreeBoxCs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxCs = OrthoTreeContainerBox<OctreeBox<DO_SPLIT_PARENT_ENTITIES>>;
+  using OctreeBoxC = OctreeBoxCs<true>;
 
 
   // Map types
@@ -221,25 +221,25 @@ namespace XYZ
 
   using QuadtreePointMap = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, Map<XYPoint2D>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
   using QuadtreeBoxMap =
-    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYAdaptorGeneral, Map<XYBoundingBox2D>>;
+    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYAdaptorGeneral, Map<XYBoundingBox2D>>;
 
   using QuadtreePointMapC = OrthoTreeContainerPoint<QuadtreePointMap>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxMapCs = OrthoTreeContainerBox<QuadtreeBoxMap<SPLIT_DEPTH_INCREASEMENT>>;
-  using QuadtreeBoxMapC = QuadtreeBoxMapCs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxMapCs = OrthoTreeContainerBox<QuadtreeBoxMap<DO_SPLIT_PARENT_ENTITIES>>;
+  using QuadtreeBoxMapC = QuadtreeBoxMapCs<true>;
 
   using OctreePointMap = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, Map<XYZPoint3D>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
   using OctreeBoxMap =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, SPLIT_DEPTH_INCREASEMENT, XYZAdaptorGeneral, Map<XYZBoundingBox3D>>;
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYZAdaptorGeneral, Map<XYZBoundingBox3D>>;
 
   using OcreePointMapC = OrthoTreeContainerPoint<OctreePointMap>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxMapCs = OrthoTreeContainerBox<OctreeBoxMap<SPLIT_DEPTH_INCREASEMENT>>;
-  using OctreeBoxMapC = OctreeBoxMapCs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxMapCs = OrthoTreeContainerBox<OctreeBoxMap<DO_SPLIT_PARENT_ENTITIES>>;
+  using OctreeBoxMapC = OctreeBoxMapCs<true>;
 } // namespace XYZ
