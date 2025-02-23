@@ -339,6 +339,88 @@ namespace OrthoTree
       assert(e >= 0 && e < (sizeof(TOut) * CHAR_BIT));
       return TOut{ 1 } << e;
     }
+
+    template<typename T, std::size_t N>
+    class inplace_vector
+    {
+    private:
+      using container = std::array<T, N>;
+
+    public:
+      using value_type = typename container::value_type;
+      using reference = T&;
+      using const_reference = const T&;
+      using size_type = typename std::size_t;
+      using iterator = container::iterator;
+      using const_iterator = container::const_iterator;
+
+    public:
+      constexpr inplace_vector() = default;
+
+      template<typename... TVals>
+      constexpr T& emplace_back(TVals&&... value)
+      {
+        assert(m_size < N);
+        m_stack[m_size] = T(std::forward<TVals>(value)...);
+        return m_stack[m_size++];
+      }
+
+
+      constexpr void push_back(const T& value)
+      {
+        m_stack[m_size] = value;
+        ++m_size;
+      }
+
+      constexpr T& operator[](std::size_t index) { return m_stack[index]; }
+
+      constexpr T const& operator[](std::size_t index) const { return m_stack[index]; }
+
+      constexpr std::size_t size() const { return m_size; }
+
+      constexpr bool empty() const noexcept { return m_size == 0; }
+
+      constexpr iterator insert(iterator whereIt, T const& val)
+      {
+        for (auto it = m_stack.begin() + m_size; it != whereIt; --it)
+        {
+          *it = std::move(*(it - 1));
+        }
+        *whereIt = std::move(val);
+        ++m_size;
+        return whereIt;
+      }
+
+      constexpr bool erase(iterator it)
+      {
+        if (it < begin() || it >= end())
+        {
+          return false;
+        }
+
+        for (auto it2 = it; it2 != end() - 1; ++it2)
+        {
+          *it2 = std::move(*(it2 + 1));
+        }
+
+        --m_size;
+        return true;
+      }
+
+      constexpr void clear() { m_size = 0; }
+
+      constexpr iterator begin() { return m_stack.begin(); }
+
+      constexpr iterator end() { return m_stack.begin() + m_size; }
+
+      constexpr const_iterator begin() const { return m_stack.begin(); }
+
+      constexpr const_iterator end() const { return m_stack.begin() + m_size; }
+
+    private:
+      container m_stack;
+      std::size_t m_size = 0;
+    };
   } // namespace detail
 
 #ifdef _MSC_VER
@@ -1824,11 +1906,12 @@ namespace OrthoTree
     {
     public:
       using EntityContainer = typename std::vector<TEntityID>;
+      using ChildContainer = typename std::conditional_t<DIMENSION_NO < 4, detail::inplace_vector<MortonNodeID, SI::CHILD_NO>, std::vector<MortonNodeID>>;
 
     private:
-      EntityContainer m_entities = {};
+      EntityContainer m_entities;
+      ChildContainer m_children;
 
-      std::vector<MortonNodeID> m_children;
 #ifndef ORTHOTREE__DISABLED_NODECENTER
       IGM::Vector m_center;
 #endif
@@ -1929,7 +2012,7 @@ namespace OrthoTree
 
       inline constexpr bool IsAnyChildExist() const noexcept { return !m_children.empty(); }
 
-      inline constexpr std::vector<MortonNodeID> const& GetChildren() const noexcept { return m_children; }
+      inline constexpr auto const& GetChildren() const noexcept { return m_children; }
     };
 
   protected: // Aid struct to partitioning and distance ordering
@@ -3375,7 +3458,7 @@ namespace OrthoTree
           farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
           return true;
         },
-        [&](std::vector<MortonNodeID> const& originalChildren) {
+        [&](Node::ChildContainer const& originalChildren) {
           auto childrenDistance = std::vector<std::pair<MortonNodeID, TGeometry>>();
           for (MortonLocationIDCR childNodeKey : originalChildren)
           {
