@@ -1285,16 +1285,19 @@ namespace OrthoTree
           }
           else
           {
-            auto const maxRasterID = IGM_Geometry(m_maxRasterID + 1);
+            auto const maxRasterID = IGM_Geometry(m_maxRasterResolution);
 
             gridID[0][dimensionID] = static_cast<GridID>(std::clamp(minComponentRasterID, zero, maxRasterID));
             gridID[1][dimensionID] = static_cast<GridID>(std::clamp(maxComponentRasterID, zero, maxRasterID));
 
-            if (gridID[0][dimensionID] != gridID[1][dimensionID] && std::floor(maxComponentRasterID) == maxComponentRasterID)
+            if ((gridID[0][dimensionID] != gridID[1][dimensionID] && std::floor(maxComponentRasterID) == maxComponentRasterID) || gridID[1][dimensionID] >= m_maxRasterResolution)
             {
-              gridID[1][dimensionID] -= 1;
+              --gridID[1][dimensionID];
             }
           }
+
+          assert(gridID[0][dimensionID] < m_maxRasterResolution);
+          assert(gridID[1][dimensionID] < m_maxRasterResolution);
         }
         return gridID;
       }
