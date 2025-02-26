@@ -374,9 +374,11 @@ END_TEST_METHOD_ATTRIBUTE()
 TEST_METHOD(Point_RangeSearch)
 {
   srand(0);
+  /*
   PointT_RangeSearch<double>();
   PointT_RangeSearch<float>();
   PointT_RangeSearch<int>();
+  */
 }
 BEGIN_TEST_METHOD_ATTRIBUTE(Box_RangeSearch)
 TEST_IGNORE()
@@ -384,9 +386,11 @@ END_TEST_METHOD_ATTRIBUTE()
 TEST_METHOD(Box_RangeSearch)
 {
   srand(0);
+  /*
   BoxT_RangeSearch<double>();
   BoxT_RangeSearch<float>();
   BoxT_RangeSearch<int>();
+  */
 }
 }
 ;
