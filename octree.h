@@ -49,6 +49,7 @@ Node size is not stored within the nodes. It will be calculated ad-hoc everytime
 #include <functional>
 #include <iterator>
 #include <map>
+#include <memory_resource>
 #include <numeric>
 #include <optional>
 #include <queue>
@@ -1906,7 +1907,8 @@ namespace OrthoTree
     {
     public:
       using EntityContainer = typename std::vector<TEntityID>;
-      using ChildContainer = typename std::conditional_t<DIMENSION_NO < 4, detail::inplace_vector<MortonNodeID, SI::CHILD_NO>, std::vector<MortonNodeID>>;
+      using ChildContainer =
+        typename std::conditional_t < DIMENSION_NO<4, detail::inplace_vector<MortonNodeID, SI::CHILD_NO>, std::vector<MortonNodeID>>;
 
     private:
       EntityContainer m_entities;
@@ -2036,16 +2038,17 @@ namespace OrthoTree
 
 
     template<typename TData>
-    using LinearUnderlyingContainer = std::unordered_map<MortonNodeID, TData>;
+    using LinearUnderlyingContainer = std::pmr::unordered_map<MortonNodeID, TData>;
 
     template<typename TData>
-    using NonLinearUnderlyingContainer = std::map<MortonNodeID, TData, bitset_arithmetic_compare>;
+    using NonLinearUnderlyingContainer = std::pmr::map<MortonNodeID, TData, bitset_arithmetic_compare>;
 
     template<typename TData>
     using UnderlyingContainer = typename std::conditional_t<SI::IS_LINEAR_TREE, LinearUnderlyingContainer<TData>, NonLinearUnderlyingContainer<TData>>;
 
   protected: // Member variables
-    UnderlyingContainer<Node> m_nodes;
+    std::pmr::unsynchronized_pool_resource m_umrNodes;
+    UnderlyingContainer<Node> m_nodes = UnderlyingContainer<Node>(&m_umrNodes);
 
     std::size_t m_maxElementNo = 11;
     depth_t m_maxDepthNo = {};
@@ -2053,6 +2056,33 @@ namespace OrthoTree
     std::vector<typename IGM::Vector> m_nodeSizes;
 
     detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD> m_grid;
+
+  protected: // Constructors
+    OrthoTreeBase() = default;
+
+    OrthoTreeBase(OrthoTreeBase&&) = default;
+
+    OrthoTreeBase(OrthoTreeBase const& other)
+    : m_umrNodes()
+    , m_nodes(&m_umrNodes)
+    , m_maxElementNo(other.m_maxElementNo)
+    , m_maxDepthNo(other.m_maxDepthNo)
+    , m_nodeSizes(other.m_nodeSizes)
+    , m_grid(other.m_grid)
+    {
+      m_nodes = other.m_nodes;
+    }
+
+    OrthoTreeBase& operator=(OrthoTreeBase const& other)
+    {
+      m_maxElementNo = other.m_maxElementNo;
+      m_maxDepthNo = other.m_maxDepthNo;
+      m_nodeSizes = other.m_nodeSizes;
+      m_grid = other.m_grid;
+      m_nodes = other.m_nodes;
+      return *this;
+    }
+
 
   public: // Node helpers
     // Get EntityIDs of the node
