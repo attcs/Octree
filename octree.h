@@ -2776,7 +2776,7 @@ namespace OrthoTree
 
     std::tuple<MortonNodeID, depth_t> FindSmallestNodeKeyWithDepth(MortonNodeID searchKey) const noexcept
     {
-      for (depth_t depthID = this->m_maxDepthNo; SI::IsValidKey(searchKey); searchKey = SI::GetParentKey(searchKey), --depthID)
+      for (depth_t depthID = SI::GetDepthID(searchKey); SI::IsValidKey(searchKey); searchKey = SI::GetParentKey(searchKey), --depthID)
         if (this->m_nodes.contains(searchKey))
           return { searchKey, depthID };
 
