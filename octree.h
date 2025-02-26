@@ -3147,6 +3147,19 @@ namespace OrthoTree
     }
   };
 
+  namespace ExecutionTags
+  {
+    // Sequential execution tag
+    struct Sequential
+    {};
+
+    // Parallel execution tag
+    struct Parallel
+    {};
+  } // namespace ExecutionTags
+
+  auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
+  auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
 
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<
@@ -3203,6 +3216,18 @@ namespace OrthoTree
         this->template Create<true>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
       else
         this->template Create<false>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
+    }
+
+    template<typename EXEC_TAG>
+    inline OrthoTreePoint(
+      EXEC_TAG executionTag,
+      TContainer const& points,
+      std::optional<depth_t> maxDepthNoIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT,
+      bool isParallelExec = false) noexcept
+    {
+      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
     }
 
   private:
@@ -3771,6 +3796,18 @@ namespace OrthoTree
         this->template Create<false>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
     }
 
+    template<typename EXEC_TAG>
+    inline OrthoTreeBoundingBox(
+      EXEC_TAG executionTag,
+      TContainer const& boxes,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT,
+      bool isParallelExec = false) noexcept
+    {
+      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
+    }
+
   private: // Aid functions
     struct Location
     {
@@ -3801,7 +3838,7 @@ namespace OrthoTree
 
     // Build the tree in depth-first order
     template<bool IS_PARALLEL_EXEC = false>
-    inline constexpr void Build(LocationContainer & locations) noexcept
+    inline constexpr void Build(LocationContainer& locations) noexcept
     {
 
       detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));

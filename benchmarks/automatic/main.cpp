@@ -88,7 +88,7 @@ namespace
 
         for (auto _ : state)
         {
-          for (auto const * nodePtr : nodePtrs)
+          for (auto const* nodePtr : nodePtrs)
             tree.GetNodeEntities(*nodePtr);
         }
         SetIterationNo(state, entityNo);
@@ -155,9 +155,10 @@ namespace
         size_t entityNo = state.range();
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        auto constexpr executionTag = std::conditional_t<IS_PARALLEL_EXEC, ExecutionTags::Parallel, ExecutionTags::Sequential>{};
         for (auto _ : state)
         {
-          auto tree = TreePointND<DIMENSION_NO>(points, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES, IS_PARALLEL_EXEC);
+          auto tree = TreePointND<DIMENSION_NO>(executionTag, points, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES);
         }
       }
 
@@ -357,9 +358,10 @@ namespace
         size_t entityNo = state.range();
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+        auto constexpr executionTag = std::conditional_t<IS_PARALLEL_EXEC, ExecutionTags::Parallel, ExecutionTags::Sequential>{};
         for (auto _ : state)
         {
-          auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES, IS_PARALLEL_EXEC);
+          auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(executionTag, entities, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES);
         }
       }
 

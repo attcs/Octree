@@ -55,6 +55,7 @@ namespace OrthoTree
   public: // Constructors
     OrthoTreeContainerBase() noexcept = default;
 
+    // Constructor for any contiguous container with runtime parallel parameter
     explicit OrthoTreeContainerBase(
       std::span<TEntity const> const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -73,6 +74,7 @@ namespace OrthoTree
         OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
 
+    // Constructor for any copyable container with runtime parallel parameter
     explicit OrthoTreeContainerBase(
       TContainer const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -90,6 +92,7 @@ namespace OrthoTree
         OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
     }
 
+    // Constructor for any movable container with runtime parallel parameter
     explicit OrthoTreeContainerBase(
       TContainer&& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
@@ -105,6 +108,64 @@ namespace OrthoTree
         OrthoTreeCore::template Create<true>(m_tree, m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
       else
         OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthNo, boxSpace, maxElementNoInNode);
+    }
+
+    // Constructor for any contiguous container with compile-time parallel parameter
+    template<typename EXEC_TAG>
+    explicit OrthoTreeContainerBase(
+      EXEC_TAG executionTag,
+      std::span<TEntity const> const& geometryCollection,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      bool isParallelCreation = false) noexcept
+      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
+    {
+#ifdef __cpp_lib_execution
+#else
+      static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
+        m_tree, m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
+    }
+
+    // Constructor for any copyable container compile-time parallel parameter
+    template<typename EXEC_TAG>
+    explicit OrthoTreeContainerBase(
+      EXEC_TAG executionTag,
+      TContainer const& geometryCollection,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      bool isParallelCreation = false) noexcept
+    : m_geometryCollection(geometryCollection)
+    {
+#ifdef __cpp_lib_execution
+#else
+      static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
+        m_tree, m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
+    }
+
+    // Constructor for any movable container with compile-time parallel parameter
+    template<typename EXEC_TAG>
+    explicit OrthoTreeContainerBase(
+      EXEC_TAG executionTag,
+      TContainer&& geometryCollection,
+      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<TBox> boxSpace = std::nullopt,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      bool isParallelCreation = false) noexcept
+    : m_geometryCollection(std::move(geometryCollection))
+    {
+#ifdef __cpp_lib_execution
+#else
+      static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
+        m_tree, m_geometryCollection, maxDepthNo, std::move(boxSpace), maxElementNoInNode);
     }
 
 

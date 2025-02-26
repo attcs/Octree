@@ -12,7 +12,7 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * Adaptable to any existing geometric system
 * Adaptable to the original container of geometrical entities
 * Arbitrary number of dimensions for other scientific usages
-* Support of `std::execution` policies (so it is parallelizable)
+* Parallelization is available (via `std::execution` policies)
 * Edit functions to Insert/Update/Erase entities
 * Wide range of search functions
   * Range search
@@ -35,7 +35,8 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
-* Use the static member function `Create()` for a container (`std::unordered_map` or any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
+* Decide to let the geometry management for octree or not. `Container` types could manage the geometries life-cycle, meanwhile the `non-container` types are just update the relevant metadata about the changes.
+* Use `PAR_EXEC` tag as first parameter of constructor for parallel execution
 * Use `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Use `PlaneSearch()` / `PlaneIntersection()` / `PlanePositiveSegmentation()` member functions for hyperplane related searches
 * Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
@@ -216,11 +217,11 @@ Usage of Container types
         /* and more... */
       };
 
-      auto octreeUsingCtor = OctreeBoxC(boxes
+      auto octreeUsingCtor = OctreeBoxC(PAR_EXEC
+        , boxes
         , 3
         , std::nullopt
         , OctreeBox::DEFAULT_MAX_ELEMENT
-        , true // Set std::execution::parallel_unsequenced_policy
       );
 
       auto octreeUsingCreate = OctreeBoxC::Create<true>(boxes, 3);
