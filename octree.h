@@ -3214,7 +3214,7 @@ namespace OrthoTree
 
     // Build the tree in depth-first order
     template<bool IS_PARALLEL_EXEC = false>
-    inline constexpr void BuildTree(std::vector<Location>& locations) noexcept
+    inline constexpr void Build(std::vector<Location>& locations) noexcept
     {
       if constexpr (IS_PARALLEL_EXEC)
       {
@@ -3306,7 +3306,7 @@ namespace OrthoTree
         return Location{ detail::getKeyPart(points, point), tree.GetLocationID(detail::getValuePart(point)) };
       });
 
-      tree.template BuildTree<IS_PARALLEL_EXEC>(locations);
+      tree.template Build<IS_PARALLEL_EXEC>(locations);
     }
 
   public: // Edit functions
