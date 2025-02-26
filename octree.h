@@ -3799,40 +3799,17 @@ namespace OrthoTree
         [&](std::size_t permutationID, MortonChildID segmentID) { splitEntities[originalSize + permutationID] = { segmentID, locationIt }; });
     }
 
-  public: // Create
-    // Create
+    // Build the tree in depth-first order
     template<bool IS_PARALLEL_EXEC = false>
-    static void Create(
-      OrthoTreeBoundingBox& tree,
-      TContainer const& boxes,
-      std::optional<depth_t> maxDepthIn = std::nullopt,
-      std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+    inline constexpr void Build(LocationContainer & locations) noexcept
     {
-      auto const boxSpace = boxSpaceOptional.has_value() ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::GetBoxOfBoxesAD(boxes);
-      auto const entityNo = boxes.size();
-      auto const maxDepthNo = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
-      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
-
-      if (entityNo == 0)
-        return;
 
       detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
-
-      auto locations = LocationContainer(entityNo);
-
-      EXEC_POL_DEF(epf); // GCC 11.3
-      std::transform(EXEC_POL_ADD(epf) boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes](auto const& box) {
-        return Location{ detail::getKeyPart(boxes, box), tree.GetRangeLocationMetaData(detail::getValuePart(box)) };
-      });
-
       if constexpr (IS_PARALLEL_EXEC)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
         std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
       }
-
-      // Build the tree in depth-first order
 
       struct NodeStackData
       {
@@ -3843,10 +3820,10 @@ namespace OrthoTree
       };
 
       std::array<NodeStackData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
-      nodeStack[0] = NodeStackData{ *tree.m_nodes.find(SI::GetRootKey()), locations.end(), {}, {} };
+      nodeStack[0] = NodeStackData{ *this->m_nodes.find(SI::GetRootKey()), locations.end(), {}, {} };
       nodeStack[0].SplitEntitiesBeginIt = nodeStack[0].SplitEntities.begin();
 
-      tree.m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
+      this->m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
 
       auto beginLocationIt = locations.begin();
       auto constexpr exitDepthID = depth_t(-1);
@@ -3865,7 +3842,7 @@ namespace OrthoTree
           {
             auto nodeEntityNo = subtreeEntityNo;
 
-            isLeafNodeConditionFullfilled = (subtreeEntityNo > 0 && subtreeEntityNo < tree.m_maxElementNo) || depthID == maxDepthNo;
+            isLeafNodeConditionFullfilled = (subtreeEntityNo > 0 && subtreeEntityNo < this->m_maxElementNo) || depthID == this->m_maxDepthNo;
             if (!isLeafNodeConditionFullfilled)
             {
               typename std::vector<Location>::iterator stuckedEndLocationIt;
@@ -3912,7 +3889,7 @@ namespace OrthoTree
             }
 
             auto nodeEntityNo = subtreeEntityNo + nodeSplitEntityNo;
-            isLeafNodeConditionFullfilled = (nodeEntityNo > 0 && nodeEntityNo < tree.m_maxElementNo) || depthID == maxDepthNo;
+            isLeafNodeConditionFullfilled = (0 < nodeEntityNo && nodeEntityNo < this->m_maxElementNo) || depthID == this->m_maxDepthNo;
 
             auto& entityIDs = node.second.GetEntities();
             entityIDs.resize(isLeafNodeConditionFullfilled ? nodeEntityNo : nodeSplitEntityNo);
@@ -3955,7 +3932,7 @@ namespace OrthoTree
               for (std::size_t i = 0; i < stuckedEntityNo; ++i)
               {
                 if (!SI::IsAllChildTouched(beginLocationIt->DepthAndLocation.TouchedDimensionsFlag))
-                  tree.SplitEntityLocation(splitEntities, beginLocationIt);
+                  this->SplitEntityLocation(splitEntities, beginLocationIt);
                 else
                   entityIDs.emplace_back(beginLocationIt->EntityID);
 
@@ -3975,14 +3952,14 @@ namespace OrthoTree
 
         if (canNodeBeCommited)
         {
-          tree.m_nodes.emplace(std::move(node));
+          this->m_nodes.emplace(std::move(node));
           splitEntities.clear();
           --depthID;
           continue;
         }
 
         ++depthID;
-        auto const examinedLevel = tree.GetExaminationLevelID(depthID);
+        auto const examinedLevel = this->GetExaminationLevelID(depthID);
         auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
 
         if (beginLocationIt != endLocationIt)
@@ -4004,7 +3981,7 @@ namespace OrthoTree
           }
 
           nodeStack[depthID].NodeInstance.first = std::move(childKey);
-          nodeStack[depthID].NodeInstance.second = tree.CreateChild(node.second, childKey);
+          nodeStack[depthID].NodeInstance.second = this->CreateChild(node.second, childKey);
         }
         else // Split entities should also be processed
         {
@@ -4014,10 +3991,39 @@ namespace OrthoTree
             node.second.AddChildInOrder(childKey);
             nodeStack[depthID].EndLocationIt = nodeStack[depthID - 1].EndLocationIt;
             nodeStack[depthID].NodeInstance.first = std::move(childKey);
-            nodeStack[depthID].NodeInstance.second = tree.CreateChild(node.second, childKey);
+            nodeStack[depthID].NodeInstance.second = this->CreateChild(node.second, childKey);
           }
         }
       }
+    }
+
+  public: // Create
+    // Create
+    template<bool IS_PARALLEL_EXEC = false>
+    static void Create(
+      OrthoTreeBoundingBox& tree,
+      TContainer const& boxes,
+      std::optional<depth_t> maxDepthIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
+    {
+      auto const boxSpace = boxSpaceOptional.has_value() ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::GetBoxOfBoxesAD(boxes);
+      auto const entityNo = boxes.size();
+      auto const maxDepthNo = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
+      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
+
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
+      if (entityNo == 0)
+        return;
+
+      auto locations = LocationContainer(entityNo);
+
+      EXEC_POL_DEF(epf); // GCC 11.3
+      std::transform(EXEC_POL_ADD(epf) boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes](auto const& box) {
+        return Location{ detail::getKeyPart(boxes, box), tree.GetRangeLocationMetaData(detail::getValuePart(box)) };
+      });
+
+      tree.template Build<IS_PARALLEL_EXEC>(locations);
     }
 
   public: // Edit functions
