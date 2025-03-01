@@ -1340,12 +1340,18 @@ namespace OrthoTree
 
       inline constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(TVector const& point) const noexcept
       {
+        auto constexpr minRasterID = IGM_Geometry{};
+        auto const maxRasterID = static_cast<IGM_Geometry>(m_maxRasterResolution - 1);
+
         auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          auto const rasterID = (IGM_Geometry(AD::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
+          auto const rasterID = std::clamp(
+            (IGM_Geometry(AD::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID], minRasterID, maxRasterID);
           pointMinMaxGridID[0][dimensionID] = pointMinMaxGridID[1][dimensionID] = static_cast<GridID>(rasterID);
-          pointMinMaxGridID[0][dimensionID] -= (pointMinMaxGridID[0][dimensionID] > 0) && (floor(rasterID) == rasterID);
+
+          if (0 < pointMinMaxGridID[0][dimensionID] && pointMinMaxGridID[0][dimensionID] < m_maxRasterResolution)
+            pointMinMaxGridID[0][dimensionID] -= std::floor(rasterID) == rasterID;
         }
         return pointMinMaxGridID;
       }
