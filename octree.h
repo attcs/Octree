@@ -369,6 +369,7 @@ namespace OrthoTree
 
       constexpr void push_back(const T& value)
       {
+        assert(m_size < N);
         m_stack[m_size] = value;
         ++m_size;
       }
@@ -383,6 +384,7 @@ namespace OrthoTree
 
       constexpr iterator insert(iterator whereIt, T const& val)
       {
+        assert(m_size < N);
         for (auto it = m_stack.begin() + m_size; it != whereIt; --it)
         {
           *it = std::move(*(it - 1));
@@ -394,6 +396,8 @@ namespace OrthoTree
 
       constexpr bool erase(iterator it)
       {
+        assert(m_size > 0);
+
         if (it < begin() || it >= end())
         {
           return false;
