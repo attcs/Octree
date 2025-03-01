@@ -68,10 +68,7 @@ namespace Example
     TEST_METHOD(Example3)
     {
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
-      auto octreebox = OctreeBox{};
-      OctreeBox::Create<true>(octreebox, boxes, 3);
-      // or
-      // TreeBoxND<3>::template Create<true>(boxes, 3);
+      auto octree = OctreeBox(PAR_EXEC, boxes, 3);
     }
 
 
@@ -138,9 +135,7 @@ namespace Example
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
       // Using ctor
       {
-        auto octreeBox = OctreeBoxC(boxes, 3, std::nullopt, OctreeBox::DEFAULT_MAX_ELEMENT
-          , true // Set std::execution::parallel_unsequenced_policy
-        );
+        auto octreeBox = OctreeBoxC(PAR_EXEC, boxes, 3, std::nullopt, OctreeBox::DEFAULT_MAX_ELEMENT);
       }
       // Using Create
       {

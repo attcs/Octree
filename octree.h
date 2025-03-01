@@ -3153,13 +3153,19 @@ namespace OrthoTree
     }
   };
 
-  // Sequention exection tag
-  struct SEQ_EXEC
-  {};
+  namespace ExecutionTags
+  {
+    // Sequential execution tag
+    struct Sequential
+    {};
 
-  // Parallel exection tag
-  struct PAR_EXEC
-  {};
+    // Parallel execution tag
+    struct Parallel
+    {};
+  } // namespace ExecutionTags
+
+  auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
+  auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
 
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<
@@ -3227,10 +3233,7 @@ namespace OrthoTree
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT,
       bool isParallelExec = false) noexcept
     {
-      if constexpr (std::is_same_v<EXEC_TAG, PAR_EXEC>)
-        this->template Create<true>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
-      else
-        this->template Create<false>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
     }
 
   private:
@@ -3809,10 +3812,7 @@ namespace OrthoTree
       std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT,
       bool isParallelExec = false) noexcept
     {
-      if constexpr (std::is_same_v<EXEC_TAG, PAR_EXEC>)
-        this->template Create<true>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
-      else
-        this->template Create<false>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
+      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
     }
 
   private: // Aid functions
