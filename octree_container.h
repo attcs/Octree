@@ -184,7 +184,7 @@ namespace OrthoTree
     bool Update(TEntityID entityID, TEntity const& newEntity) noexcept
     {
       auto const oldEntity = detail::at(m_geometryCollection, entityID);
-      detail::set(m_geometryCollection, entityID, entityID);
+      detail::set(m_geometryCollection, entityID, newEntity);
       if (!m_tree.Update(entityID, oldEntity, newEntity, m_geometryCollection))
       {
         // restore the original state
