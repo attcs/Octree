@@ -3465,7 +3465,7 @@ namespace OrthoTree
     }
 
 
-    // Update id with rebalacing by the new point information and the erase part is aided by the old point geometry data
+    // Update id with rebalancing by the new point information and the erase part is aided by the old point geometry data
     bool Update(TEntityID entityID, TVector const& oldPoint, TVector const& newPoint, TContainer const& points) noexcept
     {
       if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), newPoint))

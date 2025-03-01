@@ -429,7 +429,7 @@ namespace
         size_t entityNo = state.range();
 
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo * 10);
+        auto entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo * 10);
         auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
 
         auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
@@ -438,7 +438,9 @@ namespace
         {
           for (size_t entityID = 0; entityID < updateEntities.size(); ++entityID)
           {
-            tree.Update(entityID, entities[entityID], updateEntities[entityID], entities);
+            auto oldEntity = entities[entityID];
+            entities[entityID] = updateEntities[entityID];
+            tree.Update(entityID, oldEntity, updateEntities[entityID], entities);
           }
         }
 

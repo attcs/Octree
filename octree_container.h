@@ -178,8 +178,10 @@ namespace OrthoTree
       m_tree.Init(boxSpace, maxDepthNo, maxElementNoInNode);
     }
 
+    // Get entity by ID
     TEntity const& Get(TEntityID entityID) const noexcept { return detail::at(m_geometryCollection, entityID); }
 
+    // Add entity without tree rebalancing
     bool Add(TEntity const& newEntity, bool doInsertToLeaf = false) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     {
@@ -191,6 +193,7 @@ namespace OrthoTree
       return true;
     }
 
+    // Add entity without tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
     bool Add(TEntityID newEntityID, TEntity const& newEntity, bool doInsertToLeaf = false) noexcept
       requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
@@ -208,6 +211,7 @@ namespace OrthoTree
       return true;
     }
 
+    // Add entity with tree rebalancing
     bool AddAndRebalance(TEntity const& newEntity) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     {
@@ -219,6 +223,7 @@ namespace OrthoTree
       return true;
     }
 
+    // Add entity with tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
     bool AddAndRebalance(TEntityID newEntityID, TEntity const& newEntity) noexcept
       requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
@@ -236,17 +241,37 @@ namespace OrthoTree
       return true;
     }
 
-    bool Update(TEntityID entityID, TEntity const& newData, bool doInsertToLeaf = false) noexcept
+    // Update with tree rebalancing
+    bool Update(TEntityID entityID, TEntity const& newEntity) noexcept
     {
-      if (m_tree.Update(entityID, detail::at(m_geometryCollection, entityID), newData, doInsertToLeaf))
+      auto const oldEntity = detail::at(m_geometryCollection, entityID);
+      detail::set(m_geometryCollection, entityID, newEntity);
+      if (!m_tree.Update(entityID, oldEntity, newEntity, m_geometryCollection))
       {
-        detail::set(m_geometryCollection, entityID, newData);
-        return true;
+        // restore the original state
+        detail::set(m_geometryCollection, entityID, oldEntity);
+        return false;
       }
 
-      return false;
+      return true;
     }
 
+    // Update without tree rebalancing
+    bool Update(TEntityID entityID, TEntity const& newEntity, bool doInsertToLeaf) noexcept
+    {
+      auto const oldEntity = detail::at(m_geometryCollection, entityID);
+      detail::set(m_geometryCollection, entityID, newEntity);
+      if (!m_tree.Update(entityID, oldEntity, newEntity, doInsertToLeaf))
+      {
+        // restore the original state
+        detail::set(m_geometryCollection, entityID, oldEntity);
+        return false;
+      }
+
+      return true;
+    }
+
+    // Erase entity by ID
     bool Erase(TEntityID entityID) noexcept
     {
       if (OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
@@ -266,28 +291,31 @@ namespace OrthoTree
       return true;
     }
 
+    // Clear the tree: remove all node and entity.
     inline void Clear() noexcept
     {
       m_tree.Clear();
       m_geometryCollection.clear();
     }
 
+    // Reset the tree: Same as clear but also reset the handled domain
     inline void Reset() noexcept
     {
       m_tree.Reset();
       m_geometryCollection.clear();
     }
 
+    // Collect all entity ID in breadth-first traverse order
     inline std::vector<TEntityID> CollectAllEntitiesInBFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllEntitiesInBFS(parentKey);
     }
 
+    // Collect all entity ID in depth-first traverse order
     inline std::vector<TEntityID> CollectAllEntitiesInDFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllEntitiesInDFS(parentKey);
     }
-
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
     inline std::vector<TEntityID> PlanePositiveSegmentation(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) const noexcept
