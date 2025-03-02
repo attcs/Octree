@@ -2081,10 +2081,10 @@ namespace OrthoTree
 
 #ifdef IS_PMR_USED
     template<typename TData>
-    using LinearUnderlyingContainer = std::pmr::unordered_map<MortonNodeID, TData>;
+    using LinearNodeContainer = std::pmr::unordered_map<MortonNodeID, TData>;
 
     template<typename TData>
-    using NonLinearUnderlyingContainer = std::pmr::map<MortonNodeID, TData, bitset_arithmetic_compare>;
+    using NonLinearNodeContainer = std::pmr::map<MortonNodeID, TData, bitset_arithmetic_compare>;
 #else
     template<typename TData>
     using LinearUnderlyingContainer = std::unordered_map<MortonNodeID, TData>;
@@ -2094,12 +2094,12 @@ namespace OrthoTree
 #endif // IS_PMR_USED
 
     template<typename TData>
-    using UnderlyingContainer = typename std::conditional_t<SI::IS_LINEAR_TREE, LinearUnderlyingContainer<TData>, NonLinearUnderlyingContainer<TData>>;
+    using NodeContainer = typename std::conditional_t<SI::IS_LINEAR_TREE, LinearNodeContainer<TData>, NonLinearNodeContainer<TData>>;
 
   protected: // Member variables
 #ifdef IS_PMR_USED
     std::pmr::unsynchronized_pool_resource m_umrNodes;
-    UnderlyingContainer<Node> m_nodes = UnderlyingContainer<Node>(&m_umrNodes);
+    NodeContainer<Node> m_nodes = NodeContainer<Node>(&m_umrNodes);
 #else
     UnderlyingContainer<Node> m_nodes;
 #endif
@@ -2269,7 +2269,7 @@ namespace OrthoTree
       detail::sortAndUnique(ids);
       return idsSizeBeforeUnique == ids.size();
     }
-    inline constexpr void TraverseSplitChildren(SI::RangeLocationMetaData const& location, auto&& setPermutationNo, auto&& action)
+    inline constexpr void TraverseSplitChildren(SI::RangeLocationMetaData const& location, auto&& setPermutationNo, auto&& action) const noexcept
     {
       MortonChildID const touchedDimensionNo = std::popcount(location.TouchedDimensionsFlag);
       MortonChildID const permutationNo = detail::pow2<MortonChildID, MortonChildID>(touchedDimensionNo);
@@ -3286,7 +3286,7 @@ namespace OrthoTree
         }
 
         ++depthID;
-        auto const examinedLevel = this->GetDepthMax() - depthID;
+        auto const examinedLevel = this->GetExaminationLevelID(depthID);
         auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
         auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->LocationID);
         auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevel));
@@ -3831,7 +3831,7 @@ namespace OrthoTree
     using SplitEntityContianer = std::vector<SplitItem>;
     using SplitEntityIterator = std::vector<SplitItem>::iterator;
 
-    void SplitEntityLocation(std::vector<SplitItem>& splitEntities, LocationIterator const& locationIt)
+    void SplitEntityLocation(std::vector<SplitItem>& splitEntities, LocationIterator const& locationIt) const noexcept
     {
       auto const originalSize = splitEntities.size();
       this->TraverseSplitChildren(
@@ -4376,7 +4376,7 @@ namespace OrthoTree
     static std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(
       OrthoTreeBoundingBox const& leftTree, TContainer const& leftBoxes, OrthoTreeBoundingBox const& rightTree, TContainer const& rightBoxes) noexcept
     {
-      using NodeIterator = typename Base::template UnderlyingContainer<Node>::const_iterator;
+      using NodeIterator = typename Base::template NodeContainer<Node>::const_iterator;
       struct NodeIteratorAndStatus
       {
         NodeIterator Iterator;
