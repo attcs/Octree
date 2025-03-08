@@ -3242,15 +3242,9 @@ namespace OrthoTree
     };
 
     // Build the tree in depth-first order
-    template<bool IS_PARALLEL_EXEC = false>
+    template<bool ARE_LOCATIONS_SORTED = false>
     inline constexpr void Build(std::vector<Location>& locations) noexcept
     {
-      if constexpr (IS_PARALLEL_EXEC)
-      {
-        EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end(), [&](auto const& l, auto const& r) { return l.LocationID < r.LocationID; });
-      }
-
       struct NodeStackData
       {
         std::pair<MortonNodeID, Node> NodeInstance;
@@ -3290,7 +3284,7 @@ namespace OrthoTree
         auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
         auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->LocationID);
         auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevel));
-        if constexpr (IS_PARALLEL_EXEC)
+        if constexpr (ARE_LOCATIONS_SORTED)
         {
           nodeStack[depthID].EndLocationIt =
             std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.LocationID); });
@@ -3334,8 +3328,14 @@ namespace OrthoTree
       std::transform(EXEC_POL_ADD(ept) points.begin(), points.end(), locations.begin(), [&](auto const& point) {
         return Location{ detail::getKeyPart(points, point), tree.GetLocationID(detail::getValuePart(point)) };
       });
+      constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
+      if constexpr (ARE_LOCATIONS_SORTED)
+      {
+        EXEC_POL_DEF(eps); // GCC 11.3
+        std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end(), [&](auto const& l, auto const& r) { return l.LocationID < r.LocationID; });
+      }
 
-      tree.template Build<IS_PARALLEL_EXEC>(locations);
+      tree.template Build<ARE_LOCATIONS_SORTED>(locations);
     }
 
   public: // Edit functions
@@ -3841,17 +3841,11 @@ namespace OrthoTree
     }
 
     // Build the tree in depth-first order
-    template<bool IS_PARALLEL_EXEC = false>
+    template<bool ARE_LOCATIONS_SORTED = false>
     inline constexpr void Build(LocationContainer& locations) noexcept
     {
 
       detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
-      if constexpr (IS_PARALLEL_EXEC)
-      {
-        EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
-      }
-
       struct NodeStackData
       {
         std::pair<MortonNodeID, Node> NodeInstance;
@@ -3887,7 +3881,7 @@ namespace OrthoTree
             if (!isLeafNodeConditionFullfilled)
             {
               typename std::vector<Location>::iterator stuckedEndLocationIt;
-              if constexpr (IS_PARALLEL_EXEC)
+              if constexpr (ARE_LOCATIONS_SORTED)
               {
                 stuckedEndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [depthID](auto const& location) {
                   return location.DepthAndLocation.DepthID == depthID;
@@ -3953,7 +3947,7 @@ namespace OrthoTree
             else
             {
               LocationIterator stuckedEndLocationIt;
-              if constexpr (IS_PARALLEL_EXEC)
+              if constexpr (ARE_LOCATIONS_SORTED)
               {
                 stuckedEndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [depthID](auto const& location) {
                   return location.DepthAndLocation.DepthID == depthID;
@@ -4007,7 +4001,7 @@ namespace OrthoTree
         {
           auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->DepthAndLocation.LocID);
           auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevel));
-          if constexpr (IS_PARALLEL_EXEC)
+          if constexpr (ARE_LOCATIONS_SORTED)
           {
             nodeStack[depthID].EndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) {
               return childChecker.Test(location.DepthAndLocation.LocID);
@@ -4064,7 +4058,14 @@ namespace OrthoTree
         return Location{ detail::getKeyPart(boxes, box), tree.GetRangeLocationMetaData(detail::getValuePart(box)) };
       });
 
-      tree.template Build<IS_PARALLEL_EXEC>(locations);
+      constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
+      if constexpr (ARE_LOCATIONS_SORTED)
+      {
+        EXEC_POL_DEF(eps); // GCC 11.3
+        std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
+      }
+
+      tree.template Build<ARE_LOCATIONS_SORTED>(locations);
     }
 
   public: // Edit functions
