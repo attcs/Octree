@@ -3767,9 +3767,10 @@ namespace OrthoTree
       auto const maxDepthNo = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
 
-      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
       if (entityNo == 0)
         return;
+
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
 
       auto locations = LocationContainer(entityNo);
       auto constexpr NON_SPLITTED = SPLIT_DEPTH_INCREASEMENT == 0;
@@ -3793,36 +3794,69 @@ namespace OrthoTree
       }
       else // Splitted with parallel execution
       {
-        auto additionalLocations = std::unordered_map<TEntityID, LocationContainer>{};
-        for (auto const& entity : boxes)
-          additionalLocations[detail::getKeyPart(boxes, entity)];
-
-        locations.reserve(entityNo * std::min<std::size_t>(10, SI::CHILD_NO * std::size_t{ SPLIT_DEPTH_INCREASEMENT }));
-        EXEC_POL_DEF(epf); // GCC 11.3
-        std::transform(EXEC_POL_ADD(epf) boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes, &additionalLocations](auto const& box) {
-          auto const entityID = detail::getKeyPart(boxes, box);
-          return tree.GetEntityLocation(entityID, detail::getValuePart(box), &additionalLocations.at(entityID));
-        });
-
-        auto additionalLocationPositions = std::unordered_map<TEntityID, std::size_t>(entityNo);
-        std::size_t position = entityNo;
-        for (auto const& [entityID, adds] : additionalLocations)
+        using ContainerIterator = decltype(boxes.begin());
+        struct TaskData
         {
-          additionalLocationPositions[entityID] = position;
-          position += adds.size();
+          ContainerIterator BeginIt;
+          ContainerIterator EndIt;
+          std::size_t InsertionPosition = 0;
+          LocationContainer Locations;
+        };
+
+        auto threadNo = std::thread::hardware_concurrency();
+        if (entityNo < 100 || entityNo < threadNo)
+          threadNo = 1;
+
+        auto const entityNoPerThread = entityNo / threadNo;
+        auto remainedEntityNo = entityNo;
+        auto tasks = std::vector<TaskData>(threadNo);
+        auto it = boxes.begin();
+        for (auto& taskData : tasks) {
+          auto const entityNoOnThread = std::min(entityNoPerThread, remainedEntityNo);
+          remainedEntityNo -= entityNoOnThread; 
+
+          taskData.BeginIt = it;
+          it = std::next(it, entityNoOnThread);
+
+          taskData.EndIt = it;
+          taskData.Locations.reserve(size_t(double(entityNoOnThread) * 1.2));
+        }
+
+        // Largest taskData location will be handled as main, and moved out to the locations first
+        {
+          EXEC_POL_DEF(epf); // GCC 11.3
+          std::for_each(EXEC_POL_ADD(epf) tasks.begin(), tasks.end(), [&tree, &boxes](auto& taskData) {
+            for (auto it = taskData.BeginIt; it != taskData.EndIt; ++it)
+            {
+              auto const entityID = detail::getKeyPart(boxes, *it);
+              taskData.Locations.emplace_back() = tree.GetEntityLocation(entityID, detail::getValuePart(*it), &taskData.Locations);
+            }
+          });
+
+          auto maxIt =
+            std::max_element(tasks.begin(), tasks.end(), [](auto const& lhs, auto const& rhs) { return lhs.Locations.size() < rhs.Locations.size(); });
+
+          locations = std::move(maxIt->Locations);
+          if (maxIt != tasks.begin())
+            maxIt->Locations = std::move(tasks.begin()->Locations);
+        }
+
+        auto position = locations.size();
+        for (std::size_t threadID = 1; threadID < threadNo; ++threadID)
+        {
+          tasks[threadID].InsertionPosition = position;
+          position += tasks[threadID].Locations.size();
         }
 
         locations.resize(position);
         EXEC_POL_DEF(epf2); // GCC 11.3
         std::for_each(
-          EXEC_POL_ADD(epf2) additionalLocations.begin(), additionalLocations.end(), [&locations, &additionalLocationPositions](auto& additionalLocation) {
-            if (additionalLocation.second.empty())
+          EXEC_POL_ADD(epf2) tasks.begin() + 1, tasks.end(), [&locations](auto& taskData) {
+            if (taskData.Locations.empty())
               return;
 
             std::copy(
-              additionalLocation.second.begin(),
-              additionalLocation.second.end(),
-              std::next(locations.begin(), additionalLocationPositions.at(additionalLocation.first)));
+              taskData.Locations.begin(), taskData.Locations.end(), std::next(locations.begin(), taskData.InsertionPosition));
           });
       }
 
