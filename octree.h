@@ -2745,31 +2745,6 @@ namespace OrthoTree
       return true;
     }
 
-
-    struct GridBoundary
-    {
-      GridID MinGridID, BeginGridID, EndGridID;
-    };
-    template<dim_t DIMENSION_ID>
-    static constexpr void ConstructGridIDListRecursively(
-      GridID gridStepNo, DimArray<GridBoundary> const& gridIDBoundaries, DimArray<GridID>& currentGridID, std::vector<DimArray<GridID>>& allGridID) noexcept
-    {
-      if constexpr (DIMENSION_ID == 0)
-        allGridID.emplace_back(currentGridID);
-      else
-      {
-        auto const& [minGridID, beginGridID, endGridID] = gridIDBoundaries[DIMENSION_ID - 1];
-        currentGridID[DIMENSION_ID - 1] = minGridID;
-        ConstructGridIDListRecursively<DIMENSION_ID - 1>(gridStepNo, gridIDBoundaries, currentGridID, allGridID);
-        for (auto gridID = beginGridID; gridID < endGridID; ++gridID)
-        {
-          currentGridID[DIMENSION_ID - 1] = gridID * gridStepNo;
-          ConstructGridIDListRecursively<DIMENSION_ID - 1>(gridStepNo, gridIDBoundaries, currentGridID, allGridID);
-        }
-      }
-    }
-
-
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
     constexpr void RangeSearchBaseCopy(
       TBox const& range, TContainer const& geometryCollection, Node const& parentNode, std::vector<TEntityID>& foundEntities) const noexcept
@@ -3629,7 +3604,6 @@ namespace OrthoTree
     using Base = OrthoTreeBase<DIMENSION_NO, TBox_, TVector_, TBox_, TRay_, TPlane_, TGeometry_, TAdapter_, TContainer_>;
     using EntityDistance = typename Base::EntityDistance;
     using BoxDistance = typename Base::BoxDistance;
-    using GridBoundary = typename Base::GridBoundary;
     template<typename T>
     using DimArray = std::array<T, DIMENSION_NO>;
     using IGM = typename Base::IGM;
@@ -3693,43 +3667,59 @@ namespace OrthoTree
       auto const remainingDepthNo = static_cast<depth_t>(this->m_maxDepthNo - depthID);
       auto const gridStepNo = detail::pow2<depth_t, GridID>(remainingDepthNo);
 
-      auto gridBoundaries = DimArray<GridBoundary>{};
+      struct GridSet
+      {
+        GridID BeginID;
+        GridID EndID;
+      };
+      auto gridBoundaries = DimArray<GridSet>{};
       std::size_t boxNoByGrid = 1;
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        GridID const firstGridSplit = (boxMinMaxGridID[0][dimensionID] / gridStepNo) + GridID{ 1 };
-        GridID const lastGridSplit = (boxMinMaxGridID[1][dimensionID] / gridStepNo);
-        GridID const gridIDNo = (lastGridSplit < firstGridSplit ? 0 : (lastGridSplit - firstGridSplit + 1)) + 1;
-        boxNoByGrid *= gridIDNo;
+        auto beginID = boxMinMaxGridID[0][dimensionID] / gridStepNo;
+        auto endID = 1 + boxMinMaxGridID[1][dimensionID] / gridStepNo;
+        boxNoByGrid *= endID - beginID;
         if (boxNoByGrid >= SI::CHILD_NO)
           return;
 
-        gridBoundaries[dimensionID] = { boxMinMaxGridID[0][dimensionID], firstGridSplit, lastGridSplit + 1 };
+        gridBoundaries[dimensionID] = { beginID * gridStepNo, endID * gridStepNo };
       }
 
-      auto gridIDs = std::vector<DimArray<GridID>>{};
-      gridIDs.reserve(boxNoByGrid);
-      auto temporaryGridID = DimArray<GridID>{};
-      Base::template ConstructGridIDListRecursively<DIMENSION_NO>(gridStepNo, gridBoundaries, temporaryGridID, gridIDs);
+      if (boxNoByGrid < 2)
+        return;
 
-      auto const boxNo = gridIDs.size();
+      auto const increaseGridID = [&](DimArray<GridID>& gridID) {
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        {
+          gridID[dimensionID] += gridStepNo;
+          if (gridID[dimensionID] < gridBoundaries[dimensionID].EndID)
+            break;
 
-      // First element into locationID
+          gridID[dimensionID] = gridBoundaries[dimensionID].BeginID;
+        }
+      };
+
+      DimArray<GridID> gridID;
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        gridID[dimensionID] = gridBoundaries[dimensionID].BeginID;
+
       location.DepthAndLocation.DepthID = depthID;
-      location.DepthAndLocation.LocID = SI::Encode(gridIDs[0]);
+      location.DepthAndLocation.LocID = SI::Encode(gridID);
+      increaseGridID(gridID);
+
       auto const entityID = location.EntityID;
 
-      auto const additionalBoxNo = boxNo - 1;
+      auto const additionalBoxNo = boxNoByGrid - 1;
       auto const locationNo = additionalLocations.size();
       additionalLocations.resize(locationNo + additionalBoxNo);
 
-      LOOPIVDEP
-      for (std::size_t iBox = 0; iBox < additionalBoxNo; ++iBox)
+      for (auto locationPosition = locationNo; locationPosition < additionalLocations.size(); ++locationPosition, increaseGridID(gridID))
       {
-        auto& subLocation = additionalLocations.at(locationNo + iBox);
+        auto& subLocation = additionalLocations.at(locationPosition);
+
         subLocation.EntityID = entityID;
         subLocation.DepthAndLocation.DepthID = depthID;
-        subLocation.DepthAndLocation.LocID = SI::Encode(gridIDs[iBox + 1]);
+        subLocation.DepthAndLocation.LocID = SI::Encode(gridID);
       }
     }
 
@@ -3767,9 +3757,10 @@ namespace OrthoTree
       auto const maxDepthNo = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
 
-      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
       if (entityNo == 0)
         return;
+
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
 
       auto locations = LocationContainer(entityNo);
       auto constexpr NON_SPLITTED = SPLIT_DEPTH_INCREASEMENT == 0;
@@ -3793,37 +3784,69 @@ namespace OrthoTree
       }
       else // Splitted with parallel execution
       {
-        auto additionalLocations = std::unordered_map<TEntityID, LocationContainer>{};
-        for (auto const& entity : boxes)
-          additionalLocations[detail::getKeyPart(boxes, entity)];
-
-        locations.reserve(entityNo * std::min<std::size_t>(10, SI::CHILD_NO * std::size_t{ SPLIT_DEPTH_INCREASEMENT }));
-        EXEC_POL_DEF(epf); // GCC 11.3
-        std::transform(EXEC_POL_ADD(epf) boxes.begin(), boxes.end(), locations.begin(), [&tree, &boxes, &additionalLocations](auto const& box) {
-          auto const entityID = detail::getKeyPart(boxes, box);
-          return tree.GetEntityLocation(entityID, detail::getValuePart(box), &additionalLocations.at(entityID));
-        });
-
-        auto additionalLocationPositions = std::unordered_map<TEntityID, std::size_t>(entityNo);
-        std::size_t position = entityNo;
-        for (auto const& [entityID, adds] : additionalLocations)
+        using ContainerIterator = decltype(boxes.begin());
+        struct TaskData
         {
-          additionalLocationPositions[entityID] = position;
-          position += adds.size();
+          ContainerIterator BeginIt;
+          ContainerIterator EndIt;
+          std::size_t InsertionPosition = 0;
+          LocationContainer Locations;
+        };
+
+        auto threadNo = std::thread::hardware_concurrency();
+        if (entityNo < 100 || entityNo < threadNo)
+          threadNo = 1;
+
+        auto const entityNoPerThread = entityNo / threadNo;
+        auto remainedEntityNo = entityNo;
+        auto tasks = std::vector<TaskData>(threadNo);
+        auto it = boxes.begin();
+        for (auto& taskData : tasks)
+        {
+          auto const entityNoOnThread = std::min(entityNoPerThread, remainedEntityNo);
+          remainedEntityNo -= entityNoOnThread;
+
+          taskData.BeginIt = it;
+          it = std::next(it, entityNoOnThread);
+
+          taskData.EndIt = it;
+          taskData.Locations.reserve(size_t(double(entityNoOnThread) * 1.2));
+        }
+
+        // Largest taskData location will be handled as main, and moved out to the locations first
+        {
+          EXEC_POL_DEF(epf); // GCC 11.3
+          std::for_each(EXEC_POL_ADD(epf) tasks.begin(), tasks.end(), [&tree, &boxes](auto& taskData) {
+            for (auto it = taskData.BeginIt; it != taskData.EndIt; ++it)
+            {
+              auto const entityID = detail::getKeyPart(boxes, *it);
+              taskData.Locations.emplace_back() = tree.GetEntityLocation(entityID, detail::getValuePart(*it), &taskData.Locations);
+            }
+          });
+
+          auto maxIt =
+            std::max_element(tasks.begin(), tasks.end(), [](auto const& lhs, auto const& rhs) { return lhs.Locations.size() < rhs.Locations.size(); });
+
+          locations = std::move(maxIt->Locations);
+          if (maxIt != tasks.begin())
+            maxIt->Locations = std::move(tasks.begin()->Locations);
+        }
+
+        auto position = locations.size();
+        for (std::size_t threadID = 1; threadID < threadNo; ++threadID)
+        {
+          tasks[threadID].InsertionPosition = position;
+          position += tasks[threadID].Locations.size();
         }
 
         locations.resize(position);
         EXEC_POL_DEF(epf2); // GCC 11.3
-        std::for_each(
-          EXEC_POL_ADD(epf2) additionalLocations.begin(), additionalLocations.end(), [&locations, &additionalLocationPositions](auto& additionalLocation) {
-            if (additionalLocation.second.empty())
-              return;
+        std::for_each(EXEC_POL_ADD(epf2) tasks.begin() + 1, tasks.end(), [&locations](auto& taskData) {
+          if (taskData.Locations.empty())
+            return;
 
-            std::copy(
-              additionalLocation.second.begin(),
-              additionalLocation.second.end(),
-              std::next(locations.begin(), additionalLocationPositions.at(additionalLocation.first)));
-          });
+          std::copy(taskData.Locations.begin(), taskData.Locations.end(), std::next(locations.begin(), taskData.InsertionPosition));
+        });
       }
 
       if constexpr (IS_PARALLEL_EXEC)
