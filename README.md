@@ -82,6 +82,12 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * Boost: 2D, 3D; `boost::geometry::octree_point`, `octree_box`, etc. (adaptor.boost.h)
 * `struct{x,y,z}`: 2D, 3D; (adaptor.xyz.h)
 
+## Optional defines
+The following defines can be used before the header file include:
+* `ORTHOTREE__USE_PMR` / `ORTHOTREE__DISABLE_PMR`: polymorphic allocators can be used in the node container. On MSVC it could have significant performance gain (5-10%). Therefore, on MSVC the default is `ON`, but it is overridable with these flags.
+* `ORTHOTREE__DISABLED_NODECENTER`: It turns off node center calculation during creation. Less memory is used, but in specific algorithms it must be calculated repeatedly.
+* `ORTHOTREE__DISABLED_NODESIZE`: It turns off the node size calculation during initialization. Otherwise node sizes are contained level-wise.
+
 ## Major aliases in OrthoTree
 ```C++
   /// Default geometrical base elements

@@ -31,8 +31,19 @@ Node center is not stored within the nodes. It will be calculated ad-hoc everyti
 
 Node size is not stored within the nodes. It will be calculated ad-hoc everytime when it is required, e.g in search algorithm.
 #define ORTHOTREE__DISABLED_NODESIZE
+
+// PMR is used with MSVC only by default. To use PMR anyway
+ORTHOTREE__USE_PMR
+
+// To disable PMR on all platforms use:
+ORTHOTREE__DISABLE_PMR
 */
 
+#if defined(ORTHOTREE__USE_PMR) || defined(_MSC_VER)
+#ifndef ORTHOTREE__DISABLE_PMR
+#define IS_PMR_USED
+#endif // !ORTHOTREE__DISABLE_PMR
+#endif
 
 #ifndef ORTHOTREE_GUARD
 #define ORTHOTREE_GUARD
@@ -2036,19 +2047,30 @@ namespace OrthoTree
       Node const* NodePtr;
     };
 
-
+#ifdef IS_PMR_USED
     template<typename TData>
     using LinearUnderlyingContainer = std::pmr::unordered_map<MortonNodeID, TData>;
 
     template<typename TData>
     using NonLinearUnderlyingContainer = std::pmr::map<MortonNodeID, TData, bitset_arithmetic_compare>;
+#else
+    template<typename TData>
+    using LinearUnderlyingContainer = std::unordered_map<MortonNodeID, TData>;
+
+    template<typename TData>
+    using NonLinearUnderlyingContainer = std::map<MortonNodeID, TData, bitset_arithmetic_compare>;
+#endif // IS_PMR_USED
 
     template<typename TData>
     using UnderlyingContainer = typename std::conditional_t<SI::IS_LINEAR_TREE, LinearUnderlyingContainer<TData>, NonLinearUnderlyingContainer<TData>>;
 
   protected: // Member variables
+#ifdef IS_PMR_USED
     std::pmr::unsynchronized_pool_resource m_umrNodes;
     UnderlyingContainer<Node> m_nodes = UnderlyingContainer<Node>(&m_umrNodes);
+#else
+    UnderlyingContainer<Node> m_nodes;
+#endif
 
     std::size_t m_maxElementNo = 11;
     depth_t m_maxDepthNo = {};
@@ -2057,6 +2079,7 @@ namespace OrthoTree
 
     detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD> m_grid;
 
+#ifdef IS_PMR_USED
   protected: // Constructors
     OrthoTreeBase() = default;
 
@@ -2082,7 +2105,7 @@ namespace OrthoTree
       m_nodes = other.m_nodes;
       return *this;
     }
-
+#endif // IS_PMR_USED
 
   public: // Node helpers
     // Get EntityIDs of the node
