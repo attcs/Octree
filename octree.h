@@ -3831,6 +3831,17 @@ namespace OrthoTree
     using SplitEntityContianer = std::vector<SplitItem>;
     using SplitEntityIterator = std::vector<SplitItem>::iterator;
 
+    struct NodeProcessingData
+    {
+      std::pair<MortonNodeID, Node> NodeInstance;
+      LocationIterator EndLocationIt;
+    };
+    struct SplitEntityProcessingData
+    {
+      SplitEntityContianer Entities;
+      SplitEntityIterator BeginIt;
+    };
+
     void SplitEntityLocation(std::vector<SplitItem>& splitEntities, LocationIterator const& locationIt) const noexcept
     {
       auto const originalSize = splitEntities.size();
@@ -3840,194 +3851,259 @@ namespace OrthoTree
         [&](std::size_t permutationID, MortonChildID segmentID) { splitEntities[originalSize + permutationID] = { segmentID, locationIt }; });
     }
 
-    // Build the tree in depth-first order
-    template<bool ARE_LOCATIONS_SORTED = false>
-    inline constexpr void Build(LocationContainer& locations) noexcept
-    {
 
       detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
-      struct NodeStackData
+    
+    template<bool ARE_LOCATIONS_SORTED>
+    inline constexpr void ProcessNodeWithoutSplitEntities(depth_t depthID, LocationIterator& locationIt, NodeProcessingData& nodeProcessingData) const
+    {
+      auto& [node, endLocationIt] = nodeProcessingData;
+
+      auto const subtreeEntityNo = std::size_t(std::distance(locationIt, endLocationIt));
+      if (subtreeEntityNo == 0)
+        return;
+
+      auto nodeEntityNo = subtreeEntityNo;
+      if (subtreeEntityNo >= this->m_maxElementNo && depthID < this->m_maxDepthNo)
       {
-        std::pair<MortonNodeID, Node> NodeInstance;
-        LocationIterator EndLocationIt;
-        SplitEntityContianer SplitEntities;
-        SplitEntityIterator SplitEntitiesBeginIt;
-      };
+        typename std::vector<Location>::iterator stuckedEndLocationIt;
+        if constexpr (ARE_LOCATIONS_SORTED)
+        {
+          stuckedEndLocationIt =
+            std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.DepthAndLocation.DepthID == depthID; });
+        }
+        else
+        {
+          stuckedEndLocationIt =
+            std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.DepthAndLocation.DepthID == depthID; });
+        }
 
-      std::array<NodeStackData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
-      nodeStack[0] = NodeStackData{ *this->m_nodes.find(SI::GetRootKey()), locations.end(), {}, {} };
-      nodeStack[0].SplitEntitiesBeginIt = nodeStack[0].SplitEntities.begin();
+        nodeEntityNo = std::size_t(std::distance(locationIt, stuckedEndLocationIt));
+      }
 
-      this->m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
+      if (nodeEntityNo == 0)
+        return;
 
-      auto beginLocationIt = locations.begin();
+      auto& entityIDs = node.second.GetEntities();
+      entityIDs.resize(nodeEntityNo);
+
+      LOOPIVDEP
+      for (std::size_t i = 0; i < nodeEntityNo; ++i)
+      {
+        entityIDs[i] = locationIt->EntityID;
+        ++locationIt;
+      }
+    }
+
+
+    template<bool ARE_LOCATIONS_SORTED>
+    inline constexpr void ProcessNodeWithSplitEntities(
+      depth_t depthID,
+      LocationIterator& locationIt,
+      NodeProcessingData& nodeProcessingData,
+      SplitEntityProcessingData& splitEntityProcessingData,
+      SplitEntityProcessingData* parentSplitEntityProcessingData) const noexcept
+    {
+      auto& [node, endLocationIt] = nodeProcessingData;
+      auto& [splitEntities, splitEntityBeginIt] = splitEntityProcessingData;
+
+      auto const subtreeEntityNo = std::size_t(std::distance(locationIt, endLocationIt));
+      auto nodeEntityNo = subtreeEntityNo;
+      auto nodeSplitEntityNo = size_t{};
+
+      bool isLeafNode = depthID == this->m_maxDepthNo;
+      auto& entityIDs = node.second.GetEntities();
+      if (parentSplitEntityProcessingData && !parentSplitEntityProcessingData->Entities.empty())
+      {
+        auto const segmentID = SI::GetChildID(node.first);
+        auto const splitEntitiesEndIt =
+          std::partition(parentSplitEntityProcessingData->BeginIt, parentSplitEntityProcessingData->Entities.end(), [segmentID](auto const& childEntities) {
+            return childEntities.SegmentID == segmentID;
+          });
+
+        nodeSplitEntityNo = size_t(std::distance(parentSplitEntityProcessingData->BeginIt, splitEntitiesEndIt));
+
+        nodeEntityNo += nodeSplitEntityNo;
+        isLeafNode |= nodeEntityNo < this->m_maxElementNo;
+        auto const entityNo = isLeafNode ? nodeEntityNo : nodeSplitEntityNo;
+        if (entityNo > 0)
+        {
+          entityIDs.resize(entityNo);
+
+          LOOPIVDEP
+          for (std::size_t i = 0; i < nodeSplitEntityNo; ++i)
+          {
+            entityIDs[i] = parentSplitEntityProcessingData->BeginIt->LocationIt->EntityID;
+            ++parentSplitEntityProcessingData->BeginIt;
+          }
+        }
+      }
+      else
+      {
+        isLeafNode |= nodeEntityNo < this->m_maxElementNo;
+        if (isLeafNode && nodeEntityNo > 0)
+          entityIDs.resize(nodeEntityNo);
+      }
+
+      if (subtreeEntityNo == 0)
+        return;
+
+      if (isLeafNode)
+      {
+        LOOPIVDEP
+        for (std::size_t i = nodeSplitEntityNo; i < nodeEntityNo; ++i)
+        {
+          entityIDs[i] = locationIt->EntityID;
+          ++locationIt;
+        }
+      }
+      else
+      {
+        LocationIterator stuckedEndLocationIt;
+        if constexpr (ARE_LOCATIONS_SORTED)
+        {
+          stuckedEndLocationIt =
+            std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.DepthAndLocation.DepthID == depthID; });
+        }
+        else
+        {
+          stuckedEndLocationIt =
+            std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.DepthAndLocation.DepthID == depthID; });
+        }
+
+        std::size_t const stuckedEntityNo = std::distance(locationIt, stuckedEndLocationIt);
+        entityIDs.reserve(nodeSplitEntityNo + stuckedEntityNo);
+        for (std::size_t i = 0; i < stuckedEntityNo; ++i)
+        {
+          if (SI::IsAllChildTouched(locationIt->DepthAndLocation.TouchedDimensionsFlag))
+            entityIDs.emplace_back(locationIt->EntityID);
+          else
+            this->SplitEntityLocation(splitEntities, locationIt);
+
+          ++locationIt;
+        }
+
+        splitEntityBeginIt = splitEntities.begin();
+      }
+    }
+    template<bool ARE_LOCATIONS_SORTED>
+    inline constexpr void CreateProcessingData(
+      depth_t examinedLevelID,
+      SI::ChildKeyGenerator const& keyGenerator,
+      LocationIterator const& locationIt,
+      NodeProcessingData& parentNodeProcessingData,
+      NodeProcessingData& nodeProcessingData) const noexcept
+    {
+      auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, locationIt->DepthAndLocation.LocID);
+      auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevelID));
+
+      if constexpr (ARE_LOCATIONS_SORTED)
+      {
+        parentNodeProcessingData.NodeInstance.second.AddChild(childKey);
+        nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
+          return childChecker.Test(location.DepthAndLocation.LocID);
+        });
+      }
+      else
+      {
+        parentNodeProcessingData.NodeInstance.second.AddChildInOrder(childKey);
+        nodeProcessingData.EndLocationIt = std::partition(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
+          return childChecker.Test(location.DepthAndLocation.LocID);
+        });
+      }
+
+      nodeProcessingData.NodeInstance.second = this->CreateChild(parentNodeProcessingData.NodeInstance.second, childKey);
+      nodeProcessingData.NodeInstance.first = std::move(childKey);
+    }
+
+    template<bool ARE_LOCATIONS_SORTED>
+    inline constexpr void CreateProcessingDataWithSplitEntities(
+      depth_t examinedLevelID,
+      SI::ChildKeyGenerator const& keyGenerator,
+      LocationIterator const& locationIt,
+      SplitEntityProcessingData const& parentSplitEntityProcessingData,
+      NodeProcessingData& parentNodeProcessingData,
+      NodeProcessingData& nodeProcessingData) const noexcept
+    {
+      if (locationIt == parentNodeProcessingData.EndLocationIt)
+      {
+        auto childKey = keyGenerator.GetChildNodeKey(parentSplitEntityProcessingData.BeginIt->SegmentID);
+        parentNodeProcessingData.NodeInstance.second.AddChildInOrder(childKey);
+
+        nodeProcessingData.EndLocationIt = parentNodeProcessingData.EndLocationIt;
+        nodeProcessingData.NodeInstance.second = this->CreateChild(parentNodeProcessingData.NodeInstance.second, childKey);
+        nodeProcessingData.NodeInstance.first = std::move(childKey);
+      }
+      else
+      {
+        this->template CreateProcessingData<ARE_LOCATIONS_SORTED>(
+          examinedLevelID, keyGenerator, locationIt, parentNodeProcessingData, nodeProcessingData);
+      }
+    }
+
+    
+    // Build the tree in depth-first order
+    template<bool ARE_LOCATIONS_SORTED, typename TResultContainer = Base::NodeContainer>
+    inline constexpr void BuildSubtree(
+      LocationIterator const& rootBeginLocationIt,
+      LocationIterator const& rootEndLocationIt,
+      std::pair<MortonNodeID, Node> const& rootNode,
+      TResultContainer& nodes) const noexcept
+    {
+      std::array<NodeProcessingData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
+      nodeStack[0] = NodeProcessingData{ rootNode, rootEndLocationIt };
+
+      std::array<SplitEntityProcessingData, SI::MAX_THEORETICAL_DEPTH> splitEntityStack;
+      splitEntityStack[0].BeginIt = splitEntityStack[0].Entities.begin();
+
+      auto locationIt = rootBeginLocationIt;
       auto constexpr exitDepthID = depth_t(-1);
       for (depth_t depthID = 0; depthID != exitDepthID;)
       {
-        auto& [node, endLocationIt, splitEntities, splitEntitiesBeginIt] = nodeStack[depthID];
-
-        std::size_t subtreeEntityNo = std::distance(beginLocationIt, endLocationIt);
-
-        auto const hasNoChild = !node.second.IsAnyChildExist();
-
-        bool isLeafNodeConditionFullfilled = false;
-        if (hasNoChild)
+        if (!nodeStack[depthID].NodeInstance.second.IsAnyChildExist())
         {
-          if constexpr (!DO_SPLIT_PARENT_ENTITIES)
+          if constexpr (DO_SPLIT_PARENT_ENTITIES)
           {
-            auto nodeEntityNo = subtreeEntityNo;
-
-            isLeafNodeConditionFullfilled = (subtreeEntityNo > 0 && subtreeEntityNo < this->m_maxElementNo) || depthID == this->m_maxDepthNo;
-            if (!isLeafNodeConditionFullfilled)
-            {
-              typename std::vector<Location>::iterator stuckedEndLocationIt;
-              if constexpr (ARE_LOCATIONS_SORTED)
-              {
-                stuckedEndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [depthID](auto const& location) {
-                  return location.DepthAndLocation.DepthID == depthID;
-                });
-              }
-              else
-              {
-                stuckedEndLocationIt = std::partition(beginLocationIt, endLocationIt, [depthID](auto const& location) {
-                  return location.DepthAndLocation.DepthID == depthID;
-                });
-              }
-
-              nodeEntityNo = std::distance(beginLocationIt, stuckedEndLocationIt);
-            }
-
-            auto& entityIDs = node.second.GetEntities();
-            entityIDs.resize(nodeEntityNo);
-
-            LOOPIVDEP
-            for (std::size_t i = 0; i < nodeEntityNo; ++i)
-            {
-              entityIDs[i] = beginLocationIt->EntityID;
-              ++beginLocationIt;
-            }
+            this->template ProcessNodeWithSplitEntities<ARE_LOCATIONS_SORTED>(
+              depthID, locationIt, nodeStack[depthID], splitEntityStack[depthID], depthID > 0 ? &splitEntityStack[depthID - 1] : nullptr);
           }
           else
           {
-            std::size_t nodeSplitEntityNo = 0;
-            auto parentDepthID = depthID - 1;
-            bool const isSplitInheritingPossible = depthID > 0;
-            if (isSplitInheritingPossible)
-            {
-              auto const segmentID = SI::GetChildID(node.first);
-              auto splitEntitiesEndIt = std::partition(
-                nodeStack[parentDepthID].SplitEntitiesBeginIt, nodeStack[parentDepthID].SplitEntities.end(), [segmentID](auto const& childEntities) {
-                  return childEntities.SegmentID == segmentID;
-                });
-
-              nodeSplitEntityNo = std::distance(nodeStack[parentDepthID].SplitEntitiesBeginIt, splitEntitiesEndIt);
-            }
-
-            auto nodeEntityNo = subtreeEntityNo + nodeSplitEntityNo;
-            isLeafNodeConditionFullfilled = (0 < nodeEntityNo && nodeEntityNo < this->m_maxElementNo) || depthID == this->m_maxDepthNo;
-
-            auto& entityIDs = node.second.GetEntities();
-            entityIDs.resize(isLeafNodeConditionFullfilled ? nodeEntityNo : nodeSplitEntityNo);
-            LOOPIVDEP
-            for (std::size_t i = 0; i < nodeSplitEntityNo; ++i)
-            {
-              entityIDs[i] = nodeStack[parentDepthID].SplitEntitiesBeginIt->LocationIt->EntityID;
-              ++nodeStack[parentDepthID].SplitEntitiesBeginIt;
-            }
-
-            if (isLeafNodeConditionFullfilled)
-            {
-              LOOPIVDEP
-              for (std::size_t i = nodeSplitEntityNo; i < nodeEntityNo; ++i)
-              {
-                entityIDs[i] = beginLocationIt->EntityID;
-                ++beginLocationIt;
-              }
-            }
-            else
-            {
-              LocationIterator stuckedEndLocationIt;
-              if constexpr (ARE_LOCATIONS_SORTED)
-              {
-                stuckedEndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [depthID](auto const& location) {
-                  return location.DepthAndLocation.DepthID == depthID;
-                });
-              }
-              else
-              {
-                stuckedEndLocationIt = std::partition(beginLocationIt, endLocationIt, [depthID](auto const& location) {
-                  return location.DepthAndLocation.DepthID == depthID;
-                });
-              }
-
-              std::size_t const stuckedEntityNo = std::distance(beginLocationIt, stuckedEndLocationIt);
-
-              entityIDs.reserve(nodeSplitEntityNo + stuckedEntityNo);
-
-              for (std::size_t i = 0; i < stuckedEntityNo; ++i)
-              {
-                if (!SI::IsAllChildTouched(beginLocationIt->DepthAndLocation.TouchedDimensionsFlag))
-                  this->SplitEntityLocation(splitEntities, beginLocationIt);
-                else
-                  entityIDs.emplace_back(beginLocationIt->EntityID);
-
-                ++beginLocationIt;
-              }
-
-              splitEntitiesBeginIt = splitEntities.begin();
-            }
+            this->template ProcessNodeWithoutSplitEntities<ARE_LOCATIONS_SORTED>(depthID, locationIt, nodeStack[depthID]);
           }
         }
 
-        bool canNodeBeCommited = isLeafNodeConditionFullfilled || beginLocationIt == endLocationIt;
+        auto const isNonSplitEntitesProcessed = locationIt == nodeStack[depthID].EndLocationIt;
+        bool canNodeBeCommited = isNonSplitEntitesProcessed;
         if constexpr (DO_SPLIT_PARENT_ENTITIES)
         {
-          canNodeBeCommited &= splitEntities.empty() || splitEntitiesBeginIt == splitEntities.end();
+          auto const isSplitEntitiesProcessed =
+            splitEntityStack[depthID].Entities.empty() || splitEntityStack[depthID].BeginIt == splitEntityStack[depthID].Entities.end();
+
+          canNodeBeCommited &= isSplitEntitiesProcessed;
         }
 
-        if (canNodeBeCommited)
+        if (canNodeBeCommited || depthID == this->m_maxDepthNo)
         {
-          this->m_nodes.emplace(std::move(node));
-          splitEntities.clear();
+          assert(canNodeBeCommited);
+          detail::emplace(nodes, std::move(nodeStack[depthID].NodeInstance));
+          splitEntityStack[depthID].Entities.clear();
           --depthID;
           continue;
         }
 
         ++depthID;
-        auto const examinedLevel = this->GetExaminationLevelID(depthID);
-        auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
-
-        if (beginLocationIt != endLocationIt)
+        auto const examinedLevelID = this->GetExaminationLevelID(depthID);
+        auto const keyGenerator = typename SI::ChildKeyGenerator(nodeStack[depthID - 1].NodeInstance.first);
+        if constexpr (DO_SPLIT_PARENT_ENTITIES)
         {
-          auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->DepthAndLocation.LocID);
-          auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevel));
-          if constexpr (ARE_LOCATIONS_SORTED)
-          {
-            nodeStack[depthID].EndLocationIt = std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) {
-              return childChecker.Test(location.DepthAndLocation.LocID);
-            });
-            node.second.AddChild(childKey);
-          }
-          else
-          {
-            nodeStack[depthID].EndLocationIt =
-              std::partition(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.DepthAndLocation.LocID); });
-            node.second.AddChildInOrder(childKey);
-          }
-
-          nodeStack[depthID].NodeInstance.first = std::move(childKey);
-          nodeStack[depthID].NodeInstance.second = this->CreateChild(node.second, childKey);
+          this->template CreateProcessingDataWithSplitEntities<ARE_LOCATIONS_SORTED>(
+            examinedLevelID, keyGenerator, locationIt, splitEntityStack[depthID - 1], nodeStack[depthID - 1], nodeStack[depthID]);
         }
-        else // Split entities should also be processed
+        else
         {
-          if constexpr (DO_SPLIT_PARENT_ENTITIES)
-          {
-            auto childKey = keyGenerator.GetChildNodeKey(nodeStack[depthID - 1].SplitEntitiesBeginIt->SegmentID);
-            node.second.AddChildInOrder(childKey);
-            nodeStack[depthID].EndLocationIt = nodeStack[depthID - 1].EndLocationIt;
-            nodeStack[depthID].NodeInstance.first = std::move(childKey);
-            nodeStack[depthID].NodeInstance.second = this->CreateChild(node.second, childKey);
-          }
+          this->template CreateProcessingData<ARE_LOCATIONS_SORTED>(
+            examinedLevelID, keyGenerator, locationIt, nodeStack[depthID - 1], nodeStack[depthID]);
         }
       }
     }
@@ -4065,7 +4141,9 @@ namespace OrthoTree
         std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end());
       }
 
-      tree.template Build<ARE_LOCATIONS_SORTED>(locations);
+      auto const rootNode = *tree.m_nodes.begin();
+      tree.m_nodes.clear();
+      tree.template BuildSubtree<ARE_LOCATIONS_SORTED>(locations.begin(), locations.end(), rootNode, tree.m_nodes);
     }
 
   public: // Edit functions
