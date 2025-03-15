@@ -295,7 +295,7 @@ namespace Eigen
     EigenAdaptorGeneralBase<Scalar_, AmbientDim_>,
     Container_>;
 
-  template<typename Scalar_, int AmbientDim_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename Container_ = BoxSpan<Scalar_, AmbientDim_>>
+  template<typename Scalar_, int AmbientDim_, bool DO_SPLIT_PARENT_ENTITIES = true, typename Container_ = BoxSpan<Scalar_, AmbientDim_>>
   using EigenOrthoTreeBox = OrthoTree::OrthoTreeBoundingBox<
     AmbientDim_,
     Matrix<Scalar_, AmbientDim_, 1>,
@@ -303,7 +303,7 @@ namespace Eigen
     ParametrizedLine<Scalar_, AmbientDim_>,
     Hyperplane<Scalar_, AmbientDim_>,
     Scalar_,
-    SPLIT_DEPTH_INCREASEMENT,
+    DO_SPLIT_PARENT_ENTITIES,
     EigenAdaptorGeneralBase<Scalar_, AmbientDim_>,
     Container_>;
 
@@ -311,8 +311,8 @@ namespace Eigen
   template<typename Scalar_, int AmbientDim_, typename Container_ = PointSpan<Scalar_, AmbientDim_>>
   using OrthoTreeContainerPointC = OrthoTree::OrthoTreeContainerPoint<EigenOrthoTreePoint<Scalar_, AmbientDim_, Container_>>;
 
-  template<typename Scalar_, int AmbientDim_, uint32_t SPLIT_DEPTH_INCREASEMENT = 2, typename Container_ = BoxSpan<Scalar_, AmbientDim_>>
-  using OrthoTreeContainerBoxC = OrthoTree::OrthoTreeContainerBox<EigenOrthoTreeBox<Scalar_, AmbientDim_, SPLIT_DEPTH_INCREASEMENT, Container_>>;
+  template<typename Scalar_, int AmbientDim_, bool DO_SPLIT_PARENT_ENTITIES = true, typename Container_ = BoxSpan<Scalar_, AmbientDim_>>
+  using OrthoTreeContainerBoxC = OrthoTree::OrthoTreeContainerBox<EigenOrthoTreeBox<Scalar_, AmbientDim_, DO_SPLIT_PARENT_ENTITIES, Container_>>;
 
   // Non-owning types
   using QuadtreePoint2f = EigenOrthoTreePoint<float, 2>;
@@ -323,21 +323,21 @@ namespace Eigen
 
   using OctreePoint3d = EigenOrthoTreePoint<double, 3>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBox2fs = EigenOrthoTreeBox<float, 2, SPLIT_DEPTH_INCREASEMENT>;
-  using QuadtreeBox2f = QuadtreeBox2fs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBox2fs = EigenOrthoTreeBox<float, true, DO_SPLIT_PARENT_ENTITIES>;
+  using QuadtreeBox2f = QuadtreeBox2fs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBox2ds = EigenOrthoTreeBox<double, 2, SPLIT_DEPTH_INCREASEMENT>;
-  using QuadtreeBox2d = QuadtreeBox2ds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBox2ds = EigenOrthoTreeBox<double, true, DO_SPLIT_PARENT_ENTITIES>;
+  using QuadtreeBox2d = QuadtreeBox2ds<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBox3fs = EigenOrthoTreeBox<float, 3, SPLIT_DEPTH_INCREASEMENT>;
-  using OctreeBox3f = OctreeBox3fs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBox3fs = EigenOrthoTreeBox<float, 3, DO_SPLIT_PARENT_ENTITIES>;
+  using OctreeBox3f = OctreeBox3fs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBox3ds = EigenOrthoTreeBox<double, 3, SPLIT_DEPTH_INCREASEMENT>;
-  using OctreeBox3d = OctreeBox3ds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBox3ds = EigenOrthoTreeBox<double, 3, DO_SPLIT_PARENT_ENTITIES>;
+  using OctreeBox3d = OctreeBox3ds<true>;
 
   // Container types
   using QuadtreePointC2f = OrthoTreeContainerPointC<float, 2>;
@@ -348,21 +348,21 @@ namespace Eigen
 
   using OctreePointC3d = OrthoTreeContainerPointC<double, 3>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxC2fs = OrthoTreeContainerBoxC<float, 2, SPLIT_DEPTH_INCREASEMENT>;
-  using QuadtreeBoxC2f = QuadtreeBoxC2fs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxC2fs = OrthoTreeContainerBoxC<float, 2, DO_SPLIT_PARENT_ENTITIES>;
+  using QuadtreeBoxC2f = QuadtreeBoxC2fs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxC2ds = OrthoTreeContainerBoxC<double, 2, SPLIT_DEPTH_INCREASEMENT>;
-  using QuadtreeBoxC2d = QuadtreeBoxC2ds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxC2ds = OrthoTreeContainerBoxC<double, 2, DO_SPLIT_PARENT_ENTITIES>;
+  using QuadtreeBoxC2d = QuadtreeBoxC2ds<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxC3fs = OrthoTreeContainerBoxC<float, 3, SPLIT_DEPTH_INCREASEMENT>;
-  using OctreeBoxC3f = OctreeBoxC3fs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxC3fs = OrthoTreeContainerBoxC<float, 3, DO_SPLIT_PARENT_ENTITIES>;
+  using OctreeBoxC3f = OctreeBoxC3fs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxC3ds = OrthoTreeContainerBoxC<double, 3, SPLIT_DEPTH_INCREASEMENT>;
-  using OctreeBoxC3d = OctreeBoxC3ds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxC3ds = OrthoTreeContainerBoxC<double, 3, DO_SPLIT_PARENT_ENTITIES>;
+  using OctreeBoxC3d = OctreeBoxC3ds<true>;
 
 
   // Map types
@@ -376,21 +376,21 @@ namespace Eigen
 
   using OctreePointMap3d = EigenOrthoTreePoint<double, 3, PointMap<double, 3>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBox2Mapfs = EigenOrthoTreeBox<float, 2, SPLIT_DEPTH_INCREASEMENT, BoxMap<float, 2>>;
-  using QuadtreeBox2Mapf = QuadtreeBox2Mapfs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBox2Mapfs = EigenOrthoTreeBox<float, 2, DO_SPLIT_PARENT_ENTITIES, BoxMap<float, 2>>;
+  using QuadtreeBox2Mapf = QuadtreeBox2Mapfs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBox2Mapds = EigenOrthoTreeBox<double, 2, SPLIT_DEPTH_INCREASEMENT, BoxMap<double, 2>>;
-  using QuadtreeBox2Mapd = QuadtreeBox2Mapds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBox2Mapds = EigenOrthoTreeBox<double, 2, DO_SPLIT_PARENT_ENTITIES, BoxMap<double, 2>>;
+  using QuadtreeBox2Mapd = QuadtreeBox2Mapds<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBox3Mapfs = EigenOrthoTreeBox<float, 3, SPLIT_DEPTH_INCREASEMENT, BoxMap<float, 3>>;
-  using OctreeBox3Mapf = OctreeBox3Mapfs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBox3Mapfs = EigenOrthoTreeBox<float, 3, DO_SPLIT_PARENT_ENTITIES, BoxMap<float, 3>>;
+  using OctreeBox3Mapf = OctreeBox3Mapfs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBox3Mapds = EigenOrthoTreeBox<double, 3, SPLIT_DEPTH_INCREASEMENT, BoxMap<double, 3>>;
-  using OctreeBox3Mapd = OctreeBox3Mapds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBox3Mapds = EigenOrthoTreeBox<double, 3, DO_SPLIT_PARENT_ENTITIES, BoxMap<double, 3>>;
+  using OctreeBox3Mapd = OctreeBox3Mapds<true>;
 
   // Container types
   using QuadtreePointCMap2f = OrthoTreeContainerPointC<float, 2, PointMap<float, 2>>;
@@ -401,19 +401,19 @@ namespace Eigen
 
   using OctreePointCMap3d = OrthoTreeContainerPointC<double, 3, PointMap<double, 3>>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxCMap2fs = OrthoTreeContainerBoxC<float, 2, SPLIT_DEPTH_INCREASEMENT, BoxMap<float, 2>>;
-  using QuadtreeBoxCMap2f = QuadtreeBoxCMap2fs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxCMap2fs = OrthoTreeContainerBoxC<float, 2, DO_SPLIT_PARENT_ENTITIES, BoxMap<float, 2>>;
+  using QuadtreeBoxCMap2f = QuadtreeBoxCMap2fs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxCMap2ds = OrthoTreeContainerBoxC<double, 2, SPLIT_DEPTH_INCREASEMENT, BoxMap<double, 2>>;
-  using QuadtreeBoxCMap2d = QuadtreeBoxCMap2ds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxCMap2ds = OrthoTreeContainerBoxC<double, 2, DO_SPLIT_PARENT_ENTITIES, BoxMap<double, 2>>;
+  using QuadtreeBoxCMap2d = QuadtreeBoxCMap2ds<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxCMap3fs = OrthoTreeContainerBoxC<float, 3, SPLIT_DEPTH_INCREASEMENT, BoxMap<float, 3>>;
-  using OctreeBoxCMap3f = OctreeBoxCMap3fs<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxCMap3fs = OrthoTreeContainerBoxC<float, 3, DO_SPLIT_PARENT_ENTITIES, BoxMap<float, 3>>;
+  using OctreeBoxCMap3f = OctreeBoxCMap3fs<true>;
 
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxC3Mapds = OrthoTreeContainerBoxC<double, 3, SPLIT_DEPTH_INCREASEMENT, BoxMap<double, 3>>;
-  using OctreeBoxC3Mapd = OctreeBoxC3Mapds<2>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxC3Mapds = OrthoTreeContainerBoxC<double, 3, DO_SPLIT_PARENT_ENTITIES, BoxMap<double, 3>>;
+  using OctreeBoxC3Mapd = OctreeBoxC3Mapds<true>;
 } // namespace Eigen

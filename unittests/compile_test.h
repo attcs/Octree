@@ -219,14 +219,14 @@ void testCompilePointMap()
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
 void testCompileBox()
 {
   using Vector = OrthoTree::VectorND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
 
-  using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth>;
+  using OT = OrthoTree::TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>;
 
   auto const key = OT::SI::GetHash(2, 3);
   auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
@@ -313,7 +313,7 @@ void testCompileBox()
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
 void testCompileBoxMap()
 {
   using Vector = OrthoTree::VectorND<N>;
@@ -321,7 +321,7 @@ void testCompileBoxMap()
   using Plane = OrthoTree::PlaneND<N>;
 
   using Map = std::unordered_map<int, BoundingBox>;
-  using OT = OrthoTree::TreeBoxND<N, nSplitStrategyAdditionalDepth, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES, OrthoTree::BaseGeometryType, Map>;
 
   auto const key = OT::SI::GetHash(2, 3);
   auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
@@ -571,12 +571,12 @@ void testCompilePointMapC()
 }
 
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
 void testCompileBoxC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
-  using OT = OrthoTree::TreeBoxContainerND<N, nSplitStrategyAdditionalDepth>;
+  using OT = OrthoTree::TreeBoxContainerND<N, DO_SPLIT_PARENT_ENTITIES>;
 
   auto constexpr boxes = std::array
   {
@@ -649,13 +649,13 @@ void testCompileBoxC()
 
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
 void testCompileBoxMapC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, BoundingBox>;
-  using OT = OrthoTree::TreeBoxContainerND<N, nSplitStrategyAdditionalDepth, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::TreeBoxContainerND<N, DO_SPLIT_PARENT_ENTITIES, OrthoTree::BaseGeometryType, Map>;
 
   auto const boxes = Map{
     { 5, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
@@ -733,7 +733,7 @@ void testCompileBoxMapC()
 }
 
 
-template<bool IS_PARALLEL_EXEC, uint32_t nSplitStrategyAdditionalDepth = 2>
+template<bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
 void testCompileBoxBatchDimension()
 {
   auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
@@ -758,24 +758,24 @@ void testCompileBoxBatchDimension()
     testCompilePointMap<2, IS_PARALLEL_EXEC>();
     testCompilePointMap<3, IS_PARALLEL_EXEC>();
 
-    testCompileBox<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<4, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<5, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<6, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<7, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<8, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<12, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<16, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBox<31, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBox<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<4, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<5, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<6, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<7, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<8, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<12, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<16, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<31, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
     if constexpr (isPlatform64)
     {
-      testCompileBox<32, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-      testCompileBox<63, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+      testCompileBox<32, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+      testCompileBox<63, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
     }
 
-    testCompileBoxMap<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxMap<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxMap<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxMap<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
   }
   
   // Container types
@@ -798,46 +798,45 @@ void testCompileBoxBatchDimension()
     testCompilePointMapC<2, IS_PARALLEL_EXEC>();
     testCompilePointMapC<3, IS_PARALLEL_EXEC>();
 
-    testCompileBoxC<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<4, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<5, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<6, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<7, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<8, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<12, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<16, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxC<31, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxC<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<4, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<5, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<6, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<7, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<8, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<12, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<16, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<31, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
 
     if constexpr (isPlatform64)
     {
-      testCompileBoxC<32, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-      testCompileBoxC<63, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+      testCompileBoxC<32, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+      testCompileBoxC<63, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
     }
 
-    testCompileBoxMapC<2, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
-    testCompileBoxMapC<3, IS_PARALLEL_EXEC, nSplitStrategyAdditionalDepth>();
+    testCompileBoxMapC<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxMapC<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
   }
 }
 
 
-template<uint32_t nSplitStrategyAdditionalDepth = 2>
+template<bool DO_SPLIT_PARENT_ENTITIES = true>
 void testCompileBoxBatchExPol()
 {
 #ifdef __cpp_lib_execution
-  testCompileBoxBatchDimension<false, nSplitStrategyAdditionalDepth>();
-  testCompileBoxBatchDimension<true, nSplitStrategyAdditionalDepth>();
+  testCompileBoxBatchDimension<false, DO_SPLIT_PARENT_ENTITIES>();
+  testCompileBoxBatchDimension<true, DO_SPLIT_PARENT_ENTITIES>();
 #else
-  testCompileBoxBatchDimension<false, nSplitStrategyAdditionalDepth>();
+  testCompileBoxBatchDimension<false, DO_SPLIT_PARENT_ENTITIES>();
 #endif
 }
 
 
 inline void testCompileBoxBatchSplitStrategy()
 {
-  testCompileBoxBatchExPol<0>();
-  testCompileBoxBatchExPol<2>();
-  testCompileBoxBatchExPol<4>();
+  testCompileBoxBatchExPol<false>();
+  testCompileBoxBatchExPol<true>();
 }
 
 #ifdef __clang__

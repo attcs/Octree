@@ -12,7 +12,7 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * Adaptable to any existing geometric system
 * Adaptable to the original container of geometrical entities
 * Arbitrary number of dimensions for other scientific usages
-* Support of `std::execution` policies (so it is parallelizable)
+* Parallelization is available (via `std::execution` policies)
 * Edit functions to Insert/Update/Erase entities
 * Wide range of search functions
   * Range search
@@ -35,7 +35,8 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
-* Use the static member function `Create()` for a container (`std::unordered_map` or any `std::span` compatible) of Points or Bounding boxes to build the tree. It supports `std::execution` policies (e.g.: `std::execution::parallel_unsequenced_policy`) which can be effectively used to parallelize the creation process. (Template argument of the `Create()` functions)
+* Decide to let the geometry management for octree or not. `Container` types could manage the geometries life-cycle, meanwhile the `non-container` types are just update the relevant metadata about the changes.
+* Use `PAR_EXEC` tag as first parameter of constructor for parallel execution
 * Use `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Use `PlaneSearch()` / `PlaneIntersection()` / `PlanePositiveSegmentation()` member functions for hyperplane related searches
 * Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
@@ -55,9 +56,9 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * Naming
   * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
   * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapC`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contigous container.
-  * `s` means adjustable `SPLIT_DEPTH_INCREASEMENT` for box-types.
+  * `s` means adjustable `DO_SPLIT_PARENT_ENTITIES` for box-types.
 * If `int` is preferred for indexing instead of `std::size_t`, declare `#define ORTHOTREE_INDEX_T__INT`.
-* Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `SPLIT_DEPTH_INCREASEMENT` template parameter, these boxes can be splitted then placed on the deeper level of the tree. The `SPLIT_DEPTH_INCREASEMENT` default is 2 and this split method is applied by default.
+* Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `DO_SPLIT_PARENT_ENTITIES` template parameter, these boxes can be splitted and placed on the first child level of the node. The `DO_SPLIT_PARENT_ENTITIES` default is `true`, it is applied by default.
 * Edit functions are available but not recommended to fully build the tree with them.
 * If less element is collected in a node than the max element then the child node won't be created.
 * The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
@@ -67,8 +68,8 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 ## Recommendations
 * If the geometrical entities are already available, build the tree using the Constructor or Create, rather than entity-wise Insertions. This can result in a significant performance gain.
 * For tree building, `InsertWithRebalancing()` offers much better performance than Insert() with leaf-node settings.
-* If the box tree is used only for collision detection, set `SPLIT_DEPTH_INCREASEMENT = 0` (`OctreeBox` uses 2 by default). Both creation and collision detection will be significantly faster.
-* For `Pick`/`Range`/`Ray`/`Plane` related search, the default `SPLIT_DEPTH_INCREASEMENT = 2` is recommended.
+* If the box tree is used only for collision detection, set `DO_SPLIT_PARENT_ENTITIES = false` (`OctreeBox` uses `true` by default). Both creation and collision detection will be significantly faster.
+* For `Pick`/`Range`/`Ray`/`Plane` related search, the default `DO_SPLIT_PARENT_ENTITIES = true` is recommended.
 * If the overall modeling space size changes dynamically, this tool cannot be applied directly. However, you can combine it with sparse grid-based spatial partitioning, where each cell contains an `Orthotree`.
 * After calling `Init()`, the max depth cannot be changed, and the tree cannot be deepened further.
 * See the **BENCHMARKS** page for performance-related graphs.
@@ -139,17 +140,17 @@ The following defines can be used before the header file include:
   using QuadtreePointC = TreePointContainerND<2, BaseGeometryType>;
 
   // Quadtree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using QuadtreeBoxCs = TreeBoxContainerND<2, SPLIT_DEPTH_INCREASEMENT, BaseGeometryType>;
-  using QuadtreeBoxC = TreeBoxContainerND<2, 2, BaseGeometryType>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using QuadtreeBoxCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  using QuadtreeBoxC = TreeBoxContainerND<2, true, BaseGeometryType>;
 
   // Octree for points
   using OctreePointC = TreePointContainerND<3, BaseGeometryType>;
 
   // Octree for bounding boxes
-  template<uint32_t SPLIT_DEPTH_INCREASEMENT = 2>
-  using OctreeBoxCs = TreeBoxContainerND<3, 2, BaseGeometryType>;
-  using OctreeBoxC = TreeBoxContainerND<3, 2, BaseGeometryType>;
+  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  using OctreeBoxCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  using OctreeBoxC = TreeBoxContainerND<3, true, BaseGeometryType>;
 ```
 
 ## Basic examples
@@ -216,11 +217,11 @@ Usage of Container types
         /* and more... */
       };
 
-      auto octreeUsingCtor = OctreeBoxC(boxes
+      auto octreeUsingCtor = OctreeBoxC(PAR_EXEC
+        , boxes
         , 3
         , std::nullopt
         , OctreeBox::DEFAULT_MAX_ELEMENT
-        , true // Set std::execution::parallel_unsequenced_policy
       );
 
       auto octreeUsingCreate = OctreeBoxC::Create<true>(boxes, 3);
@@ -378,7 +379,7 @@ using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<
   MyRay2D, 
   MyPlane2D, 
   float, 
-  2, 
+  true, 
   AdaptorCustom>;
 ```
 

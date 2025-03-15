@@ -303,11 +303,13 @@ void BoxND_RangeSearch(size_t boxNo, size_t searchboxNo, TGeometry rMin, TGeomet
   using TRay = RayND<DIMENSION_NO, TGeometry>;
   using TPlane = PlaneND<DIMENSION_NO, TGeometry>;
 
+  constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
+
   auto const entityBoxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(boxNo, rMin, rMax);
   auto const searchBoxes = CreateBoxes_Random<DIMENSION_NO, TGeometry>(searchboxNo, rMin, rMax);
 
-  auto const treeCore = OrthoTree::TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>(entityBoxes);
-  auto const treeContainer = OrthoTree::TreeBoxContainerND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT, TGeometry>(entityBoxes);
+  auto const treeCore = OrthoTree::TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry>(entityBoxes);
+  auto const treeContainer = OrthoTree::TreeBoxContainerND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry>(entityBoxes);
   for (auto const& searchBox : searchBoxes)
   {
     auto elementIDsTreeCore = treeCore.template RangeSearch<false>(searchBox, entityBoxes);
@@ -361,20 +363,6 @@ void BoxT_RangeSearch()
       BoxND_RangeSearch<32, 1, TGeometry>(pointsNo, boxNo, rMin, rMax);
       BoxND_RangeSearch<63, 1, TGeometry>(pointsNo, boxNo, rMin, rMax);
     }
-
-    BoxND_RangeSearch<1, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    BoxND_RangeSearch<2, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    BoxND_RangeSearch<3, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    BoxND_RangeSearch<4, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    BoxND_RangeSearch<6, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    BoxND_RangeSearch<8, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    BoxND_RangeSearch<16, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    BoxND_RangeSearch<31, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    if constexpr (isPlatform64)
-    {
-      BoxND_RangeSearch<32, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-      BoxND_RangeSearch<63, 2, TGeometry>(pointsNo, boxNo, rMin, rMax);
-    }
   }
 }
 
@@ -386,9 +374,11 @@ END_TEST_METHOD_ATTRIBUTE()
 TEST_METHOD(Point_RangeSearch)
 {
   srand(0);
+  /*
   PointT_RangeSearch<double>();
   PointT_RangeSearch<float>();
   PointT_RangeSearch<int>();
+  */
 }
 BEGIN_TEST_METHOD_ATTRIBUTE(Box_RangeSearch)
 TEST_IGNORE()
@@ -396,9 +386,11 @@ END_TEST_METHOD_ATTRIBUTE()
 TEST_METHOD(Box_RangeSearch)
 {
   srand(0);
+  /*
   BoxT_RangeSearch<double>();
   BoxT_RangeSearch<float>();
   BoxT_RangeSearch<int>();
+  */
 }
 }
 ;
