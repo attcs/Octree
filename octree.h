@@ -3850,9 +3850,6 @@ namespace OrthoTree
         [originalSize, &splitEntities](std::size_t permutationNo) { splitEntities.resize(originalSize + permutationNo); },
         [&](std::size_t permutationID, MortonChildID segmentID) { splitEntities[originalSize + permutationID] = { segmentID, locationIt }; });
     }
-
-
-      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
     
     template<bool ARE_LOCATIONS_SORTED>
     inline constexpr void ProcessNodeWithoutSplitEntities(depth_t depthID, LocationIterator& locationIt, NodeProcessingData& nodeProcessingData) const
@@ -4123,7 +4120,6 @@ namespace OrthoTree
       auto const maxDepthNo = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
       tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
 
-      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
       if (entityNo == 0)
         return;
 
@@ -4143,6 +4139,7 @@ namespace OrthoTree
 
       auto const rootNode = *tree.m_nodes.begin();
       tree.m_nodes.clear();
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
       tree.template BuildSubtree<ARE_LOCATIONS_SORTED>(locations.begin(), locations.end(), rootNode, tree.m_nodes);
     }
 
