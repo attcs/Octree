@@ -28,12 +28,12 @@ void testCompilePoint()
 
   using OT = OrthoTree::TreePointND<N>;
 
-  auto const key = OT::SI::GetHash(2, 3);
-  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  auto const aidGrid = OT::SI::Decode(key, 3);
-  auto const idGrid = OT::SI::Encode(aidGrid);
-  auto const fValid = OT::SI::IsValidKey(key);
-  auto const idChild = OT::SI::RemoveSentinelBit(key);
+  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
+  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
+  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
+  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
 
   auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
@@ -51,39 +51,39 @@ void testCompilePoint()
   // const member functions
   {
     auto const keyRoot = OT::SI::GetRootKey();
-    auto const center = tree.GetNodeCenter(keyRoot);
-    auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
+    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
+    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
-    auto const nodeSmallest = tree.FindSmallestNode(vpt.back());
+    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(vpt.back());
 
-    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    auto const boxAll = tree.GetBox();
-    auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    auto const nDepthMax = tree.GetDepthMax();
-    auto const nodeRoot = tree.GetNode(keyRoot);
-    auto const nodes = tree.GetNodes();
-    auto const grid = tree.GetResolutionMax();
+    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    [[maybe_unused]] auto const boxAll = tree.GetBox();
+    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
+    [[maybe_unused]] auto const nodes = tree.GetNodes();
+    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
 
-    auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
-    auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
-    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0, vpt);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, vpt);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
+    [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0, vpt);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, vpt);
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }}
       },
       0.0,
       vpt);
-    auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
+    [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
-    auto vListIsAnyChild = std::vector<bool>{};
+    [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
       , [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
       , [](auto const&, auto const&) -> bool { return true; }
@@ -120,12 +120,12 @@ void testCompilePointMap()
 
   using OT = OrthoTree::TreePointND<N, OrthoTree::BaseGeometryType, Map>;
 
-  auto const key = OT::SI::GetHash(2, 3);
-  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  auto const aidGrid = OT::SI::Decode(key, 3);
-  auto const idGrid = OT::SI::Encode(aidGrid);
-  auto const fValid = OT::SI::IsValidKey(key);
-  auto const idChild = OT::SI::RemoveSentinelBit(key);
+  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
+  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
+  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
+  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
 
   auto const vpt = Map{
     { 10, Point{ 0.0 } },
@@ -147,48 +147,48 @@ void testCompilePointMap()
 
   // const member functions
   {
-    auto const keyRoot = OT::SI::GetRootKey();
-    auto const center = tree.GetNodeCenter(keyRoot);
-    auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
+    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
+    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
+    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
-    auto const nodeSmallest = tree.FindSmallestNode(vpt.at(11));
+    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(vpt.at(11));
 
-    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    auto const boxAll = tree.GetBox();
-    auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    auto const nDepthMax = tree.GetDepthMax();
-    auto const nodeRoot = tree.GetNode(keyRoot);
-    auto const nodes = tree.GetNodes();
-    auto const grid = tree.GetResolutionMax();
+    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    [[maybe_unused]] auto const boxAll = tree.GetBox();
+    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
+    [[maybe_unused]] auto const nodes = tree.GetNodes();
+    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
 
-    auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
-    auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
-    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    auto const idPlaneIntersectedP = tree.PlaneSearch(
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
+    [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       vpt);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       vpt);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }}
     },
       0.0,
       vpt);
-    auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
+    [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(
@@ -228,12 +228,12 @@ void testCompileBox()
 
   using OT = OrthoTree::TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>;
 
-  auto const key = OT::SI::GetHash(2, 3);
-  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  auto const aidGrid = OT::SI::Decode(key, 3);
-  auto const idGrid = OT::SI::Encode(aidGrid);
-  auto const fValid = OT::SI::IsValidKey(key);
-  auto const idChild = OT::SI::RemoveSentinelBit(key);
+  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
+  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
+  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
+  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
 
   auto constexpr boxes = std::array
   {
@@ -248,46 +248,46 @@ void testCompileBox()
 
   // const member functions
   {
-    auto const keyRoot = OT::SI::GetRootKey();
-    auto const center = tree.GetNodeCenter(keyRoot);
-    auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
+    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
+    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
+    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
-    auto const nodeSmallest = tree.FindSmallestNode(boxes.back());
+    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(boxes.back());
 
-    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    auto const boxAll = tree.GetBox();
-    auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    auto const nDepthMax = tree.GetDepthMax();
-    auto const nodeRoot = tree.GetNode(keyRoot);
-    auto const nodes = tree.GetNodes();
-    auto const grid = tree.GetResolutionMax();
+    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    [[maybe_unused]] auto const boxAll = tree.GetBox();
+    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
+    [[maybe_unused]] auto const nodes = tree.GetNodes();
+    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
 
-    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
-    auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
+    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
+    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
-    auto const aidPick = tree.PickSearch({}, boxes);
-    auto const aidBoxesInRange = tree.RangeSearch(boxes[0], boxes);
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], boxes);
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], boxes);
+    [[maybe_unused]] auto const aidPick = tree.PickSearch({}, boxes);
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], boxes);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], boxes);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], boxes);
 
-    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
-    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
 
-    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0, boxes);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, boxes);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0, boxes);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, boxes);
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, Vector{ 1.0, 0.0 }}
       },
       0.0,
       boxes);
 
-    auto vListIsAnyChild = std::vector<bool>{};
+    [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(keyRoot
       , [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
       , [](auto const&, auto const&) -> bool { return true; }
@@ -323,12 +323,12 @@ void testCompileBoxMap()
   using Map = std::unordered_map<int, BoundingBox>;
   using OT = OrthoTree::TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES, OrthoTree::BaseGeometryType, Map>;
 
-  auto const key = OT::SI::GetHash(2, 3);
-  auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  auto const aidGrid = OT::SI::Decode(key, 3);
-  auto const idGrid = OT::SI::Encode(aidGrid);
-  auto const fValid = OT::SI::IsValidKey(key);
-  auto const idChild = OT::SI::RemoveSentinelBit(key);
+  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
+  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
+  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
+  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
+  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
 
   auto const boxes = Map{
     { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
@@ -342,56 +342,56 @@ void testCompileBoxMap()
 
   // const member functions
   {
-    auto const keyRoot = OT::SI::GetRootKey();
-    auto const center = tree.GetNodeCenter(keyRoot);
-    auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
+    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
+    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
 
-    auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
+    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
+    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
 
-    auto const nodeSmallest = tree.FindSmallestNode(boxes.at(11));
+    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(boxes.at(11));
 
-    auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
-    auto const boxAll = tree.GetBox();
-    auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    auto const nDepthMax = tree.GetDepthMax();
-    auto const nodeRoot = tree.GetNode(keyRoot);
-    auto const nodes = tree.GetNodes();
-    auto const grid = tree.GetResolutionMax();
+    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
+    [[maybe_unused]] auto const boxAll = tree.GetBox();
+    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
+    [[maybe_unused]] auto const nodes = tree.GetNodes();
+    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
 
-    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
-    auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
+    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
+    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
-    auto const aidPick = tree.PickSearch({}, boxes);
-    auto const aidBoxesInRange = tree.RangeSearch(boxes.at(10), boxes);
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(10), boxes);
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(10), boxes);
+    [[maybe_unused]] auto const aidPick = tree.PickSearch({}, boxes);
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes.at(10), boxes);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(10), boxes);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(10), boxes);
 
-    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
-    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, boxes, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, boxes, 0);
 
-    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    auto const idPlaneIntersectedP = tree.PlaneIntersection(
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       boxes);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0,
       boxes);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, Vector{ 1.0, 0.0 }}
     },
       0.0,
       boxes);
 
-    auto vListIsAnyChild = std::vector<bool>{};
+    [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(
       keyRoot,
       [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
@@ -447,20 +447,20 @@ void testCompilePointC()
     
   // const member functions
   {
-    auto const& treeCore = tree.GetCore();
-    auto const& data = tree.GetData();
+    [[maybe_unused]] auto const& treeCore = tree.GetCore();
+    [[maybe_unused]] auto const& data = tree.GetData();
 
-    auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    auto const kNN = tree.GetNearestNeighbors({}, 2);
+    [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2);
 
-    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
@@ -516,28 +516,28 @@ void testCompilePointMapC()
 #endif
   // const member functions
   {
-    auto const& treeCore = tree.GetCore();
-    auto const& data = tree.GetData();
+    [[maybe_unused]] auto const& treeCore = tree.GetCore();
+    [[maybe_unused]] auto const& data = tree.GetData();
 
-    auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    auto const kNN = tree.GetNearestNeighbors({}, 2);
+    [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2);
 
-    auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlaneIntersectedP = tree.PlaneSearch(
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
@@ -594,25 +594,25 @@ void testCompileBoxC()
     
   // const member functions
   {
-    auto const& treeCore = tree.GetCore();
-    auto const& data = tree.GetData();
+    [[maybe_unused]] auto const& treeCore = tree.GetCore();
+    [[maybe_unused]] auto const& data = tree.GetData();
 
-    auto const aidPick = tree.PickSearch({});
-    auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    [[maybe_unused]] auto const aidPick = tree.PickSearch({});
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
 
-    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
-    auto const vidCollisionTree = tree.CollisionDetection(tree);
+    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
+    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(tree);
    
-    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
-    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
 
-    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
@@ -673,33 +673,33 @@ void testCompileBoxMapC()
     
   // const member functions
   {
-    auto const& treeCore = tree.GetCore();
-    auto const& data = tree.GetData();
+    [[maybe_unused]] auto const& treeCore = tree.GetCore();
+    [[maybe_unused]] auto const& data = tree.GetData();
 
-    auto const aidPick = tree.PickSearch({});
-    auto const aidBoxesInRange = tree.RangeSearch(boxes.at(30));
-    auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(30));
-    auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(30));
+    [[maybe_unused]] auto const aidPick = tree.PickSearch({});
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes.at(30));
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(30));
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(30));
 
-    auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
-    auto const vidCollisionTree = tree.CollisionDetection(tree);
+    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
+    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(tree);
 
-    auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
-    auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 1.0, 1.0 }, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 1.0, 1.0 }, 0);
 
-    auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlaneIntersectedP = tree.PlaneIntersection(
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, {1.0, 0.0}
     },
       0.0);
-    auto const idFrustum = tree.FrustumCulling(
+    [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{1.0, { 1.0, 0.0 }},
         Plane{1.0, { 0.0, 1.0 }}
