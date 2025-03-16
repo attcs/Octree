@@ -3222,7 +3222,7 @@ namespace OrthoTree
 
     template<typename EXEC_TAG>
     inline OrthoTreePoint(
-      EXEC_TAG executionTag,
+      EXEC_TAG,
       TContainer const& points,
       std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
@@ -3799,7 +3799,7 @@ namespace OrthoTree
 
     template<typename EXEC_TAG>
     inline OrthoTreeBoundingBox(
-      EXEC_TAG executionTag,
+      EXEC_TAG,
       TContainer const& boxes,
       std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,

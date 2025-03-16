@@ -113,12 +113,11 @@ namespace OrthoTree
     // Constructor for any contiguous container with compile-time parallel parameter
     template<typename EXEC_TAG>
     explicit OrthoTreeContainerBase(
-      EXEC_TAG executionTag,
+      EXEC_TAG,
       std::span<TEntity const> const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
-      bool isParallelCreation = false) noexcept
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
       requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
     : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
     {
@@ -133,12 +132,11 @@ namespace OrthoTree
     // Constructor for any copyable container compile-time parallel parameter
     template<typename EXEC_TAG>
     explicit OrthoTreeContainerBase(
-      EXEC_TAG executionTag,
+      EXEC_TAG,
       TContainer const& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
-      bool isParallelCreation = false) noexcept
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     : m_geometryCollection(geometryCollection)
     {
 #ifdef __cpp_lib_execution
@@ -152,12 +150,11 @@ namespace OrthoTree
     // Constructor for any movable container with compile-time parallel parameter
     template<typename EXEC_TAG>
     explicit OrthoTreeContainerBase(
-      EXEC_TAG executionTag,
+      EXEC_TAG,
       TContainer&& geometryCollection,
       std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
-      bool isParallelCreation = false) noexcept
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     : m_geometryCollection(std::move(geometryCollection))
     {
 #ifdef __cpp_lib_execution
