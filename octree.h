@@ -1899,7 +1899,7 @@ namespace OrthoTree
     };
   } // namespace detail
 
-  static constexpr std::size_t DEFAULT_MAX_ELEMENT_IN_NODES = 21;
+  static constexpr std::size_t DEFAULT_MAX_ELEMENT_IN_NODES = 20;
 
   // OrthoTrees
 
@@ -2104,7 +2104,7 @@ namespace OrthoTree
     NodeContainer<Node> m_nodes;
 #endif
 
-    std::size_t m_maxElementNo = 11;
+    std::size_t m_maxElementNo = DEFAULT_MAX_ELEMENT_IN_NODES;
     depth_t m_maxDepthNo = {};
 
     std::vector<typename IGM::Vector> m_nodeSizes;
@@ -2547,7 +2547,7 @@ namespace OrthoTree
 
     static inline depth_t EstimateMaxDepth(std::size_t elementNo, std::size_t maxElementNo) noexcept
     {
-      if (elementNo < maxElementNo)
+      if (elementNo <= maxElementNo)
         return 2;
 
       auto const nLeaf = elementNo / maxElementNo;
@@ -2579,7 +2579,7 @@ namespace OrthoTree
       CRASH_IF(maxDepthNo < 2);
       CRASH_IF(maxDepthNo >= SI::MAX_THEORETICAL_DEPTH);
       CRASH_IF(maxDepthNo >= std::numeric_limits<uint8_t>::max());
-      CRASH_IF(maxElementNo <= 1);
+      CRASH_IF(maxElementNo == 0);
       CRASH_IF(CHAR_BIT * sizeof(GridID) < m_maxDepthNo);
 
       this->m_grid = detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD>(maxDepthNo, boxSpace);
@@ -3257,7 +3257,7 @@ namespace OrthoTree
       {
         auto& [node, endLocationIt] = nodeStack[depthID];
         std::size_t const elementNo = std::distance(beginLocationIt, endLocationIt);
-        if ((0 < elementNo && elementNo < this->m_maxElementNo && !node.second.IsAnyChildExist()) || depthID == this->m_maxDepthNo)
+        if ((0 < elementNo && elementNo <= this->m_maxElementNo && !node.second.IsAnyChildExist()) || depthID == this->m_maxDepthNo)
         {
           auto& entityIDs = node.second.GetEntities();
           entityIDs.resize(elementNo);
@@ -3857,7 +3857,7 @@ namespace OrthoTree
         return;
 
       auto nodeEntityNo = subtreeEntityNo;
-      if (subtreeEntityNo >= this->m_maxElementNo && depthID < this->m_maxDepthNo)
+      if (subtreeEntityNo > this->m_maxElementNo && depthID < this->m_maxDepthNo)
       {
         typename std::vector<Location>::iterator stuckedEndLocationIt;
         if constexpr (ARE_LOCATIONS_SORTED)
@@ -3917,7 +3917,7 @@ namespace OrthoTree
         nodeSplitEntityNo = size_t(std::distance(parentSplitEntityProcessingData->BeginIt, splitEntitiesEndIt));
 
         nodeEntityNo += nodeSplitEntityNo;
-        isLeafNode |= nodeEntityNo < this->m_maxElementNo;
+        isLeafNode |= nodeEntityNo <= this->m_maxElementNo;
         auto const entityNo = isLeafNode ? nodeEntityNo : nodeSplitEntityNo;
         if (entityNo > 0)
         {
@@ -3933,7 +3933,7 @@ namespace OrthoTree
       }
       else
       {
-        isLeafNode |= nodeEntityNo < this->m_maxElementNo;
+        isLeafNode |= nodeEntityNo <= this->m_maxElementNo;
         if (isLeafNode && nodeEntityNo > 0)
           entityIDs.resize(nodeEntityNo);
       }

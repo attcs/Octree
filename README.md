@@ -188,8 +188,7 @@ Usage of Container types
       auto quadtree = QuadtreeBoxC(boxes
         , 3            // max depth
         , std::nullopt // user-provided bounding Box for all
-        , 2            // max element in a node 
-        , false        // parallel calculation option
+        , 1            // max element in a node 
       );
 
       auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
@@ -242,7 +241,7 @@ Usage of Container types
         boxes,
         3, // max depth
         std::nullopt, // user-provided bounding Box for all
-        2 // max element in a node
+        1 // max element in a node
       );
     }
 ```
@@ -279,7 +278,7 @@ Usage of Core types
       auto qt = QuadtreeBox(boxes
         , 3            // max depth
         , std::nullopt // user-provided bounding Box for all
-        , 2            // max element in a node 
+        , 1            // max element in a node 
       );
 
       auto collidingIDPairs = qt.CollisionDetection(boxes); //: { {1,4}, {2,4} }

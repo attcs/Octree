@@ -158,7 +158,7 @@ namespace AdaptorTest
     TEST_METHOD(Insert_NonLeaf_Successful)
     {
       auto constexpr vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
-      auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 2);
+      auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, MyPoint2D{ 2.5, 2.5 }, false));
 
@@ -170,7 +170,7 @@ namespace AdaptorTest
     TEST_METHOD(Contains__1__True)
     {
       auto constexpr vpt = array{ MyPoint2D{ 0.0, 0.0 }, MyPoint2D{ 1.0, 1.0 }, MyPoint2D{ 2.0, 2.0 }, MyPoint2D{ 3.0, 3.0 } };
-      auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 2);
+      auto tree = QuadtreePointCustom(vpt, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Contains(vpt[1], vpt, 0));
     }
@@ -195,7 +195,7 @@ namespace AdaptorTest
           Eigen::Vector3d(1.5, 1.5, 1.0),
           Eigen::Vector3d(1.0, 1.5, 1.5),
         };
-        auto tree = Eigen::OctreePoint3d(vpt, 3, std::nullopt, 2);
+        auto tree = Eigen::OctreePoint3d(vpt, 3, std::nullopt, 1);
         
         auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(Eigen::OctreePoint3d::SI::GetRootKey());
         auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(Eigen::OctreePoint3d::SI::GetRootKey());
@@ -248,7 +248,7 @@ namespace AdaptorTest
         auto quadtree = Eigen::QuadtreeBoxC2d(boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
-          , 2            // max element in a node 
+          , 1            // max element in a node 
           , false        // parallel calculation option
         );
 
@@ -325,7 +325,7 @@ namespace AdaptorTest
           BasicTypesXYZ::Point3D(1.5, 1.5, 1.0),
           BasicTypesXYZ::Point3D(1.0, 1.5, 1.5),
         };
-        auto tree = XYZ::OctreePoint(vpt, 3, std::nullopt, 2);
+        auto tree = XYZ::OctreePoint(vpt, 3, std::nullopt, 1);
         
         auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(OctreePoint::SI::GetRootKey());
         auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(OctreePoint::SI::GetRootKey());
@@ -384,7 +384,7 @@ namespace AdaptorTest
         auto quadtree = XYZ::QuadtreeBoxC(boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
-          , 2            // max element in a node 
+          , 1            // max element in a node 
           , false        // parallel calculation option
         );
 
@@ -584,7 +584,7 @@ namespace AdaptorTest
         auto vptView = std::vector<MyPoint2DBase*>{};
         std::ranges::transform(vptOwner, std::back_inserter(vptView), [](auto& ppt) { return ppt.get(); });
 
-        auto tree = QuadtreePointCustom(vptView, 3, std::nullopt, 2);
+        auto tree = QuadtreePointCustom(vptView, 3, std::nullopt, 1);
 
         auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(QuadtreePointCustom::SI::GetRootKey());
         auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(QuadtreePointCustom::SI::GetRootKey());
@@ -644,7 +644,7 @@ namespace AdaptorTest
           boxesView,
           3, // max depth
           std::nullopt, // user-provided bounding Box for all
-          2, // max element in a node
+          1, // max element in a node
           false // parallel calculation option
         );
 
@@ -732,7 +732,7 @@ namespace AdaptorTest
           FVector(1.5, 1.5, 1.0),
           FVector(1.0, 1.5, 1.5),
         };
-        auto tree = FOctreePoint(vpt, 3, std::nullopt, 2);
+        auto tree = FOctreePoint(vpt, 3, std::nullopt, 1);
         
         auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(FOctreePoint::SI::GetRootKey());
         auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(FOctreePoint::SI::GetRootKey());
@@ -771,7 +771,7 @@ namespace AdaptorTest
           boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
-          , 2            // max element in a node 
+          , 1            // max element in a node 
           , false        // parallel calculation option
         );
 
@@ -841,7 +841,7 @@ namespace AdaptorTest
           point_t(1.5, 1.5, 1.0),
           point_t(1.0, 1.5, 1.5),
         };
-        auto tree = boost::geometry::octree_point(vpt, 3, std::nullopt, 2);
+        auto tree = boost::geometry::octree_point(vpt, 3, std::nullopt, 1);
         
         auto entityIDsInBFS = tree.CollectAllEntitiesInBFS(octree_point::SI::GetRootKey());
         auto entityIDsInDFS = tree.CollectAllEntitiesInDFS(octree_point::SI::GetRootKey());
@@ -902,7 +902,7 @@ namespace AdaptorTest
           boxes
           , 3            // max depth
           , std::nullopt // user-provided bounding Box for all
-          , 2            // max element in a node 
+          , 1            // max element in a node 
           , false        // parallel calculation option
         );
 

@@ -40,7 +40,7 @@ namespace Example
       auto qt = QuadtreeBox(boxes
         , 3            // max depth
         , std::nullopt // user-provided bounding Box for all
-        , 2            // max element in a node 
+        , 1            // max element in a node 
       );
 
       auto collidingIDPairs = qt.CollisionDetection(boxes); //: { {1,4}, {2,4} }

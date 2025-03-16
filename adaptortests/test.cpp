@@ -320,7 +320,7 @@ namespace
     auto const pointNo = points.size();
     auto const points_span = std::span(points.begin(), points.end() - 1);
 
-    auto tree = TOrthoTreeA(points_span, 3, std::nullopt, 2);
+    auto tree = TOrthoTreeA(points_span, 3, std::nullopt, 1);
 
     auto const entityIDsInBFSActual = tree.CollectAllEntitiesInBFS(TOrthoTreeA::SI::GetRootKey());
     auto const entityIDsInBFSExpected = std::vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 };
@@ -448,7 +448,7 @@ namespace
       boxes,
       3,            // max depth
       std::nullopt, // user-provided bounding Box for all
-      2,            // max element in a node
+      1,            // max element in a node
       false         // parallel calculation option
     );
 

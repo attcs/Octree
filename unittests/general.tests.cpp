@@ -542,7 +542,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto const tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto const tree = DualtreeBox(vBox, 3, std::nullopt, 1);
 
       auto const ids = tree.CollectAllEntitiesInBFS();
       Assert::IsTrue(ids == vector<size_t>{6, 4, 5, 0, 1, 2, 3 });
@@ -552,7 +552,7 @@ namespace GeneralTest
     TEST_METHOD(EraseId__2__EmptyNode11)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 2, std::nullopt, 1);
 
       auto const kNode = DualtreePoint::SI::GetHash(2, 2);
       auto const& node = tree.GetNode(kNode);
@@ -575,7 +575,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes({});
 
       auto const ids = tree.CollectAllEntitiesInBFS();
@@ -591,7 +591,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes({ { 2, 7 } });
 
       auto const ids = tree.CollectAllEntitiesInBFS();
@@ -606,7 +606,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes({ { 2, std::nullopt } });
 
       auto const ids = tree.CollectAllEntitiesInBFS();
@@ -621,7 +621,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes(
         {
           { 3, 6 },
@@ -642,7 +642,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes(
         {
           { 1, 0 },
@@ -664,7 +664,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes(
         {
           { 6, 3 },
@@ -688,7 +688,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }
       };
-      auto tree = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
 
       auto const& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
@@ -869,7 +869,7 @@ namespace GeneralTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 },
         BoundingBox1D{ 0.0, 4.0 }
       };
-      auto treePre = DualtreeBox(vBox, 3, std::nullopt, 2);
+      auto treePre = DualtreeBox(vBox, 3, std::nullopt, 1);
 
       auto treeAfter = treePre;
       auto constexpr vMove = Point1D{ -20.0 };
@@ -1228,7 +1228,7 @@ namespace Tree1DTest
     TEST_METHOD(NoPt4)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
 
       Assert::AreEqual<size_t>(tree.GetNodes().size(), 7);
 
@@ -1256,7 +1256,7 @@ namespace Tree1DTest
       using MortonNodeID = DualtreePoint::MortonNodeID;
 
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const kLast = tree.FindSmallestNode(vpt.back());
       Assert::AreEqual<MortonNodeID>(7, kLast);
     }
@@ -1266,7 +1266,7 @@ namespace Tree1DTest
       using MortonNodeID = DualtreePoint::MortonNodeID;
 
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const kLast = tree.FindSmallestNode(Point1D{ 2.9 });
       Assert::AreEqual<MortonNodeID>(7, kLast);
     }
@@ -1277,7 +1277,7 @@ namespace Tree1DTest
       using MortonNodeID = DualtreePoint::MortonNodeID;
 
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const kLast = tree.FindSmallestNode(Point1D{ 1.5 });
       Assert::AreEqual<MortonNodeID>(6, kLast);
     }
@@ -1285,7 +1285,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__EqualAtBorder__12)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.0, 2.0 }, vpt);
 
       Assert::IsTrue(std::ranges::is_permutation(vector{1, 2}, ids));
@@ -1294,7 +1294,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__Usual__23)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.1, 3.1 }, vpt);
 
       Assert::IsTrue(std::ranges::is_permutation(vector{ 2, 3 }, ids));
@@ -1303,7 +1303,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__AtNodeBorder__2)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.5, 2.25 }, vpt);
 
       Assert::IsTrue(std::ranges::is_permutation(vector{ 2 }, ids));
@@ -1312,7 +1312,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__ZeroBox__Empty)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({}, vpt);
 
       Assert::IsTrue(ids.empty());
@@ -1321,7 +1321,7 @@ namespace Tree1DTest
     TEST_METHOD(RangeSearch__Empty)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
+      auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.5, 1.75 }, vpt);
 
       Assert::IsTrue(ids.empty());
@@ -1334,7 +1334,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert__NonLeaf__Successful)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, Point1D{ 2.5 }, false));
 
@@ -1346,7 +1346,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert__Leaf__Successful)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, Point1D{ 2.5 }, true));
 
@@ -1358,7 +1358,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert__OutOfSpace__ReturnsFalse)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
       Assert::IsFalse(tree.Insert(4, Point1D{ 4.0 }, true));
 
       auto const& nodes = tree.GetNodes();
@@ -1376,7 +1376,7 @@ namespace Tree1DTest
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
       
       Assert::IsTrue(tree.Update(3, { 1.1 }));
       auto const ids = tree.CollectAllEntitiesInBFS();
@@ -1387,7 +1387,7 @@ namespace Tree1DTest
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Update(2, { 1.1 }));
       auto const ids = tree.CollectAllEntitiesInBFS();
@@ -1399,7 +1399,7 @@ namespace Tree1DTest
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       auto const idsPre = tree.CollectAllEntitiesInBFS();
       Assert::IsFalse(tree.Update(2, { 3.1 }));
@@ -1412,7 +1412,7 @@ namespace Tree1DTest
     TEST_METHOD(Erase__3__Removed)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Erase(3, vpt.back()));
       auto const ids = tree.CollectAllEntitiesInBFS();
@@ -1422,7 +1422,7 @@ namespace Tree1DTest
     TEST_METHOD(Erase__Nonexist__ReturnsFalse)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       auto const idsPre = tree.CollectAllEntitiesInBFS();
       Assert::IsFalse(tree.Erase(4, vpt.back()));
@@ -1434,7 +1434,7 @@ namespace Tree1DTest
     TEST_METHOD(Erase__WrongPointWasGiven__ReturnsFalse)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
-      auto tree = DualtreePoint(vpt, 3, std::nullopt, 2);
+      auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       auto const idsPre = tree.CollectAllEntitiesInBFS();
       Assert::IsFalse(tree.Erase(3, vpt.front()));
@@ -1480,7 +1480,7 @@ namespace Tree1DTest
 
       auto quadtreebox = QuadtreeBox(boxes, 2
         , std::nullopt // user-provided bounding Box for all
-        , 2            // max element in a node 
+        , 1            // max element in a node 
       );
 
 
@@ -1516,7 +1516,7 @@ namespace Tree1DTest
       auto quadtreebox = QuadtreeBox{};
       QuadtreeBox::Create<true>(quadtreebox, boxes, 2
         , std::nullopt // user-provided bounding Box for all
-        , 2            // max element in a node 
+        , 1            // max element in a node 
       );
 
 
@@ -1540,10 +1540,10 @@ namespace Tree1DTest
     TEST_METHOD(CollistionDetection__0040_3565__P30)
     {
       auto constexpr vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto const treeL = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto const treeL = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
       auto constexpr vBoxR = array{ BoundingBox1D{ 3.5, 4.5 },  BoundingBox1D{ 4.5, 5.5 },  BoundingBox1D{ 5.5, 6.5 } };
-      auto const treeR = DualtreeBox(vBoxR, 3, std::nullopt, 2);
+      auto const treeR = DualtreeBox(vBoxR, 3, std::nullopt, 1);
 
       auto const ret = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
 
@@ -1562,7 +1562,7 @@ namespace Tree1DTest
         BoundingBox1D{ 0.0, 2.0 }, BoundingBox1D{ 2.0, 4.0 }, 
         BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }
       };
-      auto const treeL = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto const treeL = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
       auto constexpr vBoxR = array
       { 
@@ -1570,7 +1570,7 @@ namespace Tree1DTest
         BoundingBox1D{ 2.0, 4.0 }, BoundingBox1D{ 4.0, 6.0 }, 
         BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 }, BoundingBox1D{ 4.0, 5.0 }, BoundingBox1D{ 5.0, 6.0 }
       };
-      auto const treeR = DualtreeBox(vBoxR, 3, std::nullopt, 2);
+      auto const treeR = DualtreeBox(vBoxR, 3, std::nullopt, 1);
 
       auto const vActual = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
 
@@ -1602,7 +1602,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_IntoRoot_Successful)
     {
       auto constexpr vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 0, 4 }, false));
 
@@ -1615,7 +1615,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_NonLeaf_Successful)
     {
       auto constexpr vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, false));
 
@@ -1627,7 +1627,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_Leaf_Successful)
     {
       auto constexpr vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, true));
 
@@ -1640,7 +1640,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_LeafBut1_Successful)
     {
       auto constexpr vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 1.0, 3.0 }, true));
 
@@ -1657,7 +1657,7 @@ namespace Tree1DTest
     TEST_METHOD(Insert_LeafBut2_Successful)
     {
       auto constexpr vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
       Assert::IsTrue(tree.Insert(4, BoundingBox1D{ 0.0, 2.0 }, true));
 
@@ -1674,7 +1674,7 @@ namespace Tree1DTest
     TEST_METHOD(Complex)
     {
       auto constexpr vBoxL = array{ BoundingBox1D{ 0.0, 1.0 }, BoundingBox1D{ 1.0, 2.0 }, BoundingBox1D{ 2.0, 3.0 }, BoundingBox1D{ 3.0, 4.0 } };
-      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 2);
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
       tree.Insert(4, BoundingBox1D{ 3.5, 3.7 }, false);
       tree.Insert(5, BoundingBox1D{ 3.5, 3.7 }, true);
       tree.EraseEntity(3);
@@ -1710,7 +1710,7 @@ namespace Tree2DTest
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
-      auto const nt = TreePointND<N>(points, 3, std::nullopt, 3);
+      auto const nt = TreePointND<N>(points, 3, std::nullopt, 2);
       auto const& nodes = nt.GetNodes();
       Assert::AreEqual<size_t>(22, nodes.size());
     }
@@ -2041,7 +2041,7 @@ namespace Tree2DTest
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      auto const quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
+      auto const quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 1);
       auto const nodes = quadtreebox.GetNodes();
       Assert::AreEqual<size_t>(7, nodes.size());
       
@@ -2079,7 +2079,7 @@ namespace Tree2DTest
         BoundingBox2D{ { 1.5, 1.5 }, { 2.0, 2.0 } },
       };
 
-      auto const quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 2);
+      auto const quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 1);
       auto const nodes = quadtreebox.GetNodes();
       Assert::AreEqual<size_t>(8, nodes.size());
       Assert::IsTrue(nodes.contains(1));
@@ -2373,7 +2373,7 @@ namespace Tree3DTest
           {-4, -4, -4},
           {+4, +4, +4}
       },
-        2);
+        1);
       tree.UpdateIndexes<true, false>({});
 
       auto const isOutsiderInserted = tree.Insert(pointNo, Point3D{ +5.0, +4.0, +4.0}, false);
@@ -2584,7 +2584,7 @@ namespace Tree3DTest
           {-4, -4, -4},
           {+4, +4, +4}
         },
-        2);
+        1);
 
       auto const nodeBy0 = tree.GetNodeIDByEntity(0);
       Assert::IsTrue(nodeBy0 == 8 || nodeBy0 == 12);
