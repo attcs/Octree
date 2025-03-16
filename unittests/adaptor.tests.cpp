@@ -3,9 +3,18 @@
 #include <boost/geometry.hpp>
 #include "../adaptor.boost.h"
 
+#ifdef _MSC_VER
+#pragma warning(disable : 4127)
+#pragma warning(disable : 5054)
+#endif
+
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include "../adaptor.eigen.h"
+#ifdef _MSC_VER
+#pragma warning(default : 4127)
+#pragma warning(default : 5054)
+#endif
 
 #include "../adaptor.xyz.h"
 

@@ -55,25 +55,25 @@ namespace UnrealDummyTypes
       return {};
     }
 
-    bool IsUnit(float LengthSquaredTolerance) const
+    bool IsUnit(float) const
     {
       NOT_IMPLEMENTED;
       return true;
     }
 
-    static float Dist(FVector_ const& v1, FVector_ const& v2)
+    static float Dist(FVector_ const&, FVector_ const&)
     {
       NOT_IMPLEMENTED;
       return {};
     }
 
-    static float DistSquared(FVector_ const& v1, FVector_ const& v2)
+    static float DistSquared(FVector_ const&, FVector_ const&)
     {
       NOT_IMPLEMENTED;
       return {};
     }
 
-    static float DotProduct(FVector_ const& v1, FVector_ const& v2)
+    static float DotProduct(FVector_ const&, FVector_ const&)
     {
       NOT_IMPLEMENTED;
       return {};
