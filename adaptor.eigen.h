@@ -23,6 +23,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#ifdef _MSC_VER
+// Warning: std::optional + Eigen::AlignedBox: "structure was padded due to alignment specifier"
+// Disable: This value will be immediately converted to another type, there is no alignment relevant instructions.
+#pragma warning(disable : 4324)
+#endif
+
 #include "octree.h"
 // #include <Eigen/Geometry>
 
