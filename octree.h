@@ -3226,8 +3226,7 @@ namespace OrthoTree
       TContainer const& points,
       std::optional<depth_t> maxDepthNoIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT,
-      bool isParallelExec = false) noexcept
+      std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
     }
@@ -3804,8 +3803,7 @@ namespace OrthoTree
       TContainer const& boxes,
       std::optional<depth_t> maxDepthNo = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT,
-      bool isParallelExec = false) noexcept
+      std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
     }
@@ -3848,7 +3846,7 @@ namespace OrthoTree
         [originalSize, &splitEntities](std::size_t permutationNo) { splitEntities.resize(originalSize + permutationNo); },
         [&](std::size_t permutationID, MortonChildID segmentID) { splitEntities[originalSize + permutationID] = { segmentID, locationIt }; });
     }
-    
+
     template<bool ARE_LOCATIONS_SORTED>
     inline constexpr void ProcessNodeWithoutSplitEntities(depth_t depthID, LocationIterator& locationIt, NodeProcessingData& nodeProcessingData) const
     {
@@ -4031,12 +4029,11 @@ namespace OrthoTree
       }
       else
       {
-        this->template CreateProcessingData<ARE_LOCATIONS_SORTED>(
-          examinedLevelID, keyGenerator, locationIt, parentNodeProcessingData, nodeProcessingData);
+        this->template CreateProcessingData<ARE_LOCATIONS_SORTED>(examinedLevelID, keyGenerator, locationIt, parentNodeProcessingData, nodeProcessingData);
       }
     }
 
-    
+
     // Build the tree in depth-first order
     template<bool ARE_LOCATIONS_SORTED, typename TResultContainer>
     inline constexpr void BuildSubtree(
@@ -4097,8 +4094,7 @@ namespace OrthoTree
         }
         else
         {
-          this->template CreateProcessingData<ARE_LOCATIONS_SORTED>(
-            examinedLevelID, keyGenerator, locationIt, nodeStack[depthID - 1], nodeStack[depthID]);
+          this->template CreateProcessingData<ARE_LOCATIONS_SORTED>(examinedLevelID, keyGenerator, locationIt, nodeStack[depthID - 1], nodeStack[depthID]);
         }
       }
     }
