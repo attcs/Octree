@@ -1279,8 +1279,8 @@ namespace OrthoTree
     public:
       inline constexpr GridSpaceIndexing() = default;
 
-      inline constexpr GridSpaceIndexing(depth_t maxDepthNo, IGM::Box const& boxSpace) noexcept
-      : m_maxRasterResolution(detail::pow2<depth_t, GridID>(maxDepthNo))
+      inline constexpr GridSpaceIndexing(depth_t maxDepthID, IGM::Box const& boxSpace) noexcept
+      : m_maxRasterResolution(detail::pow2<depth_t, GridID>(maxDepthID))
       , m_maxRasterID(m_maxRasterResolution - 1)
       , m_boxSpace(boxSpace)
       {
@@ -1432,14 +1432,14 @@ namespace OrthoTree
       // Mask for child bit part
       static auto constexpr CHILD_MASK = detail::pow2_ce<DIMENSION_NO>() - 1;
 
-      static auto constexpr MAX_NONLINEAR_DEPTH = 4;
+      static auto constexpr MAX_NONLINEAR_DEPTH_ID = 4;
 
       using UnderlyingInt = std::conditional_t<IS_32BIT_LOCATION, uint32_t, uint64_t>;
       using ChildID = UnderlyingInt;
 
       // Max value: 2 ^ nDepth ^ DIMENSION_NO * 2 (signal bit)
       using LinearLocationID = UnderlyingInt;
-      using NonLinearLocationID = bitset_arithmetic<DIMENSION_NO * MAX_NONLINEAR_DEPTH + 1>;
+      using NonLinearLocationID = bitset_arithmetic<DIMENSION_NO * MAX_NONLINEAR_DEPTH_ID + 1>;
       using LocationID = typename std::conditional_t<IS_LINEAR_TREE, LinearLocationID, NonLinearLocationID>;
       using NodeID = LocationID; // same as the LocationID, but depth is signed by a sentinel bit.
       using LocationIDCR = typename std::conditional_t<IS_LINEAR_TREE, LocationID const, LocationID const&>;
@@ -1447,9 +1447,9 @@ namespace OrthoTree
       template<typename T>
       using DimArray = std::array<T, DIMENSION_NO>;
 
-      // Type system determined maximal depth.
-      static auto constexpr MAX_THEORETICAL_DEPTH =
-        IS_LINEAR_TREE ? static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinal bit*/)) / DIMENSION_NO : MAX_NONLINEAR_DEPTH;
+      // Type system determined maximal depth id due to the resolution.
+      static auto constexpr MAX_THEORETICAL_DEPTH_ID =
+        IS_LINEAR_TREE ? static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinal bit*/)) / DIMENSION_NO : MAX_NONLINEAR_DEPTH_ID;
 
       struct RangeLocationMetaData
       {
@@ -1492,9 +1492,9 @@ namespace OrthoTree
         NodeID m_parentFlag;
       };
 
-      static inline constexpr NodeID GetHashAtDepth(auto&& location, depth_t maxDepthNo) noexcept
+      static inline constexpr NodeID GetHashAtDepth(auto&& location, depth_t maxDepthID) noexcept
       {
-        return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | (location.LocID >> ((maxDepthNo - location.DepthID) * DIMENSION_NO));
+        return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | (location.LocID >> ((maxDepthID - location.DepthID) * DIMENSION_NO));
       }
 
       static inline constexpr NodeID GetHash(depth_t depth, LocationIDCR locationID) noexcept
@@ -1741,7 +1741,7 @@ namespace OrthoTree
         }
       }
 
-      static DimArray<GridID> Decode(NodeIDCR nodeKey, depth_t maxDepthNo) noexcept
+      static DimArray<GridID> Decode(NodeIDCR nodeKey, depth_t maxDepthID) noexcept
       {
         auto gridID = DimArray<GridID>{};
         if constexpr (DIMENSION_NO == 1)
@@ -1771,16 +1771,16 @@ namespace OrthoTree
           auto const depthID = GetDepthID(nodeKey);
 
           auto constexpr mask = LocationID{ 1 };
-          for (depth_t iDepth = maxDepthNo - depthID, shift = 0; iDepth < maxDepthNo; ++iDepth)
+          for (depth_t examinationLevelID = maxDepthID - depthID, shift = 0; examinationLevelID < maxDepthID; ++examinationLevelID)
             for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID, ++shift)
             {
               if constexpr (IS_LINEAR_TREE)
               {
-                gridID[dimensionID] |= ((nodeKey >> shift) & mask) << iDepth;
+                gridID[dimensionID] |= ((nodeKey >> shift) & mask) << examinationLevelID;
               }
               else
               {
-                gridID[dimensionID] |= GridID{ nodeKey[shift] } << iDepth;
+                gridID[dimensionID] |= GridID{ nodeKey[shift] } << examinationLevelID;
               }
             }
         }
@@ -1841,9 +1841,9 @@ namespace OrthoTree
         return { Encode(gridIDRange[0]), Encode(gridIDRange[1]) };
       }
 
-      static inline constexpr RangeLocationMetaData GetRangeLocationMetaData(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
+      static inline constexpr RangeLocationMetaData GetRangeLocationMetaData(depth_t maxDepthID, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
-        auto dl = RangeLocationMetaData{ maxDepthNo, locationIDRange[0], {}, {} };
+        auto dl = RangeLocationMetaData{ maxDepthID, locationIDRange[0], {}, {} };
         if (locationIDRange[0] != locationIDRange[1])
         {
           auto const locationDifference = locationIDRange[0] ^ locationIDRange[1];
@@ -1872,23 +1872,23 @@ namespace OrthoTree
           }
         }
 
-        assert(dl.DepthID < MAX_THEORETICAL_DEPTH);
+        assert(dl.DepthID <= MAX_THEORETICAL_DEPTH_ID);
         return dl;
       }
 
-      static inline constexpr RangeLocationMetaData GetRangeLocationMetaData(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
+      static inline constexpr RangeLocationMetaData GetRangeLocationMetaData(depth_t maxDepthID, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
-        return GetRangeLocationMetaData(maxDepthNo, GetRangeLocationID(gridIDRange));
+        return GetRangeLocationMetaData(maxDepthID, GetRangeLocationID(gridIDRange));
       }
 
-      static inline constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
+      static inline constexpr NodeID GetNodeID(depth_t maxDepthID, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
       {
-        return GetHash(GetRangeLocationMetaData(maxDepthNo, gridIDRange));
+        return GetHash(GetRangeLocationMetaData(maxDepthID, gridIDRange));
       }
 
-      static inline constexpr NodeID GetNodeID(depth_t maxDepthNo, std::array<LocationID, 2> const& locationIDRange) noexcept
+      static inline constexpr NodeID GetNodeID(depth_t maxDepthID, std::array<LocationID, 2> const& locationIDRange) noexcept
       {
-        return GetHashAtDepth(GetRangeLocationMetaData(maxDepthNo, locationIDRange), maxDepthNo);
+        return GetHashAtDepth(GetRangeLocationMetaData(maxDepthID, locationIDRange), maxDepthID);
       }
 
       static inline constexpr auto IsLess(RangeLocationMetaData const& leftLocation, RangeLocationMetaData const& rightLocation) noexcept
@@ -2105,7 +2105,7 @@ namespace OrthoTree
 #endif
 
     std::size_t m_maxElementNo = DEFAULT_MAX_ELEMENT_IN_NODES;
-    depth_t m_maxDepthNo = {};
+    depth_t m_maxDepthID = {};
 
     std::vector<typename IGM::Vector> m_nodeSizes;
 
@@ -2121,7 +2121,7 @@ namespace OrthoTree
     : m_umrNodes()
     , m_nodes(&m_umrNodes)
     , m_maxElementNo(other.m_maxElementNo)
-    , m_maxDepthNo(other.m_maxDepthNo)
+    , m_maxDepthID(other.m_maxDepthID)
     , m_nodeSizes(other.m_nodeSizes)
     , m_grid(other.m_grid)
     {
@@ -2131,7 +2131,7 @@ namespace OrthoTree
     OrthoTreeBase& operator=(OrthoTreeBase const& other)
     {
       m_maxElementNo = other.m_maxElementNo;
-      m_maxDepthNo = other.m_maxDepthNo;
+      m_maxDepthID = other.m_maxDepthID;
       m_nodeSizes = other.m_nodeSizes;
       m_grid = other.m_grid;
       m_nodes = other.m_nodes;
@@ -2161,7 +2161,7 @@ namespace OrthoTree
     // Calculate extent by box of the tree and the key of the node
     constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
     {
-      return m_grid.CalculateGridCellCenter(SI::Decode(key, GetDepthMax()), GetDepthMax() - SI::GetDepthID(key));
+      return m_grid.CalculateGridCellCenter(SI::Decode(key, m_maxDepthID), m_maxDepthID - SI::GetDepthID(key));
     }
 
 #ifdef ORTHOTREE__DISABLED_NODECENTER
@@ -2245,16 +2245,16 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     inline constexpr SI::RangeLocationMetaData GetRangeLocationMetaData(TVector const& point) const noexcept
     {
-      return { this->m_maxDepthNo, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(point) };
+      return { this->m_maxDepthID, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(point) };
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false, typename TBoxItem = TBox>
     inline constexpr SI::RangeLocationMetaData GetRangeLocationMetaData(TBoxItem const& box) const noexcept
     {
-      return SI::GetRangeLocationMetaData(this->m_maxDepthNo, this->m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY, TBoxItem>(box));
+      return SI::GetRangeLocationMetaData(this->m_maxDepthID, this->m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY, TBoxItem>(box));
     }
 
-    inline constexpr depth_t GetExaminationLevelID(depth_t depth) const { return m_maxDepthNo - depth; }
+    inline constexpr depth_t GetExaminationLevelID(depth_t depth) const { return m_maxDepthID - depth; }
 
     bool IsEveryEntityUnique() const noexcept
     {
@@ -2314,7 +2314,7 @@ namespace OrthoTree
       TEntityID newEntityID,
       TContainer const& geometryCollection) noexcept
     {
-      assert(parentNodeKey == SI::GetHashAtDepth(newEntityLocation, this->GetDepthMax()) && "ParentNodeKey should be the same as the location's node key.");
+      assert(parentNodeKey == SI::GetHashAtDepth(newEntityLocation, this->GetMaxDepthID()) && "ParentNodeKey should be the same as the location's node key.");
 
       auto const childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
       for (auto const childID : this->GetSplitChildSegments(newEntityLocation))
@@ -2352,12 +2352,12 @@ namespace OrthoTree
       auto const isEntitySplit = doSplit && !SI::IsAllChildTouched(newEntityLocation.TouchedDimensionsFlag);
 
       // If newEntityNodeKey is not the equal to the parentNodeKey, it is not exists.
-      auto const newEntityNodeKey = SI::GetHashAtDepth(newEntityLocation, this->m_maxDepthNo);
+      auto const newEntityNodeKey = SI::GetHashAtDepth(newEntityLocation, this->m_maxDepthID);
       auto const shouldInsertInParentNode = newEntityNodeKey == parentNodeKey || (isEntitySplit && newEntityLocation.DepthID < parentDepth);
 
       auto& parentNode = this->m_nodes.at(parentNodeKey);
       auto const cf = [&] {
-        if (parentDepth == this->m_maxDepthNo)
+        if (parentDepth == this->m_maxDepthID)
           return ControlFlow::InsertInParentNode;
         else if (parentNode.IsAnyChildExist() && isEntitySplit && newEntityLocation.DepthID == parentDepth)
           return ControlFlow::SplitToChildren;
@@ -2373,7 +2373,7 @@ namespace OrthoTree
       {
       case ControlFlow::ShouldCreateOnlyOneChild: {
         auto const childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
-        auto const childID = SI::GetChildID(newEntityLocation.LocID, m_maxDepthNo - parentDepth);
+        auto const childID = SI::GetChildID(newEntityLocation.LocID, m_maxDepthID - parentDepth);
         assert(childID < SI::CHILD_NO);
         auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
@@ -2410,7 +2410,7 @@ namespace OrthoTree
             {
               // ShouldCreateOnlyOneChild supposes if newEntityNodeKey == parentNodeKey then parentNodeKey does not exist, therefore we need to find
               // the smallest smallestChildNodeKey which may not have the relevant child.
-              auto const entityNodeKey = SI::GetHashAtDepth(entityLocation, this->m_maxDepthNo);
+              auto const entityNodeKey = SI::GetHashAtDepth(entityLocation, this->m_maxDepthID);
               auto const& [smallestChildNodeKey, smallestChildDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
 
               this->template InsertWithRebalancingBase<false>(smallestChildNodeKey, smallestChildDepthID, doSplit, entityLocation, entityID, geometryCollection);
@@ -2519,26 +2519,26 @@ namespace OrthoTree
     }
 
   public: // Static aid functions
-    static constexpr std::size_t EstimateNodeNumber(std::size_t elementNo, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
+    static constexpr std::size_t EstimateNodeNumber(std::size_t elementNo, depth_t maxDepthID, std::size_t maxElementNo) noexcept
     {
       assert(maxElementNo > 0);
-      assert(maxDepthNo > 0);
+      assert(maxDepthID > 0);
 
       if (elementNo < 10)
         return 10;
 
       auto constexpr rMult = 1.5;
       constexpr depth_t bitSize = sizeof(std::size_t) * CHAR_BIT;
-      if ((maxDepthNo + 1) * DIMENSION_NO < bitSize)
+      if ((maxDepthID + 1) * DIMENSION_NO < bitSize)
       {
-        auto const nMaxChild = detail::pow2(maxDepthNo * DIMENSION_NO);
+        auto const nMaxChild = detail::pow2(maxDepthID * DIMENSION_NO);
         auto const nElementInNode = elementNo / nMaxChild;
         if (nElementInNode > maxElementNo / 2)
           return nMaxChild;
       }
 
       auto const nElementInNodeAvg = static_cast<float>(elementNo) / static_cast<float>(maxElementNo);
-      auto const nDepthEstimated = std::min(maxDepthNo, static_cast<depth_t>(ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(DIMENSION_NO))));
+      auto const nDepthEstimated = std::min(maxDepthID, static_cast<depth_t>(ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(DIMENSION_NO))));
       if (nDepthEstimated * DIMENSION_NO < 64)
         return static_cast<std::size_t>(1.05 * detail::pow2(nDepthEstimated * std::min<depth_t>(6, DIMENSION_NO)));
 
@@ -2552,7 +2552,7 @@ namespace OrthoTree
 
       auto const nLeaf = elementNo / maxElementNo;
       // nLeaf = (2^nDepth)^DIMENSION_NO
-      return std::clamp(static_cast<depth_t>(std::log2(nLeaf) / static_cast<double>(DIMENSION_NO)), depth_t(2), SI::MAX_THEORETICAL_DEPTH - 1);
+      return std::clamp(static_cast<depth_t>(std::log2(nLeaf) / static_cast<double>(DIMENSION_NO)), depth_t(2), SI::MAX_THEORETICAL_DEPTH_ID);
     }
 
 
@@ -2561,7 +2561,8 @@ namespace OrthoTree
     inline bool HasNode(MortonNodeIDCR key) const noexcept { return m_nodes.contains(key); }
     inline auto const& GetNode(MortonNodeIDCR key) const noexcept { return m_nodes.at(key); }
     inline constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
-    inline constexpr auto GetDepthMax() const noexcept { return m_maxDepthNo; }
+    inline constexpr auto GetMaxDepthID() const noexcept { return m_maxDepthID; }
+    inline constexpr auto GetDepthNo() const noexcept { return m_maxDepthID + 1; }
     inline constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
     inline constexpr auto GetNodeIDByEntity(TEntityID entityID) const noexcept
     {
@@ -2572,18 +2573,18 @@ namespace OrthoTree
 
   protected:
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthNo, std::size_t maxElementNo) noexcept
+    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo) noexcept
     {
       CRASH_IF(!this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already
                                         // builded tree is wanted to be reset, use the Reset() function before init.
-      CRASH_IF(maxDepthNo < 2);
-      CRASH_IF(maxDepthNo >= SI::MAX_THEORETICAL_DEPTH);
-      CRASH_IF(maxDepthNo >= std::numeric_limits<uint8_t>::max());
+      CRASH_IF(maxDepthID < 1);
+      CRASH_IF(maxDepthID > SI::MAX_THEORETICAL_DEPTH_ID);
+      CRASH_IF(maxDepthID >= std::numeric_limits<uint8_t>::max());
       CRASH_IF(maxElementNo == 0);
-      CRASH_IF(CHAR_BIT * sizeof(GridID) < m_maxDepthNo);
+      CRASH_IF(CHAR_BIT * sizeof(GridID) < this->m_maxDepthID);
 
-      this->m_grid = detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD>(maxDepthNo, boxSpace);
-      this->m_maxDepthNo = maxDepthNo;
+      this->m_grid = detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD>(maxDepthID, boxSpace);
+      this->m_maxDepthID = maxDepthID;
       this->m_maxElementNo = maxElementNo;
 
       [[maybe_unused]] auto& nodeRoot = this->m_nodes[SI::GetRootKey()];
@@ -2591,9 +2592,9 @@ namespace OrthoTree
       nodeRoot.SetCenter(IGM::GetBoxCenter(boxSpace));
 #endif // !ORTHOTREE__DISABLED_NODECENTER
 
-      // the 0-based depth size of the tree is m_maxDepthNo+1, and a fictive childnode halfsize (+2) could be asked prematurely.
+      // the 0-based depth size of the tree is m_maxDepthID+1, and a fictive childnode halfsize (+2) could be asked prematurely.
       depth_t constexpr additionalDepth = 3;
-      auto const examinedDepthSize = this->m_maxDepthNo + additionalDepth;
+      auto const examinedDepthSize = this->m_maxDepthID + additionalDepth;
       this->m_nodeSizes.resize(examinedDepthSize, this->m_grid.GetSizes());
       auto constexpr multiplier = IGM_Geometry(0.5);
       auto factor = multiplier;
@@ -2604,9 +2605,9 @@ namespace OrthoTree
 
   public: // Main service functions
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    inline constexpr void Init(TBox const& box, depth_t maxDepthNo, std::size_t maxElementNo = 11) noexcept
+    inline constexpr void Init(TBox const& box, depth_t maxDepthID, std::size_t maxElementNo = 11) noexcept
     {
-      this->InitBase(IGM::GetBoxAD(box), maxDepthNo, maxElementNo);
+      this->InitBase(IGM::GetBoxAD(box), maxDepthID, maxElementNo);
     }
 
     using FProcedure = std::function<void(MortonNodeIDCR, Node const&)>;
@@ -2798,14 +2799,14 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     MortonNodeID GetNodeID(TVector const& searchPoint) const noexcept
     {
-      return SI::GetHash(m_maxDepthNo, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(searchPoint));
+      return SI::GetHash(m_maxDepthID, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(searchPoint));
     }
 
     // Get Node ID of a box
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     MortonNodeID GetNodeID(TBox const& box) const noexcept
     {
-      return SI::GetHashAtDepth(this->GetRangeLocationMetaData<HANDLE_OUT_OF_TREE_GEOMETRY>(box), m_maxDepthNo);
+      return SI::GetHashAtDepth(this->GetRangeLocationMetaData<HANDLE_OUT_OF_TREE_GEOMETRY>(box), m_maxDepthID);
     }
 
     // Find smallest node which contains the box
@@ -3016,7 +3017,7 @@ namespace OrthoTree
         return foundNodes;
       }
 
-      auto const rangeKey = SI::GetHashAtDepth(this->GetRangeLocationMetaData<!IS_BOX_TYPE, TBoxRange>(range), m_maxDepthNo);
+      auto const rangeKey = SI::GetHashAtDepth(this->GetRangeLocationMetaData<!IS_BOX_TYPE, TBoxRange>(range), m_maxDepthID);
       auto smallestNodeKey = this->FindSmallestNodeKey(rangeKey);
       if (!SI::IsValidKey(smallestNodeKey))
       {
@@ -3209,26 +3210,26 @@ namespace OrthoTree
     OrthoTreePoint() = default;
     inline explicit OrthoTreePoint(
       TContainer const& points,
-      std::optional<depth_t> maxDepthNoIn = std::nullopt,
+      std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT,
       bool isParallelExec = false) noexcept
     {
       if (isParallelExec)
-        this->template Create<true>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
+        this->template Create<true>(*this, points, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
       else
-        this->template Create<false>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
+        this->template Create<false>(*this, points, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
     }
 
     template<typename EXEC_TAG>
     inline OrthoTreePoint(
       EXEC_TAG,
       TContainer const& points,
-      std::optional<depth_t> maxDepthNoIn = std::nullopt,
+      std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
-      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, points, maxDepthNoIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, points, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
     }
 
   private:
@@ -3247,7 +3248,7 @@ namespace OrthoTree
         std::pair<MortonNodeID, Node> NodeInstance;
         typename std::vector<Location>::iterator EndLocationIt;
       };
-      std::array<NodeStackData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
+      auto nodeStack = std::vector<NodeStackData>(this->GetDepthNo());
       nodeStack[0] = NodeStackData{ *this->m_nodes.find(SI::GetRootKey()), locations.end() };
       this->m_nodes.clear(); // Root will be inserted again via the nodeStack, unspecified behavior
 
@@ -3257,7 +3258,7 @@ namespace OrthoTree
       {
         auto& [node, endLocationIt] = nodeStack[depthID];
         std::size_t const elementNo = std::distance(beginLocationIt, endLocationIt);
-        if ((0 < elementNo && elementNo <= this->m_maxElementNo && !node.second.IsAnyChildExist()) || depthID == this->m_maxDepthNo)
+        if ((0 < elementNo && elementNo <= this->m_maxElementNo && !node.second.IsAnyChildExist()) || depthID == this->m_maxDepthID)
         {
           auto& entityIDs = node.second.GetEntities();
           entityIDs.resize(elementNo);
@@ -3305,19 +3306,19 @@ namespace OrthoTree
     static void Create(
       OrthoTreePoint& tree,
       TContainer const& points,
-      std::optional<depth_t> maxDepthNoIn = std::nullopt,
+      std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
       auto const boxSpace = boxSpaceOptional.has_value() ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::GetBoxOfPointsAD(points);
       auto const pointNo = points.size();
 
-      auto const maxDepthNo = (!maxDepthNoIn || maxDepthNoIn == depth_t{}) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthNoIn;
-      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
+      auto const maxDepthID = (!maxDepthIDIn || maxDepthIDIn == depth_t{}) ? Base::EstimateMaxDepth(pointNo, maxElementNoInNode) : *maxDepthIDIn;
+      tree.InitBase(boxSpace, maxDepthID, maxElementNoInNode);
       if (points.empty())
         return;
 
-      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthNo, maxElementNoInNode));
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthID, maxElementNoInNode));
 
       // Calculate and sort the Morton location ids
       auto locations = std::vector<Location>(pointNo);
@@ -3343,7 +3344,7 @@ namespace OrthoTree
         return false;
 
       auto const entityLocation = this->GetRangeLocationMetaData(newPoint);
-      auto const entityNodeKey = SI::GetHash(this->m_maxDepthNo, entityLocation.LocID);
+      auto const entityNodeKey = SI::GetHash(this->m_maxDepthID, entityLocation.LocID);
       auto const [parentNodeKey, parentDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
       if (!SI::IsValidKey(parentNodeKey))
         return false;
@@ -3374,7 +3375,7 @@ namespace OrthoTree
         return false;
 
       auto const entityLocation = this->GetRangeLocationMetaData(newPoint);
-      auto const entityNodeKey = SI::GetHash(this->m_maxDepthNo, entityLocation.LocID);
+      auto const entityNodeKey = SI::GetHash(this->m_maxDepthID, entityLocation.LocID);
       auto const [parentNodeKey, parentDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
       if (!SI::IsValidKey(parentNodeKey))
         return false;
@@ -3786,26 +3787,26 @@ namespace OrthoTree
     OrthoTreeBoundingBox() = default;
     inline explicit OrthoTreeBoundingBox(
       TContainer const& boxes,
-      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT,
       bool isParallelExec = false) noexcept
     {
       if (isParallelExec)
-        this->template Create<true>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
+        this->template Create<true>(*this, boxes, maxDepthID, std::move(boxSpaceOptional), nElementMaxInNode);
       else
-        this->template Create<false>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
+        this->template Create<false>(*this, boxes, maxDepthID, std::move(boxSpaceOptional), nElementMaxInNode);
     }
 
     template<typename EXEC_TAG>
     inline OrthoTreeBoundingBox(
       EXEC_TAG,
       TContainer const& boxes,
-      std::optional<depth_t> maxDepthNo = std::nullopt,
+      std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t nElementMaxInNode = DEFAULT_MAX_ELEMENT) noexcept
     {
-      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, boxes, maxDepthNo, std::move(boxSpaceOptional), nElementMaxInNode);
+      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(*this, boxes, maxDepthID, std::move(boxSpaceOptional), nElementMaxInNode);
     }
 
   private: // Aid functions
@@ -3857,7 +3858,7 @@ namespace OrthoTree
         return;
 
       auto nodeEntityNo = subtreeEntityNo;
-      if (subtreeEntityNo > this->m_maxElementNo && depthID < this->m_maxDepthNo)
+      if (subtreeEntityNo > this->m_maxElementNo && depthID < this->m_maxDepthID)
       {
         typename std::vector<Location>::iterator stuckedEndLocationIt;
         if constexpr (ARE_LOCATIONS_SORTED)
@@ -3904,7 +3905,7 @@ namespace OrthoTree
       auto nodeEntityNo = subtreeEntityNo;
       auto nodeSplitEntityNo = size_t{};
 
-      bool isLeafNode = depthID == this->m_maxDepthNo;
+      bool isLeafNode = depthID == this->m_maxDepthID;
       auto& entityIDs = node.second.GetEntities();
       if (parentSplitEntityProcessingData && !parentSplitEntityProcessingData->Entities.empty())
       {
@@ -4042,10 +4043,10 @@ namespace OrthoTree
       std::pair<MortonNodeID, Node> const& rootNode,
       TResultContainer& nodes) const noexcept
     {
-      std::array<NodeProcessingData, SI::MAX_THEORETICAL_DEPTH> nodeStack;
+      auto nodeStack = std::vector<NodeProcessingData>(this->GetDepthNo());
       nodeStack[0] = NodeProcessingData{ rootNode, rootEndLocationIt };
 
-      std::array<SplitEntityProcessingData, SI::MAX_THEORETICAL_DEPTH> splitEntityStack;
+      auto splitEntityStack = std::vector<SplitEntityProcessingData>(this->GetDepthNo());
       splitEntityStack[0].BeginIt = splitEntityStack[0].Entities.begin();
 
       auto locationIt = rootBeginLocationIt;
@@ -4075,7 +4076,7 @@ namespace OrthoTree
           canNodeBeCommited &= isSplitEntitiesProcessed;
         }
 
-        if (canNodeBeCommited || depthID == this->m_maxDepthNo)
+        if (canNodeBeCommited || depthID == this->m_maxDepthID)
         {
           assert(canNodeBeCommited);
           detail::emplace(nodes, std::move(nodeStack[depthID].NodeInstance));
@@ -4111,8 +4112,8 @@ namespace OrthoTree
     {
       auto const boxSpace = boxSpaceOptional.has_value() ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::GetBoxOfBoxesAD(boxes);
       auto const entityNo = boxes.size();
-      auto const maxDepthNo = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
-      tree.InitBase(boxSpace, maxDepthNo, maxElementNoInNode);
+      auto const maxDepthID = (!maxDepthIn || maxDepthIn == depth_t{}) ? Base::EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
+      tree.InitBase(boxSpace, maxDepthID, maxElementNoInNode);
 
       if (entityNo == 0)
         return;
@@ -4133,7 +4134,7 @@ namespace OrthoTree
 
       auto const rootNode = *tree.m_nodes.begin();
       tree.m_nodes.clear();
-      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthNo, maxElementNoInNode));
+      detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(entityNo, maxDepthID, maxElementNoInNode));
       tree.template BuildSubtree<ARE_LOCATIONS_SORTED>(locations.begin(), locations.end(), rootNode, tree.m_nodes);
     }
 
@@ -4144,7 +4145,7 @@ namespace OrthoTree
         return false;
 
       auto const entityLocation = this->GetRangeLocationMetaData(newBox);
-      auto const entityNodeKey = SI::GetHashAtDepth(entityLocation, this->GetDepthMax());
+      auto const entityNodeKey = SI::GetHashAtDepth(entityLocation, this->GetMaxDepthID());
 
       auto const parentNodeKey = this->FindSmallestNodeKey(entityNodeKey);
 
@@ -4160,15 +4161,15 @@ namespace OrthoTree
         return false;
 
       auto const location = this->GetRangeLocationMetaData(newBox);
-      auto const entityNodeKey = SI::GetHashAtDepth(location, this->GetDepthMax());
+      auto const entityNodeKey = SI::GetHashAtDepth(location, this->GetMaxDepthID());
       auto const smallestNodeKey = this->FindSmallestNodeKey(entityNodeKey);
       if (!SI::IsValidKey(smallestNodeKey))
         return false; // new box is not in the handled space domain
 
-      auto const shoudlCreateChildrenOnly = location.DepthID != this->GetDepthMax() && doInsertToLeaf && DO_SPLIT_PARENT_ENTITIES;
+      auto const shoudlCreateChildrenOnly = location.DepthID != this->GetMaxDepthID() && doInsertToLeaf && DO_SPLIT_PARENT_ENTITIES;
       if (shoudlCreateChildrenOnly)
       {
-        auto const childKeyGenerator = typename SI::ChildKeyGenerator(SI::GetHashAtDepth(location, this->GetDepthMax()));
+        auto const childKeyGenerator = typename SI::ChildKeyGenerator(SI::GetHashAtDepth(location, this->GetMaxDepthID()));
         for (auto const childID : this->GetSplitChildSegments(location))
         {
           if (!this->template InsertWithoutRebalancingBase<!DO_SPLIT_PARENT_ENTITIES>(
@@ -4349,10 +4350,10 @@ namespace OrthoTree
       auto const gridIDRange = this->m_grid.GetEdgePointGridID(pickPoint);
       auto rangeLocationID = SI::GetRangeLocationID(gridIDRange);
 
-      auto nodeKey = SI::GetHash(this->m_maxDepthNo, rangeLocationID[0]);
+      auto nodeKey = SI::GetHash(this->m_maxDepthID, rangeLocationID[0]);
       if (rangeLocationID[0] != rangeLocationID[1]) // Pick point is on the nodes edge. It must check more nodes downward.
       {
-        auto const rangeKey = SI::GetNodeID(this->m_maxDepthNo, rangeLocationID);
+        auto const rangeKey = SI::GetNodeID(this->m_maxDepthID, rangeLocationID);
         nodeKey = this->FindSmallestNodeKey(rangeKey);
         auto const nodeIterator = this->m_nodes.find(nodeKey);
         if (nodeIterator != endIteratorOfNodes)

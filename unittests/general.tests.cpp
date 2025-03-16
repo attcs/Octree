@@ -379,7 +379,7 @@ namespace GeneralTest
 
       auto const& nodes = tree.GetNodes();
       Assert::AreEqual<size_t>(1, nodes.size());
-      Assert::AreEqual<depth_t>(3, tree.GetDepthMax());
+      Assert::AreEqual<depth_t>(3, tree.GetMaxDepthID());
       Assert::AreEqual<GridID>(8, tree.GetResolutionMax());
     }
 

@@ -62,7 +62,7 @@ void testCompilePoint()
     [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
     [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
     [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
     [[maybe_unused]] auto const nodes = tree.GetNodes();
     [[maybe_unused]] auto const grid = tree.GetResolutionMax();
@@ -159,7 +159,7 @@ void testCompilePointMap()
     [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
     [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
     [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
     [[maybe_unused]] auto const nodes = tree.GetNodes();
     [[maybe_unused]] auto const grid = tree.GetResolutionMax();
@@ -260,7 +260,7 @@ void testCompileBox()
     [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
     [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
     [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
     [[maybe_unused]] auto const nodes = tree.GetNodes();
     [[maybe_unused]] auto const grid = tree.GetResolutionMax();
@@ -354,7 +354,7 @@ void testCompileBoxMap()
     [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
     [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
-    [[maybe_unused]] auto const nDepthMax = tree.GetDepthMax();
+    [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
     [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
     [[maybe_unused]] auto const nodes = tree.GetNodes();
     [[maybe_unused]] auto const grid = tree.GetResolutionMax();
