@@ -98,7 +98,9 @@ namespace Example
         BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
         BoundingBox2D{ { 2.0, 2.0 }, { 3.0, 3.0 } },
         BoundingBox2D{ { 3.0, 3.0 }, { 4.0, 4.0 } },
-        BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
+        BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } },
+        BoundingBox2D{ { 0.0, 0.0 }, { 0.9, 0.9 } },
+        BoundingBox2D{ { 0.1, 0.1 }, { 0.9, 0.9 } }
       };
 
       auto quadtree = QuadtreeBoxC(boxes
@@ -108,7 +110,7 @@ namespace Example
         , false        // parallel calculation option
       );
 
-      auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
+      auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4}, {0,5}, {0,6}, {5,6} }
 
       auto searchBox = BoundingBox2D{ { 1.0, 1.0 }, { 3.1, 3.1 } };
 
@@ -123,7 +125,15 @@ namespace Example
       auto pickPoint = Point2D{ 2.5, 2.5 };
       auto pickedIDs = quadtree.PickSearch(pickPoint); //: { 2, 4 }
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<std::pair<std::size_t, std::size_t>>{ {1, 4}, { 2, 4 } }, collidingIDPairs));
+      Assert::IsTrue(std::ranges::is_permutation(
+        vector<std::pair<std::size_t, std::size_t>>{
+          { 1, 4 },
+          { 2, 4 },
+          { 0, 5 },
+          { 0, 6 },
+          { 5, 6 }
+      },
+        collidingIDPairs));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 4}, insideBoxIDs));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{1, 2, 3, 4}, overlappingBoxIDs));
       Assert::IsTrue(std::ranges::is_permutation(vector<std::size_t>{2, 4}, pickedIDs));

@@ -352,6 +352,15 @@ namespace OrthoTree
       return TOut{ 1 } << e;
     }
 
+    constexpr void inplaceMerge(auto const& comparator, auto& entityIDs, std::size_t middleIndex) noexcept
+    {
+      auto const beginIt = entityIDs.begin();
+      auto const middleIt = beginIt + middleIndex;
+      auto const endIt = entityIDs.end();
+      std::sort(middleIt, endIt, comparator);
+      std::inplace_merge(beginIt, middleIt, endIt, comparator);
+    }
+
     template<typename T, std::size_t N>
     class inplace_vector
     {
@@ -915,6 +924,16 @@ namespace OrthoTree
           center[dimensionID] = (AD::GetBoxMinC(box, dimensionID) + AD::GetBoxMaxC(box, dimensionID)) * Geometry(0.5);
 
         return center;
+      }
+
+      static inline constexpr Vector GetBoxSizeAD(TBox const& box) noexcept
+      {
+        Vector sizes;
+        LOOPIVDEP
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          sizes[dimensionID] = (AD::GetBoxMaxC(box, dimensionID) - AD::GetBoxMinC(box, dimensionID));
+
+        return sizes;
       }
 
       static inline constexpr Vector GetBoxHalfSizeAD(TBox const& box) noexcept
@@ -4568,57 +4587,167 @@ namespace OrthoTree
     }
 
   private:
-    template<typename TCollisionDetectionContainer>
-    void InsertCollidedEntities(
-      TContainer const& boxes, std::pair<MortonNodeID, Node> const& pairKeyNode, TCollisionDetectionContainer& collidedEntityPairsInsideNode) const noexcept
+    struct NodeCollisionContext
     {
-      auto constexpr DOES_ORDER_MATTER = DO_SPLIT_PARENT_ENTITIES;
+      IGM::Vector Center;
+      IGM::Box Box;
+      std::vector<TEntityID> EntityIDs;
+    };
 
-      auto const& [nodeKey, node] = pairKeyNode;
+    constexpr void FillNodeCollisionContext(
+      [[maybe_unused]] MortonNodeIDCR nodeKey, Node const& node, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
+    {
+      auto const& nodeEntities = this->GetNodeEntities(node);
 
-      auto const nodeSPD = SweepAndPruneDatabase(boxes, this->GetNodeEntities(node));
-      auto const& entityIDs = nodeSPD.GetEntities();
-      auto const noEntity = entityIDs.size();
+      nodeContext.EntityIDs.clear();
+      nodeContext.EntityIDs.assign(nodeEntities.begin(), nodeEntities.end());
+      nodeContext.Center = GetNodeCenterMacro(this, nodeKey, node);
+      nodeContext.Box = this->GetNodeBox(depthID, nodeContext.Center);
+    }
 
-      for (auto parentKey = SI::GetParentKey(nodeKey); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
+    constexpr void PrepareNodeCollisionContext(
+      TContainer const& boxes,
+      auto const& comparator,
+      depth_t depthID,
+      NodeCollisionContext& nodeContext,
+      NodeCollisionContext* parentNodeContext,
+      std::vector<TEntityID>* splitEntities = nullptr) const noexcept
+    {
+      auto& entityIDs = nodeContext.EntityIDs;
+      auto entityNo = entityIDs.size();
+
+      // split entities are moved upwards in the hierarchy
+      if constexpr (DO_SPLIT_PARENT_ENTITIES)
       {
-        auto const parentSPD = SweepAndPruneDatabase(boxes, this->GetNodeEntities(parentKey));
-        auto const& parentEntityIDs = parentSPD.GetEntities();
-
-        std::size_t iEntityBegin = 0;
-        for (auto const entityIDParent : parentEntityIDs)
+        if (parentNodeContext)
         {
-          for (; iEntityBegin < noEntity; ++iEntityBegin)
-            if (AD::GetBoxMaxC(detail::at(boxes, entityIDs[iEntityBegin]), 0) >= AD::GetBoxMinC(detail::at(boxes, entityIDParent), 0))
+          auto& parentEntities = parentNodeContext->EntityIDs;
+
+          auto const parentEntitiesWithoutSplitNo = parentEntities.size();
+          for (std::size_t i = 0; i < entityNo; ++i)
+          {
+            auto entityID = entityIDs[i];
+            auto const location = this->GetRangeLocationMetaData(detail::at(boxes, entityID));
+            if (location.DepthID >= depthID)
+              continue;
+
+            parentEntities.emplace_back(entityID);
+            if (splitEntities)
+              splitEntities->emplace_back(entityID);
+
+            --entityNo;
+            entityIDs[i] = std::move(entityIDs[entityNo]);
+            --i;
+          }
+          entityIDs.resize(entityNo);
+          detail::inplaceMerge(comparator, parentEntities, parentEntitiesWithoutSplitNo);
+
+          auto const uniqueEndIt = std::unique(parentEntities.begin(), parentEntities.end());
+          parentEntities.resize(uniqueEndIt - parentEntities.begin());
+        }
+      }
+
+      std::sort(entityIDs.begin(), entityIDs.end(), comparator);
+    }
+
+    constexpr void InsertCollidedEntitiesInsideNode(
+      TContainer const& boxes,
+      NodeCollisionContext const& context,
+      std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairs,
+      std::optional<FCollisionDetector> const& collisionDetector) const noexcept
+    {
+      auto const& entityIDs = context.EntityIDs;
+      auto const entityNo = entityIDs.size();
+      for (std::size_t i = 0; i < entityNo; ++i)
+      {
+        auto const entityIDI = entityIDs[i];
+        auto const& entityBoxI = detail::at(boxes, entityIDI);
+
+        for (std::size_t j = i + 1; j < entityNo; ++j)
+        {
+          auto const entityIDJ = entityIDs[j];
+          auto const& entityBoxJ = detail::at(boxes, entityIDJ);
+          if (AD::GetBoxMaxC(entityBoxI, 0) < AD::GetBoxMinC(entityBoxJ, 0))
+            break; // sweep and prune optimization
+
+          if (AD::AreBoxesOverlappedStrict(entityBoxI, entityBoxJ))
+            if (!collisionDetector || (*collisionDetector)(entityIDI, entityIDJ))
+              collidedEntityPairs.emplace_back(entityIDI, entityIDJ);
+        }
+      }
+    }
+
+    constexpr void InsertCollidedEntitiesWithParents(
+      TContainer const& boxes,
+      depth_t depthID,
+      std::vector<NodeCollisionContext> const& nodeContextStack,
+      std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairs,
+      std::optional<FCollisionDetector> const& collisionDetector) const noexcept
+    {
+      auto const& nodeContext = nodeContextStack[depthID];
+      auto const& nodeCenter = nodeContext.Center;
+      auto const& nodeSizes = this->GetNodeSize(depthID);
+      auto const& entityIDs = nodeContext.EntityIDs;
+
+      auto const entityNo = entityIDs.size();
+
+      for (depth_t parentDepthID = 0; parentDepthID < depthID; ++parentDepthID)
+      {
+        auto const& [parentCenter, parentBox, parentEntityIDs] = nodeContextStack[parentDepthID];
+
+        auto iEntityBegin = std::size_t{};
+        for (auto const parentEntityID : parentEntityIDs)
+        {
+          auto const& parentEntityBox = detail::at(boxes, parentEntityID);
+          if (AD::GetBoxMinC(parentEntityBox, 0) > nodeContext.Box.Max[0])
+            break;
+
+          auto const parentEntityCenter = IGM::GetBoxCenterAD(parentEntityBox);
+          auto const parentEntitySizes = IGM::GetBoxSizeAD(parentEntityBox);
+          if (!IGM::AreBoxesOverlappingByCenter(nodeCenter, parentEntityCenter, nodeSizes, parentEntitySizes))
+            continue;
+
+          for (; iEntityBegin < entityNo; ++iEntityBegin)
+            if (AD::GetBoxMaxC(detail::at(boxes, entityIDs[iEntityBegin]), 0) >= AD::GetBoxMinC(parentEntityBox, 0))
               break; // sweep and prune optimization
 
-          for (std::size_t iEntity = iEntityBegin; iEntity < noEntity; ++iEntity)
+          for (std::size_t iEntity = iEntityBegin; iEntity < entityNo; ++iEntity)
           {
             auto const entityID = entityIDs[iEntity];
+            auto const& entityBox = detail::at(boxes, entityID);
 
-            if (AD::GetBoxMaxC(detail::at(boxes, entityIDParent), 0) < AD::GetBoxMinC(detail::at(boxes, entityID), 0))
+            if (AD::GetBoxMaxC(parentEntityBox, 0) < AD::GetBoxMinC(entityBox, 0))
               break; // sweep and prune optimization
 
-            if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityID), detail::at(boxes, entityIDParent)))
-              detail::emplace(collidedEntityPairsInsideNode, detail::makePair<TEntityID, DOES_ORDER_MATTER>(entityID, entityIDParent));
+            if (AD::AreBoxesOverlappedStrict(entityBox, parentEntityBox))
+              if (!collisionDetector || (*collisionDetector)(entityID, parentEntityID))
+                collidedEntityPairs.emplace_back(entityID, parentEntityID);
           }
         }
       }
+    }
 
-      for (std::size_t i = 0; i < noEntity; ++i)
-      {
-        auto const entityIDI = entityIDs[i];
+    void InsertCollidedEntitiesInSubtree(
+      TContainer const& boxes,
+      auto const& comparator,
+      depth_t depthID,
+      MortonNodeIDCR nodeKey,
+      std::vector<NodeCollisionContext>& nodeContextStack,
+      std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairs,
+      std::optional<FCollisionDetector> const& collisionDetector,
+      std::vector<TEntityID>* splitEntities = nullptr) const noexcept
+    {
+      auto const& node = this->GetNode(nodeKey);
 
-        for (std::size_t j = i + 1; j < noEntity; ++j)
-        {
-          auto const entityIDJ = entityIDs[j];
-          if (AD::GetBoxMaxC(detail::at(boxes, entityIDI), 0) < AD::GetBoxMinC(detail::at(boxes, entityIDJ), 0))
-            break; // sweep and prune optimization
+      FillNodeCollisionContext(nodeKey, node, depthID, nodeContextStack[depthID]);
+      PrepareNodeCollisionContext(boxes, comparator, depthID, nodeContextStack[depthID], depthID == 0 ? nullptr : &nodeContextStack[depthID - 1], splitEntities);
 
-          if (AD::AreBoxesOverlappedStrict(detail::at(boxes, entityIDI), detail::at(boxes, entityIDJ)))
-            detail::emplace(collidedEntityPairsInsideNode, detail::makePair<TEntityID, DOES_ORDER_MATTER>(entityIDI, entityIDJ));
-        }
-      }
+      auto const childDepthID = depthID + 1;
+      for (MortonLocationIDCR childKey : node.GetChildren())
+        InsertCollidedEntitiesInSubtree(boxes, comparator, childDepthID, childKey, nodeContextStack, collidedEntityPairs, collisionDetector);
+
+      InsertCollidedEntitiesInsideNode(boxes, nodeContextStack[depthID], collidedEntityPairs, collisionDetector);
+      InsertCollidedEntitiesWithParents(boxes, depthID, nodeContextStack, collidedEntityPairs, collisionDetector);
     }
 
     // Collision detection between the stored elements from bottom to top logic
@@ -4626,72 +4755,149 @@ namespace OrthoTree
     std::vector<std::pair<TEntityID, TEntityID>> CollectCollidedEntities(
       TContainer const& boxes, std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
-      using CollisionDetectionContainer = std::vector<std::pair<TEntityID, TEntityID>>;
-      using CollisionDetectionContainerMap = std::unordered_set<std::pair<TEntityID, TEntityID>, detail::pair_hash>;
+      auto const comparator = [&boxes](TEntityID entityID1, TEntityID entityID2) {
+        auto const x1 = AD::GetBoxMinC(detail::at(boxes, entityID1), 0);
+        auto const x2 = AD::GetBoxMinC(detail::at(boxes, entityID2), 0);
+        return x1 < x2 || (x1 == x2 && entityID1 < entityID2);
+      };
 
       auto const entityNo = boxes.size();
-      auto collidedEntityPairs = CollisionDetectionContainer{};
-      collidedEntityPairs.reserve(boxes.size());
-      auto collidedEntityPairsMap = CollisionDetectionContainerMap{};
+      auto collidedEntityPairs = std::vector<std::pair<TEntityID, TEntityID>>{};
+      collidedEntityPairs.reserve(std::max<std::size_t>(100, entityNo / 10));
       if constexpr (!IS_PARALLEL_EXEC)
       {
-        if constexpr (DO_SPLIT_PARENT_ENTITIES)
-        {
-          collidedEntityPairsMap.reserve(entityNo);
-        }
-
-        EXEC_POL_DEF(epcd); // GCC 11.3
-        std::for_each(EXEC_POL_ADD(epcd) this->m_nodes.begin(), this->m_nodes.end(), [&](auto const& pairKeyNode) {
-          if constexpr (DO_SPLIT_PARENT_ENTITIES)
-            InsertCollidedEntities(boxes, pairKeyNode, collidedEntityPairsMap);
-          else
-            InsertCollidedEntities(boxes, pairKeyNode, collidedEntityPairs);
-        });
+        auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+        this->InsertCollidedEntitiesInSubtree(boxes, comparator, 0, SI::GetRootKey(), nodeContextStack, collidedEntityPairs, collisionDetector);
       }
       else
       {
-        auto collidedEntityPairsInsideNodes = std::vector<CollisionDetectionContainer>(this->m_nodes.size());
-        EXEC_POL_DEF(epcd); // GCC 11.3
-        std::transform(EXEC_POL_ADD(epcd) this->m_nodes.begin(), this->m_nodes.end(), collidedEntityPairsInsideNodes.begin(), [&](auto const& pairKeyNode) {
-          auto collidedEntityPairsInsideNode = CollisionDetectionContainer{};
-          InsertCollidedEntities(boxes, pairKeyNode, collidedEntityPairsInsideNode);
-          return collidedEntityPairsInsideNode;
-        });
-
-        EXEC_POL_DEF(eps); // GCC 11.3
-        auto const noCollisions = std::transform_reduce(
-          EXEC_POL_ADD(eps) collidedEntityPairsInsideNodes.begin(),
-          collidedEntityPairsInsideNodes.end(),
-          size_t{},
-          std::plus{},
-          [](auto const& collidedEntityPairsInsideNode) { return collidedEntityPairsInsideNode.size(); });
-
-        if constexpr (!DO_SPLIT_PARENT_ENTITIES)
+        auto const nodeNo = this->m_nodes.size();
+        auto const threadNo = std::size_t(std::thread::hardware_concurrency());
+        auto const isSingleThreadMoreEffective = nodeNo < threadNo * 3;
+        if (isSingleThreadMoreEffective)
         {
-          collidedEntityPairs.reserve(noCollisions);
-          for (auto const& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
-            collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
+          auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+          this->InsertCollidedEntitiesInSubtree(boxes, comparator, 0, SI::GetRootKey(), nodeContextStack, collidedEntityPairs, collisionDetector);
         }
         else
         {
-          collidedEntityPairsMap.reserve(noCollisions);
-          for (auto& collidedEntityPairsInsideNode : collidedEntityPairsInsideNodes)
-            collidedEntityPairsMap.insert(collidedEntityPairsInsideNode.begin(), collidedEntityPairsInsideNode.end());
+          using NodeIterator = typename Base::template NodeContainer<Node>::const_iterator;
+
+          auto nodeQueue = std::vector<NodeIterator>{};
+          nodeQueue.reserve(threadNo * 2);
+          nodeQueue.emplace_back(this->m_nodes.find(SI::GetRootKey()));
+
+          auto nodeContextMap = std::unordered_map<MortonNodeID, NodeCollisionContext>{};
+
+          auto nodeQueueNo = 1;
+          for (std::size_t i = 0; 0 < nodeQueueNo && nodeQueueNo < threadNo - 2; --nodeQueueNo, ++i)
+          {
+            for (MortonLocationIDCR childKey : nodeQueue[i]->second.GetChildren())
+            {
+              nodeQueue.emplace_back(this->m_nodes.find(childKey));
+              ++nodeQueueNo;
+            }
+
+            MortonNodeIDCR nodeKey = nodeQueue[i]->first;
+            auto const depthID = SI::GetDepthID(nodeKey);
+            auto const parentKey = SI::GetParentKey(nodeKey);
+            auto& nodeContext = nodeContextMap[nodeKey];
+            FillNodeCollisionContext(nodeKey, this->GetNode(nodeKey), depthID, nodeContext);
+            PrepareNodeCollisionContext(boxes, comparator, depthID, nodeContext, i == 0 ? nullptr : &nodeContextMap[parentKey]);
+          }
+
+          if (nodeQueueNo == 0)
+          {
+            auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+            InsertCollidedEntitiesInSubtree(boxes, comparator, 0, SI::GetRootKey(), nodeContextStack, collidedEntityPairs, collisionDetector);
+          }
+          else
+          {
+            struct TaskContext
+            {
+              NodeIterator NodeIt;
+              std::vector<std::pair<TEntityID, TEntityID>> CollidedEntityPairs;
+              std::vector<TEntityID> SplitEntities;
+            };
+
+            auto const nodeQueueAllNo = nodeQueue.size();
+            auto const nodeQueueBegin = nodeQueueAllNo - nodeQueueNo;
+            auto taskContexts = std::vector<TaskContext>(nodeQueueNo);
+            for (std::size_t taskID = 0; taskID < nodeQueueNo; ++taskID)
+              taskContexts[taskID].NodeIt = nodeQueue[nodeQueueBegin + taskID];
+
+            EXEC_POL_DEF(epcd); // GCC 11.3
+            std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin(), taskContexts.end(), [&](auto& taskContext) {
+              auto const depthID = SI::GetDepthID(taskContext.NodeIt->first);
+              auto parentDepthID = depthID;
+
+              auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+              for (auto parentKey = SI::GetParentKey(taskContext.NodeIt->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
+                nodeContextStack[--parentDepthID] = nodeContextMap.at(parentKey);
+
+              InsertCollidedEntitiesInSubtree(
+                boxes,
+                comparator,
+                depthID,
+                taskContext.NodeIt->first,
+                nodeContextStack,
+                taskContext.CollidedEntityPairs,
+                collisionDetector,
+                &taskContext.SplitEntities);
+            });
+
+            if constexpr (DO_SPLIT_PARENT_ENTITIES)
+            {
+              auto splitEntities = std::unordered_map<MortonNodeID, std::unordered_set<TEntityID>>{};
+              for (auto const& taskContext : taskContexts)
+              {
+                auto const parentKey = SI::GetParentKey(taskContext.NodeIt->first);
+                splitEntities[parentKey].insert(taskContext.SplitEntities.begin(), taskContext.SplitEntities.end());
+              }
+
+              for (auto const& [nodeKey, splitEntitiesSet] : splitEntities)
+              {
+                auto& entityIDs = nodeContextMap.at(nodeKey).EntityIDs;
+                auto const parentEntitiesWithoutSplitNo = entityIDs.size();
+                entityIDs.insert(entityIDs.end(), splitEntitiesSet.begin(), splitEntitiesSet.end());
+
+                detail::inplaceMerge(comparator, entityIDs, parentEntitiesWithoutSplitNo);
+              }
+            }
+
+            auto collidedEntityPairsInParents = std::vector<std::pair<TEntityID, TEntityID>>{};
+            auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+            auto usedContextsStack = std::vector<NodeCollisionContext*>{};
+            std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNo, [&](auto& nodeIt) {
+              usedContextsStack.emplace_back(&nodeContextMap.at(nodeIt->first));
+              for (auto parentKey = SI::GetParentKey(nodeIt->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
+                usedContextsStack.emplace_back(&nodeContextMap.at(parentKey));
+
+              for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it)
+                nodeContextStack.emplace_back(std::move(*(*it)));
+
+              auto const depthID = depth_t(usedContextsStack.size());
+              InsertCollidedEntitiesInsideNode(boxes, nodeContextStack[depthID], collidedEntityPairsInParents, collisionDetector);
+              InsertCollidedEntitiesWithParents(boxes, depthID, nodeContextStack, collidedEntityPairsInParents, collisionDetector);
+
+              auto i = 0;
+              for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it, ++i)
+                *(*it) = std::move(nodeContextStack[i]);
+
+              usedContextsStack.clear();
+            });
+
+            auto const collisionNo =
+              std::transform_reduce(taskContexts.begin(), taskContexts.end(), collidedEntityPairsInParents.size(), std::plus{}, [](auto const& taskContext) {
+                return taskContext.CollidedEntityPairs.size();
+              });
+
+            collidedEntityPairs.reserve(collisionNo);
+            collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInParents.begin(), collidedEntityPairsInParents.end());
+            for (auto const& taskContext : taskContexts)
+              collidedEntityPairs.insert(collidedEntityPairs.end(), taskContext.CollidedEntityPairs.begin(), taskContext.CollidedEntityPairs.end());
+          }
         }
-      }
-
-      if constexpr (DO_SPLIT_PARENT_ENTITIES)
-      {
-        collidedEntityPairs.reserve(collidedEntityPairsMap.size());
-        collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsMap.begin(), collidedEntityPairsMap.end());
-      }
-
-      if (collisionDetector)
-      {
-        auto const it = std::remove_if(collidedEntityPairs.begin(), collidedEntityPairs.end(), [&](auto const& pair) {
-          return (*collisionDetector)(pair.first, pair.second);
-        });
-        collidedEntityPairs.erase(it, collidedEntityPairs.end());
       }
 
       return collidedEntityPairs;
