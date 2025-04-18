@@ -1549,9 +1549,7 @@ namespace OrthoTree
       {
         if constexpr (IS_LINEAR_TREE)
         {
-          depth_t constexpr maxBitNo = IS_32BIT_LOCATION ? 32 : 64;
-          depth_t const leadingZeros = std::countl_zero(key);
-          depth_t const usedBitNo = maxBitNo - leadingZeros - 1;
+          depth_t const usedBitNo = std::bit_width(key) - 1;
           return usedBitNo / DIMENSION_NO;
         }
         else
@@ -1568,9 +1566,7 @@ namespace OrthoTree
       {
         if constexpr (IS_LINEAR_TREE)
         {
-          depth_t constexpr maxBitNo = sizeof(NodeID) * CHAR_BIT;
-          auto const leadingZeros = std::countl_zero(key);
-          auto const sentinelBitPosition = maxBitNo - leadingZeros - 1;
+          auto const sentinelBitPosition = std::bit_width(key) - 1;
           return key - (NodeID{ 1 } << sentinelBitPosition);
         }
         else
@@ -1878,7 +1874,7 @@ namespace OrthoTree
         {
           auto const locationDifference = locationIDRange[0] ^ locationIDRange[1];
           depth_t levelID = 0;
-          if constexpr (false)
+          if constexpr (IS_LINEAR_TREE)
           {
             auto const differentBitNo = std::bit_width(locationDifference);
             levelID = (differentBitNo + DIMENSION_NO - 1) / DIMENSION_NO;
