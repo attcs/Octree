@@ -55,7 +55,7 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * Core types store only the entity ids, use Container types to store. Core types advantages: not copying and managing the entity information; disadvantages: this information may have to be provided again for the member function call.
 * Naming
   * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
-  * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapC`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contigous container.
+  * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapC`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contiguous container.
   * `s` means adjustable `DO_SPLIT_PARENT_ENTITIES` for box-types.
 * If `int` is preferred for indexing instead of `std::size_t`, declare `#define ORTHOTREE_INDEX_T__INT`.
 * Bounding box-based solution stores item id in the parent node if it is not fit into any child node. Using `DO_SPLIT_PARENT_ENTITIES` template parameter, these boxes can be splitted and placed on the first child level of the node. The `DO_SPLIT_PARENT_ENTITIES` default is `true`, it is applied by default.
@@ -88,6 +88,7 @@ The following defines can be used before the header file include:
 * `ORTHOTREE__USE_PMR` / `ORTHOTREE__DISABLE_PMR`: polymorphic allocators can be used in the node container. On MSVC it could have significant performance gain (5-10%). Therefore, on MSVC the default is `ON`, but it is overridable with these flags.
 * `ORTHOTREE__DISABLED_NODECENTER`: It turns off node center calculation during creation. Less memory is used, but in specific algorithms it must be calculated repeatedly.
 * `ORTHOTREE__DISABLED_NODESIZE`: It turns off the node size calculation during initialization. Otherwise node sizes are contained level-wise.
+* `ORTHOTREE_INDEX_T__SIZE_T` / `ORTHOTREE_INDEX_T__INT` / `ORTHOTREE_INDEX_T__UINT_FAST32_T`: Contiguous container of geometry index type can be overridden by `size_t`/`int`/`uint_fast32_t`. Default: `uint32_t`.
 
 ## Major aliases in OrthoTree
 ```C++

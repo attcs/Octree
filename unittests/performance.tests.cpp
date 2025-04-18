@@ -17,6 +17,7 @@ namespace PerformaceTest
 
   auto constexpr rMax = 8.0;
 
+  using EntityID = OrthoTree::index_t;
 
   template<size_t nDim>
   static constexpr BoundingBoxND<nDim> CreateBox(PointND<nDim> const& pt, double size)
@@ -292,7 +293,7 @@ namespace PerformaceTest
       auto constexpr n = 100;
 
       auto const search_box = CreateSearcBox<2>(3.5, 1.0);
-      auto vvid = vector<vector<size_t>>(n);
+      auto vvid = vector<vector<EntityID>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreePoint2D.RangeSearch(search_box, PreCalculated::aPoint2D_10M);
     }
@@ -301,7 +302,7 @@ namespace PerformaceTest
       auto constexpr n = 100;
 
       auto const search_box = CreateSearcBox<3>(3.5, 1.0);
-      auto vvid = vector<vector<size_t>>(n);
+      auto vvid = vector<vector<EntityID>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreePoint3D.RangeSearch(search_box, PreCalculated::aPoint3D_10M);
     }
@@ -348,7 +349,7 @@ namespace PerformaceTest
       auto constexpr n = 10;
 
       auto const search_box = CreateSearcBox<nDim>(3.5, 1.0);
-      auto vvid = vector<vector<size_t>>(n);
+      auto vvid = vector<vector<EntityID>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreeBox2D_10M.RangeSearch(search_box, PreCalculated::aBox2D_10M);
     }
@@ -359,7 +360,7 @@ namespace PerformaceTest
       auto constexpr n = 10;
 
       auto const search_box = CreateSearcBox<nDim>(3.5, 1.0);
-      auto vvid = vector<vector<size_t>>(n);
+      auto vvid = vector<vector<EntityID>>(n);
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreeBox3D_10M.RangeSearch(search_box, PreCalculated::aBox3D_10MR);
     }

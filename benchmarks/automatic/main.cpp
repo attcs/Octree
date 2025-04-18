@@ -178,7 +178,7 @@ namespace
           auto tree = TreePointND<DIMENSION_NO>();
           tree.Init(boxSpace, depth);
 
-          std::size_t entityID = 0;
+          auto entityID = TreePointND<DIMENSION_NO>::TEntityID(0);
           for (auto const& point : points)
           {
             tree.Insert(entityID, point, true);
@@ -203,7 +203,7 @@ namespace
           auto tree = TreePointND<DIMENSION_NO>();
           tree.Init(boxSpace, depth);
 
-          std::size_t entityID = 0;
+          auto entityID = TreePointND<DIMENSION_NO>::TEntityID(0);
           for (auto const& point : points)
           {
             tree.InsertWithRebalancing(entityID, point, points);
@@ -228,7 +228,7 @@ namespace
           auto tree = TreePointND<DIMENSION_NO>();
           tree.Init(boxSpace, depth);
 
-          std::size_t entityID = 0;
+          auto entityID = TreePointND<DIMENSION_NO>::TEntityID(0);
           for (auto const& point : points)
           {
             if (tree.InsertUnique(entityID, point, rMax / 100.0, points))
@@ -249,11 +249,11 @@ namespace
 
         auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo * 100, 0);
         auto const updatePoints = GeneratePointsRandom<DIMENSION_NO>(entityNo, 1);
-
+        auto const updatePointsNo = TreePointND<DIMENSION_NO>::TEntityID(updatePoints.size());
         auto tree = TreePointND<DIMENSION_NO>(points, depth);
         for (auto _ : state)
         {
-          for (size_t entityID = 0; entityID < updatePoints.size(); ++entityID)
+          for (TreePointND<DIMENSION_NO>::TEntityID entityID = 0; entityID < updatePointsNo; ++entityID)
           {
             tree.Update(entityID, points[entityID], updatePoints[entityID], points);
           }
@@ -372,6 +372,8 @@ namespace
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
+        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
+
         size_t entityNo = state.range();
 
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
@@ -382,7 +384,7 @@ namespace
           auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>();
           tree.Init(boxSpace, depth);
 
-          std::size_t entityID = 0;
+          EntityID entityID = 0;
           for (auto const& entity : entities)
           {
             tree.Insert(entityID, entity, true);
@@ -399,6 +401,8 @@ namespace
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
+        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
+
         size_t entityNo = state.range();
 
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
@@ -409,7 +413,7 @@ namespace
           auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>();
           tree.Init(boxSpace, depth);
 
-          std::size_t entityID = 0;
+          EntityID entityID = 0;
           for (auto const& entity : entities)
           {
             tree.InsertWithRebalancing(entityID, entity, entities);
@@ -426,17 +430,19 @@ namespace
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
+        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
+
         size_t entityNo = state.range();
 
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo * 10);
         auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
+        auto const updateEntitiesNo = EntityID(updateEntities.size());
 
         auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
-
         for (auto _ : state)
         {
-          for (size_t entityID = 0; entityID < updateEntities.size(); ++entityID)
+          for (EntityID entityID = 0; entityID < updateEntitiesNo; ++entityID)
           {
             auto oldEntity = entities[entityID];
             entities[entityID] = updateEntities[entityID];
@@ -454,6 +460,7 @@ namespace
         constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
+        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
 
         size_t entityNo = state.range();
 
@@ -464,7 +471,7 @@ namespace
         constexpr size_t pointNo = 100;
         auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(pointNo, 1);
 
-        size_t entityID = 0;
+        EntityID entityID = 0;
         for (auto _ : state)
         {
           tree.PickSearch(searchPoints[entityID % pointNo], entities);

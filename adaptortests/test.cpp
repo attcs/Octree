@@ -314,36 +314,37 @@ namespace
   {
     using AD = typename TOrthoTreeA::AD;
     using GeometryA = typename TOrthoTreeA::TGeometry;
+    using EntityID = typename TOrthoTreeA::TEntityID;
 
     auto const& [points, pointOfkNN, searchBox, searchPlane, frustumPlanes] = testdata;
 
-    auto const pointNo = points.size();
+    auto const pointNo = TOrthoTreeA::TEntityID(points.size());
     auto const points_span = std::span(points.begin(), points.end() - 1);
 
     auto tree = TOrthoTreeA(points_span, 3, std::nullopt, 1);
 
     auto const entityIDsInBFSActual = tree.CollectAllEntitiesInBFS(TOrthoTreeA::SI::GetRootKey());
-    auto const entityIDsInBFSExpected = std::vector<std::size_t>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 };
+    auto const entityIDsInBFSExpected = std::vector<EntityID>{ 7, 6, 5, 0, 2, 1, 8, 9, 3, 4 };
 
     auto const entityIDsInDFSActual = tree.CollectAllEntitiesInDFS(TOrthoTreeA::SI::GetRootKey());
-    auto const entityIDsInDFSExpected = std::vector<std::size_t>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 };
+    auto const entityIDsInDFSExpected = std::vector<EntityID>{ 0, 1, 8, 9, 7, 6, 5, 2, 3, 4 };
 
     auto const pointsInSearchBoxActual = tree.RangeSearch(searchBox, points);
-    auto const pointsInSearchBoxExpected = std::vector<std::size_t>{ 0, 1, 2, 8, 9 };
+    auto const pointsInSearchBoxExpected = std::vector<EntityID>{ 0, 1, 2, 8, 9 };
 
     auto const pointsInPlaneActual = tree.PlaneSearch(AD::GetPlaneOrigoDistance(searchPlane), AD::GetPlaneNormal(searchPlane), GeometryA(0.3), points);
-    auto const pointsInPlaneExpected = std::vector<std::size_t>{ 5, 6, 7, 8, 9 };
+    auto const pointsInPlaneExpected = std::vector<EntityID>{ 5, 6, 7, 8, 9 };
 
     auto const pointsInFrustumActual = tree.FrustumCulling(frustumPlanes, GeometryA(0.01), points);
-    auto const pointsInFrustumExpected = std::vector<std::size_t>{ 2, 3, 4, 6, 7 };
+    auto const pointsInFrustumExpected = std::vector<EntityID>{ 2, 3, 4, 6, 7 };
 
     tree.Insert(pointNo - 1, points.back());
     tree.template Erase<false>(0, points[0]);
     auto const entityIDsInDFS_AfterErase_Actual = tree.CollectAllEntitiesInDFS();
-    auto const entityIDsInDFS_AfterErase_Expected = std::vector<std::size_t>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 };
+    auto const entityIDsInDFS_AfterErase_Expected = std::vector<EntityID>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 };
 
     auto const entityIDsKNNActual = tree.GetNearestNeighbors(pointOfkNN, 3, points);
-    auto const entityIDsKNNExpected = std::vector<std::size_t>{ 1, 10, 8 };
+    auto const entityIDsKNNExpected = std::vector<EntityID>{ 1, 10, 8 };
 
     if (!doCheck)
       return;
@@ -441,6 +442,7 @@ namespace
   {
     using AD = typename TOrthoTreeA::AD;
     using GeometryA = typename TOrthoTreeA::TGeometry;
+    using EntityID = typename TOrthoTreeA::TEntityID;
 
     auto const& [boxes, pickPoint, searchBox, ray, searchPlane, frustumPlanes] = testdata;
 
@@ -454,37 +456,37 @@ namespace
 
     // Collision detection
     auto const collidingIDPairsActual = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
-    auto const collidingIDPairsExpected = std::vector<std::pair<std::size_t, std::size_t>>{
+    auto const collidingIDPairsExpected = std::vector<std::pair<EntityID, EntityID>>{
       {1, 4},
       {2, 4}
     };
 
     // Boxes within the range
     auto const insideBoxIDsActual = quadtree.RangeSearch(searchBox); //: { 1, 2, 4 }
-    auto const insideBoxIDsExpected = std::vector<std::size_t>{ 1, 2, 4 };
+    auto const insideBoxIDsExpected = std::vector<EntityID>{ 1, 2, 4 };
 
     // Overlapping Boxes with the range
     constexpr bool shouldFullyContain = false;                                                // overlap is enough
     auto const overlappingBoxIDsActual = quadtree.template RangeSearch<shouldFullyContain>(searchBox); //: { 1, 2, 3, 4 }
-    auto const overlappingBoxIDsExpected = std::vector<std::size_t>{ 1, 2, 3, 4 };
+    auto const overlappingBoxIDsExpected = std::vector<EntityID>{ 1, 2, 3, 4 };
 
     auto const pickedIDsActual = quadtree.PickSearch(pickPoint); //: { 2, 4 }
-    auto const pickedIDsExpected = std::vector<std::size_t>{ 2, 4 };
+    auto const pickedIDsExpected = std::vector<EntityID>{ 2, 4 };
 
     auto const firstIntersectedBox = quadtree.RayIntersectedFirst(AD::GetRayOrigin(ray), AD::GetRayDirection(ray), GeometryA(0.01)); //: 4
 
     auto const intersectedPointsActual =
       quadtree.RayIntersectedAll(AD::GetRayOrigin(ray), AD::GetRayDirection(ray), GeometryA(0.01)); //: { 4, 2, 3 } in distance order!
-    auto const intersectedPointsExpected = std::vector<std::size_t>{ 4, 2, 3 };
+    auto const intersectedPointsExpected = std::vector<EntityID>{ 4, 2, 3 };
 
     auto const boxesInFrustumActual = quadtree.FrustumCulling(frustumPlanes, GeometryA(0.01));
-    auto const boxesInFrustumExpected = std::vector<std::size_t>{ 1, 2, 4 };
+    auto const boxesInFrustumExpected = std::vector<EntityID>{ 1, 2, 4 };
 
     auto const entityIDsInDFSActual = quadtree.CollectAllEntitiesInBFS();
-    auto const entityIDsInDFSExpected = std::vector<std::size_t>{ 4, 0, 1, 2, 3 };
+    auto const entityIDsInDFSExpected = std::vector<EntityID>{ 4, 0, 1, 2, 3 };
 
     auto const entityIDsInBFSActual = quadtree.CollectAllEntitiesInDFS();
-    auto const entityIDsInBFSExpected = std::vector<std::size_t>{ 4, 0, 1, 2, 3 };
+    auto const entityIDsInBFSExpected = std::vector<EntityID>{ 4, 0, 1, 2, 3 };
 
     if (!doCheck)
       return;
@@ -494,7 +496,7 @@ namespace
     EXPECT_EQ_UNORDERED(overlappingBoxIDsExpected, overlappingBoxIDsActual);
     EXPECT_EQ_UNORDERED(pickedIDsExpected, pickedIDsActual);
     ASSERT_TRUE(firstIntersectedBox.has_value());
-    EXPECT_EQ(std::size_t(4), *firstIntersectedBox);
+    EXPECT_EQ(EntityID(4), *firstIntersectedBox);
     EXPECT_EQ(intersectedPointsExpected, intersectedPointsActual);
     EXPECT_EQ_UNORDERED(boxesInFrustumExpected, boxesInFrustumActual);
     EXPECT_EQ(entityIDsInDFSExpected, entityIDsInDFSActual);
