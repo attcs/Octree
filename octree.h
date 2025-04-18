@@ -26,10 +26,10 @@ SOFTWARE.
 /* Settings
 * Use the following define-s before the header include
 
-Node center is not stored within the nodes. It will be calculated ad-hoc everytime when it is required, e.g in search algorithm.
+Node center is not stored within the nodes. It will be calculated ad-hoc every time when it is required, e.g in search algorithm.
 #define ORTHOTREE__DISABLED_NODECENTER
 
-Node size is not stored within the nodes. It will be calculated ad-hoc everytime when it is required, e.g in search algorithm.
+Node size is not stored within the nodes. It will be calculated ad-hoc every time when it is required, e.g in search algorithm.
 #define ORTHOTREE__DISABLED_NODESIZE
 
 // PMR is used with MSVC only by default. To use PMR anyway
@@ -37,6 +37,10 @@ ORTHOTREE__USE_PMR
 
 // To disable PMR on all platforms use:
 ORTHOTREE__DISABLE_PMR
+
+// Contiguous container of geometry data does not have specified index type. Octree lib uses index_t for it, it can specified to int or std::size_t.
+ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAST32_T
+
 */
 
 #if defined(ORTHOTREE__USE_PMR) || defined(_MSC_VER)
@@ -129,12 +133,19 @@ ORTHOTREE__DISABLE_PMR
 
 namespace OrthoTree
 {
+#ifdef ORTHOTREE_INDEX_T__SIZE_T
+  using index_t = std::size_t;
+#else
+#ifdef ORTHOTREE_INDEX_T__UINT_FAST32_T
+  using index_t = std::uint_fast32_t;
+#else
 #ifdef ORTHOTREE_INDEX_T__INT
   using index_t = int;
 #else
-  using index_t = std::size_t;
+  using index_t = std::uint32_t;
 #endif // ORTHOTREE_INDEX_INT
-
+#endif // ORTHOTREE_INDEX_T__UINT_FAST32_T
+#endif // ORTHOTREE_INDEX_T__SIZE_T
 
 #ifdef __clang__
 #pragma clang diagnostic push
