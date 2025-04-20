@@ -653,7 +653,7 @@ namespace
     } // namespace Box
   } // namespace Benchmarks
 } // namespace
-
+/*
 BENCHMARK(Benchmarks::Base::GetNodeID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GetDepthID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GetNodeEntities)->Arg(10000)->Unit(benchmark::kNanosecond);
@@ -668,11 +668,13 @@ BENCHMARK(Benchmarks::Point::Update)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1
 BENCHMARK(Benchmarks::Point::Contains)->Arg(1000)->Arg(10000);
 BENCHMARK(Benchmarks::Point::RangeSearch)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Point::GetNearestNeighbors)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+*/
 BENCHMARK(Benchmarks::Point::FrustumCulling)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 0, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 0, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 1, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 1, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
+/*
 BENCHMARK(Benchmarks::Box::InsertToLeaf<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertToLeaf<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
@@ -693,6 +695,7 @@ BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<0>)->Arg(100)->Arg(1
 BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedFirst<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedFirst<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
+*/
 BENCHMARK(Benchmarks::Box::RayIntersectedAll<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::RayIntersectedAll<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 
