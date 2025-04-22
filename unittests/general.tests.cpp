@@ -215,16 +215,15 @@ namespace GeneralTest
       auto constexpr nChild = 1 << N;
       for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
       {
-        auto const kChild = MortonNodeID(idChild);
-        node.AddChild(kChild);
-        Assert::IsTrue(node.HasChild(kChild));
+        node.AddChild(idChild);
+        Assert::IsTrue(node.HasChild(idChild));
         Assert::IsTrue(node.IsAnyChildExist());
 
         auto const vChild = node.GetChildren();
         Assert::AreEqual<std::size_t>(1, vChild.size());
-        Assert::AreEqual(kChild, vChild[0]);
+        Assert::AreEqual(MortonNodeID(idChild), *vChild.begin());
 
-        node.RemoveChild(kChild);
+        node.RemoveChild(idChild);
         auto const vChild2 = node.GetChildren();
         Assert::AreEqual<std::size_t>(0, vChild2.size());
       }
@@ -268,7 +267,8 @@ namespace GeneralTest
         auto const vChildActual = node.GetChildren();
         auto vChildExpected = vector<ChildID>(static_cast<ChildID>(nChild - idChild) - 1);
         std::iota(begin(vChildExpected), end(vChildExpected), idChild + 1);
-        Assert::IsTrue(std::ranges::is_permutation(vChildExpected, vChildActual));
+        auto const isPerm = std::is_permutation(vChildActual.begin(), vChildActual.end(), vChildExpected.begin());
+        Assert::IsTrue(isPerm);
       }
 
       Assert::IsFalse(node.IsAnyChildExist());
@@ -796,7 +796,7 @@ namespace GeneralTest
 
 
   private:
-    template<typename tree_type, EntityID N>
+    template<typename tree_type, std::size_t N>
     bool _isMoveOfTwoTreeProper(tree_type const& tPre, tree_type const& tAfter, PointND<N> const& vMoveExpected)
     {
       using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
@@ -3222,7 +3222,7 @@ namespace LongIntAdaptor
 
       auto const tree = Tree(points, 3, std::nullopt, 2);
       auto vidActual = tree.RangeSearch(searchbox);
-      auto vidExpected = brute_force_search(points, searchbox);
+      auto vidExpected = brute_force_search<nDim>(points, searchbox);
       
       // To investigate
       std::ranges::sort(vidActual);
@@ -3343,7 +3343,7 @@ namespace LongIntAdaptor
       }
 
 
-      for (int pointID = 0; pointID < points.size(); ++pointID)
+      for (std::size_t pointID = 0; pointID < points.size(); ++pointID)
       {
         const auto searchBox = Tree::TBox{
           {points[pointID][0] - rayIntersectTolerance, points[pointID][1] - searchSizeYs[pointID], points[pointID][2] - rayIntersectTolerance},
