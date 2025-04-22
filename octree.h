@@ -457,6 +457,185 @@ namespace OrthoTree
       container m_stack;
       std::size_t m_size = 0;
     };
+
+
+    template<typename It1, typename It2>
+    class proxy_reference
+    {
+      // reference to a bit within a base word
+    private:
+      using T1 = typename std::iterator_traits<It1>::value_type;
+      using T2 = typename std::iterator_traits<It2>::value_type;
+      using R1 = typename std::iterator_traits<It1>::reference;
+      using R2 = typename std::iterator_traits<It2>::reference;
+      using value_type = std::pair<T1, T2>;
+      using reference = std::pair<R1, R2>;
+
+    private:
+      constexpr proxy_reference() = default;
+
+    public:
+      constexpr proxy_reference(It1 it1, It2 it2) noexcept
+      : m_it1(it1)
+      , m_it2(it2)
+      {}
+
+      constexpr proxy_reference(const proxy_reference&) noexcept = default;
+      constexpr proxy_reference(proxy_reference&&) noexcept = default;
+
+      constexpr proxy_reference& operator=(const proxy_reference& right) noexcept
+      {
+        m_it1 = right.m_it1;
+        m_it2 = right.m_it2;
+        return *this;
+      }
+
+      constexpr proxy_reference& operator=(proxy_reference&& right) noexcept
+      {
+        *m_it1 = std::move(*right.m_it1);
+        *m_it2 = std::move(*right.m_it2);
+        return *this;
+      }
+
+      constexpr proxy_reference& operator=(const value_type& val) noexcept
+      {
+        *m_it1 = val.first;
+        *m_it2 = val.second;
+        return *this;
+      }
+
+      constexpr proxy_reference& operator=(value_type&& val) noexcept
+      {
+        *m_it1 = std::move(val.first);
+        *m_it2 = std::move(val.second);
+        return *this;
+      }
+
+      constexpr operator value_type() const& noexcept { return { *m_it1, *m_it2 }; }
+      constexpr operator value_type() && noexcept { return { std::move(*m_it1), std::move(*m_it2) }; }
+
+      constexpr R1 const GetFirst() const noexcept { return *m_it1; }
+      constexpr R1 GetFirst() noexcept { return *m_it1; }
+      constexpr R2 const GetSecond() const noexcept { return *m_it2; }
+      constexpr R2 GetSecond() noexcept { return *m_it2; }
+
+      friend constexpr void swap(proxy_reference left, proxy_reference right) noexcept
+      {
+        auto val1 = std::move(*left.m_it1);
+        *left.m_it1 = std::move(*right.m_it1);
+        *right.m_it1 = std::move(val1);
+
+        auto val2 = std::move(*left.m_it2);
+        *left.m_it2 = std::move(*right.m_it2);
+        *right.m_it2 = std::move(val2);
+      }
+
+    private:
+      It1 m_it1;
+      It2 m_it2;
+    };
+
+    template<typename It1, typename It2>
+    class zip_iterator
+    {
+    public:
+      using iterator_category = std::random_access_iterator_tag;
+
+      using value_type = std::pair<typename std::iterator_traits<It1>::value_type, typename std::iterator_traits<It2>::value_type>;
+      using difference_type = typename std::iterator_traits<It1>::difference_type;
+      using pointer = void;
+      using reference = proxy_reference<It1, It2>;
+
+      constexpr zip_iterator() noexcept = default;
+      constexpr zip_iterator(It1 it1, It2 it2) noexcept
+      : it1_(it1)
+      , it2_(it2)
+      {}
+
+      constexpr reference operator*() const noexcept { return reference(it1_, it2_); }
+      constexpr It2 GetSecond() const noexcept { return it2_; }
+
+      constexpr zip_iterator& operator++() noexcept
+      {
+        ++it1_;
+        ++it2_;
+        return *this;
+      }
+
+      constexpr zip_iterator operator++(int) noexcept
+      {
+        auto tmp = *this;
+        ++(*this);
+        return tmp;
+      }
+
+      constexpr zip_iterator& operator--() noexcept
+      {
+        --it1_;
+        --it2_;
+        return *this;
+      }
+      constexpr zip_iterator operator--(int) noexcept
+      {
+        auto tmp = *this;
+        --(*this);
+        return tmp;
+      }
+
+      constexpr zip_iterator& operator+=(difference_type n) noexcept
+      {
+        it1_ += n;
+        it2_ += n;
+        return *this;
+      }
+      constexpr zip_iterator& operator-=(difference_type n) noexcept
+      {
+        it1_ -= n;
+        it2_ -= n;
+        return *this;
+      }
+
+      constexpr zip_iterator operator+(difference_type n) const noexcept { return zip_iterator(it1_ + n, it2_ + n); }
+      constexpr zip_iterator operator-(difference_type n) const noexcept { return zip_iterator(it1_ - n, it2_ - n); }
+      constexpr difference_type operator-(const zip_iterator& other) const noexcept { return it1_ - other.it1_; }
+
+      constexpr reference operator[](difference_type n) const noexcept { return *(*this + n); }
+
+      constexpr bool operator==(const zip_iterator& other) const noexcept { return it1_ == other.it1_; }
+      constexpr bool operator!=(const zip_iterator& other) const noexcept { return !(*this == other); }
+      constexpr bool operator<(const zip_iterator& other) const noexcept { return it1_ < other.it1_; }
+      constexpr bool operator>(const zip_iterator& other) const noexcept { return it1_ > other.it1_; }
+      constexpr bool operator<=(const zip_iterator& other) const noexcept { return it1_ <= other.it1_; }
+      constexpr bool operator>=(const zip_iterator& other) const noexcept { return it1_ >= other.it1_; }
+
+    private:
+      It1 it1_;
+      It2 it2_;
+    };
+
+
+    template<typename T1, typename T2>
+    class zip_view
+    {
+    public:
+      using It1 = typename std::vector<T1>::iterator;
+      using It2 = typename std::vector<T2>::iterator;
+
+      using iterator = zip_iterator<It1, It2>;
+
+      constexpr zip_view(std::vector<T1>& data1, std::vector<T2>& data2) noexcept
+      : m_data1(data1)
+      , m_data2(data2)
+      {}
+
+      constexpr iterator begin() const noexcept { return iterator(m_data1.begin(), m_data2.begin()); }
+      constexpr iterator end() const noexcept { return iterator(m_data1.end(), m_data2.end()); }
+
+    private:
+      std::vector<T1>& m_data1;
+      std::vector<T2>& m_data2;
+    };
+
   } // namespace detail
 
 #ifdef _MSC_VER
@@ -2097,7 +2276,6 @@ namespace OrthoTree
     public:
       using ChildContainer = std::conditional_t<IS_BIT_CHILDCONTAINER, MortonChildID, typename std::vector<MortonChildID>>;
       using ChildContainerView = std::conditional_t<IS_BIT_CHILDCONTAINER, ChildBitView, ChildVectorView>;
-      using EntityContainer = typename std::vector<TEntityID>;
 
     private:
       MortonNodeID m_key{};
@@ -2141,7 +2319,7 @@ namespace OrthoTree
 
       inline constexpr void ReplaceEntities(EntityContainer&& entities) noexcept { m_entities = std::move(entities); }
 
-      inline constexpr void AddEntity(TEntityID entityID) noexcept { m_entities.push_back(entityID); }
+      inline constexpr void AddEntity(TEntityID entityID) noexcept { /*m_entities.push_back(entityID);*/ }
 
       inline constexpr bool RemoveEntity(TEntityID entityID) noexcept
       {
@@ -2149,7 +2327,7 @@ namespace OrthoTree
         if (endIteratorAfterRemove == m_entities.end())
           return false; // id was not registered previously.
 
-        m_entities.erase(endIteratorAfterRemove, m_entities.end());
+        //m_entities.erase(endIteratorAfterRemove, m_entities.end());
         return true;
       }
 
@@ -2585,7 +2763,7 @@ namespace OrthoTree
           }
         }
 
-        parentNode.ReplaceEntities(std::move(parentEntities));
+        //parentNode.ReplaceEntities(std::move(parentEntities));
         break;
       }
 
@@ -3361,20 +3539,21 @@ namespace OrthoTree
     }
 
   private:
+    /*
     struct Location
     {
       TEntityID EntityID;
       MortonLocationID LocationID;
-    };
+    };*/
 
     // Build the tree in depth-first order
     template<bool ARE_LOCATIONS_SORTED = false>
-    inline constexpr void Build(std::vector<Location>& locations) noexcept
+    inline constexpr void Build(detail::zip_view<MortonLocationID, TEntityID>& locations) noexcept
     {
       struct NodeStackData
       {
         std::pair<MortonNodeID, Node> NodeInstance;
-        typename std::vector<Location>::iterator EndLocationIt;
+        typename detail::zip_view<MortonLocationID, TEntityID>::iterator EndLocationIt;
       };
       auto nodeStack = std::vector<NodeStackData>(this->GetDepthNo());
       nodeStack[0] = NodeStackData{ *this->m_nodes.find(SI::GetRootKey()), locations.end() };
@@ -3388,14 +3567,10 @@ namespace OrthoTree
         std::size_t const elementNo = std::distance(beginLocationIt, endLocationIt);
         if ((0 < elementNo && elementNo <= this->m_maxElementNo && !node.second.IsAnyChildExist()) || depthID == this->m_maxDepthID)
         {
-          auto& entityIDs = node.second.GetEntities();
-          entityIDs.resize(elementNo);
-          LOOPIVDEP
-          for (std::size_t i = 0; i < elementNo; ++i)
-          {
-            entityIDs[i] = beginLocationIt->EntityID;
-            ++beginLocationIt;
-          }
+          node.second.ReplaceEntities(std::span(beginLocationIt.GetSecond(), endLocationIt.GetSecond()));
+          // auto& entityIDs = node.second.GetEntities();
+          // entityIDs.assign(beginLocationIt.GetSecond(), endLocationIt.GetSecond());
+          beginLocationIt += elementNo;
         }
 
         if (beginLocationIt == endLocationIt)
@@ -3408,19 +3583,19 @@ namespace OrthoTree
         ++depthID;
         auto const examinedLevel = this->GetExaminationLevelID(depthID);
         auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
-        auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->LocationID);
+        auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, (*beginLocationIt).GetFirst());
         auto const childID = childChecker.GetChildID(examinedLevel);
         auto childKey = keyGenerator.GetChildNodeKey(childID);
         node.second.AddChild(childID);
         if constexpr (ARE_LOCATIONS_SORTED)
         {
           nodeStack[depthID].EndLocationIt =
-            std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.LocationID); });
+            std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.GetFirst()); });
         }
         else
         {
           nodeStack[depthID].EndLocationIt =
-            std::partition(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.LocationID); });
+            std::partition(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.GetFirst()); });
         }
 
         nodeStack[depthID].NodeInstance.first = std::move(childKey);
@@ -3429,6 +3604,8 @@ namespace OrthoTree
     }
 
   public: // Create
+    std::vector<TEntityID> entityIDs;
+
     // Create
     template<bool IS_PARALLEL_EXEC = false>
     static void Create(
@@ -3448,20 +3625,26 @@ namespace OrthoTree
 
       detail::reserve(tree.m_nodes, Base::EstimateNodeNumber(pointNo, maxDepthID, maxElementNoInNode));
 
-      // Calculate and sort the Morton location ids
-      auto locations = std::vector<Location>(pointNo);
+      auto mortonIDs = std::vector<MortonLocationID>(pointNo);
+      tree.entityIDs = std::vector<TEntityID>(pointNo);
+
+      auto locationsZip = detail::zip_view(mortonIDs, tree.entityIDs);
       EXEC_POL_DEF(ept); // GCC 11.3
-      std::transform(EXEC_POL_ADD(ept) points.begin(), points.end(), locations.begin(), [&](auto const& point) {
-        return Location{ detail::getKeyPart(points, point), tree.GetLocationID(detail::getValuePart(point)) };
+      std::transform(EXEC_POL_ADD(ept) points.begin(), points.end(), locationsZip.begin(), [&](auto const& point) -> std::pair<MortonLocationID, TEntityID> {
+        return { tree.GetLocationID(detail::getValuePart(point)), detail::getKeyPart(points, point) };
       });
+
       constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) locations.begin(), locations.end(), [&](auto const& l, auto const& r) { return l.LocationID < r.LocationID; });
+        std::sort(
+          EXEC_POL_ADD(eps) locationsZip.begin(),
+          locationsZip.end(),
+          [&](std::pair<MortonLocationID, TEntityID> const& l, std::pair<MortonLocationID, TEntityID> const& r) { return l.first < r.first; });
       }
 
-      tree.template Build<ARE_LOCATIONS_SORTED>(locations);
+      tree.template Build<ARE_LOCATIONS_SORTED>(locationsZip);
     }
 
   public: // Edit functions
@@ -3953,7 +4136,7 @@ namespace OrthoTree
 
       if (nodeEntityNo == 0)
         return;
-
+      /*
       auto& entityIDs = node.second.GetEntities();
       entityIDs.resize(nodeEntityNo);
 
@@ -3963,6 +4146,7 @@ namespace OrthoTree
         entityIDs[i] = locationIt->EntityID;
         ++locationIt;
       }
+      */
     }
 
 
@@ -3998,6 +4182,7 @@ namespace OrthoTree
         auto const entityNo = isLeafNode ? nodeEntityNo : nodeSplitEntityNo;
         if (entityNo > 0)
         {
+          /*
           entityIDs.resize(entityNo);
 
           LOOPIVDEP
@@ -4006,13 +4191,14 @@ namespace OrthoTree
             entityIDs[i] = parentSplitEntityProcessingData->BeginIt->LocationIt->EntityID;
             ++parentSplitEntityProcessingData->BeginIt;
           }
+          */
         }
       }
       else
       {
         isLeafNode |= nodeEntityNo <= this->m_maxElementNo;
-        if (isLeafNode && nodeEntityNo > 0)
-          entityIDs.resize(nodeEntityNo);
+        //if (isLeafNode && nodeEntityNo > 0)
+        //  entityIDs.resize(nodeEntityNo);
       }
 
       if (subtreeEntityNo == 0)
@@ -4042,6 +4228,7 @@ namespace OrthoTree
         }
 
         std::size_t const stuckedEntityNo = std::distance(locationIt, stuckedEndLocationIt);
+        /*
         entityIDs.reserve(nodeSplitEntityNo + stuckedEntityNo);
         for (std::size_t i = 0; i < stuckedEntityNo; ++i)
         {
@@ -4052,7 +4239,7 @@ namespace OrthoTree
 
           ++locationIt;
         }
-
+        */
         splitEntityBeginIt = splitEntities.begin();
       }
     }
