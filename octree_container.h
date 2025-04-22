@@ -273,7 +273,7 @@ namespace OrthoTree
     {
       if (OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
       {
-        if (m_geometryCollection.size() <= entityID)
+        if (TEntityID(m_geometryCollection.size()) <= entityID)
           return false;
       }
 

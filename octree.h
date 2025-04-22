@@ -1512,14 +1512,18 @@ namespace OrthoTree
       class ChildKeyGenerator
       {
       public:
+        constexpr ChildKeyGenerator() noexcept = default;
         explicit inline constexpr ChildKeyGenerator(NodeIDCR parentNodeKey) noexcept
         : m_parentFlag(parentNodeKey << DIMENSION_NO)
         {}
 
+        constexpr ChildKeyGenerator(ChildKeyGenerator const&) noexcept = default;
+        constexpr ChildKeyGenerator(ChildKeyGenerator&&) noexcept = default;
+
         inline constexpr NodeID GetChildNodeKey(ChildID childID) const noexcept { return m_parentFlag | NodeID(childID); }
 
       private:
-        NodeID m_parentFlag;
+        NodeID m_parentFlag = {};
       };
 
       static inline constexpr NodeID GetHashAtDepth(auto&& location, depth_t maxDepthID) noexcept
@@ -1974,19 +1978,138 @@ namespace OrthoTree
   public:
     class Node
     {
+    private:
+      class ChildBitIterator
+      {
+      public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = MortonLocationID;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type*;
+        using reference = value_type&;
+
+        constexpr ChildBitIterator() noexcept = default;
+        constexpr ChildBitIterator(MortonNodeIDCR nodeKey, MortonChildID childBits) noexcept
+        : m_keyGenerator(nodeKey)
+        , m_remainingChildBits(childBits)
+        {}
+
+
+        constexpr MortonNodeID operator*() const noexcept
+        {
+          auto const childID = std::countr_zero(m_remainingChildBits);
+          return m_keyGenerator.GetChildNodeKey(childID);
+        }
+
+        constexpr ChildBitIterator& operator++() noexcept
+        {
+          m_remainingChildBits &= (m_remainingChildBits - 1); // eliminate the least significant one
+          return *this;
+        }
+
+        constexpr bool operator==(const ChildBitIterator& other) const noexcept { return m_remainingChildBits == other.m_remainingChildBits; }
+        constexpr bool operator!=(const ChildBitIterator& other) const noexcept { return m_remainingChildBits != other.m_remainingChildBits; }
+
+      private:
+        SI::ChildKeyGenerator m_keyGenerator;
+        MortonChildID m_remainingChildBits = {};
+      };
+
+      class ChildBitView
+      {
+      public:
+        constexpr ChildBitView(MortonNodeIDCR nodeKey, MortonChildID childBits) noexcept
+        : m_nodeKey(nodeKey)
+        , m_childBits(childBits)
+        {}
+
+        constexpr ChildBitIterator begin() const noexcept { return ChildBitIterator(m_nodeKey, m_childBits); }
+        constexpr ChildBitIterator end() const noexcept { return ChildBitIterator(m_nodeKey, {}); }
+        constexpr std::size_t size() const noexcept { return std::popcount(m_childBits); }
+
+      private:
+        MortonLocationID m_nodeKey;
+        MortonChildID m_childBits;
+      };
+
+
+      class ChildVectorIterator
+      {
+      private:
+        using ContainerIterator = typename std::vector<MortonChildID>::const_iterator;
+
+      public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = MortonLocationID;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type*;
+        using reference = value_type&;
+
+
+        constexpr ChildVectorIterator() noexcept = default;
+        constexpr ChildVectorIterator(MortonNodeIDCR nodeKey, ContainerIterator it) noexcept
+        : m_keyGenerator(nodeKey)
+        , m_it(it)
+        {}
+
+        constexpr ChildVectorIterator(ChildVectorIterator const&) noexcept = default;
+        constexpr ChildVectorIterator(ChildVectorIterator&&) noexcept = default;
+
+        constexpr MortonNodeID operator*() const noexcept { return m_keyGenerator.GetChildNodeKey(*m_it); }
+
+        constexpr ChildVectorIterator& operator++() noexcept
+        {
+          ++m_it;
+          return *this;
+        }
+
+        constexpr bool operator==(const ChildVectorIterator& other) const noexcept { return m_it == other.m_it; }
+        constexpr bool operator!=(const ChildVectorIterator& other) const noexcept { return m_it != other.m_it; }
+
+      private:
+        SI::ChildKeyGenerator m_keyGenerator;
+        ContainerIterator m_it;
+      };
+
+      class ChildVectorView
+      {
+      public:
+        constexpr ChildVectorView(MortonNodeIDCR nodeKey, std::vector<MortonChildID> const& children) noexcept
+        : m_nodeKey(nodeKey)
+        , m_children(children)
+        {}
+
+        constexpr ChildVectorIterator begin() const noexcept { return ChildVectorIterator(m_nodeKey, m_children.begin()); }
+        constexpr ChildVectorIterator end() const noexcept { return ChildVectorIterator(m_nodeKey, m_children.end()); }
+        constexpr std::size_t size() const noexcept { return m_children.size(); }
+
+      private:
+        MortonLocationID m_nodeKey;
+        std::vector<MortonChildID> const& m_children;
+      };
+
+      static constexpr bool IS_BIT_CHILDCONTAINER = SI::CHILD_NO <= sizeof(MortonChildID) * 8;
+
     public:
+      using ChildContainer = std::conditional_t<IS_BIT_CHILDCONTAINER, MortonChildID, typename std::vector<MortonChildID>>;
+      using ChildContainerView = std::conditional_t<IS_BIT_CHILDCONTAINER, ChildBitView, ChildVectorView>;
       using EntityContainer = typename std::vector<TEntityID>;
-      using ChildContainer =
-        typename std::conditional_t < DIMENSION_NO<4, detail::inplace_vector<MortonNodeID, SI::CHILD_NO>, std::vector<MortonNodeID>>;
 
     private:
-      EntityContainer m_entities;
-      ChildContainer m_children;
+      MortonNodeID m_key{};
+      EntityContainer m_entities{};
+      ChildContainer m_children{};
 
 #ifndef ORTHOTREE__DISABLED_NODECENTER
       IGM::Vector m_center;
 #endif
     public:
+      constexpr Node() noexcept = default;
+      constexpr Node(MortonNodeID key) noexcept
+      : m_key(key)
+      {}
+
+
 #ifndef ORTHOTREE__DISABLED_NODECENTER
       constexpr IGM::Vector const& GetCenter() const noexcept { return m_center; }
       constexpr void SetCenter(IGM::Vector&& center) noexcept { m_center = std::move(center); }
@@ -1995,7 +2118,7 @@ namespace OrthoTree
       void Clear() noexcept
       {
         m_entities.clear();
-        m_children.clear();
+        m_children = {};
       }
 
     public: // Entity handling
@@ -2033,57 +2156,65 @@ namespace OrthoTree
       }
 
     public: // Child handling
-      inline constexpr void AddChild(MortonNodeIDCR childKey) noexcept { m_children.emplace_back(childKey); }
-
-      inline constexpr void AddChildInOrder(MortonNodeIDCR childKey) noexcept
+      inline constexpr MortonNodeID GetKey() const noexcept { return m_key; }
+      inline constexpr void SetKey(MortonNodeIDCR key) noexcept { m_key = key; }
+      inline constexpr void AddChild(MortonChildID childID) noexcept
       {
-        auto it = std::end(m_children);
-        if constexpr (SI::IS_LINEAR_TREE)
-          it = std::lower_bound(m_children.begin(), m_children.end(), childKey);
-        else
-          it = std::lower_bound(m_children.begin(), m_children.end(), childKey, bitset_arithmetic_compare{});
-
-        if (it != m_children.end() && *it == childKey)
+        if constexpr (IS_BIT_CHILDCONTAINER)
         {
-          assert(false && "Child should not be added twice!");
-          return;
+          assert(((m_children & (MortonChildID{ 1 } << childID)) == 0) && "Child should not be added twice!");
+          m_children |= (MortonChildID{ 1 } << childID);
         }
-        m_children.insert(it, childKey);
-      }
-
-      inline constexpr bool HasChild(MortonNodeIDCR childKey) const noexcept
-      {
-        if constexpr (SI::IS_LINEAR_TREE)
-          return std::binary_search(m_children.begin(), m_children.end(), childKey);
         else
-          return std::binary_search(m_children.begin(), m_children.end(), childKey, bitset_arithmetic_compare{});
+        {
+          auto const it = std::lower_bound(m_children.begin(), m_children.end(), childID);
+          if (it != m_children.end() && *it == childID)
+          {
+            assert(false && "Child should not be added twice!");
+            return;
+          }
+          m_children.insert(it, childID);
+        }
       }
 
-      inline constexpr bool IsChildNodeEnabled(MortonChildID childID) const noexcept
+      inline constexpr bool HasChild(MortonChildID childID) const noexcept
       {
-        auto const childMortonID = MortonNodeID(childID);
-        return std::find_if(m_children.begin(), m_children.end(), [childMortonID](auto const& childKey) {
-          return (childKey & childMortonID) == childMortonID;
-        });
+        if constexpr (IS_BIT_CHILDCONTAINER)
+        {
+          return m_children & (MortonChildID{ 1 } << childID);
+        }
+        else
+        {
+          return std::binary_search(m_children.begin(), m_children.end(), childID);
+        }
       }
 
       inline constexpr void RemoveChild(MortonNodeIDCR childKey) noexcept
       {
-        auto it = std::end(m_children);
-        if constexpr (SI::IS_LINEAR_TREE)
-          it = std::lower_bound(m_children.begin(), m_children.end(), childKey);
+        auto const childID = SI::GetChildID(childKey);
+        if constexpr (IS_BIT_CHILDCONTAINER)
+        {
+          m_children &= ~(MortonChildID{ 1 } << childID);
+        }
         else
-          it = std::lower_bound(m_children.begin(), m_children.end(), childKey, bitset_arithmetic_compare{});
+        {
+          auto const it = std::lower_bound(m_children.begin(), m_children.end(), childID);
+          if (it == m_children.end())
+            return;
 
-        if (it == std::end(m_children))
-          return;
-
-        m_children.erase(it);
+          m_children.erase(it);
+        }
       }
 
-      inline constexpr bool IsAnyChildExist() const noexcept { return !m_children.empty(); }
+      inline constexpr bool IsAnyChildExist() const noexcept
+      {
+        if constexpr (IS_BIT_CHILDCONTAINER)
+          return m_children > 0;
+        else
+          return !m_children.empty();
+      }
 
-      inline constexpr auto const& GetChildren() const noexcept { return m_children; }
+      inline constexpr auto GetChildren() const noexcept { return ChildContainerView(m_key, m_children); }
     };
 
   protected: // Aid struct to partitioning and distance ordering
@@ -2240,9 +2371,9 @@ namespace OrthoTree
     inline constexpr Node CreateChild(Node const& parentNode, MortonNodeIDCR childKey) const noexcept
     {
 #ifdef ORTHOTREE__DISABLED_NODECENTER
-      return Node{};
+      return Node(childKey);
 #else
-      Node nodeChild;
+      auto nodeChild = Node(childKey);
 
       auto const depthID = SI::GetDepthID(childKey);
       auto const& halfSizes = this->GetNodeSize(depthID + 1);
@@ -2271,7 +2402,7 @@ namespace OrthoTree
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     inline constexpr SI::RangeLocationMetaData GetRangeLocationMetaData(TVector const& point) const noexcept
     {
-      return { this->m_maxDepthID, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(point) };
+      return { this->m_maxDepthID, this->GetLocationID<HANDLE_OUT_OF_TREE_GEOMETRY>(point), 0, 0 };
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false, typename TBoxItem = TBox>
@@ -2346,11 +2477,11 @@ namespace OrthoTree
       for (auto const childID : this->GetSplitChildSegments(newEntityLocation))
       {
         auto childNodeKey = childGenerator.GetChildNodeKey(childID);
-        if (parentNode.HasChild(childNodeKey))
+        if (parentNode.HasChild(childID))
           this->template InsertWithRebalancingBase<false>(childNodeKey, parentDepth + 1, true, newEntityLocation, newEntityID, geometryCollection);
         else
         {
-          parentNode.AddChildInOrder(childNodeKey);
+          parentNode.AddChild(childID);
           auto [childNodeIt, _] = this->m_nodes.emplace(childNodeKey, this->CreateChild(parentNode, childNodeKey));
           childNodeIt->second.AddEntity(newEntityID);
         }
@@ -2403,7 +2534,7 @@ namespace OrthoTree
         assert(childID < SI::CHILD_NO);
         auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
-        parentNode.AddChildInOrder(childNodeKey);
+        parentNode.AddChild(childID);
         auto [childNode, _] = this->m_nodes.emplace(childNodeKey, this->CreateChild(parentNode, childNodeKey));
         childNode->second.AddEntity(newEntityID);
 
@@ -2431,8 +2562,7 @@ namespace OrthoTree
           {
             auto const childID = SI::GetChildID(entityLocation.LocID, this->GetExaminationLevelID(parentDepth));
             assert(childID < SI::CHILD_NO);
-            auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
-            if (parentNode.HasChild(childNodeKey))
+            if (parentNode.HasChild(childID))
             {
               // ShouldCreateOnlyOneChild supposes if newEntityNodeKey == parentNodeKey then parentNodeKey does not exist, therefore we need to find
               // the smallest smallestChildNodeKey which may not have the relevant child.
@@ -2443,7 +2573,8 @@ namespace OrthoTree
             }
             else
             {
-              parentNode.AddChildInOrder(childNodeKey);
+              auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
+              parentNode.AddChild(childID);
               auto [childNode, _] = this->m_nodes.emplace(childNodeKey, this->CreateChild(parentNode, childNodeKey));
               childNode->second.AddEntity(entityID);
             }
@@ -2500,7 +2631,7 @@ namespace OrthoTree
           MortonNodeIDCR newParentNodeKey = nonExistingNodeStack.top();
 
           [[maybe_unused]] bool isSuccessful = false;
-          parentNodeIt->second.AddChildInOrder(newParentNodeKey);
+          parentNodeIt->second.AddChild(SI::GetChildID(newParentNodeKey));
           std::tie(parentNodeIt, isSuccessful) = this->m_nodes.emplace(newParentNodeKey, this->CreateChild(parentNodeIt->second, newParentNodeKey));
           assert(isSuccessful);
         }
@@ -2516,7 +2647,7 @@ namespace OrthoTree
           auto const childGenerator = typename SI::ChildKeyGenerator(existingParentNodeKey);
           auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
-          parentNode.AddChildInOrder(childNodeKey);
+          parentNode.AddChild(childID);
           auto [childNode, _] = this->m_nodes.emplace(childNodeKey, this->CreateChild(parentNode, childNodeKey));
           childNode->second.AddEntity(entityID);
         }
@@ -2614,6 +2745,7 @@ namespace OrthoTree
       this->m_maxElementNo = maxElementNo;
 
       [[maybe_unused]] auto& nodeRoot = this->m_nodes[SI::GetRootKey()];
+      nodeRoot.SetKey(SI::GetRootKey());
 #ifndef ORTHOTREE__DISABLED_NODECENTER
       nodeRoot.SetCenter(IGM::GetBoxCenter(boxSpace));
 #endif // !ORTHOTREE__DISABLED_NODECENTER
@@ -2654,7 +2786,7 @@ namespace OrthoTree
 
         procedure(key, node);
 
-        for (MortonNodeIDCR childKey : node.GetChildren())
+        for (auto childKey : node.GetChildren())
           nodeIDsToProceed.push(childKey);
       }
     }
@@ -3307,18 +3439,18 @@ namespace OrthoTree
         auto const examinedLevel = this->GetExaminationLevelID(depthID);
         auto const keyGenerator = typename SI::ChildKeyGenerator(node.first);
         auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, beginLocationIt->LocationID);
-        auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevel));
+        auto const childID = childChecker.GetChildID(examinedLevel);
+        auto childKey = keyGenerator.GetChildNodeKey(childID);
+        node.second.AddChild(childID);
         if constexpr (ARE_LOCATIONS_SORTED)
         {
           nodeStack[depthID].EndLocationIt =
             std::partition_point(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.LocationID); });
-          node.second.AddChild(childKey);
         }
         else
         {
           nodeStack[depthID].EndLocationIt =
             std::partition(beginLocationIt, endLocationIt, [&](auto const& location) { return childChecker.Test(location.LocationID); });
-          node.second.AddChildInOrder(childKey);
         }
 
         nodeStack[depthID].NodeInstance.first = std::move(childKey);
@@ -3635,8 +3767,8 @@ namespace OrthoTree
       auto const wallDistance = this->GetNodeWallDistance(searchPoint, smallestNodeKey, smallestNode, false);
 
       // Search in itself and the children
-
       auto farestEntityDistance = maxDistance;
+
       this->VisitNodesInDFSWithChildrenEdit(
         smallestNodeKey,
         [&](Node const& node) {
@@ -3644,9 +3776,9 @@ namespace OrthoTree
           farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
           return true;
         },
-        [&](Node::ChildContainer const& originalChildren) {
+        [&](auto const& children) {
           auto childrenDistance = std::vector<std::pair<MortonNodeID, TGeometry>>();
-          for (MortonLocationIDCR childNodeKey : originalChildren)
+          for (MortonNodeIDCR childNodeKey : children)
           {
             auto const& childNode = this->m_nodes.at(childNodeKey);
             auto const wallDistance = this->GetNodeWallDistance(searchPoint, childNodeKey, childNode, true);
@@ -4015,18 +4147,18 @@ namespace OrthoTree
       NodeProcessingData& nodeProcessingData) const noexcept
     {
       auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, locationIt->DepthAndLocation.LocID);
-      auto childKey = keyGenerator.GetChildNodeKey(childChecker.GetChildID(examinedLevelID));
+      auto const childID = childChecker.GetChildID(examinedLevelID);
+      auto childKey = keyGenerator.GetChildNodeKey(childID);
 
+      parentNodeProcessingData.NodeInstance.second.AddChild(childID);
       if constexpr (ARE_LOCATIONS_SORTED)
       {
-        parentNodeProcessingData.NodeInstance.second.AddChild(childKey);
         nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
           return childChecker.Test(location.DepthAndLocation.LocID);
         });
       }
       else
       {
-        parentNodeProcessingData.NodeInstance.second.AddChildInOrder(childKey);
         nodeProcessingData.EndLocationIt = std::partition(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
           return childChecker.Test(location.DepthAndLocation.LocID);
         });
@@ -4047,9 +4179,9 @@ namespace OrthoTree
     {
       if (locationIt == parentNodeProcessingData.EndLocationIt)
       {
-        auto childKey = keyGenerator.GetChildNodeKey(parentSplitEntityProcessingData.BeginIt->SegmentID);
-        parentNodeProcessingData.NodeInstance.second.AddChildInOrder(childKey);
+        parentNodeProcessingData.NodeInstance.second.AddChild(parentSplitEntityProcessingData.BeginIt->SegmentID);
 
+        auto childKey = keyGenerator.GetChildNodeKey(parentSplitEntityProcessingData.BeginIt->SegmentID);
         nodeProcessingData.EndLocationIt = parentNodeProcessingData.EndLocationIt;
         nodeProcessingData.NodeInstance.second = this->CreateChild(parentNodeProcessingData.NodeInstance.second, childKey);
         nodeProcessingData.NodeInstance.first = std::move(childKey);
@@ -4221,8 +4353,9 @@ namespace OrthoTree
       auto isThereAnyErased = node.RemoveEntity(entityID);
       if constexpr (REMAINING_DEPTH > 0)
       {
-        auto const childKeys = node.GetChildren(); // Copy required because of RemoveNodeIfPossible()
-        for (MortonNodeIDCR childKey : childKeys)
+        auto const& childKeys = node.GetChildren();
+        auto const childKeysCopy = std::vector(childKeys.begin(), childKeys.end()); // Copy required because of RemoveNodeIfPossible()
+        for (MortonNodeID childKey : childKeysCopy)
           isThereAnyErased |= DoEraseRec<REMAINING_DEPTH - 1>(childKey, entityID);
       }
       this->RemoveNodeIfPossible(nodeKey, node);
@@ -4796,7 +4929,7 @@ namespace OrthoTree
 
           auto nodeContextMap = std::unordered_map<MortonNodeID, NodeCollisionContext>{};
 
-          auto nodeQueueNo = 1;
+          std::size_t nodeQueueNo = 1;
           for (std::size_t i = 0; 0 < nodeQueueNo && nodeQueueNo < threadNo - 2; --nodeQueueNo, ++i)
           {
             for (MortonLocationIDCR childKey : nodeQueue[i]->second.GetChildren())
