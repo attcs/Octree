@@ -1773,21 +1773,25 @@ namespace OrthoTree
 
       static DimArray<GridID> Decode(NodeIDCR nodeKey, depth_t maxDepthID) noexcept
       {
+        auto const depthID = GetDepthID(nodeKey);
         auto gridID = DimArray<GridID>{};
         if constexpr (DIMENSION_NO == 1)
         {
-          return { static_cast<GridID>(RemoveSentinelBit(nodeKey)) };
+          auto const examinationLevelID = maxDepthID - depthID;
+          gridID[0] = GridID(RemoveSentinelBit(nodeKey) << examinationLevelID);
         }
 #ifdef BMI2_PDEP_AVAILABLE
         else if constexpr (IS_LINEAR_TREE)
         {
           static constexpr auto bitPatterns = GetBitPatterns();
-          const auto locationID = RemoveSentinelBit(nodeKey);
+
+          auto const examinationLevelID = maxDepthID - depthID;
+          const auto locationID = RemoveSentinelBit(nodeKey) << examinationLevelID * DIMENSION_NO;
           for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           {
             if constexpr (IS_32BIT_LOCATION)
             {
-              gridID[dimensionID] = _pext_u32(locationID, bitPatterns[dimensionID]);
+              gridID[dimensionID] = GridID(_pext_u32(locationID, bitPatterns[dimensionID]));
             }
             else
             {
@@ -1798,8 +1802,6 @@ namespace OrthoTree
 #endif
         else
         {
-          auto const depthID = GetDepthID(nodeKey);
-
           auto constexpr mask = LocationID{ 1 };
           for (depth_t examinationLevelID = maxDepthID - depthID, shift = 0; examinationLevelID < maxDepthID; ++examinationLevelID)
             for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID, ++shift)
@@ -2345,7 +2347,7 @@ namespace OrthoTree
     inline constexpr IGM::Vector const& GetNodeSize(depth_t depthID) const noexcept { return this->m_nodeSizes[depthID]; }
 #endif // ORTHOTREE__DISABLED_NODESIZE
 
-    inline constexpr IGM::Vector const& GetNodeSizeByKey(MortonNodeIDCR key) const noexcept { return this->GetNodeSize(SI::GetDepthID(key)); }
+    inline constexpr decltype(auto) GetNodeSizeByKey(MortonNodeIDCR key) const noexcept { return this->GetNodeSize(SI::GetDepthID(key)); }
 
     constexpr IGM::Box GetNodeBox(depth_t depthID, IGM::Vector const& center) const noexcept
     {
@@ -2368,7 +2370,7 @@ namespace OrthoTree
     }
 
   protected:
-    inline constexpr Node CreateChild(Node const& parentNode, MortonNodeIDCR childKey) const noexcept
+    inline constexpr Node CreateChild([[maybe_unused]] Node const& parentNode, MortonNodeIDCR childKey) const noexcept
     {
 #ifdef ORTHOTREE__DISABLED_NODECENTER
       return Node(childKey);
@@ -3185,7 +3187,7 @@ namespace OrthoTree
       VisitNodes(
         smallestNodeKey,
         [&](MortonNodeIDCR key, Node const&) { foundNodes.push_back(key); },
-        [&](MortonNodeIDCR key, Node const& node) {
+        [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) {
           return key != excludeNodeKey && IGM::DoesRangeContainBoxAD(GetNodeBox(SI::GetDepthID(key), GetNodeCenterMacro(this, key, node)), range);
         });
 
@@ -3210,7 +3212,7 @@ namespace OrthoTree
       assert(AD::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<TEntityID>{};
-      auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
+      auto const selector = [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
         return IGM::GetBoxPlaneRelationAD(GetNodeCenterMacro(this, key, node), halfSize, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
       };
@@ -3233,7 +3235,7 @@ namespace OrthoTree
       assert(AD::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<TEntityID>{};
-      auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
+      auto const selector = [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
         auto const relation = IGM::GetBoxPlaneRelationAD(GetNodeCenterMacro(this, key, node), halfSize, distanceOfOrigo, planeNormal, tolerance);
         return relation != PlaneRelation::Negative;
@@ -3267,7 +3269,7 @@ namespace OrthoTree
         return AD::IsNormalizedVector(AD::GetPlaneNormal(plane));
       }));
 
-      auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
+      auto const selector = [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
         auto const& center = GetNodeCenterMacro(this, key, node);
 
@@ -3735,7 +3737,8 @@ namespace OrthoTree
       return entityIDs;
     }
 
-    inline constexpr IGM::Geometry GetNodeWallDistance(TVector const& searchPoint, MortonNodeIDCR key, Node const& node, bool isInsideConsideredAsZero) const noexcept
+    inline constexpr IGM::Geometry GetNodeWallDistance(
+      TVector const& searchPoint, MortonNodeIDCR key, [[maybe_unused]] Node const& node, bool isInsideConsideredAsZero) const noexcept
     {
       auto const depthID = SI::GetDepthID(key);
       auto const& halfSize = this->GetNodeSize(depthID + 1);
