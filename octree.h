@@ -5005,29 +5005,35 @@ namespace OrthoTree
                 entityIDs.insert(entityIDs.end(), splitEntitiesSet.begin(), splitEntitiesSet.end());
 
                 detail::inplaceMerge(comparator, entityIDs, parentEntitiesWithoutSplitNo);
+                auto const uniqueEndIt = std::unique(entityIDs.begin(), entityIDs.end());
+                entityIDs.resize(uniqueEndIt - entityIDs.begin());
               }
             }
 
             auto collidedEntityPairsInParents = std::vector<std::pair<TEntityID, TEntityID>>{};
-            auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+            auto nodeContextStack = std::vector<NodeCollisionContext>();
             auto usedContextsStack = std::vector<NodeCollisionContext*>{};
             std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNo, [&](auto& nodeIt) {
-              usedContextsStack.emplace_back(&nodeContextMap.at(nodeIt->first));
-              for (auto parentKey = SI::GetParentKey(nodeIt->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
-                usedContextsStack.emplace_back(&nodeContextMap.at(parentKey));
+              {
+                usedContextsStack.emplace_back(&nodeContextMap.at(nodeIt->first));
+                for (auto parentKey = SI::GetParentKey(nodeIt->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
+                  usedContextsStack.emplace_back(&nodeContextMap.at(parentKey));
 
-              for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it)
-                nodeContextStack.emplace_back(std::move(*(*it)));
+                for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it)
+                  nodeContextStack.emplace_back(std::move(*(*it)));
+              }
 
-              auto const depthID = depth_t(usedContextsStack.size());
+              auto const depthID = depth_t(usedContextsStack.size()) - 1;
               InsertCollidedEntitiesInsideNode(boxes, nodeContextStack[depthID], collidedEntityPairsInParents, collisionDetector);
               InsertCollidedEntitiesWithParents(boxes, depthID, nodeContextStack, collidedEntityPairsInParents, collisionDetector);
 
-              auto i = 0;
-              for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it, ++i)
-                *(*it) = std::move(nodeContextStack[i]);
-
-              usedContextsStack.clear();
+              {
+                auto i = 0;
+                for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it, ++i)
+                  *(*it) = std::move(nodeContextStack[i]);
+                usedContextsStack.clear();
+                nodeContextStack.clear();
+              }
             });
 
             auto const collisionNo =

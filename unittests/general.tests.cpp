@@ -3195,7 +3195,7 @@ namespace LongIntAdaptor
 
 
     template<EntityID nDim>
-    vector<EntityID> brute_force_search(vector<CustomVectorTypeND<nDim>> const& points, CustomBoundingBoxND<nDim> const& searchbox)
+    vector<EntityID> BruteForceRangeSearch(vector<CustomVectorTypeND<nDim>> const& points, CustomBoundingBoxND<nDim> const& searchbox)
     {
       auto Entities = vector<EntityID>{};
       auto const nid = points.size();
@@ -3222,7 +3222,7 @@ namespace LongIntAdaptor
 
       auto const tree = Tree(points, 3, std::nullopt, 2);
       auto vidActual = tree.RangeSearch(searchbox);
-      auto vidExpected = brute_force_search<nDim>(points, searchbox);
+      auto vidExpected = BruteForceRangeSearch<nDim>(points, searchbox);
       
       // To investigate
       std::ranges::sort(vidActual);
@@ -3474,6 +3474,63 @@ namespace LongIntAdaptor
         auto const actual = tree.GetNearestNeighbors(searchPoint, k, points);
         auto const areResultsMatch = std::is_permutation(expected.begin(), expected.end(), actual.begin());
         Assert::IsTrue(areResultsMatch);
+      }
+    }
+
+    
+    template<dim_t N>
+    vector<std::pair<EntityID, EntityID>> BruteForceCollisionDetection(vector<BoundingBoxND<N>> const& boxes)
+    {     
+      auto collidedEntityPairs = vector<std::pair<EntityID, EntityID>>{};
+      auto const nid = EntityID(boxes.size());
+      for (EntityID i = 0; i < nid; ++i)
+        for (EntityID j = i + 1; j < nid; ++j)
+          if (AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>::AreBoxesOverlapped(boxes[i], boxes[j], false))
+            collidedEntityPairs.emplace_back(i, j);
+
+      return collidedEntityPairs;
+    }
+
+    TEST_METHOD(Issue38)
+    {
+      constexpr dim_t N = 3;
+      constexpr bool DO_SPLIT_PARENT = true;
+      constexpr auto EXEC_TAG = PAR_EXEC;
+      constexpr bool IS_PARALLEL_EXEC_CD = true;
+
+      constexpr std::size_t boxNo = 1000;
+
+      auto const spaceMax = 8.0;
+      auto const sizeMax = 2.0;
+      auto rng = std::mt19937(0);
+      for (std::size_t c = 0; c < 10; ++c)
+      {
+        // Generate boxes
+
+        auto boxes = vector<BoundingBoxND<N>>(boxNo);
+        boxes[0].Min.fill(0.0);
+        boxes[0].Max.fill(sizeMax);
+        boxes[1].Min.fill(spaceMax - sizeMax);
+        boxes[1].Max.fill(spaceMax);
+
+        for (std::size_t i = 2; i < boxNo; ++i)
+        {
+          for (dim_t d = 0; d < N; ++d)
+          {
+            boxes[i].Min[d] = std::min(double(rng() % 10000) / 10000.0 * spaceMax, spaceMax - 0.1);
+            boxes[i].Max[d] = std::min(boxes[i].Min[d] + double(rng() % 10000) / 10000.0 * sizeMax, spaceMax);
+          }
+        }
+
+        auto const tree = TreeBoxND<N, DO_SPLIT_PARENT>(EXEC_TAG, boxes, 10, std::nullopt, 5);
+        auto const expectedResult = BruteForceCollisionDetection(boxes);
+        auto actualResult = tree.template CollisionDetection<IS_PARALLEL_EXEC_CD>(boxes);
+        for (auto& [a, b] : actualResult)
+          if (a > b)
+            std::swap(a,b);
+
+        std::ranges::sort(actualResult);
+        Assert::IsTrue(actualResult == expectedResult);
       }
     }
   };
