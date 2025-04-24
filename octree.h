@@ -3166,39 +3166,6 @@ namespace OrthoTree
       return true;
     }
 
-    template<typename TBoxRange = TBox>
-    std::vector<MortonNodeID> RangeSearchNodes(TBoxRange const& range, MortonNodeIDCR excludeNodeKey = SI::GetNoneKey()) const noexcept
-    {
-      std::vector<MortonNodeID> foundNodes;
-
-      auto const rangeVolume = IGM::GetVolumeAD(range);
-      if (rangeVolume <= 0.0)
-      {
-        return foundNodes;
-      }
-
-      auto const rangeKey = SI::GetHashAtDepth(this->GetRangeLocationMetaData<!IS_BOX_TYPE, TBoxRange>(range), m_maxDepthID);
-      auto smallestNodeKey = this->FindSmallestNodeKey(rangeKey);
-      if (!SI::IsValidKey(smallestNodeKey))
-      {
-        return foundNodes;
-      }
-
-      VisitNodes(
-        smallestNodeKey,
-        [&](MortonNodeIDCR key, Node const&) { foundNodes.push_back(key); },
-        [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) {
-          return key != excludeNodeKey && IGM::DoesRangeContainBoxAD(GetNodeBox(SI::GetDepthID(key), GetNodeCenterMacro(this, key, node)), range);
-        });
-
-      for (auto parentNodeKey = SI::GetParentKey(smallestNodeKey); SI::IsValidKey(parentNodeKey); parentNodeKey = SI::GetParentKey(parentNodeKey))
-      {
-        foundNodes.push_back(parentNodeKey);
-      }
-
-      return foundNodes;
-    }
-
     static PlaneRelation GetEntityPlaneRelation(TEntity const& entity, TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance)
     {
       if constexpr (IS_BOX_TYPE)
@@ -3704,11 +3671,11 @@ namespace OrthoTree
       }
     }
 
-    static inline IGM::Geometry GetFarestDistance(std::vector<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
+    static inline IGM::Geometry GetFarestDistance(std::vector<EntityDistance>& neighborEntities, std::size_t neighborNo, IGM::Geometry maxDistance) noexcept
     {
       if (neighborEntities.size() < neighborNo)
       {
-        return std::numeric_limits<IGM_Geometry>::max();
+        return maxDistance;
       }
 
       auto const farestNeighborID = neighborNo - 1;
@@ -3749,7 +3716,9 @@ namespace OrthoTree
     void VisitNodesInDFSWithChildrenEdit(MortonNodeIDCR key, auto const& procedure, auto const& childNodeKeyEditor) const noexcept
     {
       auto const& node = this->GetNode(key);
-      procedure(node);
+      if (!procedure(node))
+        return;
+
       for (auto const [childKey, _] : childNodeKeyEditor(node.GetChildren()))
         this->VisitNodesInDFSWithChildrenEdit(childKey, procedure, childNodeKeyEditor);
     }
@@ -3767,126 +3736,55 @@ namespace OrthoTree
       }
 
       auto const& smallestNode = this->GetNode(smallestNodeKey);
-      auto const wallDistance = this->GetNodeWallDistance(searchPoint, smallestNodeKey, smallestNode, false);
 
-      // Search in itself and the children
       auto farestEntityDistance = maxDistance;
-
-      this->VisitNodesInDFSWithChildrenEdit(
-        smallestNodeKey,
-        [&](Node const& node) {
-          AddEntityDistance(this->GetNodeEntities(node), searchPoint, points, neighborEntities, std::min(farestEntityDistance, maxDistance));
-          farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
-          return true;
-        },
-        [&](auto const& children) {
-          auto childrenDistance = std::vector<std::pair<MortonNodeID, TGeometry>>();
-          for (MortonNodeIDCR childNodeKey : children)
-          {
-            auto const& childNode = this->m_nodes.at(childNodeKey);
-            auto const wallDistance = this->GetNodeWallDistance(searchPoint, childNodeKey, childNode, true);
-            if (wallDistance > farestEntityDistance)
-              continue;
-
-            childrenDistance.emplace_back(childNodeKey, wallDistance);
-          }
-
-          std::sort(childrenDistance.begin(), childrenDistance.end(), [&](auto const& leftDistance, auto const& rightDistance) {
-            return leftDistance.second < rightDistance.second;
-          });
-
-          return childrenDistance;
-        });
-
-
-      if (farestEntityDistance < wallDistance || maxDistance < wallDistance)
+      // Parent checks (in a usual case parents do not have entities)
+      for (auto nodeKey = smallestNodeKey; SI::IsValidKey(nodeKey); nodeKey = SI::GetParentKey(nodeKey))
       {
-        return ConvertEntityDistanceToList(neighborEntities, neighborNo);
+        auto const& node = this->GetNode(nodeKey);
+        AddEntityDistance(this->GetNodeEntities(node), searchPoint, points, neighborEntities, farestEntityDistance);
+        farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo, farestEntityDistance);
       }
 
-      // BFS search in iterative way
-      using VisitedNodesMap =
-        std::conditional_t<SI::IS_LINEAR_TREE, std::unordered_set<MortonChildID>, std::set<MortonNodeID, bitset_arithmetic_compare>>;
-      VisitedNodesMap visitedNodes = { smallestNodeKey };
-      auto traversedChildNodeKey = smallestNodeKey;
-      auto parentDepthID = smallesDepthID - 1;
-      for (auto parentNodeKey = SI::GetParentKey(smallestNodeKey); SI::IsValidKey(parentNodeKey);
-           traversedChildNodeKey = parentNodeKey, parentNodeKey = SI::GetParentKey(parentNodeKey), --parentDepthID)
+      // Search in itself and the children
+      for (auto nodeKey = smallestNodeKey, prevNodeKey = MortonNodeID{}; SI::IsValidKey(nodeKey);
+           prevNodeKey = nodeKey, nodeKey = SI::GetParentKey(nodeKey))
       {
-        auto nodeMinDistances = std::vector<BoxDistance>();
-        auto const addNodeWallDistance = [&](MortonLocationIDCR key, Node const& node) {
-          auto const nodeMinDistance = this->GetNodeWallDistance(searchPoint, key, node, true);
-          if (nodeMinDistance < farestEntityDistance)
-          {
-            nodeMinDistances.push_back({ { nodeMinDistance }, key, &node });
-          }
-        };
+        auto const wallDistance = this->GetNodeWallDistance(searchPoint, smallestNodeKey, smallestNode, false);
+        this->VisitNodesInDFSWithChildrenEdit(
+          nodeKey,
+          [&](Node const& node) {
+            if (node.GetKey() == nodeKey)
+              return true; // Self check was already done.
 
-        // Search siblings
+            if (node.GetKey() == prevNodeKey)
+              return false; // Previous subtree was already checked.
 
-        auto nodesToVisit = std::queue<MortonNodeID>{};
-        for (nodesToVisit.push(parentNodeKey); !nodesToVisit.empty(); nodesToVisit.pop())
-        {
-          MortonLocationIDCR nodeKey = nodesToVisit.front();
-          if (nodeKey == traversedChildNodeKey)
-          {
-            continue;
-          }
+            AddEntityDistance(this->GetNodeEntities(node), searchPoint, points, neighborEntities, farestEntityDistance);
+            farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo, farestEntityDistance);
+            return true;
+          },
+          [&](auto const& children) {
+            auto childrenDistance = std::vector<std::pair<MortonNodeID, TGeometry>>();
+            for (MortonNodeIDCR childNodeKey : children)
+            {
+              auto const& childNode = this->m_nodes.at(childNodeKey);
+              auto const wallDistance = this->GetNodeWallDistance(searchPoint, childNodeKey, childNode, true);
+              if (wallDistance > farestEntityDistance)
+                continue;
 
-          auto const& node = this->GetNode(nodeKey);
-          for (MortonLocationIDCR child : node.GetChildren())
-          {
-            nodesToVisit.push(child);
-          }
+              childrenDistance.emplace_back(childNodeKey, wallDistance);
+            }
 
-          if (!visitedNodes.contains(nodeKey))
-          {
-            addNodeWallDistance(nodeKey, node);
-            visitedNodes.insert(nodeKey);
-          }
-        }
+            std::sort(childrenDistance.begin(), childrenDistance.end(), [&](auto const& leftDistance, auto const& rightDistance) {
+              return leftDistance.second < rightDistance.second;
+            });
 
-        // Search non-siblings
+            return childrenDistance;
+          });
 
-        auto const& parentSize = this->GetNodeSize(parentDepthID);
-        bool isRangeSearchOverMaxDistance = true;
-        auto searchBox = typename IGM::Box{};
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          auto const size = parentSize[dimensionID] * 2;
-          isRangeSearchOverMaxDistance &= size >= maxDistance;
-          searchBox.Min[dimensionID] = AD::GetPointC(searchPoint, dimensionID) - size;
-          searchBox.Max[dimensionID] = AD::GetPointC(searchPoint, dimensionID) + size;
-        }
-
-        auto const nonSiblingNeighbours = this->RangeSearchNodes(searchBox, parentNodeKey);
-        for (MortonLocationIDCR nonSiblingKey : nonSiblingNeighbours)
-        {
-          if (!visitedNodes.contains(nonSiblingKey))
-          {
-            addNodeWallDistance(nonSiblingKey, this->GetNode(nonSiblingKey));
-          }
-        }
-        visitedNodes.insert(nonSiblingNeighbours.begin(), nonSiblingNeighbours.end());
-
-        // Evaluate the nodes
-        farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
-        std::sort(nodeMinDistances.begin(), nodeMinDistances.end());
-        for (auto const& nodeDistance : nodeMinDistances)
-        {
-          if (neighborNo <= neighborEntities.size() && farestEntityDistance < nodeDistance.Distance)
-          {
-            break;
-          }
-
-          AddEntityDistance(this->GetNodeEntities(*nodeDistance.NodePtr), searchPoint, points, neighborEntities, std::min(farestEntityDistance, maxDistance));
-          farestEntityDistance = GetFarestDistance(neighborEntities, neighborNo);
-        }
-
-        if (isRangeSearchOverMaxDistance)
-        {
+        if (farestEntityDistance < wallDistance || maxDistance < wallDistance)
           break;
-        }
       }
 
       return ConvertEntityDistanceToList(neighborEntities, neighborNo);
