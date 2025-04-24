@@ -3424,56 +3424,44 @@ namespace LongIntAdaptor
 
     TEST_METHOD(Issue36)
     {
+      constexpr dim_t N = 2;
+
+      using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
+
       auto pointsNo = 1000;
       auto points = std::vector<Point2D>(pointsNo);
       auto rng = std::mt19937(0); 
-      for (int i = 0; i < pointsNo; ++i)
+
+      for (std::size_t c = 0; c < 100; ++c)
       {
-        points[i][0] = double(rng() % 100000) / 1000.0;
-        points[i][1] = double(rng() % 100000) / 1000.0;
-      }
-      
-      auto const searchPoints = std::vector<Point2D>{
-        {  35.0, 105.0 },
-        {  27.0,  50.0 },
-        {  27.0,  26.0 },
-        {  73.0,  53.0 },
-        {  77.0,  26.0 },
-        {  84.0,  72.0 },
-        {  74.0,  39.0 },
-        {  45.0,  27.0 },
-        {  30.0,   2.0 },
-        {  95.0,  17.0 },
-        {  37.0,  53.0 },
-        {  86.0,  71.0 },
-        {  18.0,  68.0 },
-        {  23.0,  26.0 },
-        {  22.0,  84.0 },
-        {  84.0,  70.0 },
-        {  96.0,  35.0 },
-        {  71.0,  56.0 },
-        {  72.0,  41.0 },
-        { 103.0,  90.0 },
-        {  10.0,  56.0 },
-        {  29.0,  17.0 },
-        {  97.0,  89.0 },
-        {  9.00,  89.0 },
-        {  37.0, 103.0 },
-        {  23.0,  25.0 },
-        {  50.0,   2.0 },
-        { 109.0,  90.0 },
-        {  14.0,  65.0 },
-        { 102.0,  88.0 },
-      };
-      
-      auto const tree = QuadtreePoint(points, 10, std::nullopt, 5, false);
-      auto const k = 4;
-      for (auto const& searchPoint : searchPoints)
-      {
-        auto const expected = kNNSearchBruteForce(points, searchPoint, k);
-        auto const actual = tree.GetNearestNeighbors(searchPoint, k, points);
-        auto const areResultsMatch = std::is_permutation(expected.begin(), expected.end(), actual.begin());
-        Assert::IsTrue(areResultsMatch);
+        for (int i = 0; i < pointsNo; ++i)
+          for (dim_t d = 0; d < N; ++d)
+          points[i][d] = double(rng() % 100000) / 1000.0;
+
+        auto searchPoints = std::vector < Point2D>(pointsNo);
+        for (int i = 0; i < pointsNo; ++i)
+          for (dim_t d = 0; d < N; ++d)
+            searchPoints[i][d] = double(rng() % 100000) / 1000.0;     
+
+        auto const tree = TreePointND<N>(points, 10, std::nullopt, 5, false);
+        auto const k = 4;
+        for (auto const& searchPoint : searchPoints)
+        {
+          auto const expected = kNNSearchBruteForce(points, searchPoint, k);
+          auto const actual = tree.GetNearestNeighbors(searchPoint, k, points);
+          Assert::IsTrue(expected.size() == actual.size());
+          auto const areResultsMatch = std::is_permutation(expected.begin(), expected.end(), actual.begin());
+
+          if (!areResultsMatch)
+          {
+            for (int i = 0; i < expected.size(); ++i)
+            {
+              auto const expectedDistance = AD::Distance2(searchPoint, points[expected[i]]);
+              auto const actualDistance = AD::Distance2(searchPoint, points[actual[i]]);
+              Assert::IsTrue(std::abs(actualDistance - expectedDistance) < std::numeric_limits<double>::epsilon() * 10.0);
+            }
+          }
+        }
       }
     }
 
