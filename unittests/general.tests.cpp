@@ -265,8 +265,8 @@ namespace GeneralTest
 
         node.RemoveChild(kChild);
         auto const vChildActual = node.GetChildren();
-        auto vChildExpected = vector<ChildID>(static_cast<ChildID>(nChild - idChild) - 1);
-        std::iota(begin(vChildExpected), end(vChildExpected), idChild + 1);
+        auto vChildExpected = vector<MortonNodeID>(std::size_t(nChild - idChild - 1));
+        std::iota(begin(vChildExpected), end(vChildExpected), MortonNodeID(idChild + 1));
         auto const isPerm = std::is_permutation(vChildActual.begin(), vChildActual.end(), vChildExpected.begin());
         Assert::IsTrue(isPerm);
       }
@@ -3454,7 +3454,7 @@ namespace LongIntAdaptor
 
           if (!areResultsMatch)
           {
-            for (int i = 0; i < expected.size(); ++i)
+            for (std::size_t i = 0; i < expected.size(); ++i)
             {
               auto const expectedDistance = AD::Distance2(searchPoint, points[expected[i]]);
               auto const actualDistance = AD::Distance2(searchPoint, points[actual[i]]);

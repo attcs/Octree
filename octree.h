@@ -1456,16 +1456,16 @@ namespace OrthoTree
       // Indexing can be solved with integral types (above this, internal container will be changed to std::map)
       static auto constexpr IS_LINEAR_TREE = IS_32BIT_LOCATION || IS_64BIT_LOCATION;
 
-      // Max number of children
-      static auto constexpr CHILD_NO = detail::pow2_ce<DIMENSION_NO>();
-
-      // Mask for child bit part
-      static auto constexpr CHILD_MASK = detail::pow2_ce<DIMENSION_NO>() - 1;
-
       static auto constexpr MAX_NONLINEAR_DEPTH_ID = 4;
 
       using UnderlyingInt = std::conditional_t<IS_32BIT_LOCATION, uint32_t, uint64_t>;
       using ChildID = UnderlyingInt;
+
+      // Max number of children
+      static auto constexpr CHILD_NO = detail::pow2_ce<DIMENSION_NO, ChildID>();
+
+      // Mask for child bit part
+      static auto constexpr CHILD_MASK = detail::pow2_ce<DIMENSION_NO, ChildID>() - 1;
 
       // Max value: 2 ^ nDepth ^ DIMENSION_NO * 2 (signal bit)
       using LinearLocationID = UnderlyingInt;
@@ -1894,7 +1894,7 @@ namespace OrthoTree
           if (levelID > 0)
           {
             auto constexpr CHILD_MASK_LOC = LocationID{ CHILD_MASK };
-            auto const shiftToChildSegment = ChildID((levelID - 1) * DIMENSION_NO);
+            auto const shiftToChildSegment = std::size_t((levelID - 1) * DIMENSION_NO);
             dl.TouchedDimensionsFlag = CastMortonIDToChildID((locationDifference >> shiftToChildSegment) & CHILD_MASK_LOC);
             dl.LocID >>= shiftToChildSegment;
             dl.LowerSegmentID = CastMortonIDToChildID(dl.LocID & CHILD_MASK_LOC);
@@ -2430,14 +2430,14 @@ namespace OrthoTree
     }
     inline constexpr void TraverseSplitChildren(SI::RangeLocationMetaData const& location, auto&& setPermutationNo, auto&& action) const noexcept
     {
-      MortonChildID const touchedDimensionNo = std::popcount(location.TouchedDimensionsFlag);
-      MortonChildID const permutationNo = detail::pow2<MortonChildID, MortonChildID>(touchedDimensionNo);
+      auto const touchedDimensionNo = std::popcount(location.TouchedDimensionsFlag);
+      auto const permutationNo = detail::pow2<MortonChildID, std::size_t>(touchedDimensionNo);
 
       setPermutationNo(permutationNo);
-      for (MortonChildID permutationID = 0; permutationID < permutationNo; ++permutationID)
+      for (std::size_t permutationID = 0; permutationID < permutationNo; ++permutationID)
       {
         MortonChildID segmentID = 0;
-        MortonChildID permutationMask = 1;
+        std::size_t permutationMask = 1;
         for (MortonChildID dimensionMask = 1; dimensionMask <= location.TouchedDimensionsFlag; dimensionMask <<= 1)
         {
           if (location.TouchedDimensionsFlag & dimensionMask)
