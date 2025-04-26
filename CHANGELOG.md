@@ -3,17 +3,30 @@
 # Latest
 Interface changes
 * Exposing of Node's entities responsibility was moved to the Tree class
+* General split depth increasement strategy is removed. The one-level deeper solution is applied: `DO_SPLIT_PARENT_ENTITIES`
+* Default EntityID type is changed to `uint32_t`
+* `Node::GetChildren()` is a range now instead of `std::vector` 
+* Naming issues aroung node's max element and max depth ID are solved
+* Distance sorted result requirement is added to `GetNearestNeighbors()`
 
 Performance improvements
-* `CollisionDetection()` (between different trees) 
+* Box creation
+* Both the internal and between-tree version of `CollisionDetection()`
 * `RayIntersectedFirst()`
 * `GetNearestNeighbors()`
 
 Miscellaneous
 * Automatic Benchmark is added
+* Children key storage is changed to bitflag for smaller dimensions.
+* W4 warning level
 
 Bugfixes
 * Minor bugfixes in `InsertWithRebalance()`
+* Minor bugfix in `GetNearestNeighbors()`
+
+New benchmarks
+* Creation for 6D points
+* `GetNearestNeighbors()` for 6D and 63D
 
 ## 2025-01-19 v2.5
 Interface changes
