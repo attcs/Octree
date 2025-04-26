@@ -79,10 +79,10 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include <vector>
 #include <version>
 
+#if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_M_X64) || defined(__x86_64__) || defined(__amd64__))
 #ifdef __has_include
 #if __has_include(<immintrin.h>)
 #include <immintrin.h>
-#if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_M_X64) || defined(__x86_64__) || defined(__amd64__))
 #define BMI2_PDEP_AVAILABLE 1
 #endif
 #endif
