@@ -89,7 +89,7 @@ namespace
         for (auto _ : state)
         {
           for (auto const* nodePtr : nodePtrs)
-            tree.GetNodeEntities(*nodePtr);
+            benchmark::DoNotOptimize(tree.GetNodeEntities(*nodePtr));
         }
         SetIterationNo(state, entityNo);
       }
@@ -301,10 +301,9 @@ namespace
         }
       }
 
-
+      template<dim_t DIMENSION_NO = 3>
       static void GetNearestNeighbors(benchmark::State& state)
       {
-        constexpr dim_t DIMENSION_NO = 3;
         constexpr depth_t depth = 5;
 
         size_t entityNo = state.range();
@@ -656,11 +655,13 @@ namespace
 
 BENCHMARK(Benchmarks::Base::GetNodeID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GetDepthID)->Arg(1000)->Unit(benchmark::kNanosecond);
-BENCHMARK(Benchmarks::Base::GetNodeEntities)->Arg(10000)->Unit(benchmark::kNanosecond);
+BENCHMARK(Benchmarks::Base::GetNodeEntities)->Arg(10000)->Arg(100000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetPointGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetBoxGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Point::Create<3, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::Create<3, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Point::Create<6, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Point::Create<6, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::InsertToLeaf)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::InsertWithRebalancing)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::InsertUnique)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
@@ -668,6 +669,7 @@ BENCHMARK(Benchmarks::Point::Update)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1
 BENCHMARK(Benchmarks::Point::Contains)->Arg(1000)->Arg(10000);
 BENCHMARK(Benchmarks::Point::RangeSearch)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Point::GetNearestNeighbors)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Point::GetNearestNeighbors<6>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::FrustumCulling)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 0, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Create<3, 0, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
