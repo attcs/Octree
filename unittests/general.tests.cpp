@@ -3451,12 +3451,6 @@ namespace LongIntAdaptor
           auto actual = tree.GetNearestNeighbors(searchPoint, k, points);
           Assert::IsTrue(expected.size() == actual.size());
 
-          auto const comp = [&](auto const e1, auto const e2) {
-            return AD::Distance2(searchPoint, points[e1]) < AD::Distance2(searchPoint, points[e2]);
-          };
-          std::ranges::sort(expected, comp);
-          std::ranges::sort(actual, comp);
-
           auto const areResultsEqual = expected == actual;
 
           if (areResultsEqual)
@@ -3464,6 +3458,9 @@ namespace LongIntAdaptor
        
           for (std::size_t i = 0; i < expected.size(); ++i)
           {
+            if (expected[i] == actual[i])
+              continue;
+
             auto const expectedDistance = AD::Distance2(searchPoint, points[expected[i]]);
             auto const actualDistance = AD::Distance2(searchPoint, points[actual[i]]);
             Assert::IsTrue(std::abs(actualDistance - expectedDistance) < std::numeric_limits<double>::epsilon() * 10.0);
