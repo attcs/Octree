@@ -102,23 +102,23 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 
 #ifndef CRASH
 #define CRASH_UNDEF
-#define CRASH()       \
-  do                  \
-  {                   \
-    assert(false);    \
-    std::terminate(); \
+#define CRASH(errorMessage)        \
+  do                               \
+  {                                \
+    assert(false && errorMessage); \
+    std::terminate();              \
   } while (0)
 #endif // !CRASH
 
 #ifndef CRASH_IF
 #define CRASH_IF_UNDEF
-#define CRASH_IF(cond) \
-  do                   \
-  {                    \
-    if (cond)          \
-    {                  \
-      CRASH();         \
-    }                  \
+#define CRASH_IF(cond, errorMessage) \
+  do                                 \
+  {                                  \
+    if (cond)                        \
+    {                                \
+      CRASH(errorMessage);           \
+    }                                \
   } while (0)
 #endif // !CRASH_IF
 
@@ -1456,7 +1456,7 @@ namespace OrthoTree
       // Indexing can be solved with integral types (above this, internal container will be changed to std::map)
       static auto constexpr IS_LINEAR_TREE = IS_32BIT_LOCATION || IS_64BIT_LOCATION;
 
-      static auto constexpr MAX_NONLINEAR_DEPTH_ID = 4;
+      static auto constexpr MAX_NONLINEAR_DEPTH_ID = depth_t{ 4 };
 
       using UnderlyingInt = std::conditional_t<IS_32BIT_LOCATION, uint32_t, uint64_t>;
       using ChildID = UnderlyingInt;
@@ -1479,7 +1479,7 @@ namespace OrthoTree
 
       // Type system determined maximal depth id due to the resolution.
       static auto constexpr MAX_THEORETICAL_DEPTH_ID =
-        IS_LINEAR_TREE ? static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinal bit*/)) / DIMENSION_NO : MAX_NONLINEAR_DEPTH_ID;
+        IS_LINEAR_TREE ? static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinel bit*/)) / DIMENSION_NO : MAX_NONLINEAR_DEPTH_ID;
 
       struct RangeLocationMetaData
       {
@@ -1562,7 +1562,7 @@ namespace OrthoTree
             if (key == 1) // If only sentinel bit remains, exit with node depth
               return d;
 
-          CRASH(); // Bad key
+          CRASH("Bad key! Internal error!"); // Bad key
         }
       }
 
@@ -2028,6 +2028,7 @@ namespace OrthoTree
         constexpr ChildBitIterator begin() const noexcept { return ChildBitIterator(m_nodeKey, m_childBits); }
         constexpr ChildBitIterator end() const noexcept { return ChildBitIterator(m_nodeKey, {}); }
         constexpr std::size_t size() const noexcept { return std::popcount(m_childBits); }
+        constexpr std::size_t empty() const noexcept { return m_childBits == 0; }
 
       private:
         MortonLocationID m_nodeKey;
@@ -2084,6 +2085,7 @@ namespace OrthoTree
         constexpr ChildVectorIterator begin() const noexcept { return ChildVectorIterator(m_nodeKey, m_children.begin()); }
         constexpr ChildVectorIterator end() const noexcept { return ChildVectorIterator(m_nodeKey, m_children.end()); }
         constexpr std::size_t size() const noexcept { return m_children.size(); }
+        constexpr std::size_t empty() const noexcept { return m_children.empty(); }
 
       private:
         MortonLocationID m_nodeKey;
@@ -2734,13 +2736,12 @@ namespace OrthoTree
     // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
     constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo) noexcept
     {
-      CRASH_IF(!this->m_nodes.empty()); // To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already
-                                        // builded tree is wanted to be reset, use the Reset() function before init.
-      CRASH_IF(maxDepthID < 1);
-      CRASH_IF(maxDepthID > SI::MAX_THEORETICAL_DEPTH_ID);
-      CRASH_IF(maxDepthID >= std::numeric_limits<uint8_t>::max());
-      CRASH_IF(maxElementNo == 0);
-      CRASH_IF(CHAR_BIT * sizeof(GridID) < this->m_maxDepthID);
+      CRASH_IF(!this->m_nodes.empty(), "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
+      CRASH_IF(maxDepthID < 1, "maxDepthID must be largar than 0!");
+      CRASH_IF(maxDepthID > SI::MAX_THEORETICAL_DEPTH_ID, "maxDepthID is larger than the applicable with the current DIMENSION_NO!");
+      CRASH_IF(maxDepthID >= std::numeric_limits<uint8_t>::max(), "maxDepthID is too large.");
+      CRASH_IF(maxElementNo == 0, "maxElementNo must be larger than 0. It is allowed max entity number for one node.");
+      CRASH_IF(CHAR_BIT * sizeof(GridID) < maxDepthID, "GridID and maxDepthID are not compatible.");
 
       this->m_grid = detail::GridSpaceIndexing<DIMENSION_NO, TGeometry, TVector, TBox, AD>(maxDepthID, boxSpace);
       this->m_maxDepthID = maxDepthID;
@@ -3797,8 +3798,8 @@ namespace OrthoTree
   };
 
 
-  // OrthoTreeBoundingBox: Non-owning container which spatially organize bounding box ids in N dimension space into a hash-table by Morton Z order.
-  // DO_SPLIT_PARENT_ENTITIES: if (DO_SPLIT_PARENT_ENTITIES > 0) Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
+  // OrthoTreeBoundingBox: Non-owning container which spatially organize axis aligned bounding box (AABB) ids in N dimension space into a hash-table by Morton Z order.
+  // DO_SPLIT_PARENT_ENTITIES: Those items which are not fit in the child nodes may be stored in the children/grand-children instead of the parent.
   template<
     dim_t DIMENSION_NO,
     typename TVector_,
