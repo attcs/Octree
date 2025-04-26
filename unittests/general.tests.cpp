@@ -3422,7 +3422,7 @@ namespace LongIntAdaptor
       return std::vector<EntityID>(ids.begin(), ids.begin() + k);
     }
 
-    TEST_METHOD(Issue36)
+    TEST_METHOD(Issue36_kNN_Random)
     {
       constexpr dim_t N = 2;
 
@@ -3447,20 +3447,27 @@ namespace LongIntAdaptor
         auto const k = 4;
         for (auto const& searchPoint : searchPoints)
         {
-          auto const expected = kNNSearchBruteForce(points, searchPoint, k);
-          auto const actual = tree.GetNearestNeighbors(searchPoint, k, points);
+          auto expected = kNNSearchBruteForce(points, searchPoint, k);
+          auto actual = tree.GetNearestNeighbors(searchPoint, k, points);
           Assert::IsTrue(expected.size() == actual.size());
-          auto const areResultsMatch = std::is_permutation(expected.begin(), expected.end(), actual.begin());
 
-          if (!areResultsMatch)
+          auto const comp = [&](auto const e1, auto const e2) {
+            return AD::Distance2(searchPoint, points[e1]) < AD::Distance2(searchPoint, points[e2]);
+          };
+          std::ranges::sort(expected, comp);
+          std::ranges::sort(actual, comp);
+
+          auto const areResultsEqual = expected == actual;
+
+          if (areResultsEqual)
+            continue;
+       
+          for (std::size_t i = 0; i < expected.size(); ++i)
           {
-            for (std::size_t i = 0; i < expected.size(); ++i)
-            {
-              auto const expectedDistance = AD::Distance2(searchPoint, points[expected[i]]);
-              auto const actualDistance = AD::Distance2(searchPoint, points[actual[i]]);
-              Assert::IsTrue(std::abs(actualDistance - expectedDistance) < std::numeric_limits<double>::epsilon() * 10.0);
-            }
-          }
+            auto const expectedDistance = AD::Distance2(searchPoint, points[expected[i]]);
+            auto const actualDistance = AD::Distance2(searchPoint, points[actual[i]]);
+            Assert::IsTrue(std::abs(actualDistance - expectedDistance) < std::numeric_limits<double>::epsilon() * 10.0);
+          }          
         }
       }
     }
@@ -3479,7 +3486,7 @@ namespace LongIntAdaptor
       return collidedEntityPairs;
     }
 
-    TEST_METHOD(Issue38)
+    TEST_METHOD(Issue38_ParallelCollisionDetection_Random)
     {
       constexpr dim_t N = 3;
       constexpr bool DO_SPLIT_PARENT = true;
