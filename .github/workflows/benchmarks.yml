@@ -4,7 +4,11 @@ on:
     branches:
       - master
       - google_benchmark
-
+    paths:
+      - 'octree.h'
+      - 'octree_container.h'
+      - 'benchmarks/automatic/main.cpp'
+      
 permissions:
   contents: write
   deployments: write
