@@ -549,7 +549,7 @@ namespace
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
       vTask.push_back(MeasurementTask<BoundingBoxND<N>>
-        { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize] / 50, nDepth, false, aBox_.subspan(0, aSizeNonLog[iSize])
+        { szName, aSizeNonLog[iSize], std::max(1, aRepeatNonLog[iSize] / 50), nDepth, false, aBox_.subspan(0, aSizeNonLog[iSize])
         , [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
           {
             auto const vvElem = RangeSearchNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox, aBox);
@@ -572,7 +572,7 @@ namespace
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
       vTask.push_back(MeasurementTask<BoundingBoxND<N>>
-    { szName, aSizeNonLog[iSize], aRepeatNonLog[iSize] / 50, 0, false, aBox_.subspan(0, aSizeNonLog[iSize])
+    { szName, aSizeNonLog[iSize], std::max(1, aRepeatNonLog[iSize] / 50), 0, false, aBox_.subspan(0, aSizeNonLog[iSize])
         , [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
     {
       if (!fPar)
@@ -697,8 +697,8 @@ int main()
   // Morton vs Dynamic
   {
     auto const szName = string("Cylindrical semi-random placed points Morton vs Dynamic");
-    auto const aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return GeneratePointsRandom<N>(N1M); }, szName, 100, report);
-    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return GenerateBoxesRandom<N>(N1M); }, szName, 100, report);
+    auto const aPoint = GenerateGeometry<N, vector<PointND<N>>>([&] { return GeneratePointsRandom<N>(100 * N1M); }, szName, 100, report);
+    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return GenerateBoxesRandom<N>(100 * N1M); }, szName, 100, report);
 
     auto const vTaskMortonP = GeneratePointTasks<N>(nDepth, "Morton point", aPoint);
     auto const vTaskDynP = GeneratePointDynTasks_NonLog<N>(nDepth, "Dynamic point", aPoint);
