@@ -328,14 +328,85 @@ namespace GeneralTest
       Assert::IsTrue(vidE == vidA);
     }
 
-    TEST_METHOD(EstimateNodeNumber__0)
+    TEST_METHOD(Ctor_Box_Move)
     {
-      //!
+      auto constexpr N = 3;
+      using BoundingBoxXD = BoundingBoxND<N>;
+      auto constexpr vBox = array
+      {
+        BoundingBoxXD{ { 0.0} , {4.0} },
+        BoundingBoxXD{ { 0.0} , {2.0} }, BoundingBoxXD{ { 2.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0} , {1.0} }, BoundingBoxXD{ { 1.0 }, { 2.0 } }, BoundingBoxXD{ { 2.0 }, { 3.0 } }, BoundingBoxXD{ { 3.0 }, { 4.0 } }
+      };
+
+      auto const treeExpected = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+      auto treeForMove = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+
+      auto treeActual(std::move(treeForMove));
+
+      auto const& nodesE = treeExpected.GetNodes();
+      auto const& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
+      Assert::IsTrue(vidE == vidA);
     }
 
-    TEST_METHOD(EstimateNodeNumber__10)
+    TEST_METHOD(Ctor_Box_Copy)
     {
-      //!
+      auto constexpr N = 3;
+      using BoundingBoxXD = BoundingBoxND<N>;
+      auto constexpr vBox = array{
+        BoundingBoxXD{ { 0.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 1.0 } },
+        BoundingBoxXD{ { 1.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 3.0 } },
+        BoundingBoxXD{ { 3.0 }, { 4.0 } }
+      };
+
+      auto const treeExpected = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+      auto treeForCopy = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+
+      auto treeActual(treeForCopy);
+
+      auto const& nodesE = treeExpected.GetNodes();
+      auto const& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
+      Assert::IsTrue(vidE == vidA);
+    }
+
+    TEST_METHOD(Ctor_Box_CopyAssignment)
+    {
+      auto constexpr N = 3;
+      using BoundingBoxXD = BoundingBoxND<N>;
+      auto constexpr vBox = array{
+        BoundingBoxXD{ { 0.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 1.0 } },
+        BoundingBoxXD{ { 1.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 3.0 } },
+        BoundingBoxXD{ { 3.0 }, { 4.0 } }
+      };
+
+      auto const treeExpected = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+      auto treeForCopy = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+
+      auto treeActual = treeForCopy;
+
+      auto const& nodesE = treeExpected.GetNodes();
+      auto const& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
+      Assert::IsTrue(vidE == vidA);
     }
 
     TEST_METHOD(GetHash__00_1)
