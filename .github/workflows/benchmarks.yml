@@ -8,6 +8,7 @@ on:
       - 'octree.h'
       - 'octree_container.h'
       - 'benchmarks/automatic/main.cpp'
+      - 'benchmarks/manual/generators.h'
       
 permissions:
   contents: write

@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <random>
 
 #include "../../octree.h"
 
@@ -10,6 +11,7 @@ auto constexpr rMax = 8.0;
 template<dim_t DIMENSION_NO>
 constexpr std::vector<PointND<DIMENSION_NO>> GeneratePointsRandom(size_t pointsNo, int seed = 0)
 {
+  auto rng = std::mt19937(seed);
 
   auto aPoint = std::vector<PointND<DIMENSION_NO>>(pointsNo);
   if (pointsNo <= 1)
@@ -31,11 +33,10 @@ constexpr std::vector<PointND<DIMENSION_NO>> GeneratePointsRandom(size_t pointsN
       aPoint[iNumber][iDim] = rMax;
   }
 
-  srand(seed);
   {
     for (; iNumber < pointsNo; ++iNumber)
       for (dim_t iDim = 0; iDim < DIMENSION_NO; ++iDim)
-        aPoint[iNumber][iDim] = double(rand() % 100) * (rMax / 100.0);
+        aPoint[iNumber][iDim] = double(rng() % 100) * (rMax / 100.0);
   }
 
   return aPoint;
@@ -83,7 +84,7 @@ BoundingBoxND<DIMENSION_NO> CreateSearcBox(double rBegin, double rSize)
 
 
 template<dim_t DIMENSION_NO>
-constexpr std::vector<BoundingBoxND<DIMENSION_NO>> GenerateBoxesRandom(size_t nNumber, int seed = 0)
+constexpr std::vector<BoundingBoxND<DIMENSION_NO>> GenerateBoxesRandom(size_t nNumber, int seed = 0, double boxSizeScale = 0.125)
 {
   if (nNumber == 0)
     return {};
@@ -116,16 +117,18 @@ constexpr std::vector<BoundingBoxND<DIMENSION_NO>> GenerateBoxesRandom(size_t nN
     ++iNumber;
   }
 
-  srand(seed);
+  auto rng = std::mt19937(seed);
 
   {
+    auto const rMaxBoxSize = boxSizeScale * rMax;
     for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
     {
       auto const iNumberBox = nNumber - iNumber - 1;
       for (dim_t iDim = 0; iDim < DIMENSION_NO && iNumber < nNumber; ++iDim)
-        aBox[iNumberBox].Min[iDim] = double(rand() % 100) * ((rMax - 1.0) / 100.0);
-
-      aBox[iNumberBox].Max = CreateBoxMax(aBox[iNumberBox].Min, double(rand() % 100) * (1.0 * rUnit / 100.0));
+      {
+        aBox[iNumberBox].Min[iDim] = double(rng() % 100) * ((rMax - 1.0) / 100.0);
+        aBox[iNumberBox].Max[iDim] = std::min(rMax, aBox[iNumberBox].Min[iDim] + (double(rng() % 100) / 100.0) * rMaxBoxSize);
+      }
     }
   }
 
