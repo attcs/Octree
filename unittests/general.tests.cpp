@@ -328,14 +328,85 @@ namespace GeneralTest
       Assert::IsTrue(vidE == vidA);
     }
 
-    TEST_METHOD(EstimateNodeNumber__0)
+    TEST_METHOD(Ctor_Box_Move)
     {
-      //!
+      auto constexpr N = 3;
+      using BoundingBoxXD = BoundingBoxND<N>;
+      auto constexpr vBox = array
+      {
+        BoundingBoxXD{ { 0.0} , {4.0} },
+        BoundingBoxXD{ { 0.0} , {2.0} }, BoundingBoxXD{ { 2.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0} , {1.0} }, BoundingBoxXD{ { 1.0 }, { 2.0 } }, BoundingBoxXD{ { 2.0 }, { 3.0 } }, BoundingBoxXD{ { 3.0 }, { 4.0 } }
+      };
+
+      auto const treeExpected = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+      auto treeForMove = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+
+      auto treeActual(std::move(treeForMove));
+
+      auto const& nodesE = treeExpected.GetNodes();
+      auto const& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
+      Assert::IsTrue(vidE == vidA);
     }
 
-    TEST_METHOD(EstimateNodeNumber__10)
+    TEST_METHOD(Ctor_Box_Copy)
     {
-      //!
+      auto constexpr N = 3;
+      using BoundingBoxXD = BoundingBoxND<N>;
+      auto constexpr vBox = array{
+        BoundingBoxXD{ { 0.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 1.0 } },
+        BoundingBoxXD{ { 1.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 3.0 } },
+        BoundingBoxXD{ { 3.0 }, { 4.0 } }
+      };
+
+      auto const treeExpected = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+      auto treeForCopy = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+
+      auto treeActual(treeForCopy);
+
+      auto const& nodesE = treeExpected.GetNodes();
+      auto const& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
+      Assert::IsTrue(vidE == vidA);
+    }
+
+    TEST_METHOD(Ctor_Box_CopyAssignment)
+    {
+      auto constexpr N = 3;
+      using BoundingBoxXD = BoundingBoxND<N>;
+      auto constexpr vBox = array{
+        BoundingBoxXD{ { 0.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 4.0 } },
+        BoundingBoxXD{ { 0.0 }, { 1.0 } },
+        BoundingBoxXD{ { 1.0 }, { 2.0 } },
+        BoundingBoxXD{ { 2.0 }, { 3.0 } },
+        BoundingBoxXD{ { 3.0 }, { 4.0 } }
+      };
+
+      auto const treeExpected = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+      auto treeForCopy = TreeBoxND<N>(vBox, 3, std::nullopt, 1);
+
+      auto treeActual = treeForCopy;
+
+      auto const& nodesE = treeExpected.GetNodes();
+      auto const& nodesA = treeActual.GetNodes();
+      Assert::AreEqual(nodesE.size(), nodesA.size());
+
+      auto const vidE = treeExpected.CollectAllEntitiesInBFS();
+      auto const vidA = treeActual.CollectAllEntitiesInBFS();
+      Assert::IsTrue(vidE == vidA);
     }
 
     TEST_METHOD(GetHash__00_1)
@@ -412,8 +483,8 @@ namespace GeneralTest
         auto const entitiesInDFS = tree.GetCore().CollectAllEntitiesInDFS();
 
         Assert::AreEqual<std::size_t>(15, nodes.size());
-        AreContainersItemsEqual(std::vector<EntityID>{ 4, 4, 0, 0, 1, 1, 2, 2, 3, 3 }, entitiesInBFS);
-        AreContainersItemsEqual(std::vector<EntityID>{ 4, 0, 0, 1, 1, 4, 2, 2, 3, 3 }, entitiesInDFS);
+        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 4, 4, 0, 0, 1, 1, 2, 2, 3, 3 }, entitiesInBFS));
+        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 4, 0, 0, 1, 1, 4, 2, 2, 3, 3 }, entitiesInDFS));
       }
 
       // Adding nodes in the current structure
@@ -446,8 +517,8 @@ namespace GeneralTest
       auto const entitiesInDFS = tree.GetCore().CollectAllEntitiesInDFS();
 
       Assert::AreEqual<std::size_t>(15, nodes.size());
-      AreContainersItemsEqual(std::vector<EntityID>{6, 8, 4, 4, 7, 0, 0, 5, 1, 1, 2, 2, 3, 3}, entitiesInBFS);
-      AreContainersItemsEqual(std::vector<EntityID>{6, 8, 4, 0, 0, 5, 1, 1, 4, 7, 2, 2, 3, 3}, entitiesInDFS);
+      Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{6, 8, 4, 4, 7, 0, 0, 5, 1, 1, 2, 2, 3, 3}, entitiesInBFS));
+      Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{6, 8, 4, 0, 0, 5, 1, 1, 4, 7, 2, 2, 3, 3}, entitiesInDFS));
 
       auto const idsActual = tree.RangeSearch<false /*overlap instead of fully contained*/>(BoundingBox1D{ -1.1, 0.9 });
       auto const idsExpected = vector<EntityID>{ /* 1. phase */ 0, 1, 2, 4, /* 2. phase */ 6, 7, 8 };
@@ -475,6 +546,8 @@ namespace GeneralTest
 
     TEST_METHOD(InitThenInsertWithRebalancingParentSplit)
     {
+      using TreeBox = TreeBoxND<3, true>;
+
       auto const entities = std::vector<BoundingBox3D>{
         { { 6.160, 3.850, 3.290 }, { 6.560, 4.250, 3.690 } },
         { { 0.770, 5.250, 2.520 }, { 0.960, 5.440, 2.710 } },
@@ -492,7 +565,7 @@ namespace GeneralTest
         { { 4.060, 5.040, 2.100 }, { 4.400, 5.380, 2.439 } }
       };
 
-      auto tree = TreeBoxND<3, true>();
+      auto tree = TreeBox();
       tree.Init(
         BoundingBox3D{
           { 0.0, 0.0, 0.0 },
@@ -508,8 +581,8 @@ namespace GeneralTest
         ++entityID;
       }
       auto const nodeNo = tree.GetNodes().size();
-      auto const idsInBFS = tree.CollectAllEntitiesInBFS();
-      auto const idsInDFS = tree.CollectAllEntitiesInDFS();
+      auto const idsInBFS = tree.CollectAllEntitiesInBFS(TreeBox::SI::GetRootKey(), true);
+      auto const idsInDFS = tree.CollectAllEntitiesInDFS(TreeBox::SI::GetRootKey(), true);
       Assert::AreEqual<std::size_t>(9, nodeNo);
       Assert::IsTrue(idsInBFS == vector<EntityID>{ 2, 9, 0, 4, 1, 2, 3, 7, 8, 0, 4, 13, 11, 4, 12, 6, 10, 4, 5 });
       Assert::IsTrue(idsInDFS == vector<EntityID>{ 2, 9, 0, 4, 1, 2, 3, 7, 8, 0, 4, 13, 11, 4, 12, 6, 10, 4, 5 });
@@ -1367,7 +1440,7 @@ namespace Tree1DTest
       //!
     }
 
-    TEST_METHOD(Update2p__Rewrite3__Successful)
+    TEST_METHOD(Update2p__Update3__Successful)
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
@@ -1378,7 +1451,7 @@ namespace Tree1DTest
       Assert::IsTrue(ids == vector<EntityID>{ 0, 1, 3, 2 });
     }
 
-    TEST_METHOD(Update2p__Rewrite2__Successful)
+    TEST_METHOD(Update2p__Update2__Successful)
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
