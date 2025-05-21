@@ -265,7 +265,7 @@ namespace
       static void Contains(benchmark::State& state)
       {
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
 
@@ -284,14 +284,14 @@ namespace
       static void RangeSearch(benchmark::State& state)
       {
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
 
         auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
         auto const tree = TreePointND<DIMENSION_NO>(points, depth);
         constexpr size_t boxNo = 100;
-        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo);
+        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1, 0.05);
 
         size_t entityID = 0;
         for (auto _ : state)
@@ -326,7 +326,7 @@ namespace
       static void FrustumCulling(benchmark::State& state)
       {
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
 
@@ -458,12 +458,12 @@ namespace
       {
         constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
         using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
 
         size_t entityNo = state.range();
 
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
@@ -484,16 +484,16 @@ namespace
       {
         constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
 
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
         constexpr size_t boxNo = 100;
-        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1);
+        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1, 0.02);
 
         size_t entityID = 0;
         for (auto _ : state)
@@ -509,11 +509,11 @@ namespace
       {
         constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
 
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
@@ -534,10 +534,10 @@ namespace
       {
         constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
@@ -553,11 +553,11 @@ namespace
       {
         constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
-        auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0);
-        auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
+        auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
+        auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1, 0.05);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree0 = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities0, depth, boxSpace);
         auto const tree1 = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities1, depth, boxSpace);
@@ -599,11 +599,11 @@ namespace
       {
         constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
         constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        constexpr depth_t depth = 8;
 
         size_t entityNo = state.range();
 
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 2);
+        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 2, 0.02);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
         auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
@@ -628,11 +628,11 @@ namespace
           auto const& ray = rays[entityID % rays.size()];
           if constexpr (IS_FIRST)
           {
-            tree.RayIntersectedFirst(ray.Origin, ray.Direction, entities, 0);
+            benchmark::DoNotOptimize(tree.RayIntersectedFirst(ray.Origin, ray.Direction, entities, 0));
           }
           else
           {
-            tree.RayIntersectedAll(ray.Origin, ray.Direction, entities, 0);
+            benchmark::DoNotOptimize(tree.RayIntersectedAll(ray.Origin, ray.Direction, entities, 0));
           }
           ++entityID;
         }

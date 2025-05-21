@@ -121,13 +121,12 @@ constexpr std::vector<BoundingBoxND<DIMENSION_NO>> GenerateBoxesRandom(size_t nN
 
   {
     auto const rMaxBoxSize = boxSizeScale * rMax;
-    for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
+    for (; iNumber < nNumber; ++iNumber)
     {
-      auto const iNumberBox = nNumber - iNumber - 1;
       for (dim_t iDim = 0; iDim < DIMENSION_NO && iNumber < nNumber; ++iDim)
       {
-        aBox[iNumberBox].Min[iDim] = double(rng() % 100) * ((rMax - 1.0) / 100.0);
-        aBox[iNumberBox].Max[iDim] = std::min(rMax, aBox[iNumberBox].Min[iDim] + (double(rng() % 100) / 100.0) * rMaxBoxSize);
+        aBox[iNumber].Min[iDim] = double(rng() % 100) * ((rMax - 1.0) / 100.0);
+        aBox[iNumber].Max[iDim] = std::min(rMax, aBox[iNumber].Min[iDim] + (double(rng() % 100) / 100.0) * rMaxBoxSize);
       }
     }
   }
