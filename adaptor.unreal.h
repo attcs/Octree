@@ -488,13 +488,15 @@ namespace OrthoTree
       static void MoveBox(FBox_& box, FVector_ const& moveVector) noexcept { box = box.ShiftBy(moveVector); }
 
       static constexpr std::optional<double> GetRayBoxDistance(
-        FBox_ const& box, FVector_ const& rayBasePoint, FVector_ const& rayHeading, FGeometry_ tolerance) noexcept
+        FBox_ const& box, FVector_ const& rayOrigin, FVector_ const& rayDirection, FGeometry_ tolerance) noexcept
       {
+        assert(tolerance >= 0 && "Tolerance cannot be negative!");
+
         auto rayBasePointBox = FBox_();
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          Base::SetBoxMinC(rayBasePointBox, dimensionID, Base::GetPointC(rayBasePoint, dimensionID) - tolerance);
-          Base::SetBoxMaxC(rayBasePointBox, dimensionID, Base::GetPointC(rayBasePoint, dimensionID) + tolerance);
+          Base::SetBoxMinC(rayBasePointBox, dimensionID, Base::GetPointC(rayOrigin, dimensionID) - tolerance);
+          Base::SetBoxMaxC(rayBasePointBox, dimensionID, Base::GetPointC(rayOrigin, dimensionID) + tolerance);
         }
 
         if (box.Intersect(rayBasePointBox))
@@ -502,57 +504,43 @@ namespace OrthoTree
 
         auto constexpr inf = std::numeric_limits<double>::max();
 
-        auto minBoxDistances = std::array<double, AmbientDim_>{};
-        auto maxBoxDistances = std::array<double, AmbientDim_>{};
+        double minBoxDistance = -inf;
+        double maxBoxDistance = +inf;
         for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
         {
-          auto const dirComp = Base::GetPointC(rayHeading, dimensionID);
-          if (dirComp == 0)
+          auto const origin = Base::GetPointC(rayOrigin, dimensionID);
+          auto const direction = Base::GetPointC(rayDirection, dimensionID);
+          auto const boxMin = Base::GetBoxMinC(box, dimensionID) - tolerance;
+          auto const boxMax = Base::GetBoxMaxC(box, dimensionID) + tolerance;
+
+          if (direction == 0)
           {
             if (tolerance != 0.0)
             {
               // Box should be within tolerance (<, not <=)
-
-              assert(tolerance > 0);
-              if (Base::GetBoxMaxC(box, dimensionID) + tolerance <= Base::GetPointC(rayBasePoint, dimensionID))
-                return std::nullopt;
-
-              if (Base::GetBoxMinC(box, dimensionID) - tolerance >= Base::GetPointC(rayBasePoint, dimensionID))
+              if (origin <= boxMin || boxMax <= origin)
                 return std::nullopt;
             }
             else
             {
-              if (Base::GetBoxMaxC(box, dimensionID) < Base::GetPointC(rayBasePoint, dimensionID))
-                return std::nullopt;
-
-              if (Base::GetBoxMinC(box, dimensionID) > Base::GetPointC(rayBasePoint, dimensionID))
+              if (origin < boxMin || boxMax < origin)
                 return std::nullopt;
             }
-
-            minBoxDistances[dimensionID] = -inf;
-            maxBoxDistances[dimensionID] = +inf;
           }
           else
           {
-            auto const minBox = Base::GetBoxMinC(box, dimensionID) - tolerance;
-            auto const maxBox = Base::GetBoxMaxC(box, dimensionID) + tolerance;
-            auto const pointComp = Base::GetPointC(rayBasePoint, dimensionID);
-            auto const dirCompRecip = 1.0 / dirComp;
-            if (dirComp < 0.0)
-            {
-              minBoxDistances[dimensionID] = (maxBox - pointComp) * dirCompRecip;
-              maxBoxDistances[dimensionID] = (minBox - pointComp) * dirCompRecip;
-            }
-            else
-            {
-              minBoxDistances[dimensionID] = (minBox - pointComp) * dirCompRecip;
-              maxBoxDistances[dimensionID] = (maxBox - pointComp) * dirCompRecip;
-            }
+            double const directionReciprocal = 1.0 / direction;
+            double t1 = (boxMin - origin) * directionReciprocal;
+            double t2 = (boxMax - origin) * directionReciprocal;
+            if (t1 > t2)
+              std::swap(t1, t2);
+
+            minBoxDistance = std::max(minBoxDistance, t1);
+            maxBoxDistance = std::min(maxBoxDistance, t2);
           }
         }
 
-        auto const minBoxDistance = *std::ranges::max_element(minBoxDistances);
-        auto const maxBoxDistance = *std::ranges::min_element(maxBoxDistances);
+        assert(maxBoxDistance != inf && "rayDirection is a zero vector!");
         if (minBoxDistance > maxBoxDistance || maxBoxDistance < 0.0)
           return std::nullopt;
         else
