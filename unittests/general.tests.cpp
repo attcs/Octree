@@ -891,8 +891,8 @@ namespace GeneralTest
           return false;
 
         auto vMoveActual = PointND<N>{};
-        auto const& centerPre = GetNodeCenterMacro(ptPre, pairPre.first, pairPre.second);
-        auto const& centerAfter = GetNodeCenterMacro(ptAfter, pairAfter.first, pairAfter.second);
+        auto const& centerPre = ptPre->GetNodeCenter(pairPre.second);
+        auto const& centerAfter = ptAfter->GetNodeCenter(pairAfter.second);
         for (dim_t dimensionID = 0; dimensionID < N; ++dimensionID)
           AD::SetPointC(vMoveActual, dimensionID, centerAfter[dimensionID] - centerPre[dimensionID]);
 

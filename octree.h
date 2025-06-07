@@ -3157,35 +3157,33 @@ namespace OrthoTree
     // Is the node has any entity
     inline constexpr bool IsNodeEntitiesEmpty(MortonNodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNode(nodeKey)); }
 
-    // Calculate extent by box of the tree and the key of the node
-    constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
+    inline constexpr decltype(auto) GetNodeCenter(Node const& node) const noexcept
     {
-      return m_grid.CalculateGridCellCenter(SI::Decode(key, m_maxDepthID), m_maxDepthID - SI::GetDepthID(key));
-    }
-
 #ifdef ORTHOTREE__DISABLED_NODECENTER
-    constexpr IGM::Vector GetNodeCenter(MortonNodeIDCR key) const noexcept { return CalculateNodeCenter(key); }
-#define GetNodeCenterMacro(inst, key, node) inst->GetNodeCenter(key)
+      return CalculateNodeCenter(node.GetKey());
 #else
-    inline IGM::Vector const& GetNodeCenter(MortonNodeIDCR key) const noexcept { return GetNode(key).GetCenter(); }
-#define GetNodeCenterMacro(inst, key, node) node.GetCenter()
+      return node.GetCenter();
 #endif // ORTHOTREE__DISABLED_NODECENTER
-
-#ifdef ORTHOTREE__DISABLED_NODESIZE
-    constexpr IGM::Vector GetNodeSize(depth_t depthID) const noexcept
-    {
-      auto const depthFactor = IGM_Geometry(1.0) / IGM_Geometry(detail::pow2(depthID));
-      auto const& spaceSizes = this->m_grid.GetSizes();
-      typename IGM::Vector size;
-      LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        size[dimensionID] = spaceSizes[dimensionID] * depthFactor;
-
-      return size;
     }
+
+    // Obsolete
+    inline constexpr decltype(auto) GetNodeCenter(MortonNodeIDCR nodeKey) const noexcept
+    {
+#ifdef ORTHOTREE__DISABLED_NODECENTER
+      return CalculateNodeCenter(nodeKey);
 #else
-    inline constexpr IGM::Vector const& GetNodeSize(depth_t depthID) const noexcept { return this->m_nodeSizes[depthID]; }
+      return GetNode(nodeKey).GetCenter();
+#endif // ORTHOTREE__DISABLED_NODECENTER
+    }
+
+    inline constexpr decltype(auto) GetNodeSize(depth_t depthID) const noexcept
+    {
+#ifdef ORTHOTREE__DISABLED_NODESIZE
+      return CalculateNodeSize(depthID);
+#else
+      return this->m_nodeSizes[depthID];
 #endif // ORTHOTREE__DISABLED_NODESIZE
+    }
 
     inline constexpr decltype(auto) GetNodeSizeByKey(MortonNodeIDCR key) const noexcept { return this->GetNodeSize(SI::GetDepthID(key)); }
 
@@ -4033,7 +4031,7 @@ namespace OrthoTree
         return;
       }
 
-      auto const& center = GetNodeCenterMacro(this, currentNodeKey, currentNode);
+      auto const& center = this->GetNodeCenter(currentNode);
       auto const [minSegmentFlag, maxSegmentFlag] = GetRelativeMinMaxLocation(center, range);
 
       // Different min-max bit means: the dimension should be totally walked
@@ -4126,9 +4124,9 @@ namespace OrthoTree
       assert(AD::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<TEntityID>{};
-      auto const selector = [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) -> bool {
+      auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
-        return IGM::GetBoxPlaneRelationAD(GetNodeCenterMacro(this, key, node), halfSize, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
+        return IGM::GetBoxPlaneRelationAD(this->GetNodeCenter(node), halfSize, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
       };
 
       auto const procedure = [&](MortonNodeIDCR, Node const& node) {
@@ -4149,9 +4147,9 @@ namespace OrthoTree
       assert(AD::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<TEntityID>{};
-      auto const selector = [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) -> bool {
+      auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
-        auto const relation = IGM::GetBoxPlaneRelationAD(GetNodeCenterMacro(this, key, node), halfSize, distanceOfOrigo, planeNormal, tolerance);
+        auto const relation = IGM::GetBoxPlaneRelationAD(this->GetNodeCenter(node), halfSize, distanceOfOrigo, planeNormal, tolerance);
         return relation != PlaneRelation::Negative;
       };
 
@@ -4183,9 +4181,9 @@ namespace OrthoTree
         return AD::IsNormalizedVector(AD::GetPlaneNormal(plane));
       }));
 
-      auto const selector = [&](MortonNodeIDCR key, [[maybe_unused]] Node const& node) -> bool {
+      auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
-        auto const& center = GetNodeCenterMacro(this, key, node);
+        auto const& center = this->GetNodeCenter(node);
 
         for (auto const& plane : boundaryPlanes)
         {
@@ -4406,7 +4404,7 @@ namespace OrthoTree
     {
       auto const depthID = SI::GetDepthID(key);
       auto const& halfSize = this->GetNodeSize(depthID + 1);
-      auto const& centerPoint = GetNodeCenterMacro(this, key, node);
+      auto const& centerPoint = this->GetNodeCenter(node);
       return IGM::GetBoxWallDistanceAD(searchPoint, centerPoint, halfSize, isInsideConsideredAsZero);
     }
 
@@ -5419,7 +5417,7 @@ namespace OrthoTree
         return AD::DoesBoxContainPoint(detail::at(boxes, entityID), pickPoint);
       });
 
-      auto const& centerPoint = GetNodeCenterMacro(this, parentKey, parentNode);
+      auto const& centerPoint = this->GetNodeCenter(parentNode);
       bool isPickPointInCenter = true;
       bool isPickPointInCenterOngoing = true;
       for (MortonNodeIDCR keyChild : parentNode.GetChildren())
@@ -5666,8 +5664,8 @@ namespace OrthoTree
           for (auto const& rightChildNode : childNodes[Right])
             if (!(leftChildNode.Iterator == parentNodePair[Left].Iterator && rightChildNode.Iterator == parentNodePair[Right].Iterator))
               if (IGM::AreBoxesOverlappingByCenter(
-                    GetNodeCenterMacro(pLeftTree, leftChildNode.Iterator->first, leftChildNode.Iterator->second),
-                    GetNodeCenterMacro(pRightTree, rightChildNode.Iterator->first, rightChildNode.Iterator->second),
+                    pLeftTree->GetNodeCenter(leftChildNode.Iterator->second),
+                    pRightTree->GetNodeCenter(rightChildNode.Iterator->second),
                     leftTree.GetNodeSizeByKey(leftChildNode.Iterator->first),
                     rightTree.GetNodeSizeByKey(rightChildNode.Iterator->first)))
                 nodePairToProceed.emplace(std::array{ leftChildNode, rightChildNode });
@@ -5702,7 +5700,7 @@ namespace OrthoTree
 
       nodeContext.EntityIDs.clear();
       nodeContext.EntityIDs.assign(nodeEntities.begin(), nodeEntities.end());
-      nodeContext.Center = GetNodeCenterMacro(this, nodeKey, node);
+      nodeContext.Center = this->GetNodeCenter(node);
       nodeContext.Box = this->GetNodeBox(depthID, nodeContext.Center);
     }
 
@@ -6037,7 +6035,7 @@ namespace OrthoTree
     {
       auto const& node = this->GetNode(parentKey);
 
-      auto const nodeHit = boxRayHitTester.Hit(GetNodeCenterMacro(this, parentKey, node), this->GetNodeSize(depthID + 1));
+      auto const nodeHit = boxRayHitTester.Hit(this->GetNodeCenter(node), this->GetNodeSize(depthID + 1));
       if (!nodeHit)
         return;
 
@@ -6224,7 +6222,7 @@ namespace OrthoTree
           return Base::TraverseControl::Continue;
         },
         [&, boxPicker = *boxRayHitTester](auto const& node) -> std::optional<TGeometry> {
-          auto result = boxPicker.Hit(GetNodeCenterMacro(this, node.GetKey(), node), this->GetNodeSize(SI::GetDepthID(node.GetKey()) + 1));
+          auto result = boxPicker.Hit(this->GetNodeCenter(node), this->GetNodeSize(SI::GetDepthID(node.GetKey()) + 1));
           if (!result)
             return std::nullopt;
 
