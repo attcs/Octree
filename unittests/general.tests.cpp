@@ -2612,7 +2612,7 @@ namespace Tree3DTest
       std::vector<BoundingBox3D> boxes0;
       OctreeBox tree(
         boxes0,
-        8,
+        21,
         BoundingBox3D{
           {-10, -10, -10},
           {+10, +10, +10}

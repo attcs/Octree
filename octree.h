@@ -33,10 +33,13 @@ Node size is not stored within the nodes. It will be calculated ad-hoc every tim
 #define ORTHOTREE__DISABLED_NODESIZE
 
 // PMR is used with MSVC only by default. To use PMR anyway
-ORTHOTREE__USE_PMR
+#define ORTHOTREE__USE_PMR
 
 // To disable PMR on all platforms use:
-ORTHOTREE__DISABLE_PMR
+#define ORTHOTREE__DISABLE_PMR
+
+// If the depth is less than 10, 32bit location code is enough (otherwise 64bit will be used)
+#define ORTHOTREE__LOCATIONCODE_32
 
 // Contiguous container of geometry data does not have specified index type. Octree lib uses index_t for it, it can specified to int or std::size_t.
 ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAST32_T
@@ -1966,7 +1969,11 @@ namespace OrthoTree
     template<dim_t DIMENSION_NO>
     struct MortonSpaceIndexing
     {
-      static auto constexpr IS_32BIT_LOCATION = DIMENSION_NO < 4;
+#ifdef ORTHOTREE__LOCATIONCODE_32
+      static auto constexpr IS_32BIT_LOCATION = DIMENSION_NO <= 3;
+#else
+      static auto constexpr IS_32BIT_LOCATION = DIMENSION_NO <= 2;
+#endif
       static auto constexpr IS_64BIT_LOCATION = !IS_32BIT_LOCATION && DIMENSION_NO < 15;
 
       // Indexing can be solved with integral types (above this, internal container will be changed to std::map)
@@ -4593,7 +4600,8 @@ namespace OrthoTree
         }
       }
 
-      if (stuckedAndNonSplittableEndLocationNo){
+      if (stuckedAndNonSplittableEndLocationNo)
+      {
         if constexpr (std::is_trivially_copyable_v<TEntityID>)
           std::memcpy(entityIDs.data() + splitEntityNoFromParent, &(*locationIt.GetSecond()), stuckedAndNonSplittableEndLocationNo * sizeof(TEntityID));
         else
@@ -5094,7 +5102,7 @@ namespace OrthoTree
     };
 
   public:
-    // Client-defined Collision detector based on indices. AABB intersection is executed independently from this checker.
+    // Client-defined Collision detector based on indexes. AABB intersection is executed independently from this checker.
     using FCollisionDetector = std::function<bool(TEntityID, TEntityID)>;
 
     // Collision detection: Returns all overlapping boxes from the source trees.

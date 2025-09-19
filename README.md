@@ -28,7 +28,7 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 
 ## Limitations
 * Maximum number of dimensions is 63.
-* Maximum depth of octree solutions is 10.
+* Maximum depth of octree solutions is 21.
 
 ## Requirements
 * Language standard: C++20 or above
