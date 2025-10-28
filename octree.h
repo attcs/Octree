@@ -77,6 +77,7 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include <stack>
 #include <stdexcept>
 #include <tuple>
+#include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
