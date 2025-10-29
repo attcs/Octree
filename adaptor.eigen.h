@@ -2,7 +2,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2021 Attila CsikÃ³s
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -317,11 +317,11 @@ namespace Eigen
   using OctreePoint3d = EigenOrthoTreePoint<double, 3>;
 
   template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBox2fs = EigenOrthoTreeBox<float, true, DO_SPLIT_PARENT_ENTITIES>;
+  using QuadtreeBox2fs = EigenOrthoTreeBox<float, 2, DO_SPLIT_PARENT_ENTITIES>;
   using QuadtreeBox2f = QuadtreeBox2fs<true>;
 
   template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBox2ds = EigenOrthoTreeBox<double, true, DO_SPLIT_PARENT_ENTITIES>;
+  using QuadtreeBox2ds = EigenOrthoTreeBox<double, 2, DO_SPLIT_PARENT_ENTITIES>;
   using QuadtreeBox2d = QuadtreeBox2ds<true>;
 
   template<bool DO_SPLIT_PARENT_ENTITIES = true>
