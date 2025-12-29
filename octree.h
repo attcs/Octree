@@ -63,6 +63,7 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include <bit>
 #include <bitset>
 #include <concepts>
+#include <cstdint> // TODO: is needed?
 #include <cstring>
 #include <execution>
 #include <functional>
@@ -72,6 +73,7 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include <numeric>
 #include <optional>
 #include <queue>
+#include <ranges>
 #include <set>
 #include <span>
 #include <stack>
@@ -83,6 +85,12 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include <unordered_set>
 #include <vector>
 #include <version>
+
+
+// #include <cstddef>
+// #include <limits>
+// #include <utility>
+
 
 #if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_M_X64) || defined(__x86_64__) || defined(__amd64__))
 #ifdef __has_include
@@ -337,6 +345,12 @@ namespace OrthoTree
       }
     }
 
+    template<typename TReturn = std::size_t>
+    constexpr TReturn size(auto beginIt, auto endIt) noexcept
+    {
+      return static_cast<TReturn>(std::distance(beginIt, endIt));
+    }
+
     struct pair_hash
     {
       template<typename T>
@@ -515,7 +529,6 @@ namespace OrthoTree
     template<typename It1, typename It2>
     class proxy_reference
     {
-      // reference to a bit within a base word
     private:
       using T1 = typename std::iterator_traits<It1>::value_type;
       using T2 = typename std::iterator_traits<It2>::value_type;
@@ -592,12 +605,18 @@ namespace OrthoTree
     class zip_iterator
     {
     public:
+      using iterator_concept = std::random_access_iterator_tag;
       using iterator_category = std::random_access_iterator_tag;
 
-      using value_type = std::pair<typename std::iterator_traits<It1>::value_type, typename std::iterator_traits<It2>::value_type>;
-      using difference_type = typename std::iterator_traits<It1>::difference_type;
+      // TODO: remove: using difference_type = typename std::iterator_traits<It1>::difference_type;
+      using difference_type =
+        std::common_type_t<typename std::iterator_traits<It1>::difference_type, typename std::iterator_traits<It2>::difference_type>;
       using pointer = void;
+
       using reference = proxy_reference<It1, It2>;
+      using value_type = std::pair<typename std::iterator_traits<It1>::value_type, typename std::iterator_traits<It2>::value_type>;
+      // using reference = std::tuple<std::iter_reference_t<It1>, std::iter_reference_t<It2>>;
+      // using value_type = std::tuple<std::iter_value_t<It1>, std::iter_value_t<It2>>;
 
       constexpr zip_iterator() noexcept = default;
       constexpr zip_iterator(It1 it1, It2 it2) noexcept
@@ -605,7 +624,14 @@ namespace OrthoTree
       , it2_(it2)
       {}
 
-      constexpr reference operator*() const noexcept { return reference(it1_, it2_); }
+      // constexpr reference operator*() noexcept { return reference(it1_, it2_); }
+      constexpr auto operator*() const noexcept
+      {
+        // const this, de a visszaadott proxy referencia írható
+        return proxy_reference<It1, It2>{ it1_, it2_ };
+      }
+      // constexpr reference operator*() const noexcept { return reference(it1_, it2_); }
+      constexpr It1 GetFirst() const noexcept { return it1_; }
       constexpr It2 GetSecond() const noexcept { return it2_; }
 
       constexpr zip_iterator& operator++() noexcept
@@ -651,7 +677,9 @@ namespace OrthoTree
       constexpr zip_iterator operator+(difference_type n) const noexcept { return zip_iterator(it1_ + n, it2_ + n); }
       constexpr zip_iterator operator-(difference_type n) const noexcept { return zip_iterator(it1_ - n, it2_ - n); }
       constexpr difference_type operator-(const zip_iterator& other) const noexcept { return it1_ - other.it1_; }
+      friend constexpr zip_iterator operator+(difference_type n, zip_iterator it) noexcept { return it + n; }
 
+      constexpr reference operator[](difference_type n) noexcept { return *(*this + n); }
       constexpr reference operator[](difference_type n) const noexcept { return *(*this + n); }
 
       constexpr bool operator==(const zip_iterator& other) const noexcept { return it1_ == other.it1_; }
@@ -668,27 +696,73 @@ namespace OrthoTree
 
 
     template<typename T1, typename T2>
-    class zip_view
+    class zip_view : public std::ranges::view_interface<zip_view<T1, T2>>
     {
     public:
       using It1 = typename T1::iterator;
       using It2 = typename T2::iterator;
 
       using iterator = zip_iterator<It1, It2>;
+      using const_iterator = iterator;
 
       constexpr zip_view(T1& data1, T2& data2) noexcept
       : m_data1(data1)
       , m_data2(data2)
-      {}
+      {
+        assert(m_data1.size() == m_data2.size());
+      }
 
-      constexpr iterator begin() const noexcept { return iterator(m_data1.begin(), m_data2.begin()); }
-      constexpr iterator end() const noexcept { return iterator(m_data1.end(), m_data2.end()); }
+      zip_view(const zip_view& other) noexcept
+      : m_data1(other.m_data1)
+      , m_data2(other.m_data2)
+      {
+        assert(m_data1.size() == m_data2.size());
+      }
+
+      zip_view(zip_view&& other) noexcept
+      : m_data1(other.m_data1)
+      , m_data2(other.m_data2)
+      {
+        assert(m_data1.size() == m_data2.size());
+      }
+
+      zip_view& operator=(const zip_view& other) noexcept
+      {
+        if (this != &other)
+        {
+          m_data1 = other.m_data1;
+          m_data2 = other.m_data2;
+          assert(m_data1.size() == m_data2.size());
+        }
+        return *this;
+      }
+
+      zip_view& operator=(zip_view&& other) noexcept
+      {
+        if (this != &other)
+        {
+          m_data1 = other.m_data1;
+          m_data2 = other.m_data2;
+          assert(m_data1.size() == m_data2.size());
+        }
+        return *this;
+      }
+
+      constexpr iterator begin() noexcept { return iterator(m_data1.begin(), m_data2.begin()); }
+      constexpr iterator begin() const noexcept { return const_iterator(m_data1.begin(), m_data2.begin()); }
+
+      constexpr iterator end() noexcept { return iterator(m_data1.end(), m_data2.end()); }
+      constexpr iterator end() const noexcept { return const_iterator(m_data1.end(), m_data2.end()); }
+
+      constexpr std::size_t size() const noexcept { return m_data1.size(); }
 
     private:
       T1& m_data1;
       T2& m_data2;
     };
 
+    static_assert(std::ranges::random_access_range<zip_view<std::vector<int>, std::vector<int>>>);
+    static_assert(std::ranges::sized_range<zip_view<std::vector<int>, std::vector<int>>>);
 
     // MemoryResource is paged-vector style memory handler which allows to make segment deallocation independently from allocation (e.g. middle
     // allocated segment's middle part can be deallocated). Main page is prioritized to reduce heap allocations and being cache efficient.
@@ -1543,6 +1617,26 @@ namespace OrthoTree
 
   namespace detail
   {
+    template<std::size_t N>
+    int bit_width(bitset_arithmetic<N> const& val) noexcept
+    {
+      for (uint32_t i = N; i > 0; --i)
+        if (val[i - 1])
+          return i;
+
+      return 0;
+    }
+
+    template<std::unsigned_integral T>
+    constexpr int bit_width(T val) noexcept
+    {
+      return std::bit_width(val);
+    }
+  } // namespace detail
+
+
+  namespace detail
+  {
     // Internal geometry system which
     //  - can be instantiated
     //  - is float-based (and not suffer from integer aritmetic issues)
@@ -2327,6 +2421,11 @@ namespace OrthoTree
         return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | (location.LocID >> ((maxDepthID - location.DepthID) * DIMENSION_NO));
       }
 
+      static inline constexpr NodeID GetHashAtDepth(LocationIDCR locationID, depth_t depthID, depth_t maxDepthID) noexcept
+      {
+        return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | (locationID >> ((maxDepthID - depthID) * DIMENSION_NO));
+      }
+
       static inline constexpr NodeID GetHash(depth_t depth, LocationIDCR locationID) noexcept
       {
         assert(locationID < (NodeID(1) << (depth * DIMENSION_NO)));
@@ -2406,6 +2505,26 @@ namespace OrthoTree
       }
 
       static inline constexpr bool IsAllChildTouched(ChildID touchedDimensionsFlag) noexcept { return touchedDimensionsFlag == CHILD_MASK; }
+
+      static constexpr NodeID GetLowestCommonAncestor(NodeID nodeID1, NodeID nodeID2) noexcept
+      {
+        if (nodeID1 == nodeID2)
+          return nodeID1;
+
+        auto const depthID1 = GetDepthID(nodeID1);
+        auto const depthID2 = GetDepthID(nodeID2);
+        if (depthID1 > depthID2)
+          nodeID1 >>= (depthID1 - depthID2) * DIMENSION_NO;
+        else if (depthID2 > depthID1)
+          nodeID2 >>= (depthID2 - depthID1) * DIMENSION_NO;
+
+        NodeID const differentNodeBits = nodeID1 ^ nodeID2;
+        auto const differentBitWidth = detail::bit_width(differentNodeBits);
+
+        // ceil
+        auto const differentLevelNum = (differentBitWidth + DIMENSION_NO - 1) / DIMENSION_NO;
+        return nodeID1 >> (differentLevelNum * DIMENSION_NO);
+      }
 
     private: // Morton aid functions
       // Separates low 16/32 bits of input by 1 bit
@@ -2653,6 +2772,15 @@ namespace OrthoTree
           return CastMortonIDToChildID(childID);
         }
       }
+      // TODO: rename
+      static ChildID GetChildID2(NodeIDCR parentNodeID, NodeID childNodeID) noexcept
+      {
+        auto const parentDepthID = GetDepthID(parentNodeID);
+        auto const childDepthID = GetDepthID(childNodeID);
+        assert(childDepthID > parentDepthID);
+        childNodeID >>= (childDepthID - parentDepthID - 1) * DIMENSION_NO;
+        return GetChildID(childNodeID);
+      }
 
       static inline constexpr ChildID GetChildID(LocationIDCR childNodeKey, depth_t examinationLevelID)
       {
@@ -2741,9 +2869,613 @@ namespace OrthoTree
 
   } // namespace detail
 
+  namespace Partitioning
+  {
+    constexpr auto Quicksort3WayPartitionImpl(auto beginIt, auto endIt, auto const& accessor) noexcept
+    {
+      assert(detail::size(beginIt, endIt) > 1);
+
+      auto lastIt = std::prev(endIt);
+      auto const v = accessor(*lastIt);
+
+      auto i = beginIt;
+      auto j = lastIt;
+
+      // equal elements cursors
+      auto p = beginIt; // elements equal to pivot from left
+      auto q = lastIt;  // elements equal to pivot from right
+
+      for (;;)
+      {
+        while (accessor(*i) < v)
+          ++i;
+
+        while (v < accessor(*(--j)))
+          if (j == beginIt)
+            break;
+
+        if (i >= j)
+          break;
+
+        std::iter_swap(i, j);
+
+        if (accessor(*i) == v)
+        {
+          std::iter_swap(p, i);
+          ++p;
+        }
+
+        if (accessor(*j) == v)
+        {
+          --q;
+          std::iter_swap(j, q);
+        }
+
+        ++i;
+      }
+
+      // Moving equal elements to center
+      std::iter_swap(i, lastIt);
+
+      auto left_ptr = i;
+      for (auto k = beginIt; k < p; ++k)
+      {
+        if (left_ptr != beginIt)
+        {
+          --left_ptr;
+          std::iter_swap(k, left_ptr);
+        }
+      }
+
+      auto right_ptr = i;
+      for (auto k = std::prev(lastIt); k >= q; --k)
+      {
+        ++right_ptr;
+        std::iter_swap(k, right_ptr);
+      }
+
+      return std::pair{ left_ptr, std::next(right_ptr) };
+    }
+
+    // Bentley-McIlroy 3-way quicksort-based partitioning
+    void Quicksort3WayPartition(auto beginIt, auto endIt, auto const& accessor, std::size_t maxClusterSize, auto& partititionEnds) noexcept
+    {
+      auto const elementNum = detail::size(beginIt, endIt);
+      if (elementNum <= maxClusterSize)
+      {
+        partititionEnds.push_back(endIt);
+        return;
+      }
+
+      auto const [midBeginIt, midEndIt] = Quicksort3WayPartitionImpl(beginIt, endIt, accessor);
+      Quicksort3WayPartition(beginIt, midBeginIt, accessor, maxClusterSize, partititionEnds);
+      Quicksort3WayPartition(midEndIt, endIt, accessor, maxClusterSize, partititionEnds);
+    }
+
+    template<uint32_t kRadixMaxSize>
+    struct BucketPartitionContext
+    {
+      std::array<uint32_t, kRadixMaxSize> histogram = {};
+      std::array<uint32_t, kRadixMaxSize> offsets = {};
+      std::array<uint32_t, kRadixMaxSize> inserted = {};
+    };
+
+    template<uint32_t kRadixBits>
+    constexpr uint32_t BucketPartition(auto beginIt, auto endIt, auto const& accessor, uint32_t bitNumToTest, auto& context, auto& partitions) noexcept
+    {
+      uint32_t constexpr kRadixMaxSize = 1u << kRadixBits;
+      uint32_t const kRadixBitsTest = (kRadixBits > bitNumToTest ? bitNumToTest : kRadixBits);
+      uint32_t const kRadixSize = 1u << kRadixBitsTest;
+      uint32_t const kRadixMask = kRadixSize - 1;
+      uint32_t const shift = bitNumToTest - kRadixBitsTest;
+
+      auto const GetBucketID = [shift, kRadixMask](const auto key) noexcept -> uint32_t {
+        return static_cast<uint32_t>((key >> shift) & kRadixMask);
+      };
+
+      partitions = {};
+      context = {};
+      auto& [histogram, offsets, inserted] = context;
+
+      using BucketIndexType = uint64_t;
+      auto constexpr kBucketIndexBitSize = sizeof(BucketIndexType) * 8;
+      auto bucketIndex = std::array<BucketIndexType, std::max<std::size_t>(1, kRadixMaxSize / kBucketIndexBitSize)>{};
+
+      auto minElement = accessor(*beginIt);
+      auto maxElement = minElement;
+      for (auto it = beginIt; it != endIt; ++it)
+      {
+        auto const element = accessor(*it);
+        auto bucketID = GetBucketID(element);
+        ++histogram[bucketID];
+
+        auto const indexID = bucketID / kBucketIndexBitSize;
+        auto const indexBit = bucketID - indexID * kBucketIndexBitSize;
+        bucketIndex[indexID] |= BucketIndexType(1) << indexBit;
+
+        minElement = std::min(minElement, element);
+        maxElement = std::max(maxElement, element);
+      }
+
+      int bucketNum = 0;
+      for (const auto bucketIndexChunk : bucketIndex)
+        bucketNum += std::popcount(bucketIndexChunk);
+
+      if (bucketNum == 1)
+      {
+        partitions.emplace_back(beginIt, endIt);
+        auto const mask = (1ull << bitNumToTest) - 1;
+        auto const remainingBitNum = std::bit_width((minElement ^ maxElement) & mask);
+        return remainingBitNum;
+      }
+      else
+      {
+        uint32_t sum = 0;
+        for (int bucketIndexID = 0, bucketIndexNum = static_cast<int>(bucketIndex.size()); bucketIndexID < bucketIndexNum; ++bucketIndexID)
+        {
+          auto bucketIndexChunk = bucketIndex[bucketIndexID];
+          while (bucketIndexChunk)
+          {
+            auto const bucketID = bucketIndexID * kBucketIndexBitSize + std::countr_zero(bucketIndexChunk);
+            offsets[bucketID] = sum;
+            sum += histogram[bucketID];
+            auto segmentBeginIt = beginIt + offsets[bucketID];
+            partitions.emplace_back(segmentBeginIt, segmentBeginIt + histogram[bucketID]);
+            bucketIndexChunk &= bucketIndexChunk - 1;
+          }
+        }
+
+        uint32_t bucketIndexID = 0;
+        uint32_t actualOffsetID = -1;
+        uint32_t segmentEnd = 0;
+        uint32_t i = 0;
+        for (auto it = beginIt; it != endIt;)
+        {
+          if (i == segmentEnd)
+          {
+            while (!bucketIndex[bucketIndexID])
+              ++bucketIndexID;
+
+            auto& bucketIndexChunk = bucketIndex[bucketIndexID];
+            actualOffsetID = bucketIndexID * kBucketIndexBitSize + std::countr_zero(bucketIndexChunk);
+            segmentEnd = offsets[actualOffsetID] + histogram[actualOffsetID];
+            bucketIndexChunk &= bucketIndexChunk - 1;
+          }
+
+          if (inserted[actualOffsetID] > 0 && i == offsets[actualOffsetID])
+          {
+            i += inserted[actualOffsetID];
+            it += inserted[actualOffsetID];
+            continue;
+          }
+
+
+          auto bucketID = GetBucketID(accessor(*it));
+          auto const destIndex = offsets[bucketID] + inserted[bucketID];
+          ++inserted[bucketID];
+          if (destIndex == i)
+          {
+            ++i;
+            ++it;
+            continue;
+          }
+
+          auto destIt = beginIt + destIndex;
+          std::iter_swap(it, destIt);
+        }
+      }
+
+      return shift;
+    }
+
+
+    template<uint32_t kRadixBits>
+    void PartitionRec(auto beginIt, auto endIt, auto const& accessor, std::size_t maxClusterSize, uint32_t bitNumToTest, auto& context, auto& partititionEnds)
+    {
+      uint32_t const elementNum = static_cast<uint32_t>(std::distance(beginIt, endIt));
+
+      if (elementNum <= 1024)
+      {
+        Quicksort3WayPartition(beginIt, endIt, accessor, maxClusterSize, partititionEnds);
+        return;
+      }
+
+      uint32_t constexpr kRadixMaxSize = 1u << kRadixBits;
+      using iterator = decltype(beginIt);
+      auto partitions = detail::inplace_vector<std::pair<iterator, iterator>, kRadixMaxSize>{};
+      bitNumToTest = BucketPartition<kRadixBits>(beginIt, endIt, accessor, bitNumToTest, context, partitions);
+
+      if (bitNumToTest == 0)
+      {
+        for (auto const& [_, endIt] : partitions)
+          partititionEnds.push_back(endIt);
+
+        return;
+      }
+
+      for (auto const& [beginIt, endIt] : partitions)
+        PartitionRec<kRadixBits>(beginIt, endIt, accessor, maxClusterSize, bitNumToTest, context, partititionEnds);
+    }
+
+    template<typename TIterator>
+    struct Subspan
+    {
+      TIterator begin;
+      TIterator end;
+      uint32_t bitNumToTest;
+    };
+
+    template<uint32_t kRadixBits>
+    bool CollectSubSpans(
+      auto beginIt, auto endIt, auto const& accessor, std::size_t maxClusterSize, uint32_t bitNumToTest, std::size_t maxSubspanNum, auto& queue)
+    {
+      uint32_t constexpr kRadixMaxSize = 1u << kRadixBits;
+
+      using iterator = decltype(beginIt);
+      auto const cmp = [](auto const& a, auto const& b) noexcept {
+        return detail::size(a.begin, a.end) < detail::size(b.begin, b.end);
+      };
+
+      queue.reserve(maxSubspanNum + 4);
+      queue.push_back({ beginIt, endIt, bitNumToTest });
+
+      auto context = BucketPartitionContext<kRadixMaxSize>{};
+      auto partitions = detail::inplace_vector<std::pair<iterator, iterator>, kRadixMaxSize>{};
+      bool isLargestSpanBiggerThanMaxClusterSize = false;
+      while (!queue.empty() && queue.size() < maxSubspanNum)
+      {
+        auto current = queue[0];
+        auto const elementNum = static_cast<std::size_t>(std::distance(current.begin, current.end));
+        if (elementNum < maxClusterSize)
+        {
+          isLargestSpanBiggerThanMaxClusterSize = true;
+          break;
+        }
+
+        std::pop_heap(queue.begin(), queue.end(), cmp);
+
+        auto remainingBitNumToTest = current.bitNumToTest;
+        queue.pop_back();
+        if (elementNum < 1024)
+        {
+          const auto [left_ptr, right_ptr] = Quicksort3WayPartitionImpl(current.begin, current.end, accessor);
+          assert(current.end == right_ptr || *left_ptr.GetFirst() < *right_ptr.GetFirst());
+
+          if (current.begin != left_ptr)
+          {
+            queue.push_back({ current.begin, left_ptr, remainingBitNumToTest });
+            std::push_heap(queue.begin(), queue.end(), cmp);
+          }
+
+          if (current.end != right_ptr)
+          {
+            queue.push_back({ right_ptr, current.end, remainingBitNumToTest });
+            std::push_heap(queue.begin(), queue.end(), cmp);
+          }
+        }
+        else
+        {
+          remainingBitNumToTest = BucketPartition<kRadixBits>(current.begin, current.end, accessor, current.bitNumToTest, context, partitions);
+
+          for (auto const& [pBegin, pEnd] : partitions)
+          {
+            queue.push_back({ pBegin, pEnd, remainingBitNumToTest });
+            std::push_heap(queue.begin(), queue.end(), cmp);
+          }
+        }
+      }
+
+      std::sort(queue.begin(), queue.end(), [](auto const& lhs, auto const& rhs) { return lhs.begin < rhs.begin; });
+      return isLargestSpanBiggerThanMaxClusterSize;
+    }
+
+    template<uint32_t kRadixBits>
+    auto ParallelPartition(auto beginIt, auto endIt, auto const& accessor, std::size_t maxClusterSize, uint32_t bitNumToTest, auto& partititionEnds)
+    {
+      using iterator = decltype(beginIt);
+
+      auto subSpansInOrder = std::vector<Subspan<iterator>>{};
+      auto const isAlreadyPartitioned =
+        CollectSubSpans<kRadixBits>(beginIt, endIt, accessor, maxClusterSize, bitNumToTest, std::thread::hardware_concurrency() * 2, subSpansInOrder);
+
+      if (isAlreadyPartitioned)
+      {
+        for (auto const& v : subSpansInOrder)
+          partititionEnds.emplace_back(v.end);
+      }
+      else
+      {
+        auto partititionEndsByThreads = std::vector<std::vector<iterator>>(subSpansInOrder.size());
+
+        bool constexpr IS_PARALLEL_EXEC = true;
+        EXEC_POL_DEF(ept); // GCC 11.3
+        std::transform(EXEC_POL_ADD(ept) subSpansInOrder.begin(), subSpansInOrder.end(), partititionEndsByThreads.begin(), [&](auto const& span) {
+          auto context = BucketPartitionContext<1u << kRadixBits>{};
+          auto localPartititionEnds = std::vector<iterator>{};
+          PartitionRec<kRadixBits>(span.begin, span.end, accessor, maxClusterSize, span.bitNumToTest, context, localPartititionEnds);
+          return localPartititionEnds;
+        });
+
+        for (auto const& v : partititionEndsByThreads)
+          partititionEnds.insert(partititionEnds.end(), v.begin(), v.end());
+      }
+    }
+
+    template<uint32_t kRadixBits, bool kIsParalellizable = false>
+    auto Partition(auto beginIt, auto endIt, auto const& accessor, std::size_t maxClusterSize, uint32_t bitNumToTest)
+    {
+      auto const elementNum = detail::size<double>(beginIt, endIt);
+
+      using iterator = decltype(beginIt);
+      auto partititionEnds = std::vector<iterator>{};
+      partititionEnds.reserve(static_cast<std::size_t>(static_cast<double>(elementNum) / (static_cast<double>(maxClusterSize) * 0.7) + 1));
+
+      uint32_t constexpr kRadixMaxSize = 1u << kRadixBits;
+      if constexpr (kIsParalellizable)
+      {
+        if (elementNum > 200)
+        {
+          ParallelPartition<kRadixBits>(beginIt, endIt, accessor, maxClusterSize, bitNumToTest, partititionEnds);
+        }
+        else
+        {
+          auto context = BucketPartitionContext<kRadixMaxSize>{};
+          PartitionRec<kRadixBits>(beginIt, endIt, accessor, maxClusterSize, bitNumToTest, context, partititionEnds);
+        }
+      }
+      else
+      {
+        auto context = BucketPartitionContext<kRadixMaxSize>{};
+        PartitionRec<kRadixBits>(beginIt, endIt, accessor, maxClusterSize, bitNumToTest, context, partititionEnds);
+      }
+      return partititionEnds;
+    }
+  } // namespace Partitioning
+
+
+  namespace detail
+  {
+
+    template<std::size_t CHILD_NO, typename NodeID, typename ChildID, typename TEntityID, typename Geometry>
+    class OrthoTreeNodeData
+    {
+    private:
+      constexpr static auto IS_SPARSE_CHILDREN_CONTAINER = CHILD_NO > 8;
+
+      constexpr static bool IS_BITSET_BASED_FLAGS = CHILD_NO > 64;
+      using ChildFlags = std::conditional_t<(CHILD_NO > 32), uint64_t, std::conditional_t<(CHILD_NO > 8), uint32_t, uint8_t>>;
+      using ChildIndex = std::conditional_t<IS_BITSET_BASED_FLAGS, std::vector<std::size_t>, ChildFlags>;
+
+    public:
+      using ChildContainer = std::conditional_t<IS_SPARSE_CHILDREN_CONTAINER, typename std::vector<NodeID>, detail::inplace_vector<NodeID, CHILD_NO>>;
+      using EntityContainer = detail::MemoryResource<TEntityID>::MemorySegment;
+
+    private:
+      NodeID m_key;
+      ChildIndex m_childIndex = {};
+      ChildContainer m_children = {};
+      EntityContainer m_entities = {};
+
+#ifndef ORTHOTREE__DISABLED_NODECENTER
+      Geometry m_center;
+#endif
+    public:
+      explicit constexpr OrthoTreeNodeData() noexcept = default;
+      explicit constexpr OrthoTreeNodeData(NodeID key) noexcept
+      : m_key(key)
+      {}
+
+#ifndef ORTHOTREE__DISABLED_NODECENTER
+      constexpr Geometry const& GetCenter() const noexcept { return m_center; }
+      constexpr void SetCenter(Geometry&& center) noexcept { m_center = std::move(center); }
+#endif // !ORTHOTREE__DISABLED_NODECENTER
+
+      void Clear() noexcept
+      {
+        m_entities = {};
+        m_children = {};
+      }
+
+    public: // Entity handling
+      constexpr auto const& GetEntities() const noexcept { return m_entities.segment; }
+
+      constexpr auto& GetEntities() noexcept { return m_entities.segment; }
+
+      constexpr std::size_t GetEntitiesSize() const noexcept { return m_entities.segment.size(); }
+
+      constexpr bool IsEntitiesEmpty() const noexcept { return m_entities.segment.empty(); }
+
+      constexpr bool ContainsEntity(TEntityID entityID) const noexcept
+      {
+        return std::find(m_entities.segment.begin(), m_entities.segment.end(), entityID) != m_entities.segment.end();
+      }
+
+      constexpr void ReplaceEntities(std::span<TEntityID> entities) noexcept { m_entities.segment = std::move(entities); }
+
+      constexpr bool RemoveEntity(TEntityID entityID) noexcept
+      {
+        auto const endIteratorAfterRemove = std::remove(m_entities.segment.begin(), m_entities.segment.end(), entityID);
+        if (endIteratorAfterRemove == m_entities.segment.end())
+          return false; // id was not registered previously.
+
+        return true;
+      }
+
+      constexpr void DecreaseEntityIDs(TEntityID removedEntityID) noexcept
+      {
+        for (auto& id : m_entities.segment)
+          id -= removedEntityID < id;
+      }
+
+      EntityContainer& GetEntitySegment() noexcept { return m_entities; }
+
+    public: // Child handling
+      constexpr NodeID GetKey() const noexcept { return m_key; }
+      constexpr void SetKey(NodeID key) noexcept { m_key = key; }
+
+      constexpr void AddChild(ChildID childID) noexcept { assert(false); } // TODO: remove
+      constexpr void AddChild(ChildID childID, NodeID nodeID) noexcept
+      {
+        std::size_t elementID = 0;
+        bool shouldOverwrite = false;
+        if constexpr (IS_BITSET_BASED_FLAGS)
+        {
+          auto const it = std::ranges::lower_bound(m_childIndex, childID);
+          elementID = std::distance(m_childIndex.begin(), it);
+          shouldOverwrite = elementID < m_childIndex.size() - 1 && m_childIndex[elementID] == childID;
+          if (!shouldOverwrite)
+            m_childIndex.insert(it, childID);
+        }
+        else
+        {
+          ChildFlags const childFlag = (ChildFlags{ 1 } << childID);
+          ChildFlags const childMask = childFlag - ChildFlags{ 1 };
+          elementID = std::popcount(ChildFlags(m_childIndex & childMask));
+          shouldOverwrite = m_childIndex & childFlag;
+          m_childIndex |= childFlag;
+        }
+
+        if (shouldOverwrite)
+          m_children[elementID] = nodeID;
+        else
+          m_children.insert(m_children.begin() + elementID, nodeID);
+
+
+        /*
+        if constexpr (IS_SPARSE_CHILDCONTAINER)
+        {
+          assert((m_children[childID] == 0) && "Child should not be added twice!");
+          m_children[childID] = nodeID;
+        }
+        else
+        {
+          auto const it =
+            std::ranges::lower_bound(m_children, childID, [](auto existingChild, ChildID childID) { return existingChild.first < childID; });
+
+          assert((it == m_children.end() || it->first != childID) && "Child should not be added twice!");
+          m_children.insert(it, { childID, nodeID });
+        }*/
+      }
+
+      constexpr NodeID GetChild(ChildID childID) noexcept
+      {
+        std::size_t elementID = 0;
+        if constexpr (IS_BITSET_BASED_FLAGS)
+        {
+          auto const it = std::ranges::lower_bound(m_childIndex, childID);
+          elementID = std::distance(m_childIndex.begin(), it);
+        }
+        else
+        {
+          ChildFlags const childFlag = (ChildFlags{ 1 } << childID);
+          ChildFlags const childMask = childFlag - ChildFlags{ 1 };
+          elementID = std::popcount(ChildFlags(m_childIndex & childMask));
+        }
+
+        return m_children[elementID];
+      }
+
+      constexpr bool HasChild(ChildID childID) const noexcept
+      {
+        if constexpr (IS_BITSET_BASED_FLAGS)
+        {
+          return std::ranges::binary_search(m_childIndex, childID);
+        }
+        else
+        {
+          return m_childIndex & (ChildFlags{ 1 } << childID);
+        }
+
+        /*
+      if constexpr (IS_SPARSE_CHILDCONTAINER)
+      {
+        return m_children[childID];
+      }
+      else
+      {
+        return std::ranges::binary_search(m_children, [childID](auto existingChild) { return existingChild.first == childID; });
+      }
+      */
+      }
+
+      constexpr void RemoveChild(ChildID childID) noexcept
+      {
+        std::size_t elementID = 0;
+        if constexpr (IS_BITSET_BASED_FLAGS)
+        {
+          auto const it = std::ranges::lower_bound(m_childIndex, childID);
+          elementID = std::distance(m_childIndex.begin(), it);
+          m_childIndex.erase(it);
+        }
+        else
+        {
+          static_assert(std::unsigned_integral<ChildFlags>, "noooooooo!!!!");
+
+          ChildFlags const childFlag = (ChildFlags{ 1 } << childID);
+          ChildFlags const childMask = childFlag - ChildFlags{ 1 };
+          elementID = std::popcount(ChildFlags(m_childIndex & childMask)) + 1;
+          m_childIndex &= ~childFlag;
+        }
+
+        m_children.erase(m_children.begin() + elementID);
+
+        /*
+        auto const childID = SI::GetChildID(childKey);
+        if constexpr (IS_SPARSE_CHILDCONTAINER)
+        {
+          m_children[childID] = {};
+        }
+        else
+        {
+          auto const it =
+            std::ranges::lower_bound(m_children, childID, [](auto existingChild, ChildID childID) { return existingChild.first < childID; });
+
+          if (it == m_children.end())
+            return;
+
+          m_children.erase(it);
+        }*/
+      }
+
+      constexpr bool IsAnyChildExist() const noexcept
+      {
+        return !m_children.empty();
+        /*
+        if constexpr (IS_SPARSE_CHILDCONTAINER)
+        {
+          for (auto const& child : m_children)
+            if (child != 0)
+              return true;
+
+          return false;
+        }
+        else
+        {
+          return !m_children.empty();
+        }
+        */
+      }
+
+      constexpr auto const& GetChildren() const noexcept { return m_children; }
+    };
+  } // namespace detail
+
   static constexpr std::size_t DEFAULT_MAX_ELEMENT_IN_NODES = 20;
 
-  // OrthoTrees
+  namespace ExecutionTags
+  {
+    // Sequential execution tag
+    struct Sequential
+    {};
+
+    // Parallel execution tag
+    struct Parallel
+    {};
+  } // namespace ExecutionTags
+
+  auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
+  auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
+
 
   // OrthoTree: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
   template<
@@ -2790,249 +3522,8 @@ namespace OrthoTree
     using MortonLocationIDCR = typename SI::LocationIDCR;
     using MortonChildID = typename SI::ChildID;
 
-  public:
-    class Node
-    {
-    private:
-      class ChildBitIterator
-      {
-      public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = MortonLocationID;
-        using difference_type = std::ptrdiff_t;
-        using pointer = value_type*;
-        using reference = value_type&;
 
-        constexpr ChildBitIterator() noexcept = default;
-        constexpr ChildBitIterator(MortonNodeIDCR nodeKey, MortonChildID childBits) noexcept
-        : m_keyGenerator(nodeKey)
-        , m_remainingChildBits(childBits)
-        {}
-
-
-        constexpr MortonNodeID operator*() const noexcept
-        {
-          auto const childID = std::countr_zero(m_remainingChildBits);
-          return m_keyGenerator.GetChildNodeKey(childID);
-        }
-
-        constexpr ChildBitIterator& operator++() noexcept
-        {
-          m_remainingChildBits &= (m_remainingChildBits - 1); // eliminate the least significant one
-          return *this;
-        }
-
-        constexpr bool operator==(const ChildBitIterator& other) const noexcept { return m_remainingChildBits == other.m_remainingChildBits; }
-        constexpr bool operator!=(const ChildBitIterator& other) const noexcept { return m_remainingChildBits != other.m_remainingChildBits; }
-
-      private:
-        SI::ChildKeyGenerator m_keyGenerator;
-        MortonChildID m_remainingChildBits = {};
-      };
-
-      class ChildBitView
-      {
-      public:
-        constexpr ChildBitView(MortonNodeIDCR nodeKey, MortonChildID childBits) noexcept
-        : m_nodeKey(nodeKey)
-        , m_childBits(childBits)
-        {}
-
-        constexpr ChildBitIterator begin() const noexcept { return ChildBitIterator(m_nodeKey, m_childBits); }
-        constexpr ChildBitIterator end() const noexcept { return ChildBitIterator(m_nodeKey, {}); }
-        constexpr std::size_t size() const noexcept { return std::popcount(m_childBits); }
-        constexpr std::size_t empty() const noexcept { return m_childBits == 0; }
-
-      private:
-        MortonLocationID m_nodeKey;
-        MortonChildID m_childBits;
-      };
-
-
-      class ChildVectorIterator
-      {
-      private:
-        using ContainerIterator = typename std::vector<MortonChildID>::const_iterator;
-
-      public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = MortonLocationID;
-        using difference_type = std::ptrdiff_t;
-        using pointer = value_type*;
-        using reference = value_type&;
-
-
-        constexpr ChildVectorIterator() noexcept = default;
-        constexpr ChildVectorIterator(MortonNodeIDCR nodeKey, ContainerIterator it) noexcept
-        : m_keyGenerator(nodeKey)
-        , m_it(it)
-        {}
-
-        constexpr ChildVectorIterator(ChildVectorIterator const&) noexcept = default;
-        constexpr ChildVectorIterator(ChildVectorIterator&&) noexcept = default;
-
-        constexpr MortonNodeID operator*() const noexcept { return m_keyGenerator.GetChildNodeKey(*m_it); }
-
-        constexpr ChildVectorIterator& operator++() noexcept
-        {
-          ++m_it;
-          return *this;
-        }
-
-        constexpr bool operator==(const ChildVectorIterator& other) const noexcept { return m_it == other.m_it; }
-        constexpr bool operator!=(const ChildVectorIterator& other) const noexcept { return m_it != other.m_it; }
-
-      private:
-        SI::ChildKeyGenerator m_keyGenerator;
-        ContainerIterator m_it;
-      };
-
-      class ChildVectorView
-      {
-      public:
-        constexpr ChildVectorView(MortonNodeIDCR nodeKey, std::vector<MortonChildID> const& children) noexcept
-        : m_nodeKey(nodeKey)
-        , m_children(children)
-        {}
-
-        constexpr ChildVectorIterator begin() const noexcept { return ChildVectorIterator(m_nodeKey, m_children.begin()); }
-        constexpr ChildVectorIterator end() const noexcept { return ChildVectorIterator(m_nodeKey, m_children.end()); }
-        constexpr std::size_t size() const noexcept { return m_children.size(); }
-        constexpr std::size_t empty() const noexcept { return m_children.empty(); }
-
-      private:
-        MortonLocationID m_nodeKey;
-        std::vector<MortonChildID> const& m_children;
-      };
-
-      static constexpr bool IS_BIT_CHILDCONTAINER = SI::CHILD_NO <= sizeof(MortonChildID) * 8;
-
-    public:
-      using ChildContainer = std::conditional_t<IS_BIT_CHILDCONTAINER, MortonChildID, typename std::vector<MortonChildID>>;
-      using ChildContainerView = std::conditional_t<IS_BIT_CHILDCONTAINER, ChildBitView, ChildVectorView>;
-      using EntityContainer = detail::MemoryResource<TEntityID>::MemorySegment;
-
-    private:
-      MortonNodeID m_key{};
-      ChildContainer m_children{};
-      EntityContainer m_entities{};
-
-
-#ifndef ORTHOTREE__DISABLED_NODECENTER
-      IGM::Vector m_center;
-#endif
-    public:
-      explicit constexpr Node() noexcept = default;
-      explicit constexpr Node(MortonNodeID key) noexcept
-      : m_key(key)
-      {}
-
-
-#ifndef ORTHOTREE__DISABLED_NODECENTER
-      constexpr IGM::Vector const& GetCenter() const noexcept { return m_center; }
-      constexpr void SetCenter(IGM::Vector&& center) noexcept { m_center = std::move(center); }
-#endif // !ORTHOTREE__DISABLED_NODECENTER
-
-      void Clear() noexcept
-      {
-        m_entities = {};
-        m_children = {};
-      }
-
-    public: // Entity handling
-      inline constexpr auto const& GetEntities() const noexcept { return m_entities.segment; }
-
-      inline constexpr auto& GetEntities() noexcept { return m_entities.segment; }
-
-      inline constexpr std::size_t GetEntitiesSize() const noexcept { return m_entities.segment.size(); }
-
-      inline constexpr bool IsEntitiesEmpty() const noexcept { return m_entities.segment.empty(); }
-
-      inline constexpr bool ContainsEntity(TEntityID entityID) const noexcept
-      {
-        return std::find(m_entities.segment.begin(), m_entities.segment.end(), entityID) != m_entities.segment.end();
-      }
-
-      inline constexpr void ReplaceEntities(std::span<TEntityID> entities) noexcept { m_entities.segment = std::move(entities); }
-
-      inline constexpr bool RemoveEntity(TEntityID entityID) noexcept
-      {
-        auto const endIteratorAfterRemove = std::remove(m_entities.segment.begin(), m_entities.segment.end(), entityID);
-        if (endIteratorAfterRemove == m_entities.segment.end())
-          return false; // id was not registered previously.
-
-        return true;
-      }
-
-      inline constexpr void DecreaseEntityIDs(TEntityID removedEntityID) noexcept
-      {
-        for (auto& id : m_entities.segment)
-          id -= removedEntityID < id;
-      }
-
-      EntityContainer& GetEntitySegment() { return m_entities; }
-
-    public: // Child handling
-      inline constexpr MortonNodeID GetKey() const noexcept { return m_key; }
-      inline constexpr void SetKey(MortonNodeIDCR key) noexcept { m_key = key; }
-      inline constexpr void AddChild(MortonChildID childID) noexcept
-      {
-        if constexpr (IS_BIT_CHILDCONTAINER)
-        {
-          assert(((m_children & (MortonChildID{ 1 } << childID)) == 0) && "Child should not be added twice!");
-          m_children |= (MortonChildID{ 1 } << childID);
-        }
-        else
-        {
-          auto const it = std::lower_bound(m_children.begin(), m_children.end(), childID);
-          if (it != m_children.end() && *it == childID)
-          {
-            assert(false && "Child should not be added twice!");
-            return;
-          }
-          m_children.insert(it, childID);
-        }
-      }
-
-      inline constexpr bool HasChild(MortonChildID childID) const noexcept
-      {
-        if constexpr (IS_BIT_CHILDCONTAINER)
-        {
-          return m_children & (MortonChildID{ 1 } << childID);
-        }
-        else
-        {
-          return std::binary_search(m_children.begin(), m_children.end(), childID);
-        }
-      }
-
-      inline constexpr void RemoveChild(MortonNodeIDCR childKey) noexcept
-      {
-        auto const childID = SI::GetChildID(childKey);
-        if constexpr (IS_BIT_CHILDCONTAINER)
-        {
-          m_children &= ~(MortonChildID{ 1 } << childID);
-        }
-        else
-        {
-          auto const it = std::lower_bound(m_children.begin(), m_children.end(), childID);
-          if (it == m_children.end())
-            return;
-
-          m_children.erase(it);
-        }
-      }
-
-      inline constexpr bool IsAnyChildExist() const noexcept
-      {
-        if constexpr (IS_BIT_CHILDCONTAINER)
-          return m_children > 0;
-        else
-          return !m_children.empty();
-      }
-
-      inline constexpr auto GetChildren() const noexcept { return ChildContainerView(m_key, m_children); }
-    };
+    using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, MortonNodeID, MortonChildID, TEntityID, typename IGM::Vector>;
 
   protected: // Aid struct to partitioning and distance ordering
     struct ItemDistance
@@ -3157,7 +3648,13 @@ namespace OrthoTree
     // Is the node has any entity
     inline constexpr bool IsNodeEntitiesEmpty(MortonNodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNode(nodeKey)); }
 
-    inline constexpr decltype(auto) GetNodeCenter(Node const& node) const noexcept
+    // Calculate extent by box of the tree and the key of the node
+    constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
+    {
+      return m_grid.CalculateGridCellCenter(SI::Decode(key, m_maxDepthID), m_maxDepthID - SI::GetDepthID(key));
+    }
+
+    constexpr decltype(auto) GetNodeCenter(Node const& node) const noexcept
     {
 #ifdef ORTHOTREE__DISABLED_NODECENTER
       return CalculateNodeCenter(node.GetKey());
@@ -3167,7 +3664,7 @@ namespace OrthoTree
     }
 
     // Obsolete
-    inline constexpr decltype(auto) GetNodeCenter(MortonNodeIDCR nodeKey) const noexcept
+    constexpr decltype(auto) GetNodeCenter(MortonNodeIDCR nodeKey) const noexcept
     {
 #ifdef ORTHOTREE__DISABLED_NODECENTER
       return CalculateNodeCenter(nodeKey);
@@ -3273,6 +3770,98 @@ namespace OrthoTree
     }
 
     inline constexpr depth_t GetExaminationLevelID(depth_t depth) const { return m_maxDepthID - depth; }
+
+  public:
+    void BulkInsert(TContainer const& entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+    {
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
+
+      auto const entityNo = entities.size();
+
+      auto mortonIDs = std::vector<MortonLocationID>(entityNo);
+      auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
+      auto locationsZip = detail::zip_view(mortonIDs, mainMemorySegment.segment);
+      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, m_maxDepthID, m_maxElementNo));
+
+
+      using Location = decltype(locationsZip)::iterator::value_type;
+      EXEC_POL_DEF(ept); // GCC 11.3
+      std::transform(EXEC_POL_ADD(ept) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> Location {
+        return { this->GetLocationID(detail::getValuePart(entity)), detail::getKeyPart(entities, entity) };
+      });
+
+      auto const partitions = Partitioning::Partition<std::min(dim_t(9), DIMENSION_NO * 3), IS_PARALLEL_EXEC>(
+        locationsZip.begin(), locationsZip.end(), [](Location const& e) -> MortonNodeID { return e.first; }, m_maxElementNo, m_maxDepthID* DIMENSION_NO);
+
+      auto orphanNodes = std::vector<MortonNodeID>{};
+      auto partitionIt = partitions.begin();
+      for (auto beginIt = locationsZip.begin(); beginIt != locationsZip.end();)
+      {
+        /*
+        auto const possibleEndIt = beginIt + std::min(detail::size(beginIt, locationsZip.end()), m_maxElementNo);
+        partitionIt =
+          std::partition_point(partitionIt, partitions.end(), [possibleEndIt](auto partitionEndIt) { return partitionEndIt <= possibleEndIt; });
+
+        auto endIt = partitionIt == partitions.begin() ? *partitions.begin() : *std::prev(partitionIt);
+        if (endIt == beginIt)
+          endIt = *partitionIt;
+          */
+        auto endIt = *partitionIt++;
+        auto const [minIt, maxIt] = std::minmax_element(beginIt, endIt, [](Location const& l, Location const& r) { return l.first < r.first; });
+
+        auto const minNodeID = SI::GetHashAtDepth(*minIt.GetFirst(), m_maxDepthID, m_maxDepthID);
+        auto const maxNodeID = SI::GetHashAtDepth(*maxIt.GetFirst(), m_maxDepthID, m_maxDepthID);
+
+        auto nodeID = SI::GetLowestCommonAncestor(minNodeID, maxNodeID);
+        auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
+        if (isInserted)
+        {
+          orphanNodes.push_back(nodeID);
+          it->second.SetCenter(this->CalculateNodeCenter(nodeID));
+        }
+
+        it->second.ReplaceEntities(std::span(beginIt.GetSecond(), endIt.GetSecond()));
+        beginIt = endIt;
+      }
+
+
+      for (std::size_t i = 0; i < orphanNodes.size(); ++i)
+      {
+        auto const orphanNodeID = orphanNodes[i];
+        auto& [parentNodeID, parentNode] = *this->GetParentNode(orphanNodeID);
+        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
+
+        if (parentNode.HasChild(childID))
+        {
+          auto const childNodeID = parentNode.GetChild(childID);
+          auto const lcaNodeID = SI::GetLowestCommonAncestor(childNodeID, orphanNodeID);
+          parentNode.AddChild(childID, lcaNodeID);
+
+          if (orphanNodeID == lcaNodeID)
+          {
+            auto& orphanNode = this->m_nodes.at(orphanNodeID);
+            auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
+            if (orphanNode.HasChild(childIDOfOrphanNode))
+              orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
+
+            orphanNode.AddChild(childIDOfOrphanNode, childNodeID);
+          }
+          else
+          {
+            auto [lcaIt, _] = this->m_nodes.emplace(lcaNodeID, Node{});
+            auto& lcaNode = lcaIt->second;
+            lcaNode.SetCenter(this->CalculateNodeCenter(lcaNodeID));
+            lcaNode.AddChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
+            lcaNode.AddChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
+          }
+        }
+        else
+        {
+          parentNode.AddChild(childID, orphanNodeID);
+        }
+      }
+    }
+
 
     bool IsEveryEntityUnique() const noexcept
     {
@@ -3498,7 +4087,7 @@ namespace OrthoTree
           MortonNodeIDCR newParentNodeKey = nonExistingNodeStack.top();
 
           [[maybe_unused]] bool isSuccessful = false;
-          parentNodeIt->second.AddChild(SI::GetChildID(newParentNodeKey));
+          parentNodeIt->second.AddChild(SI::GetChildID(newParentNodeKey), newParentNodeKey);
           std::tie(parentNodeIt, isSuccessful) = this->m_nodes.emplace(newParentNodeKey, this->CreateChild(parentNodeIt->second, newParentNodeKey));
           assert(isSuccessful);
         }
@@ -3514,7 +4103,7 @@ namespace OrthoTree
           auto const childGenerator = typename SI::ChildKeyGenerator(existingParentNodeKey);
           auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
-          parentNode.AddChild(childID);
+          parentNode.AddChild(childID, entityNodeKey);
           auto [childNode, _] = this->m_nodes.emplace(childNodeKey, this->CreateChild(parentNode, childNodeKey));
           this->AddNodeEntity(childNode->second, entityID);
         }
@@ -3540,7 +4129,7 @@ namespace OrthoTree
       this->m_memoryResource.Deallocate(node.GetEntitySegment());
       auto const parentKey = SI::GetParentKey(nodeKey);
       auto& parentNode = detail::at(this->m_nodes, parentKey);
-      parentNode.RemoveChild(nodeKey);
+      parentNode.RemoveChild(SI::GetChildID2(parentKey, nodeKey));
       this->m_nodes.erase(nodeKey);
     }
 
@@ -3888,6 +4477,19 @@ namespace OrthoTree
           return { searchKey, depthID };
 
       return {}; // Not found
+    }
+
+    auto GetParentNode(MortonNodeID nodeID)
+    {
+      auto const endIt = this->m_nodes.end();
+      for (nodeID = SI::GetParentKey(nodeID); SI::IsValidKey(nodeID); nodeID = SI::GetParentKey(nodeID))
+      {
+        auto nodeIt = this->m_nodes.find(nodeID);
+        if (nodeIt != endIt)
+          return nodeIt;
+      }
+
+      return this->m_nodes.find(SI::GetRootKey());
     }
 
     MortonNodeID FindSmallestNodeKey(MortonNodeID searchKey) const noexcept
@@ -4354,9 +4956,11 @@ namespace OrthoTree
         FPGeometry maxMinMax;
         if constexpr (IS_BOX_TYPE)
         {
-          maxMinMax = std::max_element(neighborEntities.begin(), neighborEntities.begin() + std::min(neighborNo, neighborEntities.size()), [](auto const& lhs, auto const& rhs) {
-                        return lhs.pessimisticDistance < rhs.pessimisticDistance;
-                      })->pessimisticDistance;
+          maxMinMax = std::max_element(
+                        neighborEntities.begin(),
+                        neighborEntities.begin() + std::min(neighborNo, neighborEntities.size()),
+                        [](auto const& lhs, auto const& rhs) { return lhs.pessimisticDistance < rhs.pessimisticDistance; })
+                        ->pessimisticDistance;
         }
         else
         {
@@ -4480,20 +5084,6 @@ namespace OrthoTree
     }
   };
 
-  namespace ExecutionTags
-  {
-    // Sequential execution tag
-    struct Sequential
-    {};
-
-    // Parallel execution tag
-    struct Parallel
-    {};
-  } // namespace ExecutionTags
-
-  auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
-  auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
-
   // OrthoTreePoint: Non-owning container which spatially organize point ids in N dimension space into a hash-table by Morton Z order.
   template<
     dim_t DIMENSION_NO,
@@ -4601,7 +5191,7 @@ namespace OrthoTree
         auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevel, (*beginLocationIt).GetFirst());
         auto const childID = childChecker.GetChildID(examinedLevel);
         auto childKey = keyGenerator.GetChildNodeKey(childID);
-        node.second.AddChild(childID);
+        node.second.AddChild(childID, childKey);
         if constexpr (ARE_LOCATIONS_SORTED)
         {
           nodeStack[depthID].EndLocationIt =
@@ -5086,7 +5676,7 @@ namespace OrthoTree
       auto const childID = childChecker.GetChildID(examinedLevelID);
       auto childKey = keyGenerator.GetChildNodeKey(childID);
 
-      parentNodeProcessingData.NodeInstance.second.AddChild(childID);
+      parentNodeProcessingData.NodeInstance.second.AddChild(childID, childKey);
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
@@ -5115,9 +5705,9 @@ namespace OrthoTree
     {
       if (locationIt == parentNodeProcessingData.EndLocationIt)
       {
-        parentNodeProcessingData.NodeInstance.second.AddChild(parentSplitEntityProcessingData.BeginIt->SegmentID);
-
         auto childKey = keyGenerator.GetChildNodeKey(parentSplitEntityProcessingData.BeginIt->SegmentID);
+        parentNodeProcessingData.NodeInstance.second.AddChild(parentSplitEntityProcessingData.BeginIt->SegmentID, childKey);
+
         nodeProcessingData.EndLocationIt = parentNodeProcessingData.EndLocationIt;
         nodeProcessingData.NodeInstance.second = this->CreateChild(parentNodeProcessingData.NodeInstance.second, childKey);
         nodeProcessingData.NodeInstance.first = std::move(childKey);
