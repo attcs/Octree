@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\include">
+      <UniqueIdentifier>{ced7ebab-3f27-484e-9f5e-0ebc276e227f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\include\detail">
+      <UniqueIdentifier>{9de3b7d1-307f-4375-8c8f-26b81af53f59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\include\adapters">
+      <UniqueIdentifier>{099ca9bf-a918-4773-9f94-4d11cb47ae53}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="general.tests.cpp">
@@ -21,7 +30,7 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="adaptor.tests.cpp">
+    <ClCompile Include="adapter.tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="performance.tests.cpp">
@@ -44,29 +53,65 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\octree.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\octree.h">
+      <Filter>Header Files\include</Filter>
     </ClInclude>
-    <ClInclude Include="..\octree_container.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\octree_container.h">
+      <Filter>Header Files\include</Filter>
     </ClInclude>
-    <ClInclude Include="compile_test.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\detail\bitset_arithmetic.h">
+      <Filter>Header Files\include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\adaptor.eigen.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\detail\inplace_vector.h">
+      <Filter>Header Files\include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\adaptor.xyz.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\detail\common.h">
+      <Filter>Header Files\include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\adaptor.unreal.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\detail\zip_view.h">
+      <Filter>Header Files\include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\adaptor.boost.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\detail\memory_resource.h">
+      <Filter>Header Files\include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\adaptor.glm.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="..\include\octree\adapters\boost.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\adapters\cgal.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\adapters\concepts.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\adapters\eigen.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\adapters\general.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\adapters\glm.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\adapters\unreal.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\adapters\xyz.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\detail\internal_geometry_module.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\detail\morton_space_indexing.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\detail\grid_space_indexing.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\detail\partitioning.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octree\detail\undefs.h">
+      <Filter>Header Files\include\detail</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

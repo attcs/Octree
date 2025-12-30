@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "octree.h"
+#include "../octree.h"
 // #include <boost/geometry.hpp>
 
 namespace boost::geometry::model

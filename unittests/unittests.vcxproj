@@ -188,19 +188,31 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="general.tests.cpp" />
-    <ClCompile Include="adaptor.tests.cpp" />
+    <ClCompile Include="adapter.tests.cpp" />
     <ClCompile Include="performance.tests.cpp" />
     <ClCompile Include="random.tests.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\adaptor.boost.h" />
-    <ClInclude Include="..\adaptor.eigen.h" />
-    <ClInclude Include="..\adaptor.glm.h" />
-    <ClInclude Include="..\adaptor.unreal.h" />
-    <ClInclude Include="..\adaptor.xyz.h" />
-    <ClInclude Include="..\octree.h" />
-    <ClInclude Include="..\octree_container.h" />
-    <ClInclude Include="compile_test.h" />
+    <ClInclude Include="..\include\octree\adapters\boost.h" />
+    <ClInclude Include="..\include\octree\adapters\cgal.h" />
+    <ClInclude Include="..\include\octree\adapters\concepts.h" />
+    <ClInclude Include="..\include\octree\adapters\eigen.h" />
+    <ClInclude Include="..\include\octree\adapters\general.h" />
+    <ClInclude Include="..\include\octree\adapters\glm.h" />
+    <ClInclude Include="..\include\octree\adapters\unreal.h" />
+    <ClInclude Include="..\include\octree\adapters\xyz.h" />
+    <ClInclude Include="..\include\octree\detail\bitset_arithmetic.h" />
+    <ClInclude Include="..\include\octree\detail\common.h" />
+    <ClInclude Include="..\include\octree\detail\grid_space_indexing.h" />
+    <ClInclude Include="..\include\octree\detail\inplace_vector.h" />
+    <ClInclude Include="..\include\octree\detail\internal_geometry_module.h" />
+    <ClInclude Include="..\include\octree\detail\memory_resource.h" />
+    <ClInclude Include="..\include\octree\detail\morton_space_indexing.h" />
+    <ClInclude Include="..\include\octree\detail\partitioning.h" />
+    <ClInclude Include="..\include\octree\detail\undefs.h" />
+    <ClInclude Include="..\include\octree\detail\zip_view.h" />
+    <ClInclude Include="..\include\octree\octree.h" />
+    <ClInclude Include="..\include\octree\octree_container.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

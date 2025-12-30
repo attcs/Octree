@@ -31,7 +31,8 @@ BreakBeforeTernaryOperators: true
 MaxEmptyLinesToKeep: 2
 ContinuationIndentWidth: 2
 AllowShortLambdasOnASingleLine: Inline
- 
+InsertNewlineAtEOF: true
+
 SpacesInContainerLiterals: false
 BraceWrapping:
   AfterClass: true
