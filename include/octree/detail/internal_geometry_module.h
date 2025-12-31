@@ -32,6 +32,7 @@ SOFTWARE.
 #include <type_traits>
 
 #include "common.h"
+#include "../adapters/concepts.h"
 
 namespace OrthoTree::detail
 {
@@ -39,11 +40,23 @@ namespace OrthoTree::detail
   // Internal geometry system which
   //  - can be instantiated
   //  - is float-based (and not suffer from integer aritmetic issues)
-  template<dim_t DIMENSION_NO, typename TScalar, typename TFloatScalar, typename TVector, typename TBox, typename GA>
+  template<typename TGeometryAdapter>
   struct InternalGeometryModule
   {
-    using Geometry = TFloatScalar;
+    using GA = TGeometryAdapter;
+
+    using TScalar = typename GA::TScalar;
+    using TFloatScalar = typename GA::TFloatScalar;
+    using TVector = typename GA::TVector;
+    using TBox = typename GA::TBox;
+    using TRay = typename GA::TRay;
+    using TPlane = typename GA::TPlane;
+
+    static constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
+
+    using Geometry = GA::TFloatScalar;
     using Vector = std::array<Geometry, DIMENSION_NO>;
+
     struct Box
     {
       Vector Min, Max;
@@ -64,30 +77,22 @@ namespace OrthoTree::detail
     static constexpr Vector GetBoxCenter(Box const& box) noexcept
     {
       Vector center;
-      LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        center[dimensionID] = (box.Min[dimensionID] + box.Max[dimensionID]) * Geometry(0.5);
-
+      static_for<DIMENSION_NO>([&](auto dimensionID) { center[dimensionID] = (box.Min[dimensionID] + box.Max[dimensionID]) * Geometry(0.5); });
       return center;
     }
 
     static constexpr Vector GetBoxCenterAD(TBox const& box) noexcept
     {
       Vector center;
-      LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        center[dimensionID] = (GA::GetBoxMinC(box, dimensionID) + GA::GetBoxMaxC(box, dimensionID)) * Geometry(0.5);
-
+      static_for<DIMENSION_NO>(
+        [&](auto dimensionID) { center[dimensionID] = (GA::GetBoxMinC(box, dimensionID) + GA::GetBoxMaxC(box, dimensionID)) * Geometry(0.5); });
       return center;
     }
 
     static constexpr Vector GetBoxSizeAD(TBox const& box) noexcept
     {
       Vector sizes;
-      LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        sizes[dimensionID] = (GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID));
-
+      static_for<DIMENSION_NO>([&](auto dimensionID) { sizes[dimensionID] = (GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID)); });
       return sizes;
     }
 
@@ -196,7 +201,7 @@ namespace OrthoTree::detail
     }
 
     static constexpr PlaneRelation GetBoxPlaneRelationAD(
-      Vector const& center, Vector const& halfSize, TScalar distanceOfOrigo, TVector const& planeNormal, TScalar tolerance) noexcept
+      Vector const& center, Vector const& halfSize, TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 
@@ -436,7 +441,7 @@ namespace OrthoTree::detail
           return std::nullopt;
         }
 
-        auto boxPickTester = std::optional<BoxRayHitTester>(std::in_place, BoxRayHitTester{});
+        auto boxPickTester = std::optional<RayHitTester>(std::in_place, RayHitTester{});
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           boxPickTester->m_origin[dimensionID] = GA::GetPointC(origin, dimensionID);
 
@@ -532,7 +537,7 @@ namespace OrthoTree::detail
           [&](dim_t dimensionID) noexcept { pd[1][dimensionID] = maxDifference[dimensionID] * m_inverseDirection[dimensionID]; });
 
         std::optional pickResult =
-          BoxPickResult{ .enterDistance = -std::numeric_limits<Geometry>::max(), .exitDistance = std::numeric_limits<Geometry>::max() };
+          PickResult{ .enterDistance = -std::numeric_limits<Geometry>::max(), .exitDistance = std::numeric_limits<Geometry>::max() };
 
         // Find the largest entering distance and the smallest exiting distance. fmax/fmin handles NaN correctly.
         if (m_hasNaNComponent)

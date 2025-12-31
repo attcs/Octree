@@ -22,18 +22,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#pragma once
+
+#include <array>
+
+#include "internal_geometry_module.h"
+
 namespace OrthoTree::detail
 {
 
-  template<dim_t DIMENSION_NO, typename TScalar, typename TVector, typename TBox, typename GA>
+  template<typename TGeometryAdapter>
   class GridSpaceIndexing
   {
   public:
+    using GA = TGeometryAdapter;
+    using IGM = InternalGeometryModule<GA>;
+    using IGM_Geometry = typename IGM::Geometry;
+
+    static constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
+
     template<typename T>
     using DimArray = std::array<T, DIMENSION_NO>;
 
-    using IGM = InternalGeometryModule<DIMENSION_NO, TScalar, TVector, TBox, GA>;
-    using IGM_Geometry = typename IGM::Geometry;
+    // Grid cell identification type
+    using GridPosition = DimArray<GridID>;
+
+    // Min-max grid ID pairs
+    using GridRange = std::array<GridPosition, 2>;
 
   public:
     constexpr GridSpaceIndexing() = default;
@@ -79,7 +94,7 @@ namespace OrthoTree::detail
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr DimArray<GridID> GetPointGridID(TVector const& point) const noexcept
+    constexpr DimArray<GridID> GetPointGridID(GA::TVector const& point) const noexcept
     {
       auto gridIDs = DimArray<GridID>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -101,7 +116,7 @@ namespace OrthoTree::detail
       return gridIDs;
     }
 
-    constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(TVector const& point) const noexcept
+    constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(GA::TVector const& point) const noexcept
     {
       auto constexpr minRasterID = IGM_Geometry{};
       auto const maxRasterID = static_cast<IGM_Geometry>(m_maxRasterResolution - 1);
@@ -119,7 +134,7 @@ namespace OrthoTree::detail
       return pointMinMaxGridID;
     }
 
-    template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = TBox>
+    template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = GA::TBox>
     constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox_ const& box) const noexcept
     {
       std::array<DimArray<GridID>, 2> gridID;
@@ -127,7 +142,7 @@ namespace OrthoTree::detail
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         IGM_Geometry boxMin, boxMax;
-        if constexpr (std::is_same_v<TBox_, TBox>)
+        if constexpr (std::is_same_v<TBox_, typename GA::TBox>)
         {
           boxMin = IGM_Geometry(GA::GetBoxMinC(box, dimensionID));
           boxMax = IGM_Geometry(GA::GetBoxMaxC(box, dimensionID));
@@ -164,6 +179,62 @@ namespace OrthoTree::detail
         assert(gridID[1][dimensionID] < m_maxRasterResolution);
       }
       return gridID;
+    }
+
+    template<double LOOSE_FACTOR, bool ALLOW_OUT_OF_SPACE_INSERTION = false, typename TBox_ = TBox>
+    constexpr std::pair<GridPosition, depth_t> GetLooseBoxGridData(TBox_ const& box) const noexcept
+    {
+      if (IGM::DoesRangeContainBoxAD(m_boxSpace, box))
+      {
+        if constexpr (ALLOW_OUT_OF_SPACE_INSERTION)
+          return { GridPosition{}, 0 };
+        else
+          return { GridPosition{}, INVALID_DEPTH };
+      }
+      
+      auto const boxCenter = IGM::GetBoxCenterAD(box);
+      auto const boxSize = IGM::GetBoxSizeAD(box);
+
+      GridPosition boxCenterGrid;
+      static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
+        // box is withing the space, so center must be also within, no need to clamp
+        boxCenterGrid[dimensionID] = GridID((boxCenter[dimensionID] - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID]);
+      });
+
+      auto maxRelativeSize = IGM_Geometry{};
+      static_for<DIMENSION_NO>(
+        [&](auto dimensionID) noexcept { maxRelativeSize = std::max(maxRelativeSize, boxSize[dimensionID] * m_rasterizerFactors[dimensionID]); });
+
+      GridID maxRelativeGridSize = GridID(std::ceil(maxRelativeSize));
+      auto levelID = std::bit_width(maxRelativeGridSize) - 1;
+
+      // depth calculation
+      if constexpr (LOOSE_FACTOR != 2.0)
+      {
+        while (true)
+        {
+          typename IGM::Box looseCellBox;
+
+          auto const cellGridSize = GridID(1) << levelID;
+          static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
+            auto const cellGridMin = (boxCenterGrid[dimensionID] / cellGridSize) * cellGridSize;
+
+            auto const cellGridCenter = cellGridMin + cellGridSize / GridID(2);
+            auto const cellCenterWorld = IGM_Geometry(cellGridCenter) / m_rasterizerFactors[dimensionID];
+            auto const halfLooseCellSizeWorld = IGM_Geometry(cellGridSize) * IGM_Geometry(LOOSE_FACTOR * 0.5) / m_rasterizerFactors[dimensionID];
+
+            looseCellBox.Min[dimensionID] = cellCenterWorld - halfLooseCellSizeWorld;
+            looseCellBox.Max[dimensionID] = cellCenterWorld + halfLooseCellSizeWorld;
+          });
+
+          if (IGM::DoesRangeContainBoxAD(looseCellBox, box))
+            break;
+
+          ++levelID;
+        }
+      }
+
+      return { boxCenterGrid, levelID };
     }
 
   private:

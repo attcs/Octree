@@ -72,12 +72,10 @@ namespace OrthoTree::detail
     static auto constexpr MAX_THEORETICAL_DEPTH_ID =
       IS_LINEAR_TREE ? static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinel bit*/)) / DIMENSION_NO : MAX_NONLINEAR_DEPTH_ID;
 
-    struct RangeLocationMetaData
+    struct Location
     {
-      depth_t DepthID;
-      LocationID LocID;
-      ChildID TouchedDimensionsFlag;
-      ChildID LowerSegmentID;
+      depth_t depthID;
+      LocationID locationID;
     };
 
     class ChildCheckerFixedDepth
@@ -113,10 +111,10 @@ namespace OrthoTree::detail
     private:
       NodeID m_parentFlag = {};
     };
-
+    /*
     static constexpr NodeID GetHashAtDepth(auto&& location, depth_t maxDepthID) noexcept
     {
-      return (NodeID{ 1 } << (location.DepthID * DIMENSION_NO)) | (location.LocID >> ((maxDepthID - location.DepthID) * DIMENSION_NO));
+      return (NodeID{ 1 } << (location.depthID * DIMENSION_NO)) | (location.LocID >> ((maxDepthID - location.depthID) * DIMENSION_NO));
     }
 
     static constexpr NodeID GetHashAtDepth(LocationIDCR locationID, depth_t depthID, depth_t maxDepthID) noexcept
@@ -128,6 +126,31 @@ namespace OrthoTree::detail
     {
       assert(locationID < (NodeID(1) << (depth * DIMENSION_NO)));
       return (NodeID{ 1 } << (depth * DIMENSION_NO)) | locationID;
+    }
+    */
+    /*
+    static constexpr NodeID GetNodeID(depth_t depthID, LocationIDCR locationID) noexcept
+    {
+      assert(locationID < (NodeID(1) << (depthID * DIMENSION_NO)));
+      return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | locationID;
+    }
+    */
+    static constexpr NodeID GetNodeID(auto&& location, depth_t maxDepthID) noexcept
+    {
+      assert(location.locationID < (NodeID(1) << (location.depthID * DIMENSION_NO)));
+      return (NodeID{ 1 } << (location.depthID * DIMENSION_NO)) | (location.locationID >> ((maxDepthID - location.depthID) * DIMENSION_NO));
+    }
+
+    static constexpr NodeID GetNodeID(LocationIDCR locationID, depth_t maxDepthID) noexcept
+    {
+      assert(locationID < (NodeID(1) << (maxDepthID * DIMENSION_NO)));
+      return (NodeID{ 1 } << (maxDepthID * DIMENSION_NO)) | locationID;
+    }
+
+    static constexpr NodeID GetNodeID(LocationIDCR locationID, depth_t depthID, depth_t maxDepthID) noexcept
+    {
+      assert(locationID < (NodeID(1) << (depthID * DIMENSION_NO)));
+      return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | (locationID >> ((maxDepthID - depthID) * DIMENSION_NO));
     }
 
     static constexpr NodeID GetRootKey() noexcept { return NodeID{ 1 }; }
@@ -504,6 +527,34 @@ namespace OrthoTree::detail
       return { Encode(gridIDRange[0]), Encode(gridIDRange[1]) };
     }
 
+    static constexpr Location GetLocation(auto&& locationID, depth_t maxDepthID) noexcept { return Location{ maxDepthID, locationID }; }
+
+    static constexpr Location GetRangeLocation(auto&& locationIDRange, depth_t maxDepthID) noexcept
+    {
+      if (locationIDRange[0] == locationIDRange[1])
+        return Location{ locationIDRange[0], maxDepthID };
+
+      auto const locationDifference = locationIDRange[0] ^ locationIDRange[1];
+
+      depth_t levelID = 0;
+      if constexpr (IS_LINEAR_TREE)
+      {
+        auto const differentBitNo = std::bit_width(locationDifference);
+        levelID = (differentBitNo + DIMENSION_NO - 1) / DIMENSION_NO;
+      }
+      else
+      {
+        for (auto diffLocationFlag = locationDifference; diffLocationFlag != 0; diffLocationFlag >>= DIMENSION_NO)
+          ++levelID;
+      }
+
+      assert(0 < levelID && levelID <= maxDepthID);
+
+      LocationID const shift = levelID * DIMENSION_NO;
+      return Location{ maxDepthID - levelID, (locationIDRange[0] >> shift) << shift };
+    }
+
+    /*
     static constexpr RangeLocationMetaData GetRangeLocationMetaData(depth_t maxDepthID, std::array<LocationID, 2> const& locationIDRange) noexcept
     {
       auto dl = RangeLocationMetaData{ maxDepthID, locationIDRange[0], {}, {} };
@@ -538,26 +589,23 @@ namespace OrthoTree::detail
       assert(dl.DepthID <= MAX_THEORETICAL_DEPTH_ID);
       return dl;
     }
-
+    */
+    /*
     static constexpr RangeLocationMetaData GetRangeLocationMetaData(depth_t maxDepthID, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
     {
       return GetRangeLocationMetaData(maxDepthID, GetRangeLocationID(gridIDRange));
-    }
-
-    static constexpr NodeID GetNodeID(depth_t maxDepthID, std::array<DimArray<GridID>, 2> const& gridIDRange) noexcept
-    {
-      return GetHash(GetRangeLocationMetaData(maxDepthID, gridIDRange));
     }
 
     static constexpr NodeID GetNodeID(depth_t maxDepthID, std::array<LocationID, 2> const& locationIDRange) noexcept
     {
       return GetHashAtDepth(GetRangeLocationMetaData(maxDepthID, locationIDRange), maxDepthID);
     }
+    */
 
-    static constexpr auto IsLess(RangeLocationMetaData const& leftLocation, RangeLocationMetaData const& rightLocation) noexcept
+    static constexpr auto IsLess(Location const& leftLocation, Location const& rightLocation) noexcept
     {
-      return (leftLocation.LocID < rightLocation.LocID) ||
-             ((leftLocation.LocID == rightLocation.LocID) && (leftLocation.DepthID < rightLocation.DepthID));
+      return (leftLocation.locationID < rightLocation.locationID) ||
+             ((leftLocation.locationID == rightLocation.locationID) && (leftLocation.depthID < rightLocation.depthID));
     }
   };
 } // namespace OrthoTree::detail
