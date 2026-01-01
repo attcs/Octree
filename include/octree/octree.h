@@ -310,7 +310,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
 
     static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return detail::getValuePart(entity); }
 
-    static constexpr Geometry const& GetGeometry(EntityContainerView entities, EntityID const& entityID) noexcept { return detail::at(entities, entityID); }
+    static constexpr Geometry const& GetGeometry(EntityContainerView entities, EntityID const& entityID) noexcept
+    {
+      return detail::at(entities, entityID);
+    }
   };
 
   template<typename TBox>
@@ -413,7 +416,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
     using TPlane = typename GA::Plane; // Plane
 
     using EntityContainerView = EA::EntityContainerView;
-    using EntityID = EA::EntityID;   // EntityID
+    using EntityID = EA::EntityID; // EntityID
 
     static_assert(AdaptorConcept<GA, TVector, TBox, TRay, TPlane, TScalar>);
     static_assert(0 < DIMENSION_NO && DIMENSION_NO < 64);
@@ -586,7 +589,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
     {
       auto isSuccessfullyInsertedAllElements =
         this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
-      assert(isSuccessfullyInsertedElements);
+      assert(isSuccessfullyInsertedAllElements);
     }
 
   private:
@@ -992,7 +995,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
     }
 
   public:
-    void BulkInsert(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+    void BulkInsertV1(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
     {
       constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
 
@@ -1029,7 +1032,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
         auto endIt = partitionIt == partitions.begin() ? *partitions.begin() : *std::prev(partitionIt);
         if (endIt == beginIt)
           endIt = *partitionIt;
-          */
+       */
         auto endIt = *partitionIt++;
         // auto const [minIt, maxIt] =
         //   std::minmax_element(beginIt, endIt, [](EntityLocation const& l, EntityLocation const& r) { return SI::Less(l.first, r.first); });
@@ -1086,6 +1089,80 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
         }
       }
     }
+    void BulkInsert(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+    {
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
+
+      auto const entityNo = entities.size();
+
+      auto mortonIDs = std::vector<typename SI::Location>(entityNo);
+      auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
+      auto locationsZip = detail::zip_view(mortonIDs, mainMemorySegment.segment);
+      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, m_maxDepthID, m_maxElementNo));
+
+
+      using EntityLocation = decltype(locationsZip)::iterator::value_type;
+      EXEC_POL_DEF(ept); // GCC 11.3
+      std::transform(EXEC_POL_ADD(ept) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> EntityLocation {
+        return { this->GetLocation(EA::GetGeometry(entity)), EA::GeEntityID(entities, entity) };
+      });
+
+      auto orphanNodes = std::vector<MortonNodeID>{};
+      Partitioning::DepthFirstPartition<DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
+        EXEC_TAG, locationsZip.begin(), locationsZip.end(), SI::GetRootLocation(), m_maxDepthID, [&](auto beginIt, auto endIt, auto location, bool isForcedToFinish) {
+          auto const elementNum = detail::size(beginIt, endIt);
+          if (!isForcedToFinish && elementNum > m_maxElementNo)
+            return false;
+
+          auto nodeID = SI::GetNodeID(location, m_maxDepthID);
+          auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
+          if (isInserted)
+          {
+            orphanNodes.push_back(nodeID);
+            it->second.SetCenter(this->CalculateNodeCenter(nodeID));
+          }
+
+          it->second.ReplaceEntities(std::span(beginIt.GetSecond(), endIt.GetSecond()));
+          return true;
+        });
+
+      for (std::size_t i = 0; i < orphanNodes.size(); ++i)
+      {
+        auto const orphanNodeID = orphanNodes[i];
+        auto& [parentNodeID, parentNode] = *this->GetParentNode(orphanNodeID);
+        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
+
+        if (parentNode.HasChild(childID))
+        {
+          auto const childNodeID = parentNode.GetChild(childID);
+          auto const lcaNodeID = SI::GetLowestCommonAncestor(childNodeID, orphanNodeID);
+          parentNode.AddChild(childID, lcaNodeID);
+
+          if (orphanNodeID == lcaNodeID)
+          {
+            auto& orphanNode = this->m_nodes.at(orphanNodeID);
+            auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
+            if (orphanNode.HasChild(childIDOfOrphanNode))
+              orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
+
+            orphanNode.AddChild(childIDOfOrphanNode, childNodeID);
+          }
+          else
+          {
+            auto [lcaIt, _] = this->m_nodes.emplace(lcaNodeID, Node{});
+            auto& lcaNode = lcaIt->second;
+            lcaNode.SetCenter(this->CalculateNodeCenter(lcaNodeID));
+            lcaNode.AddChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
+            lcaNode.AddChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
+          }
+        }
+        else
+        {
+          parentNode.AddChild(childID, orphanNodeID);
+        }
+      }
+    }
+
 
     void BulkInsertWOPart(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
     {
@@ -2019,7 +2096,8 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
     }
 
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
-    void RangeSearchBase(TBox const& range, EntityContainerView entities, depth_t depthID, MortonNodeIDCR currentNodeKey, std::vector<EntityID>& foundEntities) const noexcept
+    void RangeSearchBase(
+      TBox const& range, EntityContainerView entities, depth_t depthID, MortonNodeIDCR currentNodeKey, std::vector<EntityID>& foundEntities) const noexcept
     {
       auto const& currentNode = this->GetNode(currentNodeKey);
       if (!currentNode.IsAnyChildExist())
@@ -2157,7 +2235,8 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> PlanePositiveSegmentation(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, EntityContainerView entities) const noexcept
+    std::vector<EntityID> PlanePositiveSegmentation(
+      TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, EntityContainerView entities) const noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 

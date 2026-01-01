@@ -78,6 +78,8 @@ namespace OrthoTree::detail
       LocationID locationID;
     };
 
+    static constexpr Location GetRootLocation() noexcept { return Location{ 0, LocationID{} }; }
+
     class ChildCheckerFixedDepth
     {
     public:

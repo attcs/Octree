@@ -101,7 +101,7 @@ namespace OrthoTree::detail
       *left.m_it2 = std::move(*right.m_it2);
       *right.m_it2 = std::move(val2);
     }
-
+    
   private:
     It1 m_it1;
     It2 m_it2;
@@ -270,3 +270,13 @@ namespace OrthoTree::detail
   static_assert(std::ranges::sized_range<zip_view<std::vector<int>, std::vector<int>>>);
 
 } // namespace detail
+
+
+namespace std
+{
+  template<typename It1, typename It2>
+  constexpr void swap(OrthoTree::detail::proxy_reference<It1, It2> left, OrthoTree::detail::proxy_reference<It1, It2> right) noexcept
+  {
+    OrthoTree::detail::proxy_reference::swap(left, right);
+  }
+} // namespace std
