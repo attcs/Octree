@@ -98,7 +98,7 @@ namespace OrthoTree
 {
   namespace detail
   {
-    template<std::size_t CHILD_NO, typename NodeID, typename ChildID, typename TEntityID, typename Geometry>
+    template<std::size_t CHILD_NO, typename NodeID, typename ChildID, typename EntityID, typename Geometry>
     class OrthoTreeNodeData
     {
     private:
@@ -110,7 +110,7 @@ namespace OrthoTree
 
     public:
       using ChildContainer = std::conditional_t<IS_SPARSE_CHILDREN_CONTAINER, typename std::vector<NodeID>, detail::inplace_vector<NodeID, CHILD_NO>>;
-      using EntityContainer = detail::MemoryResource<TEntityID>::MemorySegment;
+      using EntityContainer = detail::MemoryResource<EntityID>::MemorySegment;
 
     private:
       NodeID m_key;
@@ -147,14 +147,14 @@ namespace OrthoTree
 
       constexpr bool IsEntitiesEmpty() const noexcept { return m_entities.segment.empty(); }
 
-      constexpr bool ContainsEntity(TEntityID entityID) const noexcept
+      constexpr bool ContainsEntity(EntityID entityID) const noexcept
       {
         return std::find(m_entities.segment.begin(), m_entities.segment.end(), entityID) != m_entities.segment.end();
       }
 
-      constexpr void ReplaceEntities(std::span<TEntityID> entities) noexcept { m_entities.segment = std::move(entities); }
+      constexpr void ReplaceEntities(std::span<EntityID> entities) noexcept { m_entities.segment = std::move(entities); }
 
-      constexpr bool RemoveEntity(TEntityID entityID) noexcept
+      constexpr bool RemoveEntity(EntityID entityID) noexcept
       {
         auto const endIteratorAfterRemove = std::remove(m_entities.segment.begin(), m_entities.segment.end(), entityID);
         if (endIteratorAfterRemove == m_entities.segment.end())
@@ -163,7 +163,7 @@ namespace OrthoTree
         return true;
       }
 
-      constexpr void DecreaseEntityIDs(TEntityID removedEntityID) noexcept
+      constexpr void DecreaseEntityIDs(EntityID removedEntityID) noexcept
       {
         for (auto& id : m_entities.segment)
           id -= removedEntityID < id;
@@ -282,7 +282,7 @@ if constexpr (std::is_integral_v<TEntity>)
 {
 return entity;
 }
-else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&std::is_same_v<TEntity>)
+else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&std::is_same_v<TEntity>)
 {
 */
 
@@ -293,24 +293,24 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     // Mixed // Not supported yet
   };
 
-  template<GeometryType GEOMETRY_TYPE_, typename TEntity_, typename TEntityID_, typename TContainer_, typename TGeometry_, typename TEntityIDHash_ = std::hash<TEntityID_>>
+  template<GeometryType GEOMETRY_TYPE_, typename TEntity, typename TEntityID, typename TEntityContainerView, typename TGeometry, typename TEntityIDHash = std::hash<TEntityID>>
   struct EntityAdapterDefault
   {
-    using TContainer = TContainer_;
-    using TEntity = TEntity_;
-    using TEntityID = TEntityID_;
-    using Geometry = TGeometry_;
-    using Hash = TEntityIDHash_;
+    using EntityContainerView = TEntityContainerView;
+    using Entity = TEntity;
+    using EntityID = TEntityID;
+    using Geometry = TGeometry;
+    using Hash = TEntityIDHash;
 
     static constexpr GeometryType GEOMETRY_TYPE = GEOMETRY_TYPE_;
     static constexpr bool REQUIRES_CONTIGUOUS_ENTITY_IDS =
-      std::contiguous_iterator<typename TContainer::iterator> && std::is_same_v<TContainer::value_type, Geometry>;
+      std::contiguous_iterator<typename EntityContainerView::iterator> && std::is_same_v<EntityContainerView::value_type, Geometry>;
 
-    static constexpr TEntityID GetEntityID(TContainer entities, TEntity const& entity) noexcept { return detail::getKeyPart(entities, entity); }
+    static constexpr EntityID GeEntityID(EntityContainerView entities, Entity const& entity) noexcept { return detail::getKeyPart(entities, entity); }
 
-    static constexpr Geometry const& GetGeometry(TEntity const& entity) noexcept { return detail::getValuePart(entity); }
+    static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return detail::getValuePart(entity); }
 
-    static constexpr Geometry const& GetGeometry(TContainer entities, TEntityID const& entityID) noexcept { return detail::at(entities, entityID); }
+    static constexpr Geometry const& GetGeometry(EntityContainerView entities, EntityID const& entityID) noexcept { return detail::at(entities, entityID); }
   };
 
   template<typename TBox>
@@ -412,13 +412,13 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     using TRay = typename GA::Ray;     // Ray
     using TPlane = typename GA::Plane; // Plane
 
-    using TContainer = EA::TContainer; // EntityContainer
-    using TEntityID = EA::TEntityID;   // EntityID
+    using EntityContainerView = EA::EntityContainerView;
+    using EntityID = EA::EntityID;   // EntityID
 
     static_assert(AdaptorConcept<GA, TVector, TBox, TRay, TPlane, TScalar>);
     static_assert(0 < DIMENSION_NO && DIMENSION_NO < 64);
 
-    static_assert(std::is_trivially_copyable_v<TEntityID>, "Only trivially copyable TEntityID types are supported!");
+    static_assert(std::is_trivially_copyable_v<EntityID>, "Only trivially copyable EntityID types are supported!");
     static_assert(CONFIG::IS_HOMOGENEOUS_GEOMETRY, "Mixed geometry types are not supported yet!");
     static_assert(EA::GEOMETRY_TYPE == GeometryType::Point || EA::GEOMETRY_TYPE == GeometryType::Box, "Entity geometry type is not supported!");
     static_assert(CONFIG::MAX_ALLOWED_DEPTH_ID <= MAX_DEPTH_ID, "MAX_ALLOWED_DEPTH_ID of Configuration is too large.");
@@ -436,7 +436,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     using MortonChildID = typename SI::ChildID;
 
 
-    using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, MortonNodeID, MortonChildID, TEntityID, typename IGM::Vector>;
+    using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, MortonNodeID, MortonChildID, EntityID, typename IGM::Vector>;
     using NodeValue = std::pair<MortonNodeID const, Node>;
 
   protected: // Aid struct to partitioning and distance ordering
@@ -448,7 +448,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
     struct EntityDistance : ItemDistance
     {
-      TEntityID EntityID;
+      EntityID EntityID;
       auto operator<=>(EntityDistance const& rhs) const = default;
     };
 
@@ -483,11 +483,11 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     NodeContainer<Node> m_nodes;
 #endif
     // TODO: add element indexing in nodes
-    using ReverseMapType = typename CONFIG::ReverseMap<TEntityID, MortonNodeID, typename EA::Hash>;
+    using ReverseMapType = typename CONFIG::ReverseMap<EntityID, MortonNodeID, typename EA::Hash>;
     using ReverseMap = std::conditional_t<CONFIG::USE_REVERSE_MAPPING, ReverseMapType, std::monostate>;
     ReverseMap m_reverseMap;
 
-    detail::MemoryResource<TEntityID> m_memoryResource;
+    detail::MemoryResource<EntityID> m_memoryResource;
 
     std::size_t m_maxElementNo = DEFAULT_MAX_ELEMENT_IN_NODES;
     depth_t m_maxDepthID = {};
@@ -518,7 +518,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       m_nodes = other.m_nodes;
 #endif
 
-      auto segments = std::vector<typename detail::MemoryResource<TEntityID>::MemorySegment*>(m_nodes.size());
+      auto segments = std::vector<typename detail::MemoryResource<EntityID>::MemorySegment*>(m_nodes.size());
       int i = 0;
       for (auto& [key, node] : m_nodes)
       {
@@ -536,8 +536,8 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       m_grid = other.m_grid;
       m_nodes = other.m_nodes;
 
-      // using MR = detail::MemoryResource<TEntityID>;
-      auto segments = std::vector<typename detail::MemoryResource<TEntityID>::MemorySegment*>(m_nodes.size());
+      // using MR = detail::MemoryResource<EntityID>;
+      auto segments = std::vector<typename detail::MemoryResource<EntityID>::MemorySegment*>(m_nodes.size());
       int i = 0;
       for (auto& [key, node] : m_nodes)
       {
@@ -553,39 +553,44 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       TBox const& boxSpace,
       depth_t maxDepthID,
       std::size_t maxElementNo = DEFAULT_MAX_ELEMENT_IN_NODES,
-      std::size_t estimatedEntityNo = detail::MemoryResource<TEntityID>::DEFAULT_PAGE_SIZE) noexcept
+      std::size_t estimatedEntityNo = detail::MemoryResource<EntityID>::DEFAULT_PAGE_SIZE) noexcept
     {
       this->InitBase(IGM::GetBoxAD(boxSpace), maxDepthID, maxElementNo, estimatedEntityNo);
     }
 
     // Initialize the base octree structure with entity collection
     explicit OrthoTreeBase(
-      TContainer entities,
+      EntityContainerView entities,
       std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT_IN_NODES,
       bool isParallelExec = false) noexcept
     {
+      auto isSuccessfullyInsertedAllElements = false;
       if (isParallelExec)
-        this->template Create<true>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+        isSuccessfullyInsertedAllElements = this->template Create<true>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
       else
-        this->template Create<false>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+        isSuccessfullyInsertedAllElements = this->template Create<false>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+
+      assert(isSuccessfullyInsertedAllElements);
     }
 
     // Initialize the base octree structure with entity collection and parallel tree-building option
     template<typename EXEC_TAG>
     OrthoTreeBase(
       EXEC_TAG,
-      TContainer entities,
+      EntityContainerView entities,
       std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT_IN_NODES) noexcept
     {
-      this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      auto isSuccessfullyInsertedAllElements =
+        this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      assert(isSuccessfullyInsertedElements);
     }
 
   private:
-    using LocationIterator = typename detail::zip_view<std::vector<typename SI::Location>, std::span<TEntityID>>::iterator;
+    using LocationIterator = typename detail::zip_view<std::vector<typename SI::Location>, std::span<EntityID>>::iterator;
 
     struct NodeProcessingData
     {
@@ -657,12 +662,12 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Build the tree in depth-first order
-    template<bool ARE_LOCATIONS_SORTED, typename TResultContainer>
+    template<bool ARE_LOCATIONS_SORTED, typename TResulEntityContainerView>
     constexpr void BuildSubtree(
       LocationIterator const& rootBeginLocationIt,
       LocationIterator const& rootEndLocationIt,
       std::pair<MortonNodeID, Node> const& rootNode,
-      TResultContainer& nodes) noexcept
+      TResulEntityContainerView& nodes) noexcept
     {
       auto nodeStack = std::vector<NodeProcessingData>(this->GetDepthNo());
       nodeStack[0] = NodeProcessingData{ rootNode, rootEndLocationIt };
@@ -694,9 +699,9 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
   public: // Create
     // Create
-    template<bool IS_PARALLEL_EXEC = false>
-    void Create(
-      TContainer entities,
+    template<bool IS_PARALLEL_EXEC = false, bool ARE_ENTITIES_SURELY_IN_MODELSPACE = false>
+    bool Create(
+      EntityContainerView entities,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT_IN_NODES) noexcept
@@ -725,7 +730,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       this->InitBase(boxSpace, maxDepthID, maxElementNoInNode, entityNo);
 
       if (entityNo == 0)
-        return;
+        return true;
 
       auto mortonIDs = std::vector<typename SI::Location>(entityNo);
       auto entityIDsView = this->m_memoryResource.Allocate(entityNo).segment;
@@ -735,8 +740,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
       EXEC_POL_DEF(epf); // GCC 11.3
       std::transform(EXEC_POL_ADD(epf) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> Location {
-        return { this->GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+        return { this->template GetLocation<ARE_ENTITIES_SURELY_IN_MODELSPACE>(EA::GetGeometry(entity)), EA::GeEntityID(entities, entity) };
       });
+
+      // TODO: out-of-space handling //!ATT
 
       constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
       if constexpr (ARE_LOCATIONS_SORTED)
@@ -751,13 +758,14 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       this->m_nodes.clear();
       detail::reserve(this->m_nodes, EstimateNodeNumber(entityNo, maxDepthID, maxElementNoInNode));
       this->template BuildSubtree<ARE_LOCATIONS_SORTED>(locationsZip.begin(), locationsZip.end(), rootNode, this->m_nodes);
+      return true;
     }
 
     // Create
     template<bool IS_PARALLEL_EXEC = false>
-    static void Create(
+    static bool Create(
       OrthoTreeBase& tree,
-      TContainer entities,
+      EntityContainerView entities,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = DEFAULT_MAX_ELEMENT_IN_NODES) noexcept
@@ -838,13 +846,13 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     constexpr IGM::Box GetNodeBox(MortonNodeIDCR key) const noexcept { return this->GetNodeBox(SI::GetDepthID(key), this->GetNodeCenter(key)); }
 
   protected:
-    constexpr void AddNodeEntity(Node& node, TEntityID newEntity) noexcept
+    constexpr void AddNodeEntity(Node& node, EntityID newEntity) noexcept
     {
       m_memoryResource.IncreaseSegment(node.GetEntitySegment(), 1);
       node.GetEntities().back() = std::move(newEntity);
     }
 
-    constexpr bool RemoveNodeEntity(Node& node, TEntityID entity) noexcept
+    constexpr bool RemoveNodeEntity(Node& node, EntityID entity) noexcept
     {
       auto const isRemoved = node.RemoveEntity(entity);
       if (isRemoved)
@@ -883,14 +891,6 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       return nodeChild;
 #endif // ORTHOTREE__DISABLED_NODECENTER
     }
-
-    /* // TODO: remove, it does not handle the out-of-tree geometry
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr MortonLocationID GetLocationID(TVector const& point) const noexcept
-    {
-      return SI::Encode(this->m_grid.template GetPointGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
-    }
-    */
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr SI::Location GetLocation(TVector const& point) const noexcept
@@ -992,7 +992,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
   public:
-    void BulkInsert(TContainer entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+    void BulkInsert(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
     {
       constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
 
@@ -1007,7 +1007,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       using EntityLocation = decltype(locationsZip)::iterator::value_type;
       EXEC_POL_DEF(ept); // GCC 11.3
       std::transform(EXEC_POL_ADD(ept) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> EntityLocation {
-        return { this->GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+        return { this->GetLocation(EA::GetGeometry(entity)), EA::GeEntityID(entities, entity) };
       });
 
       auto const partitions = Partitioning::Partition<std::min(dim_t(9), DIMENSION_NO * 3), IS_PARALLEL_EXEC>(
@@ -1087,8 +1087,68 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       }
     }
 
+    void BulkInsertWOPart(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+    {
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
+
+      auto const entityNo = entities.size();
+
+      auto mortonIDs = std::vector<typename SI::Location>(entityNo);
+      auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
+      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, m_maxDepthID, m_maxElementNo));
+
+      auto orphanNodes = std::vector<MortonNodeID>{};
+      for (auto const& entity : entities)
+      {
+        auto nodeID = this->GetNodeID(EA::GetGeometry(entity));
+        auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
+        if (isInserted)
+        {
+          orphanNodes.push_back(nodeID);
+          it->second.SetCenter(this->CalculateNodeCenter(nodeID));
+        }
+
+        this->AddNodeEntity(it->second, EA::GeEntityID(entities, entity));
+      }
+
+      for (std::size_t i = 0; i < orphanNodes.size(); ++i)
+      {
+        auto const orphanNodeID = orphanNodes[i];
+        auto& [parentNodeID, parentNode] = *this->GetParentNode(orphanNodeID);
+        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
+
+        if (!parentNode.HasChild(childID))
+        {
+          parentNode.AddChild(childID, orphanNodeID);
+          continue;
+        }
+
+        auto const childNodeID = parentNode.GetChild(childID);
+        auto const lcaNodeID = SI::GetLowestCommonAncestor(childNodeID, orphanNodeID);
+        parentNode.AddChild(childID, lcaNodeID);
+
+        if (orphanNodeID == lcaNodeID)
+        {
+          auto& orphanNode = this->m_nodes.at(orphanNodeID);
+          auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
+          if (orphanNode.HasChild(childIDOfOrphanNode))
+            orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
+
+          orphanNode.AddChild(childIDOfOrphanNode, childNodeID);
+        }
+        else
+        {
+          auto [lcaIt, _] = this->m_nodes.emplace(lcaNodeID, Node{});
+          auto& lcaNode = lcaIt->second;
+          lcaNode.SetCenter(this->CalculateNodeCenter(lcaNodeID));
+          lcaNode.AddChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
+          lcaNode.AddChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
+        }
+      }
+    }
+
     // Erase id, aided with the original geometry
-    bool Erase(TEntityID entitiyID, EA::Geometry const& entityGeometry) noexcept
+    bool Erase(EntityID entitiyID, EA::Geometry const& entityGeometry) noexcept
     {
       auto nodeID = this->FindSmallestNode(entityGeometry);
       if (!SI::IsValidKey(nodeID))
@@ -1123,7 +1183,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
     bool IsEveryEntityUnique() const noexcept
     {
-      auto ids = std::vector<TEntityID>();
+      auto ids = std::vector<EntityID>();
       ids.reserve(100);
       std::for_each(m_nodes.begin(), m_nodes.end(), [&](auto& node) {
         auto const& entities = this->GetNodeEntities(node.second);
@@ -1137,7 +1197,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
     template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
     bool InsertWithRebalancingBase(
-      MortonNodeIDCR parentNodeKey, depth_t parentDepthID, SI::Location const& newEntityLocation, TEntityID newEntityID, TContainer entities) noexcept
+      MortonNodeIDCR parentNodeKey, depth_t parentDepthID, SI::Location const& newEntityLocation, EntityID newEntityID, EntityContainerView entities) noexcept
     {
       // TODO: handle out-of-tree geometry
       // TODO: reverse mapping
@@ -1238,7 +1298,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
-    bool InsertWithoutRebalancingBase(MortonNodeIDCR existingParentNodeKey, MortonNodeIDCR entityNodeKey, TEntityID entityID, bool doInsertToLeaf) noexcept
+    bool InsertWithoutRebalancingBase(MortonNodeIDCR existingParentNodeKey, MortonNodeIDCR entityNodeKey, EntityID entityID, bool doInsertToLeaf) noexcept
     {
       // TODO: handle out-of-tree geometry
       // TODO: reverse mapping
@@ -1300,7 +1360,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Insert entity into the tree. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
-    bool Insert(TEntityID entityID, EA::Geometry const& entityGeometry, bool doInsertToLeaf = false) noexcept
+    bool Insert(EntityID entityID, EA::Geometry const& entityGeometry, bool doInsertToLeaf = false) noexcept
     {
       // TODO: reverse mapping
 
@@ -1326,7 +1386,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Insert entity into the tree with node rebalancing
-    bool InsertWithRebalancing(TEntityID entityID, EA::Geometry const& entityGeometry, TContainer entities) noexcept
+    bool InsertWithRebalancing(EntityID entityID, EA::Geometry const& entityGeometry, EntityContainerView entities) noexcept
     {
       if (!IsGeometryInTree(entityGeometry))
       {
@@ -1351,7 +1411,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Insert entity into the tree, if there is no entity within the same location by tolerance.
-    bool InsertUnique(TEntityID entityID, EA::Geometry const& entityGeometry, IGM::Geometry tolerance, TContainer entities, bool doInsertToLeaf = false)
+    bool InsertUnique(EntityID entityID, EA::Geometry const& entityGeometry, IGM::Geometry tolerance, EntityContainerView entities, bool doInsertToLeaf = false)
     {
       // TODO: reverse mapping
       if (!IsGeometryInTree(entityGeometry))
@@ -1389,7 +1449,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
 
     // Update id by the new bounding box information
-    bool Update(TEntityID entityID, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
+    bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
     {
       if (!EraseEntity<false>(entityID))
         return false;
@@ -1398,7 +1458,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Update id by the new bounding box information and the erase part is aided by the old bounding box geometry data
-    bool Update(TEntityID entityID, EA::Geometry const& oldEntityGeometry, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
+    bool Update(EntityID entityID, EA::Geometry const& oldEntityGeometry, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
         return Update(entityID, newEntityGeometry, doInsertToLeaf);
@@ -1435,7 +1495,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
 
     // Update id with rebalancing by the new bounding box information
-    bool Update(TEntityID entityID, EA::Geometry const& newEntityGeometry, TContainer entities) noexcept
+    bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, EntityContainerView entities) noexcept
     {
       if (!EraseEntity<false>(entityID))
         return false;
@@ -1444,7 +1504,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Update id with rebalancing by the new bounding box information and the erase part is aided by the old bounding box geometry data
-    bool Update(TEntityID entityID, EA::Geometry const& oldEntityGeometry, EA::Geometry const& newEntityGeometry, TContainer const& entities) noexcept
+    bool Update(EntityID entityID, EA::Geometry const& oldEntityGeometry, EA::Geometry const& newEntityGeometry, EntityContainerView const& entities) noexcept
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
         return Update(entityID, newEntityGeometry, entities);
@@ -1523,7 +1583,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     constexpr auto GetMaxDepthID() const noexcept { return m_maxDepthID; }
     constexpr auto GetDepthNo() const noexcept { return m_maxDepthID + 1; }
     constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
-    constexpr auto GetNodeIDByEntity(TEntityID entityID) const noexcept
+    constexpr auto GetNodeIDByEntity(EntityID entityID) const noexcept
     {
       auto const it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](auto const& keyAndValue) { return keyAndValue.second.ContainsEntity(entityID); });
 
@@ -1570,7 +1630,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       TBox const& box,
       depth_t maxDepthID,
       std::size_t maxElementNo = 11,
-      std::size_t estimatedEntityNo = detail::MemoryResource<TEntityID>::DEFAULT_PAGE_SIZE) noexcept
+      std::size_t estimatedEntityNo = detail::MemoryResource<EntityID>::DEFAULT_PAGE_SIZE) noexcept
     {
       this->InitBase(IGM::GetBoxAD(box), maxDepthID, maxElementNo, estimatedEntityNo);
     }
@@ -1713,9 +1773,9 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Collect all item id, traversing the tree in breadth-first search order
-    std::vector<TEntityID> CollectAllEntitiesInBFS(MortonNodeIDCR rootKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
+    std::vector<EntityID> CollectAllEntitiesInBFS(MortonNodeIDCR rootKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
     {
-      auto entityIDs = std::vector<TEntityID>();
+      auto entityIDs = std::vector<EntityID>();
       entityIDs.reserve(m_nodes.size() * std::max<std::size_t>(2, m_maxElementNo / 2));
 
       VisitNodes(rootKey, [&](MortonNodeIDCR, auto const& node) {
@@ -1729,7 +1789,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
   private:
-    void CollectAllEntitiesInDFSRecursive(Node const& parentNode, std::vector<TEntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
+    void CollectAllEntitiesInDFSRecursive(Node const& parentNode, std::vector<EntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
     {
       auto const& entities = this->GetNodeEntities(parentNode);
       auto const entityIDsSize = foundEntities.size();
@@ -1743,16 +1803,16 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
   public:
     // Collect all entity id, traversing the tree in depth-first search pre-order
-    std::vector<TEntityID> CollectAllEntitiesInDFS(MortonNodeIDCR parentKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
+    std::vector<EntityID> CollectAllEntitiesInDFS(MortonNodeIDCR parentKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
     {
-      auto entityIDs = std::vector<TEntityID>{};
+      auto entityIDs = std::vector<EntityID>{};
       CollectAllEntitiesInDFSRecursive(GetNode(parentKey), entityIDs, shouldSortInsideNodes);
       return entityIDs;
     }
 
     // Update all element which are in the given hash-table.
     template<bool IS_PARALLEL_EXEC = false, bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
-    void UpdateIndexes(std::unordered_map<TEntityID, std::optional<TEntityID>> const& updateMap) noexcept
+    void UpdateIndexes(std::unordered_map<EntityID, std::optional<EntityID>> const& updateMap) noexcept
     {
       auto const updateMapEndIterator = updateMap.end();
 
@@ -1866,10 +1926,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       return FindSmallestNodeKey(this->GetNodeID(box));
     }
 
-    MortonNodeID Find(TEntityID entityID) const noexcept { return GetNodeIDByEntity(entityID); }
+    MortonNodeID Find(EntityID entityID) const noexcept { return GetNodeIDByEntity(entityID); }
 
   protected:
-    constexpr bool EraseEntity(TEntityID entityID) noexcept
+    constexpr bool EraseEntity(EntityID entityID) noexcept
     {
       bool isErased = false;
 
@@ -1912,7 +1972,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
-    constexpr void RangeSearchBaseCopy(TBox const& range, TContainer entities, Node const& parentNode, std::vector<TEntityID>& foundEntities) const noexcept
+    constexpr void RangeSearchBaseCopy(TBox const& range, EntityContainerView entities, Node const& parentNode, std::vector<EntityID>& foundEntities) const noexcept
     {
       auto const& entityIDs = this->GetNodeEntities(parentNode);
       for (auto const entityID : entityIDs)
@@ -1959,7 +2019,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
-    void RangeSearchBase(TBox const& range, TContainer entities, depth_t depthID, MortonNodeIDCR currentNodeKey, std::vector<TEntityID>& foundEntities) const noexcept
+    void RangeSearchBase(TBox const& range, EntityContainerView entities, depth_t depthID, MortonNodeIDCR currentNodeKey, std::vector<EntityID>& foundEntities) const noexcept
     {
       auto const& currentNode = this->GetNode(currentNodeKey);
       if (!currentNode.IsAnyChildExist())
@@ -2005,9 +2065,9 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
   public:
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false, bool DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY = true>
-    std::vector<TEntityID> RangeSearch(TBox const& range, TContainer entities) const noexcept
+    std::vector<EntityID> RangeSearch(TBox const& range, EntityContainerView entities) const noexcept
     {
-      auto foundEntities = std::vector<TEntityID>{};
+      auto foundEntities = std::vector<EntityID>{};
 
       auto const entityNo = entities.size();
       if (IGM::DoesRangeContainBoxAD(range, this->m_grid.GetBoxSpace()))
@@ -2015,10 +2075,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
         foundEntities.resize(entityNo);
 
         if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-          std::iota(foundEntities.begin(), foundEntities.end(), EA::GetEntityID(entities, *entities.begin()));
+          std::iota(foundEntities.begin(), foundEntities.end(), EA::GeEntityID(entities, *entities.begin()));
         else
           std::transform(entities.begin(), entities.end(), foundEntities.begin(), [&entities](auto const& item) {
-            return EA::GetEntityID(entities, item);
+            return EA::GeEntityID(entities, item);
           });
 
         return foundEntities;
@@ -2068,11 +2128,11 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       }
     }
 
-    std::vector<TEntityID> PlaneIntersection(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, TContainer entities) const noexcept
+    std::vector<EntityID> PlaneIntersection(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, EntityContainerView entities) const noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 
-      auto results = std::vector<TEntityID>{};
+      auto results = std::vector<EntityID>{};
       auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
         return IGM::GetBoxPlaneRelationAD(this->GetNodeCenter(node), halfSize, distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit;
@@ -2091,17 +2151,17 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Hyperplane intersection using built-in plane
-    std::vector<TEntityID> PlaneSearch(TPlane const& plane, TScalar tolerance, TContainer const& points) const noexcept
+    std::vector<EntityID> PlaneSearch(TPlane const& plane, TScalar tolerance, EntityContainerView const& points) const noexcept
     {
       return this->PlaneIntersection(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance, points);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<TEntityID> PlanePositiveSegmentation(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, TContainer entities) const noexcept
+    std::vector<EntityID> PlanePositiveSegmentation(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, EntityContainerView entities) const noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 
-      auto results = std::vector<TEntityID>{};
+      auto results = std::vector<EntityID>{};
       auto const selector = [&](MortonNodeIDCR key, Node const& node) -> bool {
         auto const& halfSize = this->GetNodeSize(SI::GetDepthID(key) + 1);
         auto const relation = IGM::GetBoxPlaneRelationAD(this->GetNodeCenter(node), halfSize, distanceOfOrigo, planeNormal, tolerance);
@@ -2126,15 +2186,15 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<TEntityID> PlanePositiveSegmentation(TPlane const& plane, TScalar tolerance, TContainer const& points) const noexcept
+    std::vector<EntityID> PlanePositiveSegmentation(TPlane const& plane, TScalar tolerance, EntityContainerView const& points) const noexcept
     {
       return PlanePositiveSegmentation(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance, points);
     }
 
     // Get all entities which relation is positive or intersected by the given space boundary planes
-    std::vector<TEntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TScalar tolerance, TContainer entities) const noexcept
+    std::vector<EntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TScalar tolerance, EntityContainerView entities) const noexcept
     {
-      auto results = std::vector<TEntityID>{};
+      auto results = std::vector<EntityID>{};
       if (boundaryPlanes.empty())
         return results;
 
@@ -2185,7 +2245,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
   public: // K Nearest Neighbor
     // Get the precise distance between the entity and kNN's search point. Floating-point return value is required.
-    using EntityDistanceFn = std::function<TFloatScalar(TVector const&, TEntityID)>;
+    using EntityDistanceFn = std::function<TFloatScalar(TVector const&, EntityID)>;
 
   private: // K Nearest Neighbor helpers
     static constexpr TFloatScalar GetValueWithToleranceUpper(TFloatScalar value, TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon()) noexcept
@@ -2200,7 +2260,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
     struct MinEntityDistance
     {
-      TEntityID entityID;
+      EntityID entityID;
       TFloatScalar optimisticDistance;
       TFloatScalar pessimisticDistance;
 
@@ -2257,7 +2317,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       TVector const& searchPoint,
       std::optional<EntityDistanceFn> const& entityDistanceFn,
       auto const& nodeEntityIDs,
-      TContainer entities,
+      EntityContainerView entities,
       TFloatScalar tolerance,
       std::vector<MinEntityDistance>& neighborEntities,
       FarthestDistance& farthestEntityDistance) noexcept
@@ -2341,9 +2401,9 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
-    static constexpr std::vector<TEntityID> ConvertEntityDistanceToList(std::vector<MinEntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
+    static constexpr std::vector<EntityID> ConvertEntityDistanceToList(std::vector<MinEntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
     {
-      auto entityIDs = std::vector<TEntityID>();
+      auto entityIDs = std::vector<EntityID>();
       if (neighborEntities.empty())
         return entityIDs;
 
@@ -2379,11 +2439,11 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     // Get K Nearest Neighbor sorted by distance (point distance should be less than maxDistanceWithin, it is used as a Tolerance check). It may
     // results more element than neighborNo, if those are in equal distance (point-like) or possible hit (box-like).
     template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
-    std::vector<TEntityID> GetNearestNeighbors(
+    std::vector<EntityID> GetNearestNeighbors(
       TVector const& searchPoint,
       std::size_t neighborNo,
       TScalar maxDistanceWithin,
-      TContainer entities,
+      EntityContainerView entities,
       TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon(),
       std::optional<EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
     {
@@ -2435,10 +2495,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
     // Get K Nearest Neighbor sorted by distance
     template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
-    std::vector<TEntityID> GetNearestNeighbors(
+    std::vector<EntityID> GetNearestNeighbors(
       TVector const& searchPoint,
       std::size_t neighborNo,
-      TContainer entities,
+      EntityContainerView entities,
       TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon(),
       std::optional<EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
     {
@@ -2450,7 +2510,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
   private:
     struct SweepAndPruneDatabase
     {
-      constexpr SweepAndPruneDatabase(TContainer entities, auto const& entityIDs) noexcept
+      constexpr SweepAndPruneDatabase(EntityContainerView entities, auto const& entityIDs) noexcept
       : m_sortedEntityIDs(entityIDs.begin(), entityIDs.end())
       {
         std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&](auto const entityIDL, auto const entityIDR) {
@@ -2469,22 +2529,22 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
         });
       }
 
-      constexpr std::vector<TEntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
+      constexpr std::vector<EntityID> const& GetEntities() const noexcept { return m_sortedEntityIDs; }
 
     private:
-      std::vector<TEntityID> m_sortedEntityIDs;
+      std::vector<EntityID> m_sortedEntityIDs;
     };
 
   public:
     // Client-defined Collision detector based on indexes. AABB intersection is executed independently from this checker.
-    using FCollisionDetector = std::function<bool(TEntityID, TEntityID)>;
+    using FCollisionDetector = std::function<bool(EntityID, EntityID)>;
 
     // Collision detection: Returns all overlapping entities from the source trees.
-    static std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(
+    static std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
       OrthoTreeBase const& leftTree,
-      TContainer leftEntities,
+      EntityContainerView leftEntities,
       OrthoTreeBase const& rightTree,
-      TContainer rightEntities,
+      EntityContainerView rightEntities,
       TFloatScalar tolerance = 10 * std::numeric_limits<TFloatScalar>::epsilon(),
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) noexcept
     {
@@ -2502,14 +2562,14 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
         Right
       };
 
-      auto results = std::vector<std::pair<TEntityID, TEntityID>>{};
+      auto results = std::vector<std::pair<EntityID, EntityID>>{};
       results.reserve(leftEntities.size() / 10);
 
       auto constexpr rootKey = SI::GetRootKey();
       auto const trees = std::array{ &leftTree, &rightTree };
 
       auto entitiesInOrderCache = std::array<std::unordered_map<MortonNodeID, SweepAndPruneDatabase>, 2>{};
-      auto const getOrCreateEntitiesInOrder = [&](bool side, NodeIterator const& it, TContainer entities) -> std::vector<TEntityID> const& {
+      auto const getOrCreateEntitiesInOrder = [&](bool side, NodeIterator const& it, EntityContainerView entities) -> std::vector<EntityID> const& {
         auto itKeyAndSPD = entitiesInOrderCache[side].find(it->first);
         if (itKeyAndSPD == entitiesInOrderCache[side].end())
         {
@@ -2540,9 +2600,9 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
         auto const rightEntityNo = rightEntitiesInOrder.size();
         std::size_t iRightEntityBegin = 0;
-        for (auto const leftEntityID : leftEntitiesInOrder)
+        for (auto const lefEntityID : leftEntitiesInOrder)
         {
-          auto const& leftEntityGeometry = EA::GetGeometry(leftEntities, leftEntityID);
+          auto const& leftEntityGeometry = EA::GetGeometry(leftEntities, lefEntityID);
           for (; iRightEntityBegin < rightEntityNo; ++iRightEntityBegin)
           {
             auto const& rightEntityGeometry = EA::GetGeometry(rightEntities, rightEntitiesInOrder[iRightEntityBegin]);
@@ -2564,17 +2624,17 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
           for (std::size_t iRightEntity = iRightEntityBegin; iRightEntity < rightEntityNo; ++iRightEntity)
           {
-            auto const rightEntityID = rightEntitiesInOrder[iRightEntity];
+            auto const righEntityID = rightEntitiesInOrder[iRightEntity];
 
-            auto const& rightEntityGeometry = EA::GetGeometry(rightEntities, rightEntityID);
+            auto const& rightEntityGeometry = EA::GetGeometry(rightEntities, righEntityID);
             if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
             {
               if (GA::GetPointC(leftEntityGeometry, 0) < GA::GetPointC(rightEntityGeometry, 0))
                 break; // sweep and prune optimization
 
               if (GA::ArePointEqual(leftEntityGeometry, rightEntityGeometry, tolerance))
-                if (!collisionDetector || (*collisionDetector)(leftEntityID, rightEntityID))
-                  results.emplace_back(leftEntityID, rightEntityID);
+                if (!collisionDetector || (*collisionDetector)(lefEntityID, righEntityID))
+                  results.emplace_back(lefEntityID, righEntityID);
             }
             else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
             {
@@ -2582,8 +2642,8 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
                 break; // sweep and prune optimization
 
               if (GA::AreBoxesOverlapped(leftEntityGeometry, rightEntityGeometry, false, tolerance))
-                if (!collisionDetector || (*collisionDetector)(leftEntityID, rightEntityID))
-                  results.emplace_back(leftEntityID, rightEntityID);
+                if (!collisionDetector || (*collisionDetector)(lefEntityID, righEntityID))
+                  results.emplace_back(lefEntityID, righEntityID);
             }
             else
             {
@@ -2634,10 +2694,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
 
     // Collision detection: Returns all overlapping boxes from the source trees.
-    std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(
-      TContainer const& boxes,
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
+      EntityContainerView const& boxes,
       OrthoTreeBase const& otherTree,
-      TContainer const& otherBoxes,
+      EntityContainerView const& otherBoxes,
       TFloatScalar tolerance = 10 * std::numeric_limits<TFloatScalar>::epsilon(),
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
@@ -2649,7 +2709,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     {
       IGM::Vector Center;
       IGM::Box Box;
-      std::vector<TEntityID> EntityIDs;
+      std::vector<EntityID> EntityIDs;
     };
 
     constexpr void FillNodeCollisionContext(
@@ -2672,9 +2732,9 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     constexpr void InsertCollidedEntitiesInsideNode(
-      TContainer entities,
+      EntityContainerView entities,
       NodeCollisionContext const& context,
-      std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairs,
+      std::vector<std::pair<EntityID, EntityID>>& collidedEntityPairs,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
@@ -2717,10 +2777,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     constexpr void InsertCollidedEntitiesWithParents(
-      TContainer entities,
+      EntityContainerView entities,
       depth_t depthID,
       std::vector<NodeCollisionContext> const& nodeContextStack,
-      std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairs,
+      std::vector<std::pair<EntityID, EntityID>>& collidedEntityPairs,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
@@ -2733,12 +2793,12 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
       for (depth_t parentDepthID = 0; parentDepthID < depthID; ++parentDepthID)
       {
-        auto const& [parentCenter, parentBox, parentEntityIDs] = nodeContextStack[parentDepthID];
+        auto const& [parentCenter, parentBox, parenEntityIDs] = nodeContextStack[parentDepthID];
 
         auto iEntityBegin = std::size_t{};
-        for (auto const parentEntityID : parentEntityIDs)
+        for (auto const parenEntityID : parenEntityIDs)
         {
-          auto const& parentEntityGeometry = EA::GetGeometry(entities, parentEntityID);
+          auto const& parentEntityGeometry = EA::GetGeometry(entities, parenEntityID);
           if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
           {
             if (GA::GetPointC(parentEntityGeometry, 0) > nodeContext.Box.Max[0])
@@ -2788,8 +2848,8 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
                 break; // sweep and prune optimization
 
               if (GA::ArePointsEqual(parentEntityGeometry, entityGeometry, tolerance))
-                if (!collisionDetector || (*collisionDetector)(entityID, parentEntityID))
-                  collidedEntityPairs.emplace_back(entityID, parentEntityID);
+                if (!collisionDetector || (*collisionDetector)(entityID, parenEntityID))
+                  collidedEntityPairs.emplace_back(entityID, parenEntityID);
             }
             else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
             {
@@ -2797,8 +2857,8 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
                 break; // sweep and prune optimization
 
               if (GA::AreBoxesOverlappedStrict(entityGeometry, parentEntityGeometry, tolerance))
-                if (!collisionDetector || (*collisionDetector)(entityID, parentEntityID))
-                  collidedEntityPairs.emplace_back(entityID, parentEntityID);
+                if (!collisionDetector || (*collisionDetector)(entityID, parenEntityID))
+                  collidedEntityPairs.emplace_back(entityID, parenEntityID);
             }
             else
             {
@@ -2810,12 +2870,12 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     }
 
     void InsertCollidedEntitiesInSubtree(
-      TContainer entities,
+      EntityContainerView entities,
       auto const& comparator,
       depth_t depthID,
       MortonNodeIDCR nodeKey,
       std::vector<NodeCollisionContext>& nodeContextStack,
-      std::vector<std::pair<TEntityID, TEntityID>>& collidedEntityPairs,
+      std::vector<std::pair<EntityID, EntityID>>& collidedEntityPairs,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
@@ -2834,10 +2894,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
     // Collision detection between the stored entities from bottom to top logic
     template<bool IS_PARALLEL_EXEC = false>
-    std::vector<std::pair<TEntityID, TEntityID>> CollectCollidedEntities(
-      TContainer entities, TFloatScalar tolerance, std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
+    std::vector<std::pair<EntityID, EntityID>> CollectCollidedEntities(
+      EntityContainerView entities, TFloatScalar tolerance, std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
-      auto const comparator = [&entities](TEntityID entityID1, TEntityID entityID2) {
+      auto const comparator = [&entities](EntityID entityID1, EntityID entityID2) {
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
         {
           auto const x1 = GA::GetPointC(EA::GetGeometry(entities, entityID1), 0);
@@ -2857,7 +2917,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       };
 
       auto const entityNo = entities.size();
-      auto collidedEntityPairs = std::vector<std::pair<TEntityID, TEntityID>>{};
+      auto collidedEntityPairs = std::vector<std::pair<EntityID, EntityID>>{};
       collidedEntityPairs.reserve(std::max<std::size_t>(100, entityNo / 10));
       if constexpr (!IS_PARALLEL_EXEC)
       {
@@ -2911,7 +2971,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
             struct TaskContext
             {
               NodeIterator NodeIt;
-              std::vector<std::pair<TEntityID, TEntityID>> CollidedEntityPairs;
+              std::vector<std::pair<EntityID, EntityID>> CollidedEntityPairs;
             };
 
             auto const nodeQueueAllNo = nodeQueue.size();
@@ -2933,7 +2993,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
                 entities, comparator, depthID, taskContext.NodeIt->first, nodeContextStack, taskContext.CollidedEntityPairs, tolerance, collisionDetector);
             });
 
-            auto collidedEntityPairsInParents = std::vector<std::pair<TEntityID, TEntityID>>{};
+            auto collidedEntityPairsInParents = std::vector<std::pair<EntityID, EntityID>>{};
             auto nodeContextStack = std::vector<NodeCollisionContext>();
             auto usedContextsStack = std::vector<NodeCollisionContext*>{};
             std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNo, [&](auto& nodeIt) {
@@ -2978,14 +3038,14 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
   public:
     // Collision detection between the stored entities from bottom to top logic
     template<bool IS_PARALLEL_EXEC = false>
-    std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer entities) const noexcept
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(EntityContainerView entities) const noexcept
     {
       return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, std::nullopt);
     }
 
     // Collision detection between the stored entities from bottom to top logic
     template<bool IS_PARALLEL_EXEC = false>
-    std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(TContainer entities, FCollisionDetector&& collisionDetector) const noexcept
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(EntityContainerView entities, FCollisionDetector&& collisionDetector) const noexcept
     {
       return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, collisionDetector);
     }
@@ -2994,10 +3054,10 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
     void GetRayIntersectedAllRecursive(
       depth_t depthID,
       MortonNodeIDCR parentKey,
-      TContainer entities,
+      EntityContainerView entities,
       IGM::RayHitTester const& rayHitTester,
       TScalar maxExaminationDistance,
-      std::optional<std::function<std::optional<TScalar>(TEntityID)>> const& entityRayHitTester,
+      std::optional<std::function<std::optional<TScalar>(EntityID)>> const& entityRayHitTester,
       auto& foundEntities) const noexcept
     {
       auto const& node = this->GetNode(parentKey);
@@ -3021,7 +3081,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
             closestEntityDistance = *result;
           }
           using ValueType = typename std::decay_t<decltype(foundEntities)>::value_type;
-          if constexpr (std::is_same_v<ValueType, TEntityID>)
+          if constexpr (std::is_same_v<ValueType, EntityID>)
             detail::insert(foundEntities, entityID);
           else
             detail::insert(foundEntities, EntityDistance{ { closestEntityDistance }, entityID });
@@ -3036,20 +3096,20 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
   public:
     // Get all entities that are intersected by the ray in order
     template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
-    std::vector<TEntityID> RayIntersectedAll(
+    std::vector<EntityID> RayIntersectedAll(
       TVector const& rayBasePoint,
       TVector const& rayHeading,
-      TContainer entities,
+      EntityContainerView entities,
       TFloatScalar tolerance = {},
       TFloatScalar toleranceIncrement = {},
       TScalar maxExaminationDistance = std::numeric_limits<TScalar>::max(),
-      std::optional<std::function<std::optional<TScalar>(TEntityID)>> entityRayHitTester = std::nullopt) const noexcept
+      std::optional<std::function<std::optional<TScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
     {
       const auto rayHitTester = IGM::RayHitTester::Make(rayBasePoint, rayHeading, tolerance, toleranceIncrement);
       if (!rayHitTester)
         return {};
 
-      using EntityDistanceContainer = std::conditional_t<SHOULD_SORT_ENTITIES_BY_DISTANCE, std::vector<EntityDistance>, std::vector<TEntityID>>;
+      using EntityDistanceContainer = std::conditional_t<SHOULD_SORT_ENTITIES_BY_DISTANCE, std::vector<EntityDistance>, std::vector<EntityID>>;
 
       auto foundEntities = EntityDistanceContainer{};
       foundEntities.reserve(20);
@@ -3063,28 +3123,28 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       {
         std::ranges::sort(foundEntities);
 
-        auto foundEntityIDs = std::vector<TEntityID>(foundEntities.size());
+        auto foundEntityIDs = std::vector<EntityID>(foundEntities.size());
         std::ranges::transform(foundEntities, foundEntityIDs.begin(), [](auto const& entityDistance) { return entityDistance.EntityID; });
         return foundEntityIDs;
       }
     }
 
     // Get all box which is intersected by the ray in order
-    std::vector<TEntityID> RayIntersectedAll(
-      TRay const& ray, TContainer entities, TFloatScalar tolerance = {}, TScalar maxExaminationDistance = std::numeric_limits<TScalar>::max()) const noexcept
+    std::vector<EntityID> RayIntersectedAll(
+      TRay const& ray, EntityContainerView entities, TFloatScalar tolerance = {}, TScalar maxExaminationDistance = std::numeric_limits<TScalar>::max()) const noexcept
     {
       return RayIntersectedAll(GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, maxExaminationDistance);
     }
 
     // Get first entities that hit by the ray
-    std::vector<TEntityID> RayIntersectedFirst(
+    std::vector<EntityID> RayIntersectedFirst(
       TVector const& rayBasePoint,
       TVector const& rayHeading,
-      TContainer entities,
+      EntityContainerView entities,
       TFloatScalar tolerance = {},
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
-      std::optional<std::function<std::optional<TFloatScalar>(TEntityID)>> entityRayHitTester = std::nullopt) const noexcept
+      std::optional<std::function<std::optional<TFloatScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
     {
       const auto rayHitTester = IGM::RayHitTester::Make(rayBasePoint, rayHeading, tolerance, toleranceIncrement);
       if (!rayHitTester)
@@ -3092,7 +3152,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
 
       struct Candidate
       {
-        TEntityID entityID;
+        EntityID entityID;
         TFloatScalar enterDistance;
 
         constexpr auto operator<=>(Candidate const& other) const noexcept { return enterDistance <=> other.enterDistance; }
@@ -3155,28 +3215,28 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
           return result->enterDistance;
         });
 
-      std::vector<TEntityID> resultEntityIDs;
-      resultEntityIDs.reserve(maxDistanceHeap.size());
+      std::vector<EntityID> resulEntityIDs;
+      resulEntityIDs.reserve(maxDistanceHeap.size());
       for (; !maxDistanceHeap.empty(); maxDistanceHeap.pop())
-        resultEntityIDs.push_back(maxDistanceHeap.top().entityID);
+        resulEntityIDs.push_back(maxDistanceHeap.top().entityID);
 
-      return resultEntityIDs;
+      return resulEntityIDs;
     }
 
     // Get first entities that hit by the ray
-    std::vector<TEntityID> RayIntersectedFirst(
+    std::vector<EntityID> RayIntersectedFirst(
       TRay const& ray,
-      TContainer entities,
+      EntityContainerView entities,
       TFloatScalar tolerance = {},
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
-      std::optional<std::function<std::optional<TScalar>(TEntityID)>> entityHitTester = std::nullopt) const noexcept
+      std::optional<std::function<std::optional<TScalar>(EntityID)>> entityHitTester = std::nullopt) const noexcept
     {
       return RayIntersectedFirst(GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, toleranceIncrement, maxDistance, entityHitTester);
     }
 
   public: // Search functions
-    bool Contains(EA::Geometry const& geometry, TContainer entities, TFloatScalar tolerance) const noexcept
+    bool Contains(EA::Geometry const& geometry, EntityContainerView entities, TFloatScalar tolerance) const noexcept
     {
       auto const smallestNodeKey = this->FindSmallestNode(geometry);
       if (!SI::IsValidKey(smallestNodeKey))
@@ -3199,7 +3259,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<TEntityID> && &&
       });
     }
 
-    bool Contains(TEntityID const& entityID, TContainer entities, TFloatScalar tolerance) const noexcept
+    bool Contains(EntityID const& entityID, EntityContainerView entities, TFloatScalar tolerance) const noexcept
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
