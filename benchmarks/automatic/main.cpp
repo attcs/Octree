@@ -162,6 +162,20 @@ namespace
         }
       }
 
+      template<dim_t DIMENSION_NO, bool IS_PARALLEL_EXEC>
+      void Create_OversizedModelspace(benchmark::State& state)
+      {
+        constexpr depth_t depth = 19;
+
+        size_t entityNo = state.range();
+        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(-rMax * 127.5, rMax * 256.0);
+        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+        auto constexpr executionTag = std::conditional_t<IS_PARALLEL_EXEC, ExecutionTags::Parallel, ExecutionTags::Sequential>{};
+        for (auto _ : state)
+        {
+          auto tree = TreePointND<DIMENSION_NO>(executionTag, points, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES);
+        }
+      }
 
       static void InsertToLeaf(benchmark::State& state)
       {
@@ -357,6 +371,22 @@ namespace
         size_t entityNo = state.range();
         auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
         auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+        auto constexpr executionTag = std::conditional_t<IS_PARALLEL_EXEC, ExecutionTags::Parallel, ExecutionTags::Sequential>{};
+        for (auto _ : state)
+        {
+          auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(executionTag, entities, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES);
+        }
+      }
+
+      template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT, bool IS_PARALLEL_EXEC>
+      void Create_OversizedModelspace(benchmark::State& state)
+      {
+        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
+        constexpr depth_t depth = 19;
+
+        size_t entityNo = state.range();
+        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(-rMax * 127.5, rMax * 256.0);
+        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
         auto constexpr executionTag = std::conditional_t<IS_PARALLEL_EXEC, ExecutionTags::Parallel, ExecutionTags::Sequential>{};
         for (auto _ : state)
         {
@@ -666,6 +696,26 @@ BENCHMARK(Benchmarks::Point::InsertToLeaf)->Arg(10)->Arg(20)->Arg(50)->Arg(100)-
 BENCHMARK(Benchmarks::Point::InsertWithRebalancing)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::InsertUnique)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::Update)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Point::Create_OversizedModelspace<3, false>)
+  ->Arg(10)
+  ->Arg(20)
+  ->Arg(50)
+  ->Arg(100)
+  ->Arg(1000)
+  ->Arg(10000)
+  ->Arg(100000)
+  ->Arg(1000000)
+  ->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Point::Create_OversizedModelspace<3, true>)
+  ->Arg(10)
+  ->Arg(20)
+  ->Arg(50)
+  ->Arg(100)
+  ->Arg(1000)
+  ->Arg(10000)
+  ->Arg(100000)
+  ->Arg(1000000)
+  ->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Point::Contains)->Arg(1000)->Arg(10000);
 BENCHMARK(Benchmarks::Point::RangeSearch)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Point::GetNearestNeighbors)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
@@ -682,6 +732,46 @@ BENCHMARK(Benchmarks::Box::InsertWithRebalancing<0>)->Arg(10)->Arg(20)->Arg(50)-
 BENCHMARK(Benchmarks::Box::InsertWithRebalancing<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::Update<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::Create_OversizedModelspace<3, 0, false>)
+  ->Arg(10)
+  ->Arg(20)
+  ->Arg(50)
+  ->Arg(100)
+  ->Arg(1000)
+  ->Arg(10000)
+  ->Arg(100000)
+  ->Arg(1000000)
+  ->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::Create_OversizedModelspace<3, 0, true>)
+  ->Arg(10)
+  ->Arg(20)
+  ->Arg(50)
+  ->Arg(100)
+  ->Arg(1000)
+  ->Arg(10000)
+  ->Arg(100000)
+  ->Arg(1000000)
+  ->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::Create_OversizedModelspace<3, 1, false>)
+  ->Arg(10)
+  ->Arg(20)
+  ->Arg(50)
+  ->Arg(100)
+  ->Arg(1000)
+  ->Arg(10000)
+  ->Arg(100000)
+  ->Arg(1000000)
+  ->Unit(benchmark::kMillisecond);
+BENCHMARK(Benchmarks::Box::Create_OversizedModelspace<3, 1, true>)
+  ->Arg(10)
+  ->Arg(20)
+  ->Arg(50)
+  ->Arg(100)
+  ->Arg(1000)
+  ->Arg(10000)
+  ->Arg(100000)
+  ->Arg(1000000)
+  ->Unit(benchmark::kMillisecond);
 BENCHMARK(Benchmarks::Box::PickSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::PickSearch<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
 BENCHMARK(Benchmarks::Box::RangeSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
