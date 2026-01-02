@@ -3,13 +3,17 @@
 # 2026-01 v3.0
 Major refactorization.
 
+> [!CAUTION]
+> `RayIntersectedAll()` has a new, `toleranceIncrement` parameter, which can be misinterpreted as `maxExaminationDistance`, causing **false positive hits**.
+
 Interface changes
-* Geometric types and DIMENSION_NO moved into the GeometryAdapter
-* TFloatScalar is introduced: integer based geometry calculation is very hectic. Internal calculation uses this type and tolerances.
+* Geometric types and `DIMENSION_NO` moved into the `BaseGeometryAdapter` (formerly `AdaptorGeneralBasics`)
+* `BASE_TOLERANCE` is added to the `BaseGeometryAdapter`, and it is applied as default parameter.
+* `TFloatScalar` is introduced: integer based geometry calculation is very hectic. Internal calculation uses this type and tolerances.
 * EntityAdapter is introduced: this allows any type of system adoption
 * Configuration is introduced.
 * Loose octree is implemented.
-* Split strategy is removed completely: Last iteration (single depth splt) was an inferior solution in every aspect.
+* Split strategy is removed completely: Last iteration (single depth split) was an inferior solution in every aspect.
 
 Performance improvements
 * Loose octree has major performance advantage for picking

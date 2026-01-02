@@ -372,7 +372,6 @@ namespace OrthoTree::Partitioning
     }
 
     uint32_t sum = 0;
-    uint32_t lastBucketID = 0;
     for (auto bucketID : activeBuckets)
     {
       auto segmentBeginIt = beginIt + sum;
@@ -381,7 +380,6 @@ namespace OrthoTree::Partitioning
 
       offsets[bucketID] = sum;
       sum += histogram[bucketID];
-      lastBucketID = bucketID;
     }
 
     // in-place permutation (cycle leader)

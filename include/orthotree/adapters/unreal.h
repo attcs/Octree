@@ -706,7 +706,7 @@ namespace OrthoTree
 
     // Templates for box types
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, bool DO_SPLIT_PARENT_ENTITIES = true, typename TContainer_ = std::span<FBox_ const>>
+    template<typename FGeometry_, typename FVector_, typename FBox_, bool IS_LOOSE_TREE = true, typename TContainer_ = std::span<FBox_ const>>
     using QuadtreeBoxTemplate = OrthoTreeBoundingBox<
       2,
       FVector_,
@@ -714,13 +714,13 @@ namespace OrthoTree
       typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FRay2D_,
       typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FPlane2D_,
       FGeometry_,
-      DO_SPLIT_PARENT_ENTITIES,
+      IS_LOOSE_TREE,
       UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>,
       TContainer_>;
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, bool DO_SPLIT_PARENT_ENTITIES = true, typename TContainer_ = std::span<FBox_ const>>
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, bool IS_LOOSE_TREE = true, typename TContainer_ = std::span<FBox_ const>>
     using OctreeBoxTemplate =
-      OrthoTreeBoundingBox<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, DO_SPLIT_PARENT_ENTITIES, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FPlane_, FGeometry_>, TContainer_>;
+      OrthoTreeBoundingBox<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, IS_LOOSE_TREE, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FPlane_, FGeometry_>, TContainer_>;
   } // namespace UnrealAdaptor
 } // namespace OrthoTree
 
@@ -737,28 +737,28 @@ using FOctreePoint3d = OrthoTree::UnrealAdaptor::OctreePointTemplate<double, FVe
 using FOctreePoint3f = OrthoTree::UnrealAdaptor::OctreePointTemplate<float, FVector3f, FBox3f, FRay, FPlane>;
 
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBoxs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, DO_SPLIT_PARENT_ENTITIES>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBoxs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, IS_LOOSE_TREE>;
 using FQuadtreeBox = FQuadtreeBoxs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBox2Ds = FQuadtreeBoxs<DO_SPLIT_PARENT_ENTITIES>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBox2Ds = FQuadtreeBoxs<IS_LOOSE_TREE>;
 using FQuadtreeBox2D = FQuadtreeBox;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBox2fs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, DO_SPLIT_PARENT_ENTITIES>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBox2fs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, IS_LOOSE_TREE>;
 using FQuadtreeBox2f = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBoxs = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, DO_SPLIT_PARENT_ENTITIES>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBoxs = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, IS_LOOSE_TREE>;
 using FOctreeBox = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBox3ds = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, DO_SPLIT_PARENT_ENTITIES>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBox3ds = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, IS_LOOSE_TREE>;
 using FOctreeBox3d = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBox3fs = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, DO_SPLIT_PARENT_ENTITIES>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBox3fs = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, IS_LOOSE_TREE>;
 using FOctreeBox3f = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, true>;
 
 
@@ -772,28 +772,28 @@ using FOctreePointC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint>;
 using FOctreePoint3dC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3d>;
 using FOctreePoint3fC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3f>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxs<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxs<IS_LOOSE_TREE>>;
 using FQuadtreeBoxC = FQuadtreeBoxCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBox2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2Ds<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBox2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2Ds<IS_LOOSE_TREE>>;
 using FQuadtreeBox2DC = FQuadtreeBox2DCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBox2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2fs<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBox2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2fs<IS_LOOSE_TREE>>;
 using FQuadtreeBox2fC = FQuadtreeBox2fCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBoxCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxs<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBoxCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxs<IS_LOOSE_TREE>>;
 using FOctreeBoxC = FOctreeBoxCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBox3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3ds<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBox3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3ds<IS_LOOSE_TREE>>;
 using FOctreeBox3dC = FOctreeBox3dCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBox3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3fs<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBox3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3fs<IS_LOOSE_TREE>>;
 using FOctreeBox3fC = FOctreeBox3fCs<true>;
 
 
@@ -809,32 +809,32 @@ using FOctreePointMap3d = OrthoTree::UnrealAdaptor::OctreePointTemplate<double, 
 using FOctreePointMap3f = OrthoTree::UnrealAdaptor::OctreePointTemplate<float, FVector3f, FBox3f, FRay, FPlane, FContainer<FVector3f>>;
 
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
+template<bool IS_LOOSE_TREE = true>
 using FQuadtreeBoxsMap =
-  OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, DO_SPLIT_PARENT_ENTITIES, FContainer<FBox2D>>;
+  OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, IS_LOOSE_TREE, FContainer<FBox2D>>;
 using FQuadtreeBoxMap = FQuadtreeBoxsMap<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBoxMap2Ds = FQuadtreeBoxsMap<DO_SPLIT_PARENT_ENTITIES>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBoxMap2Ds = FQuadtreeBoxsMap<IS_LOOSE_TREE>;
 using FQuadtreeBoxMap2D = FQuadtreeBoxMap;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBoxMap2fs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, DO_SPLIT_PARENT_ENTITIES, FContainer<FBox2f>>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBoxMap2fs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, IS_LOOSE_TREE, FContainer<FBox2f>>;
 using FQuadtreeBoxMap2f = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, true, FContainer<FBox2f>>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
+template<bool IS_LOOSE_TREE = true>
 using FOctreeBoxsMap =
-  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, DO_SPLIT_PARENT_ENTITIES, FContainer<FBox>>;
+  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox>>;
 using FOctreeBoxMap = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, true, FContainer<FBox>>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
+template<bool IS_LOOSE_TREE = true>
 using FOctreeBoxMap3ds =
-  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, DO_SPLIT_PARENT_ENTITIES, FContainer<FBox3d>>;
+  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox3d>>;
 using FOctreeBoxMap3d = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, true, FContainer<FBox3d>>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
+template<bool IS_LOOSE_TREE = true>
 using FOctreeBoxMap3fs =
-  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, DO_SPLIT_PARENT_ENTITIES, FContainer<FBox3f>>;
+  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox3f>>;
 using FOctreeBoxMap3f = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, true, FContainer<FBox3f>>;
 
 
@@ -846,26 +846,26 @@ using FOctreePointMapC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap>;
 using FOctreePointMap3dC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap3d>;
 using FOctreePointMap3fC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap3f>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxsMap<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxsMap<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMapC = FQuadtreeBoxMapCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBoxMap2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2Ds<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBoxMap2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2Ds<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMap2DC = FQuadtreeBoxMap2DCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FQuadtreeBoxMap2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2fs<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FQuadtreeBoxMap2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2fs<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMap2fC = FQuadtreeBoxMap2fCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxsMap<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxsMap<IS_LOOSE_TREE>>;
 using FOctreeBoxMapC = FOctreeBoxMapCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBoxMap3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3ds<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBoxMap3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3ds<IS_LOOSE_TREE>>;
 using FOctreeBoxMap3dC = FOctreeBoxMap3dCs<true>;
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
-using FOctreeBoxMap3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3fs<DO_SPLIT_PARENT_ENTITIES>>;
+template<bool IS_LOOSE_TREE = true>
+using FOctreeBoxMap3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3fs<IS_LOOSE_TREE>>;
 using FOctreeBoxMap3fC = FOctreeBoxMap3fCs<true>;

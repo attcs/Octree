@@ -181,7 +181,7 @@ namespace OrthoTree::detail
       return gridID;
     }
 
-    template<double LOOSE_FACTOR, bool ALLOW_OUT_OF_SPACE_INSERTION = false, typename TBox_ = TBox>
+    template<double LOOSE_FACTOR, bool ALLOW_OUT_OF_SPACE_INSERTION = false, typename TBox_ = GA::TBox>
     constexpr std::pair<GridPosition, depth_t> GetLooseBoxGridData(TBox_ const& box) const noexcept
     {
       if (IGM::DoesRangeContainBoxAD(m_boxSpace, box))

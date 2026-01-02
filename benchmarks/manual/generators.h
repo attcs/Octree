@@ -2,7 +2,7 @@
 #include <vector>
 #include <random>
 
-#include "octree/octree.h"
+#include "orthotree/octree.h"
 
 using namespace OrthoTree;
 

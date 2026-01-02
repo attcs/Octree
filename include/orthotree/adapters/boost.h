@@ -30,24 +30,24 @@ namespace boost::geometry::model
 {
   // Define related elements
 
-  template<OrthoTree::dim_t DIMENSION_NO, typename TGeometry>
-  using pointNd_t = point<TGeometry, DIMENSION_NO, boost::geometry::cs::cartesian>;
+  template<OrthoTree::dim_t DIMENSION_NO, typename TScalar>
+  using pointNd_t = point<TScalar, DIMENSION_NO, boost::geometry::cs::cartesian>;
 
-  template<OrthoTree::dim_t DIMENSION_NO, typename TGeometry>
-  using boxNd_t = box<pointNd_t<DIMENSION_NO, TGeometry>>;
+  template<OrthoTree::dim_t DIMENSION_NO, typename TScalar>
+  using boxNd_t = box<pointNd_t<DIMENSION_NO, TScalar>>;
 
-  template<OrthoTree::dim_t DIMENSION_NO, typename TGeometry>
+  template<OrthoTree::dim_t DIMENSION_NO, typename TScalar>
   struct rayNd_t
   {
-    pointNd_t<DIMENSION_NO, TGeometry> origin;
-    pointNd_t<DIMENSION_NO, TGeometry> direction;
+    pointNd_t<DIMENSION_NO, TScalar> origin;
+    pointNd_t<DIMENSION_NO, TScalar> direction;
   };
 
-  template<OrthoTree::dim_t DIMENSION_NO, typename TGeometry>
+  template<OrthoTree::dim_t DIMENSION_NO, typename TScalar>
   struct planeNd_t
   {
-    TGeometry origo_distance;                  // origo_distance = dot_product(normal, any_point)
-    pointNd_t<DIMENSION_NO, TGeometry> normal; // should be normalized
+    TScalar origo_distance;                  // origo_distance = dot_product(normal, any_point)
+    pointNd_t<DIMENSION_NO, TScalar> normal; // should be normalized
   };
 } // namespace boost::geometry::model
 
@@ -57,16 +57,16 @@ namespace OrthoTree
   namespace BoostAdaptor
   {
 
-    template<dim_t DIMENSION_NO, typename TGeometry = double>
-    struct AdaptorGeneralBasics
+    template<dim_t DIMENSION_NO, typename TScalar = double>
+    struct BoostBaseGeometryAdapter
     {
-      using TVector = boost::geometry::model::pointNd_t<DIMENSION_NO, TGeometry>;
-      using TBox = boost::geometry::model::boxNd_t<DIMENSION_NO, TGeometry>;
-      using TRay = boost::geometry::model::rayNd_t<DIMENSION_NO, TGeometry>;
-      using TPlane = boost::geometry::model::planeNd_t<DIMENSION_NO, TGeometry>;
+      using TVector = boost::geometry::model::pointNd_t<DIMENSION_NO, TScalar>;
+      using TBox = boost::geometry::model::boxNd_t<DIMENSION_NO, TScalar>;
+      using TRay = boost::geometry::model::rayNd_t<DIMENSION_NO, TScalar>;
+      using TPlane = boost::geometry::model::planeNd_t<DIMENSION_NO, TScalar>;
 
 
-      static constexpr TGeometry GetPointC(TVector const& point, dim_t dimensionID) noexcept
+      static constexpr TScalar GetPointC(TVector const& point, dim_t dimensionID) noexcept
       {
         static_assert(DIMENSION_NO < 6, "For this dimension, the adaptor is not implemented. Supplement the function!");
 
@@ -118,7 +118,7 @@ namespace OrthoTree
       }
 
 
-      static constexpr void SetPointC(TVector& point, dim_t dimensionID, TGeometry value) noexcept
+      static constexpr void SetPointC(TVector& point, dim_t dimensionID, TScalar value) noexcept
       {
         static_assert(DIMENSION_NO < 6, "For this dimension, the adaptor is not implemented. Supplement the function!");
 
@@ -169,50 +169,26 @@ namespace OrthoTree
         std::terminate();
       }
 
-      static constexpr TGeometry GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return GetPointC(box.min_corner(), dimensionID); }
-      static constexpr TGeometry GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return GetPointC(box.max_corner(), dimensionID); }
-      static constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { SetPointC(box.min_corner(), dimensionID, value); }
-      static constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TGeometry value) noexcept { SetPointC(box.max_corner(), dimensionID, value); }
+      static constexpr TScalar GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return GetPointC(box.min_corner(), dimensionID); }
+      static constexpr TScalar GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return GetPointC(box.max_corner(), dimensionID); }
+      static constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TScalar value) noexcept { SetPointC(box.min_corner(), dimensionID, value); }
+      static constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TScalar value) noexcept { SetPointC(box.max_corner(), dimensionID, value); }
 
       static constexpr TVector const& GetRayDirection(TRay const& ray) noexcept { return ray.direction; }
       static constexpr TVector const& GetRayOrigin(TRay const& ray) noexcept { return ray.origin; }
 
       static constexpr TVector const& GetPlaneNormal(TPlane const& plane) noexcept { return plane.normal; }
-      static constexpr TGeometry GetPlaneOrigoDistance(TPlane const& plane) noexcept { return plane.origo_distance; }
+      static constexpr TScalar GetPlaneOrigoDistance(TPlane const& plane) noexcept { return plane.origo_distance; }
     };
 
-    template<dim_t DIMENSION_NO, typename TGeometry>
-    using BoostAdaptorGeneral = AdaptorGeneralBase<
-      DIMENSION_NO,
-      boost::geometry::model::pointNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::boxNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::rayNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::planeNd_t<DIMENSION_NO, TGeometry>,
-      TGeometry,
-      AdaptorGeneralBasics<DIMENSION_NO, TGeometry>>;
+    template<dim_t DIMENSION_NO, typename TScalar>
+    using BoostGeometryAdapter = GeneralGeometryAdapter<BoostBaseGeometryAdapter<DIMENSION_NO, TScalar>>;
 
-    template<dim_t DIMENSION_NO, typename TGeometry, typename TContainer = std::span<boost::geometry::model::pointNd_t<DIMENSION_NO, TGeometry> const>>
-    using BoostOrthoTreePoint = OrthoTreePoint<
-      DIMENSION_NO,
-      boost::geometry::model::pointNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::boxNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::rayNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::planeNd_t<DIMENSION_NO, TGeometry>,
-      TGeometry,
-      BoostAdaptorGeneral<DIMENSION_NO, TGeometry>,
-      TContainer>;
+    template<dim_t DIMENSION_NO, typename TScalar, typename TEntityAdapter = PointEntitySpanAdapter<boost::geometry::model::pointNd_t<DIMENSION_NO, TScalar>>>
+    using BoostOrthoTreePoint = OrthoTreeBase<TEntityAdapter, BoostGeometryAdapter<DIMENSION_NO, TScalar>, PointConfiguration>;
 
-    template<dim_t DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES, typename TGeometry, typename TContainer = std::span<boost::geometry::model::boxNd_t<DIMENSION_NO, TGeometry> const>>
-    using BoostOrthoTreeBoundingBox = OrthoTreeBoundingBox<
-      DIMENSION_NO,
-      boost::geometry::model::pointNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::boxNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::rayNd_t<DIMENSION_NO, TGeometry>,
-      boost::geometry::model::planeNd_t<DIMENSION_NO, TGeometry>,
-      TGeometry,
-      DO_SPLIT_PARENT_ENTITIES,
-      BoostAdaptorGeneral<DIMENSION_NO, TGeometry>,
-      TContainer>;
+    template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityAdapter = PointEntitySpanAdapter<boost::geometry::model::boxNd_t<DIMENSION_NO, TScalar>>>
+    using BoostOrthoTreeBoundingBox = OrthoTreeBase<TEntityAdapter, BoostGeometryAdapter<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE>>;
   } // namespace BoostAdaptor
 } // namespace OrthoTree
 
@@ -222,11 +198,11 @@ namespace boost::geometry
 
   // Core types
 
-  template<int DIMENSION_NO, typename TGeometry = double, typename TContainer = std::span<model::pointNd_t<DIMENSION_NO, TGeometry> const>>
-  using orthotree_point_t = BoostOrthoTreePoint<DIMENSION_NO, TGeometry, TContainer>;
+  template<int DIMENSION_NO, typename TScalar = double, typename TContainer = std::span<model::pointNd_t<DIMENSION_NO, TScalar> const>>
+  using orthotree_point_t = BoostOrthoTreePoint<DIMENSION_NO, TScalar, TContainer>;
 
-  template<int DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = double, typename TContainer = std::span<model::boxNd_t<DIMENSION_NO, TGeometry> const>>
-  using orthotree_box_t = BoostOrthoTreeBoundingBox<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry, TContainer>;
+  template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double, typename TContainer = std::span<model::boxNd_t<DIMENSION_NO, TScalar> const>>
+  using orthotree_box_t = BoostOrthoTreeBoundingBox<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TContainer>;
 
 
   using quadtree_point_d = BoostOrthoTreePoint<2, double>;
@@ -240,15 +216,15 @@ namespace boost::geometry
   using octree_point = octree_point_d;
 
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using quadtree_box_ds = BoostOrthoTreeBoundingBox<2, DO_SPLIT_PARENT_ENTITIES, double>;
+  template<bool IS_LOOSE_TREE = true>
+  using quadtree_box_ds = BoostOrthoTreeBoundingBox<2, IS_LOOSE_TREE, double>;
   using quadtree_box_d = BoostOrthoTreeBoundingBox<2, true, double>;
   using quadtree_box_f = BoostOrthoTreeBoundingBox<2, true, float>;
   using quadtree_box_i = BoostOrthoTreeBoundingBox<2, true, int>;
   using quadtree_box = quadtree_box_d;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using octree_box_ds = BoostOrthoTreeBoundingBox<3, DO_SPLIT_PARENT_ENTITIES, double>;
+  template<bool IS_LOOSE_TREE = true>
+  using octree_box_ds = BoostOrthoTreeBoundingBox<3, IS_LOOSE_TREE, double>;
   using octree_box_d = BoostOrthoTreeBoundingBox<3, true, double>;
   using octree_box_f = BoostOrthoTreeBoundingBox<3, true, float>;
   using octree_box_i = BoostOrthoTreeBoundingBox<3, true, int>;
@@ -256,8 +232,8 @@ namespace boost::geometry
 
   // Container types
 
-  template<int DIMENSION_NO, typename TGeometry = double>
-  using orthotree_point_c_t = OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TGeometry>>;
+  template<int DIMENSION_NO, typename TScalar = double>
+  using orthotree_point_c_t = OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TScalar>>;
 
   using quadtree_point_c_d = orthotree_point_c_t<2, double>;
   using quadtree_point_c_f = orthotree_point_c_t<2, float>;
@@ -270,18 +246,18 @@ namespace boost::geometry
   using octree_point_c = octree_point_c_d;
 
 
-  template<int DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = double>
-  using orthotree_box_c_t = OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry>>;
+  template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
+  using orthotree_box_c_t = OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar>>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using quadtree_box_c_ds = orthotree_box_c_t<2, DO_SPLIT_PARENT_ENTITIES, double>;
+  template<bool IS_LOOSE_TREE = true>
+  using quadtree_box_c_ds = orthotree_box_c_t<2, IS_LOOSE_TREE, double>;
   using quadtree_box_c_d = orthotree_box_c_t<2, true, double>;
   using quadtree_box_c_f = orthotree_box_c_t<2, true, float>;
   using quadtree_box_c_i = orthotree_box_c_t<2, true, int>;
   using quadtree_box_c = quadtree_box_c_d;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using octree_box_c_ds = orthotree_box_c_t<3, DO_SPLIT_PARENT_ENTITIES, double>;
+  template<bool IS_LOOSE_TREE = true>
+  using octree_box_c_ds = orthotree_box_c_t<3, IS_LOOSE_TREE, double>;
   using octree_box_c_d = orthotree_box_c_t<3, true, double>;
   using octree_box_c_f = orthotree_box_c_t<3, true, float>;
   using octree_box_c_i = orthotree_box_c_t<3, true, int>;
@@ -290,8 +266,8 @@ namespace boost::geometry
 
   // Map types
 
-  template<typename TEntity>
-  using map_container = std::unordered_map<size_t, TEntity>;
+  template<typename Entity>
+  using map_container = std::unordered_map<size_t, Entity>;
 
   using quadtree_point_map_d = BoostOrthoTreePoint<2, double, map_container<model::pointNd_t<2, double>>>;
   using quadtree_point_map_f = BoostOrthoTreePoint<2, float, map_container<model::pointNd_t<2, float>>>;
@@ -304,15 +280,15 @@ namespace boost::geometry
   using octree_point_map = octree_point_map_d;
 
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using quadtree_box_map_ds = BoostOrthoTreeBoundingBox<2, DO_SPLIT_PARENT_ENTITIES, double, map_container<model::boxNd_t<2, double>>>;
+  template<bool IS_LOOSE_TREE = true>
+  using quadtree_box_map_ds = BoostOrthoTreeBoundingBox<2, IS_LOOSE_TREE, double, map_container<model::boxNd_t<2, double>>>;
   using quadtree_box_map_d = BoostOrthoTreeBoundingBox<2, true, double, map_container<model::boxNd_t<2, double>>>;
   using quadtree_box_map_f = BoostOrthoTreeBoundingBox<2, true, float, map_container<model::boxNd_t<2, float>>>;
   using quadtree_box_map_i = BoostOrthoTreeBoundingBox<2, true, int, map_container<model::boxNd_t<2, int>>>;
   using quadtree_box_map = quadtree_box_map_d;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using octree_box_map_ds = BoostOrthoTreeBoundingBox<3, DO_SPLIT_PARENT_ENTITIES, double, map_container<model::boxNd_t<3, double>>>;
+  template<bool IS_LOOSE_TREE = true>
+  using octree_box_map_ds = BoostOrthoTreeBoundingBox<3, IS_LOOSE_TREE, double, map_container<model::boxNd_t<3, double>>>;
   using octree_box_map_d = BoostOrthoTreeBoundingBox<3, true, double, map_container<model::boxNd_t<3, double>>>;
   using octree_box_map_f = BoostOrthoTreeBoundingBox<3, true, float, map_container<model::boxNd_t<3, float>>>;
   using octree_box_map_i = BoostOrthoTreeBoundingBox<3, true, int, map_container<model::boxNd_t<3, int>>>;
@@ -320,9 +296,9 @@ namespace boost::geometry
 
   // Container types
 
-  template<int DIMENSION_NO, typename TGeometry = double>
+  template<int DIMENSION_NO, typename TScalar = double>
   using orthotree_point_map_c_t =
-    OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TGeometry, map_container<model::pointNd_t<DIMENSION_NO, TGeometry>>>>;
+    OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TScalar, map_container<model::pointNd_t<DIMENSION_NO, TScalar>>>>;
 
   using quadtree_point_map_c_d = orthotree_point_map_c_t<2, double>;
   using quadtree_point_map_c_f = orthotree_point_map_c_t<2, float>;
@@ -335,19 +311,19 @@ namespace boost::geometry
   using octree_point_map_c = octree_point_map_c_d;
 
 
-  template<int DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = double>
+  template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
   using orthotree_box_map_c_t =
-    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry, map_container<model::boxNd_t<DIMENSION_NO, TGeometry>>>>;
+    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar, map_container<model::boxNd_t<DIMENSION_NO, TScalar>>>>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, DO_SPLIT_PARENT_ENTITIES, double>;
+  template<bool IS_LOOSE_TREE = true>
+  using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, IS_LOOSE_TREE, double>;
   using quadtree_box_map_c_d = orthotree_box_map_c_t<2, true, double>;
   using quadtree_box_map_c_f = orthotree_box_map_c_t<2, true, float>;
   using quadtree_box_map_c_i = orthotree_box_map_c_t<2, true, int>;
   using quadtree_box_map_c = quadtree_box_map_c_d;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using octree_box_map_c_ds = orthotree_box_map_c_t<3, DO_SPLIT_PARENT_ENTITIES, double>;
+  template<bool IS_LOOSE_TREE = true>
+  using octree_box_map_c_ds = orthotree_box_map_c_t<3, IS_LOOSE_TREE, double>;
   using octree_box_map_c_d = orthotree_box_map_c_t<3, true, double>;
   using octree_box_map_c_f = orthotree_box_map_c_t<3, true, float>;
   using octree_box_map_c_i = orthotree_box_map_c_t<3, true, int>;

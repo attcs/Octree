@@ -11,7 +11,7 @@
 #include <vector>
 #include <random>
 
-#include "../../octree.h"
+#include "orthotree/octree.h"
 #include "generators.h"
 #include "OrthoTreePointDynamicGeneral.h"
 
@@ -478,8 +478,8 @@ namespace
         }
         vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepthActual, fPar, aBox_.subspan(0, aSizeNonLog[iSize]), [](depth_t nDepth_, span<BoundingBoxND<N> const> const& aBox, bool fPar)
         {
-          auto constexpr DO_SPLIT_PARENT_ENTITIES = true;
-          using TreeBox = TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>;
+          auto constexpr IS_LOOSE_TREE = true;
+          using TreeBox = TreeBoxND<N, IS_LOOSE_TREE>;
           auto nt = TreeBox{};
           if (fPar)
           {
@@ -526,9 +526,9 @@ namespace
                                                          false,
                                                          aBox_.subspan(0, aSizeNonLog[iSize]),
                                                          [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar) {
-                                                           auto constexpr DO_SPLIT_PARENT_ENTITIES = true;
-                                                           auto nt = TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>{};
-                                                           TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>::Create(nt, aBox, nDepth, boxMax);
+                                                           auto constexpr IS_LOOSE_TREE = true;
+                                                           auto nt = TreeBoxND<N, IS_LOOSE_TREE>{};
+                                                           TreeBoxND<N, IS_LOOSE_TREE>::Create(nt, aBox, nDepth, boxMax);
                                                            size_t nFound = 0;
                                                            auto const n = aBox.size();
                                                            for (size_t i = 0; i < n; ++i)

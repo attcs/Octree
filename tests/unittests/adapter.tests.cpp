@@ -183,7 +183,7 @@ namespace AdaptorTest
     public:
       TEST_METHOD(PointGeneral3D)
       {       
-        using EntityID = Eigen::OctreePoint3d::TEntityID;
+        using EntityID = Eigen::OctreePoint3d::EntityID;
 
         auto vpt = vector{
           Eigen::Vector3d(0.0, 0.0, 0.0), 
@@ -238,7 +238,7 @@ namespace AdaptorTest
  
       TEST_METHOD(BoxGeneral2DC_Example2)
       {
-        using EntityID = Eigen::QuadtreeBoxC2d::TEntityID;
+        using EntityID = Eigen::QuadtreeBoxC2d::EntityID;
 
         auto boxes = std::vector
         {
@@ -323,7 +323,7 @@ namespace AdaptorTest
     public:
       TEST_METHOD(PointGeneral3D)
       { 
-        using EntityID = XYZ::OctreePoint::TEntityID;
+        using EntityID = XYZ::OctreePoint::EntityID;
 
         auto vpt = vector{
           BasicTypesXYZ::Point3D(0.0, 0.0, 0.0), 
@@ -384,7 +384,7 @@ namespace AdaptorTest
  
       TEST_METHOD(BoxGeneral2DC_Example2)
       {
-        using EntityID = XYZ::QuadtreeBoxC::TEntityID;
+        using EntityID = XYZ::QuadtreeBoxC::EntityID;
 
         auto boxes = std::vector
         {
@@ -587,7 +587,7 @@ namespace AdaptorTest
     public: 
       TEST_METHOD(PointGeneral2D)
       { 
-        using EntityID = QuadtreePointCustom::TEntityID;
+        using EntityID = QuadtreePointCustom::EntityID;
 
         auto vptOwner = std::vector<std::unique_ptr<MyPoint2DBase>>{};
         vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f));
@@ -646,7 +646,7 @@ namespace AdaptorTest
 
       TEST_METHOD(BoxGeneral2DC_Example2)
       {
-        using EntityID = QuadtreeBoxCustomC::TEntityID;
+        using EntityID = QuadtreeBoxCustomC::EntityID;
 
         auto boxes = std::vector<std::unique_ptr<MyBox2DBase>>{};
         boxes.emplace_back(
@@ -744,7 +744,7 @@ namespace AdaptorTest
     public:
       TEST_METHOD(PointGeneral3D)
       {       
-        using EntityID = FOctreePoint::TEntityID;
+        using EntityID = FOctreePoint::EntityID;
 
         auto vpt = vector{
           FVector(0.0, 0.0, 0.0), 
@@ -854,7 +854,7 @@ namespace AdaptorTest
         using point_t = model::pointNd_t<3, double>;
         using box_t = model::boxNd_t<3, double>;
         using plane_t = model::planeNd_t<3, double>;
-        using EntityID = boost::geometry::octree_point::TEntityID;
+        using EntityID = boost::geometry::octree_point::EntityID;
 
         auto vpt = vector{
           point_t(0.0, 0.0, 0.0), 
@@ -915,7 +915,7 @@ namespace AdaptorTest
         using point_t = model::pointNd_t<2, double>;
         using box_t = model::boxNd_t<2, double>;
         using plane_t = model::planeNd_t<2, double>;
-        using EntityID = boost::geometry::quadtree_box_c::TEntityID;
+        using EntityID = boost::geometry::quadtree_box_c::EntityID;
 
         auto boxes = std::vector
         {

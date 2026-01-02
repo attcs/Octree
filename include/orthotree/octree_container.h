@@ -33,143 +33,182 @@ SOFTWARE.
 namespace OrthoTree
 {
   template<typename OrthoTreeCore>
-  class OrthoTreeContainerBase
+  class OrthoTreeContainer
   {
   public:
-    using AD = typename OrthoTreeCore::AD;
+    using EA = typename OrthoTreeCore::EA;
+    using GA = typename OrthoTreeCore::GA;
 
-    using TGeometry = typename OrthoTreeCore::TGeometry;
-    using FPGeometry = typename OrthoTreeCore::IGM::Geometry;
-    using TVector = typename OrthoTreeCore::TVector;
-    using TBox = typename OrthoTreeCore::TBox;
-    using TRay = typename OrthoTreeCore::TRay;
-    using TPlane = typename OrthoTreeCore::TPlane;
-    using TEntityID = typename OrthoTreeCore::TEntityID;
-    using TEntity = typename OrthoTreeCore::TEntity;
-    using TContainer =
-      typename std::conditional_t<std::is_same_v<typename OrthoTreeCore::TContainer, std::span<TEntity const>>, std::vector<TEntity>, typename OrthoTreeCore::TContainer>;
+    using TScalar = typename GA::TScalar;
+    using TFloatScalar = typename GA::TFloatScalar;
+    using TVector = typename GA::TVector;
+    using TBox = typename GA::TBox;
+    using TRay = typename GA::TRay;
+    using TPlane = typename GA::TPlane;
+
+    using EntityID = typename GA::EntityID;
+    using Entity = typename GA::Entity;
+
+    using EntityContainer = EA::EntityContainer;
 
   protected:
     OrthoTreeCore m_tree;
-    TContainer m_geometryCollection;
+    EntityContainer m_entities;
 
   public: // Constructors
-    OrthoTreeContainerBase() noexcept = default;
+    OrthoTreeContainer() noexcept = default;
 
     // Constructor for any contiguous container with runtime parallel parameter
-    explicit OrthoTreeContainerBase(
-      std::span<TEntity const> const& geometryCollection,
+    explicit OrthoTreeContainer(
+      std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
-      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
-    : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifndef __cpp_lib_execution
       assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
 #endif
       if (isParallelCreation)
-        OrthoTreeCore::template Create<true>(m_tree, m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+        OrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       else
-        OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthID, boxSpace, maxElementNoInNode);
+        OrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
     }
 
     // Constructor for any copyable container with runtime parallel parameter
-    explicit OrthoTreeContainerBase(
-      TContainer const& geometryCollection,
+    explicit OrthoTreeContainer(
+      EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
-    : m_geometryCollection(geometryCollection)
+    : m_entities(geometryCollection)
     {
 #ifndef __cpp_lib_execution
       assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
 #endif
       if (isParallelCreation)
-        OrthoTreeCore::template Create<true>(m_tree, m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+        OrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       else
-        OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthID, boxSpace, maxElementNoInNode);
+        OrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
     }
 
     // Constructor for any movable container with runtime parallel parameter
-    explicit OrthoTreeContainerBase(
-      TContainer&& geometryCollection,
+    explicit OrthoTreeContainer(
+      EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
       bool isParallelCreation = false) noexcept
-    : m_geometryCollection(std::move(geometryCollection))
+    : m_entities(std::move(geometryCollection))
     {
 #ifndef __cpp_lib_execution
       assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
 #endif
       if (isParallelCreation)
-        OrthoTreeCore::template Create<true>(m_tree, m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+        OrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       else
-        OrthoTreeCore::Create(m_tree, m_geometryCollection, maxDepthID, boxSpace, maxElementNoInNode);
+        OrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
     }
 
     // Constructor for any contiguous container with compile-time parallel parameter
     template<typename EXEC_TAG>
-    explicit OrthoTreeContainerBase(
+    explicit OrthoTreeContainer(
       EXEC_TAG,
-      std::span<TEntity const> const& geometryCollection,
+      std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
-    : m_geometryCollection(geometryCollection.begin(), geometryCollection.end())
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifdef __cpp_lib_execution
 #else
       static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
-        m_tree, m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
     }
 
     // Constructor for any copyable container compile-time parallel parameter
     template<typename EXEC_TAG>
-    explicit OrthoTreeContainerBase(
+    explicit OrthoTreeContainer(
       EXEC_TAG,
-      TContainer const& geometryCollection,
+      EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-    : m_geometryCollection(geometryCollection)
+    : m_entities(geometryCollection)
     {
 #ifdef __cpp_lib_execution
 #else
       static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
-        m_tree, m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
     }
 
     // Constructor for any movable container with compile-time parallel parameter
     template<typename EXEC_TAG>
-    explicit OrthoTreeContainerBase(
+    explicit OrthoTreeContainer(
       EXEC_TAG,
-      TContainer&& geometryCollection,
+      EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-    : m_geometryCollection(std::move(geometryCollection))
+    : m_entities(std::move(geometryCollection))
     {
 #ifdef __cpp_lib_execution
 #else
       static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
-        m_tree, m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
     }
 
+    // Point
+    template<bool IS_PARALLEL_EXEC = false>
+    static OrthoTreeContainer Create(
+      std::span<Entity const> const& entities,
+      depth_t maxDepthID = 0,
+      std::optional<TBox> boxSpace = std::nullopt,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      auto otc = OrthoTreeContainer();
+      otc.m_entities = std::vector(entities.begin(), entities.end());
+      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      return otc;
+    }
+
+    template<bool IS_PARALLEL_EXEC = false>
+    static OrthoTreeContainer Create(
+      EntityContainer const& entities,
+      depth_t maxDepthID = 0,
+      std::optional<TBox> boxSpace = std::nullopt,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+    {
+      auto otc = OrthoTreeContainer();
+      otc.m_entities = entities;
+      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      return otc;
+    }
+
+    template<bool IS_PARALLEL_EXEC = false>
+    static OrthoTreeContainer Create(
+      EntityContainer&& entities,
+      depth_t maxDepthID = 0,
+      std::optional<TBox> boxSpace = std::nullopt,
+      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+    {
+      auto otc = OrthoTreeContainer();
+      otc.m_entities = std::move(entities);
+      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      return otc;
+    }
 
   public: // Member functions
     constexpr OrthoTreeCore const& GetCore() const noexcept { return m_tree; }
-    constexpr TContainer const& GetData() const noexcept { return m_geometryCollection; }
+    constexpr EntityContainer const& GetData() const noexcept { return m_entities; }
 
     constexpr void Init(TBox const& boxSpace, depth_t maxDepthID, std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
@@ -177,77 +216,105 @@ namespace OrthoTree
     }
 
     // Get entity by ID
-    TEntity const& Get(TEntityID entityID) const noexcept { return detail::at(m_geometryCollection, entityID); }
+    Entity const& Get(EntityID entityID) const noexcept { return detail::at(m_entities, entityID); }
 
     // Add entity without tree rebalancing
-    bool Add(TEntity const& newEntity, bool doInsertToLeaf = false) noexcept
-      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    bool Add(Entity const& newEntity, bool doInsertToLeaf = false) noexcept
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
-      auto const newEntityID = TEntityID(m_geometryCollection.size());
+      auto const newEntityID = EntityID(m_entities.size());
       if (!m_tree.Insert(newEntityID, newEntity, doInsertToLeaf))
         return false;
 
-      m_geometryCollection.emplace_back(newEntity);
+      m_entities.emplace_back(newEntity);
       return true;
     }
 
     // Add entity without tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(TEntityID newEntityID, TEntity const& newEntity, bool doInsertToLeaf = false) noexcept
-      requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    bool Add(EntityID newEntityID, Entity const& newEntity, bool doInsertToLeaf = false) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       if constexpr (CHECK_ID_FOR_CONTAINMENT)
       {
-        if (m_geometryCollection.contains(newEntityID))
+        if (m_entities.contains(newEntityID))
           return false;
       }
 
       if (!m_tree.Insert(newEntityID, newEntity, doInsertToLeaf))
         return false;
 
-      m_geometryCollection.emplace(newEntityID, newEntity);
+      m_entities.emplace(newEntityID, newEntity);
       return true;
     }
 
     // Add entity with tree rebalancing
-    bool AddAndRebalance(TEntity const& newEntity) noexcept
-      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    bool AddAndRebalance(Entity const& newEntity) noexcept
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
-      auto const newEntityID = TEntityID(m_geometryCollection.size());
+      auto const newEntityID = EntityID(m_entities.size());
       if (!m_tree.InsertWithRebalance(newEntityID, newEntity))
         return false;
 
-      m_geometryCollection.emplace_back(newEntity);
+      m_entities.emplace_back(newEntity);
       return true;
     }
 
     // Add entity with tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddAndRebalance(TEntityID newEntityID, TEntity const& newEntity) noexcept
-      requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+    bool AddAndRebalance(EntityID newEntityID, Entity const& newEntity) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       if constexpr (CHECK_ID_FOR_CONTAINMENT)
       {
-        if (m_geometryCollection.contains(newEntityID))
+        if (m_entities.contains(newEntityID))
           return false;
       }
 
       if (!m_tree.InsertWithRebalance(newEntityID, newEntity))
         return false;
 
-      m_geometryCollection.emplace(newEntityID, newEntity);
+      m_entities.emplace(newEntityID, newEntity);
+      return true;
+    }
+
+    bool AddUnique(Entity const& newEntity, TFloatScalar tolerance, bool doInsertToLeaf = false) noexcept
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      auto const newEntityID = EntityID(this->m_entities.size());
+      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_entities, doInsertToLeaf))
+        return false;
+
+      this->m_entities.emplace_back(newEntity);
+      return true;
+    }
+
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool AddUnique(EntityID newEntityID, Entity const& newEntity, TFloatScalar tolerance, bool doInsertToLeaf = false) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      {
+        if (this->m_entities.contains(newEntityID))
+          return false;
+      }
+
+      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_entities, doInsertToLeaf))
+        return false;
+
+      this->m_entities.emplace(newEntityID, newEntity);
       return true;
     }
 
     // Update with tree rebalancing
-    bool Update(TEntityID entityID, TEntity const& newEntity) noexcept
+    bool Update(EntityID entityID, Entity const& newEntity) noexcept
     {
-      auto const oldEntity = detail::at(m_geometryCollection, entityID);
-      detail::set(m_geometryCollection, entityID, newEntity);
-      if (!m_tree.Update(entityID, oldEntity, newEntity, m_geometryCollection))
+      auto const oldEntity = detail::at(m_entities, entityID);
+      detail::set(m_entities, entityID, newEntity);
+      if (!m_tree.Update(entityID, oldEntity, newEntity, m_entities))
       {
         // restore the original state
-        detail::set(m_geometryCollection, entityID, oldEntity);
+        detail::set(m_entities, entityID, oldEntity);
         return false;
       }
 
@@ -255,14 +322,14 @@ namespace OrthoTree
     }
 
     // Update without tree rebalancing
-    bool Update(TEntityID entityID, TEntity const& newEntity, bool doInsertToLeaf) noexcept
+    bool Update(EntityID entityID, Entity const& newEntity, bool doInsertToLeaf) noexcept
     {
-      auto const oldEntity = detail::at(m_geometryCollection, entityID);
-      detail::set(m_geometryCollection, entityID, newEntity);
+      auto const oldEntity = detail::at(m_entities, entityID);
+      detail::set(m_entities, entityID, newEntity);
       if (!m_tree.Update(entityID, oldEntity, newEntity, doInsertToLeaf))
       {
         // restore the original state
-        detail::set(m_geometryCollection, entityID, oldEntity);
+        detail::set(m_entities, entityID, oldEntity);
         return false;
       }
 
@@ -270,452 +337,260 @@ namespace OrthoTree
     }
 
     // Erase entity by ID
-    bool Erase(TEntityID entityID) noexcept
+    bool Erase(EntityID entityID) noexcept
     {
-      if (OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
+      if (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
       {
-        if (TEntityID(m_geometryCollection.size()) <= entityID)
+        if (EntityID(m_entities.size()) <= entityID)
           return false;
       }
 
-      if (!m_tree.Erase(entityID, detail::at(m_geometryCollection, entityID)))
+      if (!m_tree.Erase(entityID, detail::at(m_entities, entityID)))
         return false;
 
-      if constexpr (OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
-        m_geometryCollection.erase(std::next(m_geometryCollection.begin(), entityID));
+      if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+        m_entities.erase(std::next(m_entities.begin(), entityID));
       else
-        m_geometryCollection.erase(entityID);
+        m_entities.erase(entityID);
 
       return true;
     }
 
     // Clear the tree: remove all node and entity.
-    inline void Clear() noexcept
+    void Clear() noexcept
     {
       m_tree.Clear();
-      m_geometryCollection.clear();
+      m_entities.clear();
     }
 
     // Reset the tree: Same as clear but also reset the handled domain
-    inline void Reset() noexcept
+    void Reset() noexcept
     {
       m_tree.Reset();
-      m_geometryCollection.clear();
+      m_entities.clear();
+    }
+
+    template<bool IS_PARALLEL_EXEC = false>
+    void Move(TVector const& moveVector) noexcept
+    {
+      this->m_tree.template Move<IS_PARALLEL_EXEC>(moveVector);
+      EXEC_POL_DEF(ep); // GCC 11.3
+      std::for_each(EXEC_POL_ADD(ep) this->m_entities.begin(), this->m_entities.end(), [&moveVector](auto& entity) {
+        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+        {
+          EA::SetGeometry(entity, GA::Add(EA::GetGeometry(entity), moveVector));
+        }
+        else
+        {
+          auto box = EA::GetGeometry(entity);
+          GA::MoveBox(box, moveVector);
+          EA::SetGeometry(entity, box);
+        }
+      });
     }
 
     // Collect all entity ID in breadth-first traverse order
-    inline std::vector<TEntityID> CollectAllEntitiesInBFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
+    std::vector<EntityID> CollectAllEntitiesInBFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllEntitiesInBFS(parentKey);
     }
 
     // Collect all entity ID in depth-first traverse order
-    inline std::vector<TEntityID> CollectAllEntitiesInDFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
+    std::vector<EntityID> CollectAllEntitiesInDFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
     {
       return m_tree.CollectAllEntitiesInDFS(parentKey);
     }
 
-    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<TEntityID> PlanePositiveSegmentation(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) const noexcept
-    {
-      return this->m_tree.PlanePositiveSegmentation(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
-    }
-
-    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<TEntityID> PlanePositiveSegmentation(TPlane const& plane, TGeometry tolerance) const noexcept
-    {
-      return this->m_tree.PlanePositiveSegmentation(plane, tolerance, this->m_geometryCollection);
-    }
-
-    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<TEntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TGeometry tolerance) const noexcept
-    {
-      return this->m_tree.FrustumCulling(boundaryPlanes, tolerance, this->m_geometryCollection);
-    }
-
-    // K Nearest Neighbor
-    inline std::vector<TEntityID> GetNearestNeighbors(
-      TVector const& pt,
-      std::size_t k,
-      TGeometry maxDistanceWithin = std::numeric_limits<TGeometry>::max(),
-      FPGeometry tolerance = std::numeric_limits<FPGeometry>::epsilon(),
-      std::optional<typename OrthoTreeCore::EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
-    {
-      return this->m_tree.GetNearestNeighbors(pt, k, maxDistanceWithin, this->m_geometryCollection, tolerance, entityDistanceFn);
-    }
-  };
-
-
-  // General OrthoTree container for point types
-  template<typename OrthoTreeCore>
-  class OrthoTreeContainerPoint final : public OrthoTreeContainerBase<OrthoTreeCore>
-  {
-  public:
-    using base = OrthoTreeContainerBase<OrthoTreeCore>;
-    using AD = typename base::AD;
-
-    using TGeometry = typename base::TGeometry;
-    using FPGeometry = typename OrthoTreeCore::IGM::Geometry;
-    using TVector = typename base::TVector;
-    using TBox = typename base::TBox;
-    using TRay = typename base::TRay;
-    using TPlane = typename base::TPlane;
-    using TEntityID = typename OrthoTreeCore::TEntityID;
-    using TEntity = typename OrthoTreeCore::TEntity;
-    using TContainer = typename base::TContainer;
-
-    using base::base; // inherits all constructors
-
-  public: // Edit functions
-    template<bool IS_PARALLEL_EXEC = false>
-    static OrthoTreeContainerPoint Create(
-      std::span<TEntity const> const& geometryCollectionSpan,
-      depth_t maxDepthID = 0,
-      std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
-    {
-      auto otc = OrthoTreeContainerPoint();
-      otc.m_geometryCollection = std::vector(geometryCollectionSpan.begin(), geometryCollectionSpan.end());
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      return otc;
-    }
-
-    template<bool IS_PARALLEL_EXEC = false>
-    static OrthoTreeContainerPoint Create(
-      TContainer const& geometryCollection,
-      depth_t maxDepthID = 0,
-      std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-    {
-      auto otc = OrthoTreeContainerPoint();
-      otc.m_geometryCollection = geometryCollection;
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      return otc;
-    }
-
-    template<bool IS_PARALLEL_EXEC = false>
-    static OrthoTreeContainerPoint Create(
-      TContainer&& geometryCollection,
-      depth_t maxDepthID = 0,
-      std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-    {
-      auto otc = OrthoTreeContainerPoint();
-      otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      return otc;
-    }
-
-    template<bool IS_PARALLEL_EXEC = false>
-    void Move(TVector const& moveVector) noexcept
-    {
-      this->m_tree.template Move<IS_PARALLEL_EXEC>(moveVector);
-      EXEC_POL_DEF(ep); // GCC 11.3
-      std::for_each(EXEC_POL_ADD(ep) this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&moveVector](auto& data) {
-        detail::setValuePart(data, AD::Add(detail::getValuePart(data), moveVector));
-      });
-    }
-
-  public:
-    bool AddUnique(TEntity const& newEntity, TGeometry tolerance, bool doInsertToLeaf = false) noexcept
-      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
-    {
-      auto const newEntityID = TEntityID(this->m_geometryCollection.size());
-      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_geometryCollection, doInsertToLeaf))
-        return false;
-
-      this->m_geometryCollection.emplace_back(newEntity);
-      return true;
-    }
-
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddUnique(TEntityID newEntityID, TEntity const& newEntity, TGeometry tolerance, bool doInsertToLeaf = false) noexcept
-      requires(!OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
-    {
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
-      {
-        if (this->m_geometryCollection.contains(newEntityID))
-          return false;
-      }
-
-      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_geometryCollection, doInsertToLeaf))
-        return false;
-
-      this->m_geometryCollection.emplace(newEntityID, newEntity);
-      return true;
-    }
-
-  public:
-    // Range search
-    template<bool DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY = false>
-    inline std::vector<TEntityID> RangeSearch(TBox const& range) const noexcept
-    {
-      return this->m_tree.template RangeSearch<DOES_LEAF_NODE_CONTAIN_ELEMENT_ONLY>(range, this->m_geometryCollection);
-    }
-
-  public: // Plane
-    // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<TEntityID> PlaneSearch(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) const noexcept
-    {
-      return this->m_tree.PlaneSearch(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
-    }
-
-    // Hyperplane intersection using built-in plane
-    inline std::vector<TEntityID> PlaneSearch(TPlane const& plane, TGeometry tolerance) const noexcept
-    {
-      return this->m_tree.PlaneSearch(AD::GetPlaneOrigoDistance(plane), AD::GetPlaneNormal(plane), tolerance, this->m_geometryCollection);
-    }
-  };
-
-
-  // General OrthoTreeCore container for Box types
-  template<typename OrthoTreeCore>
-  class OrthoTreeContainerBox final : public OrthoTreeContainerBase<OrthoTreeCore>
-  {
-  public:
-    using base = OrthoTreeContainerBase<OrthoTreeCore>;
-    using AD = typename base::AD;
-
-    using TGeometry = typename base::TGeometry;
-    using FPGeometry = typename OrthoTreeCore::IGM::Geometry;
-    using TVector = typename base::TVector;
-    using TBox = typename base::TBox;
-    using TRay = typename base::TRay;
-    using TPlane = typename base::TPlane;
-    using TEntityID = typename OrthoTreeCore::TEntityID;
-    using TEntity = typename OrthoTreeCore::TEntity;
-    using TContainer = typename base::TContainer;
-
-    using base::base; // inherits all constructors
-
-  public: // Edit functions
-    template<bool IS_PARALLEL_EXEC = false>
-    static OrthoTreeContainerBox Create(
-      std::span<TEntity const> const& geometryCollection,
-      std::optional<depth_t> maxDepthID = std::nullopt,
-      std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-      requires(OrthoTreeCore::IS_CONTIGOUS_CONTAINER)
-    {
-      auto otc = OrthoTreeContainerBox();
-      otc.m_geometryCollection = std::vector(geometryCollection.begin(), geometryCollection.end());
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      return otc;
-    }
-
-    template<bool IS_PARALLEL_EXEC = false>
-    static OrthoTreeContainerBox Create(
-      TContainer const& geometryCollection,
-      std::optional<depth_t> maxDepthID = std::nullopt,
-      std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-    {
-      auto otc = OrthoTreeContainerBox();
-      otc.m_geometryCollection = geometryCollection;
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      return otc;
-    }
-
-    template<bool IS_PARALLEL_EXEC = false>
-    static OrthoTreeContainerBox Create(
-      TContainer&& geometryCollection,
-      std::optional<depth_t> maxDepthID = std::nullopt,
-      std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
-    {
-      auto otc = OrthoTreeContainerBox();
-      otc.m_geometryCollection = std::move(geometryCollection);
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_geometryCollection, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      return otc;
-    }
-
-    template<bool IS_PARALLEL_EXEC = false>
-    void Move(TVector const& moveVector) noexcept
-    {
-      this->m_tree.template Move<IS_PARALLEL_EXEC>(moveVector);
-      EXEC_POL_DEF(ep); // GCC 11.3
-      std::for_each(EXEC_POL_ADD(ep) this->m_geometryCollection.begin(), this->m_geometryCollection.end(), [&moveVector](auto& data) {
-        auto box = detail::getValuePart(data);
-        AD::MoveBox(box, moveVector);
-        detail::setValuePart(data, box);
-      });
-    }
-
-
-  public: // Search functions
     // Pick search
-    inline std::vector<TEntityID> PickSearch(TVector const& pickPoint) const noexcept
-    {
-      return this->m_tree.PickSearch(pickPoint, this->m_geometryCollection);
-    }
+    std::vector<EntityID> PickSearch(TVector const& pickPoint) const noexcept { return this->m_tree.PickSearch(pickPoint, this->m_entities); }
 
     // Range search
     template<bool isFullyContained = true>
-    inline std::vector<TEntityID> RangeSearch(TBox const& range) const noexcept
+    std::vector<EntityID> RangeSearch(TBox const& range) const noexcept
     {
-      return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_geometryCollection);
+      return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_entities);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    std::vector<EntityID> PlanePositiveSegmentation(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) const noexcept
+    {
+      return this->m_tree.PlanePositiveSegmentation(distanceOfOrigo, planeNormal, tolerance, this->m_entities);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    std::vector<EntityID> PlanePositiveSegmentation(TPlane const& plane, TScalar tolerance) const noexcept
+    {
+      return this->m_tree.PlanePositiveSegmentation(plane, tolerance, this->m_entities);
+    }
+
+    // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    std::vector<EntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TFloatScalar tolerance) const noexcept
+    {
+      return this->m_tree.FrustumCulling(boundaryPlanes, tolerance, this->m_entities);
+    }
+
+    // K Nearest Neighbor
+    std::vector<EntityID> GetNearestNeighbors(
+      TVector const& pt,
+      std::size_t k,
+      TScalar maxDistanceWithin = std::numeric_limits<TScalar>::max(),
+      TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon(),
+      std::optional<typename OrthoTreeCore::EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
+    {
+      return this->m_tree.GetNearestNeighbors(pt, k, maxDistanceWithin, this->m_entities, tolerance, entityDistanceFn);
     }
 
   public: // Collision detection
     // Collision detection between the contained elements
     template<bool IS_PARALLEL_EXEC = false>
-    inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection() const noexcept
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection() const noexcept
     {
-      return this->m_tree.template CollisionDetection<IS_PARALLEL_EXEC>(this->m_geometryCollection);
+      return this->m_tree.template CollisionDetection<IS_PARALLEL_EXEC>(this->m_entities);
     }
 
     // Collision detection with another tree
-    inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(OrthoTreeContainerBox const& otherTree) const noexcept
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(OrthoTreeContainer const& otherTree) const noexcept
     {
-      return this->m_tree.CollisionDetection(this->m_tree, this->m_geometryCollection, otherTree.m_tree, otherTree.m_geometryCollection);
+      return this->m_tree.CollisionDetection(this->m_tree, this->m_entities, otherTree.m_tree, otherTree.m_entities);
     }
 
     // Collision detection between trees
-    static inline std::vector<std::pair<TEntityID, TEntityID>> CollisionDetection(
-      OrthoTreeContainerBox const& leftTree, OrthoTreeContainerBox const& rightTree) noexcept
+    static std::vector<std::pair<EntityID, EntityID>> CollisionDetection(OrthoTreeContainer const& leftTree, OrthoTreeContainer const& rightTree) noexcept
     {
       return leftTree.CollisionDetection(rightTree);
     }
 
 
   public: // Ray intersection
-    // Get all entities that are intersected by the ray in order
-    inline std::vector<TEntityID> RayIntersectedAll(
-      TVector const& rayBasePoint, TVector const& rayHeading, TGeometry tolerance, TGeometry maxDistance = std::numeric_limits<TGeometry>::max()) const noexcept
+          // Get all entities that are intersected by the ray in order
+    std::vector<EntityID> RayIntersectedAll(
+      TVector const& rayBasePoint, TVector const& rayHeading, TFloatScalar tolerance, TScalar maxDistance = std::numeric_limits<TScalar>::max()) const noexcept
     {
-      return this->m_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->m_geometryCollection, tolerance, maxDistance);
+      return this->m_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->m_entities, tolerance, maxDistance);
     }
 
     // Get all entities that are intersected by the ray in order
-    inline std::vector<TEntityID> RayIntersectedAll(TRay const& ray, TGeometry tolerance, TGeometry maxDistance = std::numeric_limits<TGeometry>::max()) const noexcept
+    std::vector<EntityID> RayIntersectedAll(TRay const& ray, TFloatScalar tolerance, TScalar maxDistance = std::numeric_limits<TScalar>::max()) const noexcept
     {
-      return this->m_tree.RayIntersectedAll(ray, this->m_geometryCollection, tolerance, maxDistance);
+      return this->m_tree.RayIntersectedAll(ray, this->m_entities, tolerance, maxDistance);
     }
 
     // Get first entities that hit by the ray
-    inline std::vector<TEntityID> RayIntersectedFirst(
+    std::vector<EntityID> RayIntersectedFirst(
       TVector const& rayBasePoint,
       TVector const& rayHeading,
-      FPGeometry tolerance = {},
-      FPGeometry toleranceIncrement = {},
-      TGeometry maxDistance = std::numeric_limits<TGeometry>::max(),
-      std::optional<std::function<std::optional<TGeometry>(TEntityID)>> entityHitTester = std::nullopt) const noexcept
+      TFloatScalar tolerance = {},
+      TFloatScalar toleranceIncrement = {},
+      TScalar maxDistance = std::numeric_limits<TScalar>::max(),
+      std::optional<std::function<std::optional<TScalar>(EntityID)>> entityHitTester = std::nullopt) const noexcept
     {
-      return this->m_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->m_geometryCollection, tolerance, toleranceIncrement, maxDistance, entityHitTester);
+      return this->m_tree.RayIntersectedFirst(rayBasePoint, rayHeading, this->m_entities, tolerance, toleranceIncrement, maxDistance, entityHitTester);
     }
 
     // Get first entities that hit by the ray
-    inline std::vector<TEntityID> RayIntersectedFirst(
+    std::vector<EntityID> RayIntersectedFirst(
       TRay const& ray,
-      FPGeometry tolerance = {},
-      FPGeometry toleranceIncrement = {},
-      TGeometry maxDistance = std::numeric_limits<TGeometry>::max(),
-      std::optional<std::function<std::optional<TGeometry>(TEntityID)>> entityHitTester = std::nullopt) const noexcept
+      TFloatScalar tolerance = {},
+      TFloatScalar toleranceIncrement = {},
+      TScalar maxDistance = std::numeric_limits<TScalar>::max(),
+      std::optional<std::function<std::optional<TScalar>(EntityID)>> entityHitTester = std::nullopt) const noexcept
     {
-      return this->m_tree.RayIntersectedFirst(ray, this->m_geometryCollection, tolerance, toleranceIncrement, maxDistance, entityHitTester);
+      return this->m_tree.RayIntersectedFirst(ray, this->m_entities, tolerance, toleranceIncrement, maxDistance, entityHitTester);
     }
 
   public: // Plane
     // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    inline std::vector<TEntityID> PlaneIntersection(TGeometry distanceOfOrigo, TVector const& planeNormal, TGeometry tolerance) const noexcept
+    std::vector<EntityID> PlaneIntersection(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) const noexcept
     {
-      return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_geometryCollection);
+      return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_entities);
     }
 
     // Hyperplane intersection using built-in plane
-    inline std::vector<TEntityID> PlaneIntersection(TPlane const& plane, TGeometry tolerance) const noexcept
+    std::vector<EntityID> PlaneIntersection(TPlane const& plane, TFloatScalar tolerance) const noexcept
     {
-      return this->m_tree.PlaneIntersection(plane, tolerance, this->m_geometryCollection);
+      return this->m_tree.PlaneIntersection(plane, tolerance, this->m_entities);
     }
   };
 
-  template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType>
-  using VectorSpan = std::span<VectorND<DIMENSION_NO, TGeometry> const>;
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using TreePointContainerND = OrthoTreeContainer<TreePointND<DIMENSION_NO, TScalar, IS_CONTIOGUOS_CONTAINER>>;
 
-  template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType>
-  using BoxSpan = std::span<BoundingBoxND<DIMENSION_NO, TGeometry> const>;
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using TreeBoxContainerND = OrthoTreeContainer<TreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar, IS_CONTIOGUOS_CONTAINER>>;
 
-  template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType>
-  using VectorMap = std::unordered_map<index_t, VectorND<DIMENSION_NO, TGeometry> const>;
+  template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer>
+  using TreePointContainerNDUD = OrthoTreeContainer<TreePointNDUD<DIMENSION_NO, TScalar, TEntityContainer>>;
 
-  template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType>
-  using BoxMap = std::unordered_map<index_t, BoundingBoxND<DIMENSION_NO, TGeometry> const>;
-
-
-  template<dim_t DIMENSION_NO, typename TGeometry = BaseGeometryType, typename TContainer = VectorSpan<DIMENSION_NO, TGeometry>>
-  using TreePointContainerND = OrthoTreeContainerPoint<TreePointND<DIMENSION_NO, TGeometry, TContainer>>;
-
-  template<dim_t DIMENSION_NO, bool DO_SPLIT_PARENT_ENTITIES = true, typename TGeometry = BaseGeometryType, typename TContainer = BoxSpan<DIMENSION_NO, TGeometry>>
-  using TreeBoxContainerND = OrthoTreeContainerBox<TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES, TGeometry, TContainer>>;
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer>
+  using TreeBoxContainerNDUD = OrthoTreeContainer<TreeBoxNDUD<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TEntityContainer>>;
 
   // Dualtree for points
   using DualtreePointC = TreePointContainerND<1, BaseGeometryType>;
 
   // Dualtree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using DualtreeBoxCs = TreeBoxContainerND<1, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  template<bool IS_LOOSE_TREE = true>
+  using DualtreeBoxCs = TreeBoxContainerND<1, IS_LOOSE_TREE, BaseGeometryType>;
   using DualtreeBoxC = TreeBoxContainerND<1, true, BaseGeometryType>;
 
   // Quadtree for points
   using QuadtreePointC = TreePointContainerND<2, BaseGeometryType>;
 
   // Quadtree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBoxCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  template<bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxCs = TreeBoxContainerND<2, IS_LOOSE_TREE, BaseGeometryType>;
   using QuadtreeBoxC = TreeBoxContainerND<2, true, BaseGeometryType>;
 
   // Octree for points
   using OctreePointC = TreePointContainerND<3, BaseGeometryType>;
 
   // Octree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using OctreeBoxCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxCs = TreeBoxContainerND<3, IS_LOOSE_TREE, BaseGeometryType>;
   using OctreeBoxC = TreeBoxContainerND<3, true, BaseGeometryType>;
 
 
   // std::unordered_map-based Dualtree for points
-  using DualtreePointMapC = TreePointContainerND<1, BaseGeometryType, VectorMap<1>>;
+  using DualtreePointMapC = TreePointContainerND<1, BaseGeometryType, false>;
 
   // std::unordered_map-based Dualtree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using DualtreeBoxMapCs = TreeBoxContainerND<1, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, BoxMap<1>>;
-  using DualtreeBoxMapC = TreeBoxContainerND<1, true, BaseGeometryType, BoxMap<1>>;
+  template<bool IS_LOOSE_TREE = true>
+  using DualtreeBoxMapCs = TreeBoxContainerND<1, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using DualtreeBoxMapC = TreeBoxContainerND<1, true, BaseGeometryType, false>;
 
   // std::unordered_map-based Quadtree for points
-  using QuadtreePointMapC = TreePointContainerND<2, BaseGeometryType, VectorMap<2>>;
+  using QuadtreePointMapC = TreePointContainerND<2, BaseGeometryType, false>;
 
   // std::unordered_map-based Quadtree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBoxMapCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, BoxMap<2>>;
-  using QuadtreeBoxMapC = TreeBoxContainerND<2, true, BaseGeometryType, BoxMap<2>>;
+  template<bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxMapCs = TreeBoxContainerND<2, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using QuadtreeBoxMapC = TreeBoxContainerND<2, true, BaseGeometryType, false>;
 
   // std::unordered_map-based Octree for points
-  using OctreePointMapC = TreePointContainerND<3, BaseGeometryType, VectorMap<3>>;
+  using OctreePointMapC = TreePointContainerND<3, BaseGeometryType, false>;
 
   // std::unordered_map-based Octree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using OctreeBoxMapCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, BoxMap<3>>;
-  using OctreeBoxMapC = TreeBoxContainerND<3, true, BaseGeometryType, BoxMap<3>>;
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxMapCs = TreeBoxContainerND<3, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using OctreeBoxMapC = TreeBoxContainerND<3, true, BaseGeometryType, false>;
 
   // User-defined container-based Quadtree for points
-  template<typename TContainer>
-  using QuadtreePointUDMapC = TreePointContainerND<2, BaseGeometryType, TContainer>;
+  template<typename EntityContainer>
+  using QuadtreePointUDMapC = TreePointContainerNDUD<2, BaseGeometryType, EntityContainer>;
 
   // User-defined container-based Quadtree for bounding boxes
-  template<typename TContainer, bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBoxUDMapCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, TContainer>;
-  template<typename TContainer>
-  using QuadtreeBoxUDMapC = TreeBoxContainerND<2, true, BaseGeometryType, TContainer>;
+  template<typename EntityContainer, bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxUDMapCs = TreeBoxContainerNDUD<2, IS_LOOSE_TREE, BaseGeometryType, EntityContainer>;
+  template<typename EntityContainer>
+  using QuadtreeBoxUDMapC = TreeBoxContainerNDUD<2, true, BaseGeometryType, EntityContainer>;
 
   // User-defined container-based Octree for points
-  template<typename TContainer>
-  using OctreePointUDMapC = TreePointContainerND<3, BaseGeometryType, TContainer>;
+  template<typename EntityContainer>
+  using OctreePointUDMapC = TreePointContainerNDUD<3, BaseGeometryType, EntityContainer>;
 
   // User-defined container-based Octree for bounding boxes
-  template<typename TContainer, bool DO_SPLIT_PARENT_ENTITIES = true>
-  using OctreeBoxUDMapCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType, TContainer>;
-  template<typename TContainer>
-  using OctreeBoxUDMapC = TreeBoxContainerND<3, true, BaseGeometryType, TContainer>;
+  template<typename EntityContainer, bool IS_LOOSE_TREE = true>
+  using OctreeBoxUDMapCs = TreeBoxContainerNDUD<3, IS_LOOSE_TREE, BaseGeometryType, EntityContainer>;
+  template<typename EntityContainer>
+  using OctreeBoxUDMapC = TreeBoxContainerNDUD<3, true, BaseGeometryType, EntityContainer>;
 } // namespace OrthoTree
 #endif // ORTHOTREE_CONTAINER_GUARD

@@ -137,16 +137,23 @@ namespace OrthoTree::detail
       return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | locationID;
     }
     */
-    static constexpr NodeID GetNodeID(auto&& location, depth_t maxDepthID) noexcept
-    {
-      return (NodeID{ 1 } << (location.depthID * DIMENSION_NO)) | (location.locationID >> ((maxDepthID - location.depthID) * DIMENSION_NO));
-    }
 
     static constexpr NodeID GetNodeID(LocationIDCR locationIDOnDepth, depth_t maxDepthID) noexcept
     {
       assert(locationIDOnDepth < (NodeID(1) << (maxDepthID * DIMENSION_NO)));
       return (NodeID{ 1 } << (maxDepthID * DIMENSION_NO)) | locationIDOnDepth;
     }
+
+    template<typename T>
+    static constexpr NodeID GetNodeID(T&& location, depth_t maxDepthID) noexcept
+      requires requires(T t) {
+        t.depthID;
+        t.locationID;
+      }
+    {
+      return (NodeID{ 1 } << (location.depthID * DIMENSION_NO)) | (location.locationID >> ((maxDepthID - location.depthID) * DIMENSION_NO));
+    }
+
 
     static constexpr NodeID GetNodeID(LocationIDCR locationID, depth_t depthID, depth_t maxDepthID) noexcept
     {

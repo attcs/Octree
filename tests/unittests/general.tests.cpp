@@ -873,7 +873,7 @@ namespace GeneralTest
     template<typename tree_type, std::size_t N>
     bool _isMoveOfTwoTreeProper(tree_type const& tPre, tree_type const& tAfter, PointND<N> const& vMoveExpected)
     {
-      using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
+      using GA = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
       auto constexpr rAcc = std::numeric_limits<double>::min();
 
       [[maybe_unused]] auto const ptPre = &tPre; 
@@ -894,9 +894,9 @@ namespace GeneralTest
         auto const& centerPre = ptPre->GetNodeCenter(pairPre.second);
         auto const& centerAfter = ptAfter->GetNodeCenter(pairAfter.second);
         for (dim_t dimensionID = 0; dimensionID < N; ++dimensionID)
-          AD::SetPointC(vMoveActual, dimensionID, centerAfter[dimensionID] - centerPre[dimensionID]);
+          GA::SetPointC(vMoveActual, dimensionID, centerAfter[dimensionID] - centerPre[dimensionID]);
 
-        return AD::ArePointsEqual(vMoveActual, vMoveExpected, rAcc);
+        return GA::ArePointsEqual(vMoveActual, vMoveExpected, rAcc);
       });
 
       return std::ranges::all_of(vMatch, [](auto const bMatch) { return bMatch; });
@@ -2354,8 +2354,8 @@ namespace Tree2DTest
 
 
       auto constexpr search_point = array<double, 2>{ 43.6406, 57.5691 };
-      using AD = OrthoTree::AdaptorGeneral<2, array<double, 2>, OrthoTree::BoundingBox2D, OrthoTree::Ray2D, OrthoTree::Plane2D>;
-      auto const itMin = std::ranges::min_element(poses, [&search_point](auto const& lhs, auto const& rhs) { return AD::Distance2(lhs, search_point) < AD::Distance2(rhs, search_point); });
+      using GA = OrthoTree::AdaptorGeneral<2, array<double, 2>, OrthoTree::BoundingBox2D, OrthoTree::Ray2D, OrthoTree::Plane2D>;
+      auto const itMin = std::ranges::min_element(poses, [&search_point](auto const& lhs, auto const& rhs) { return GA::Distance2(lhs, search_point) < GA::Distance2(rhs, search_point); });
 
       std::array<double, 2> inspection_space_min = { 0.0, 0.0 };
       std::array<double, 2> inspection_space_max = { 100.0, 100.0 };
@@ -2400,8 +2400,8 @@ namespace Tree2DTest
       };
 
       auto const search_point = VectorType{ 78.8658, 64.0361, 18.7755, 61.4618, 14.3312, 40.0196 };
-      using AD = OrthoTree::AdaptorGeneral<6, VectorType, OrthoTree::BoundingBoxND<6>, OrthoTree::RayND<6>, OrthoTree::PlaneND<6>>;
-      auto const itMinExpected = std::ranges::min_element(poses, [&search_point](auto const& lhs, auto const& rhs) { return AD::Distance2(lhs, search_point) < AD::Distance2(rhs, search_point); });
+      using GA = OrthoTree::AdaptorGeneral<6, VectorType, OrthoTree::BoundingBoxND<6>, OrthoTree::RayND<6>, OrthoTree::PlaneND<6>>;
+      auto const itMinExpected = std::ranges::min_element(poses, [&search_point](auto const& lhs, auto const& rhs) { return GA::Distance2(lhs, search_point) < GA::Distance2(rhs, search_point); });
 
       auto const inspection_space = OrthoTree::BoundingBoxND<6>
       {
@@ -3253,7 +3253,7 @@ namespace LongIntAdaptor
   template <EntityID N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorBasicsCustom<N>>;
   template <EntityID N> using OrthoTreePointCustom = OrthoTreePoint<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorCustom<N>>;
   template <EntityID N> using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainerPoint<OrthoTreePointCustom<N>>;
-  template <EntityID N, bool DO_SPLIT_PARENT_ENTITIES = true> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, DO_SPLIT_PARENT_ENTITIES, AdaptorCustom<N>>;
+  template <EntityID N, bool IS_LOOSE_TREE = true> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, IS_LOOSE_TREE, AdaptorCustom<N>>;
   template <EntityID N> using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainerBox<OrthoTreeBoxCustom<N>>;
 
 
@@ -3663,10 +3663,10 @@ namespace LongIntAdaptor
       Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
     }
 
-    template<int nDim, typename TGeometry>
-    vector<BoundingBoxND<nDim, TGeometry>> readBoxCloud(std::filesystem::path const& path)
+    template<int nDim, typename TScalar>
+    vector<BoundingBoxND<nDim, TScalar>> readBoxCloud(std::filesystem::path const& path)
     {
-      auto boxes = vector<BoundingBoxND<nDim, TGeometry>>{};
+      auto boxes = vector<BoundingBoxND<nDim, TScalar>>{};
       auto file = std::ifstream(path, std::ios::in);
       if (file.fail())
         return boxes;
@@ -3708,10 +3708,10 @@ namespace LongIntAdaptor
     }
 
 
-    template<int nDim, typename TGeometry>
-    vector<PointND<nDim, TGeometry>> readPointCloud(std::filesystem::path const& path)
+    template<int nDim, typename TScalar>
+    vector<PointND<nDim, TScalar>> readPointCloud(std::filesystem::path const& path)
     {
-      auto points = vector<PointND<nDim, TGeometry>>{};
+      auto points = vector<PointND<nDim, TScalar>>{};
       auto file = std::ifstream(path, std::ios::in);
       if (file.fail())
         return points;
@@ -3782,7 +3782,7 @@ namespace LongIntAdaptor
         auto const boxNo = boxes.size();
         for (EntityID id = 0; id < boxNo; ++id)
         {
-          if (Tree::AD::AreBoxesOverlapped(searchBox, boxes[id], false, false))
+          if (Tree::GA::AreBoxesOverlapped(searchBox, boxes[id], false, false))
             resultOfBruteForce.emplace_back(id);
         }
 
@@ -3804,10 +3804,10 @@ namespace LongIntAdaptor
       }
     }
 
-    template<int nDim, typename TGeometry>
-    [[maybe_unused]] std::vector<PointND<nDim, TGeometry>> readPointCloud__DXF_CSV(std::filesystem::path const& path)
+    template<int nDim, typename TScalar>
+    [[maybe_unused]] std::vector<PointND<nDim, TScalar>> readPointCloud__DXF_CSV(std::filesystem::path const& path)
     {
-      auto points = std::vector<PointND<nDim, TGeometry>>{};
+      auto points = std::vector<PointND<nDim, TScalar>>{};
       auto file = std::ifstream(path, std::ios::in);
       if (file.fail())
         return points;
@@ -3868,7 +3868,7 @@ namespace LongIntAdaptor
     {
       constexpr dim_t N = 2;
 
-      using AD = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
+      using GA = AdaptorGeneral<N, VectorND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
 
       auto pointsNo = 1000;
       auto points = std::vector<Point2D>(pointsNo);
@@ -3903,8 +3903,8 @@ namespace LongIntAdaptor
             if (expected[i] == actual[i])
               continue;
 
-            auto const expectedDistance = AD::Distance2(searchPoint, points[expected[i]]);
-            auto const actualDistance = AD::Distance2(searchPoint, points[actual[i]]);
+            auto const expectedDistance = GA::Distance2(searchPoint, points[expected[i]]);
+            auto const actualDistance = GA::Distance2(searchPoint, points[actual[i]]);
             Assert::IsTrue(std::abs(actualDistance - expectedDistance) < std::numeric_limits<double>::epsilon() * 10.0);
           }          
         }

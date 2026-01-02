@@ -113,6 +113,9 @@
     <ClInclude Include="..\..\include\orthotree\detail\undefs.h">
       <Filter>Header Files\include\detail</Filter>
     </ClInclude>
+    <ClInclude Include="compile_test.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

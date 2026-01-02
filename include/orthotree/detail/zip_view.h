@@ -270,13 +270,3 @@ namespace OrthoTree::detail
   static_assert(std::ranges::sized_range<zip_view<std::vector<int>, std::vector<int>>>);
 
 } // namespace detail
-
-
-namespace std
-{
-  template<typename It1, typename It2>
-  constexpr void swap(OrthoTree::detail::proxy_reference<It1, It2> left, OrthoTree::detail::proxy_reference<It1, It2> right) noexcept
-  {
-    OrthoTree::detail::proxy_reference::swap(left, right);
-  }
-} // namespace std

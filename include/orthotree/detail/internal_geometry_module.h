@@ -449,7 +449,7 @@ namespace OrthoTree::detail
         boxPickTester->m_toleranceIncrement = toleranceIncrement;
 
         detail::static_for<DIMENSION_NO>([&](dim_t dimensionID) noexcept {
-          boxPickTester->m_normalizedDirection[dimensionID] = GA::GetPointMinC(normalizedDirection, dimensionID);
+          boxPickTester->m_normalizedDirection[dimensionID] = GA::GetPointC(normalizedDirection, dimensionID);
         });
 
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)

@@ -1,12 +1,12 @@
 #include "pch.h"
 
 // clang-format off
-#include "octree/octree.h"
-#include "octree/octree_container.h"
+#include "orthotree/octree.h"
+#include "orthotree/octree_container.h"
 
 // Boost
 #include <boost/geometry.hpp>
-#include "octree/adapters/boost.h"
+#include "orthotree/adapters/boost.h"
 
 // CGAL
 #include <CGAL/Bbox_2.h>
@@ -20,12 +20,12 @@
 #include <CGAL/Ray_3.h>
 #include <CGAL/basic.h>
 #include <CGAL/cartesian.h>
-#include "octree/adapters/cgal.h"
+#include "orthotree/adapters/cgal.h"
 
 // Eigen
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include "octree/adapters/eigen.h"
+#include "orthotree/adapters/eigen.h"
 
 // glm
 #include <glm/glm.hpp>
@@ -84,17 +84,17 @@ namespace
   // Boost
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
-  void rayConv(TRay const& rayO, typename boost::geometry::model::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& rayA)
+  void rayConv(TRay const& rayO, typename boost::geometry::model::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TScalar>& rayA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Origin, rayA.origin);
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Direction, rayA.direction);
   }
 
   template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
-  void planeConv(TPlane const& planeO, typename boost::geometry::model::planeNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& planeA)
+  void planeConv(TPlane const& planeO, typename boost::geometry::model::planeNd_t<DIMENSION_NO, typename TOrthoTreeA::TScalar>& planeA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, planeA.normal);
-    planeA.origo_distance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
+    planeA.origo_distance = typename TOrthoTreeA::TScalar(planeO.OrigoDistance);
   }
 
   
@@ -114,7 +114,7 @@ namespace
   void planeConv(TPlane const& planeO, CGAL::Plane_2& planeA)
   {
     vectorConv<2, TVector, TOrthoTreeA>(planeO.Normal, planeA.normal);
-    planeA.offset = -typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
+    planeA.offset = -typename TOrthoTreeA::TScalar(planeO.OrigoDistance);
   }
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
@@ -136,35 +136,35 @@ namespace
   // Eigen
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
-  void rayConv(TRay const& rayO, Eigen::ParametrizedLine<typename TOrthoTreeA::TGeometry, DIMENSION_NO>& rayA)
+  void rayConv(TRay const& rayO, Eigen::ParametrizedLine<typename TOrthoTreeA::TScalar, DIMENSION_NO>& rayA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Origin, rayA.origin());
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Direction, rayA.direction());
   }
 
   template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
-  void planeConv(TPlane const& planeO, typename Eigen::Hyperplane<typename TOrthoTreeA::TGeometry, DIMENSION_NO, 0>& planeA)
+  void planeConv(TPlane const& planeO, typename Eigen::Hyperplane<typename TOrthoTreeA::TScalar, DIMENSION_NO, 0>& planeA)
   {
     typename TOrthoTreeA::TVector normalA;
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, normalA);
-    planeA = Eigen::Hyperplane<typename TOrthoTreeA::TGeometry, DIMENSION_NO>(normalA, typename TOrthoTreeA::TGeometry(-planeO.OrigoDistance));
+    planeA = Eigen::Hyperplane<typename TOrthoTreeA::TScalar, DIMENSION_NO>(normalA, typename TOrthoTreeA::TScalar(-planeO.OrigoDistance));
   }
 
 
   // glm
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
-  void rayConv(TRay const& rayO, typename glm::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& rayA)
+  void rayConv(TRay const& rayO, typename glm::rayNd_t<DIMENSION_NO, typename TOrthoTreeA::TScalar>& rayA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Origin, rayA.origin);
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(rayO.Direction, rayA.direction);
   }
 
   template<int DIMENSION_NO, typename TPlane, typename TVector, typename TOrthoTreeA>
-  void planeConv(TPlane const& planeO, typename glm::planeNd_t<DIMENSION_NO, typename TOrthoTreeA::TGeometry>& planeA)
+  void planeConv(TPlane const& planeO, typename glm::planeNd_t<DIMENSION_NO, typename TOrthoTreeA::TScalar>& planeA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, planeA.normal);
-    planeA.origo_distance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
+    planeA.origo_distance = typename TOrthoTreeA::TScalar(planeO.OrigoDistance);
   }
 
 
@@ -213,7 +213,7 @@ namespace
   void planeConv(TPlane const& planeO, BasicTypesXYZ::Plane2D& planeA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, planeA.Normal);
-    planeA.OrigoDistance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
+    planeA.OrigoDistance = typename TOrthoTreeA::TScalar(planeO.OrigoDistance);
   }
 
   template<int DIMENSION_NO, typename TRay, typename TVector, typename TOrthoTreeA>
@@ -227,14 +227,14 @@ namespace
   void planeConv(TPlane const& planeO, BasicTypesXYZ::Plane3D& planeA)
   {
     vectorConv<DIMENSION_NO, TVector, TOrthoTreeA>(planeO.Normal, planeA.Normal);
-    planeA.OrigoDistance = typename TOrthoTreeA::TGeometry(planeO.OrigoDistance);
+    planeA.OrigoDistance = typename TOrthoTreeA::TScalar(planeO.OrigoDistance);
   }
 
 
   template<typename TOrthoTreeA>
   struct PointTestInputT
   {
-    using TGeometry = typename TOrthoTreeA::TGeometry;
+    using TScalar = typename TOrthoTreeA::TScalar;
     using TVector = typename TOrthoTreeA::TVector;
     using TBox = typename TOrthoTreeA::TBox;
     using TRay = typename TOrthoTreeA::TRay;
@@ -253,7 +253,7 @@ namespace
     using namespace OrthoTree;
     auto constexpr DIMENSION_NO = 3;
 
-    using GeometryA = typename TOrthoTreeA::TGeometry;
+    using GeometryA = typename TOrthoTreeA::TScalar;
 
     using Vector = VectorND<DIMENSION_NO, GeometryA>;
     using Box = BoundingBoxND<DIMENSION_NO, GeometryA>;
@@ -313,7 +313,7 @@ namespace
   void corePointTest3D_Check(TPointTestInput& testdata, bool doCheck)
   {
     using AD = typename TOrthoTreeA::AD;
-    using GeometryA = typename TOrthoTreeA::TGeometry;
+    using GeometryA = typename TOrthoTreeA::TScalar;
     using EntityID = typename TOrthoTreeA::TEntityID;
 
     auto const& [points, pointOfkNN, searchBox, searchPlane, frustumPlanes] = testdata;
@@ -371,7 +371,7 @@ namespace
   template<typename TOrthoTreeA>
   struct BoxTestInputT
   {
-    using TGeometry = typename TOrthoTreeA::TGeometry;
+    using TScalar = typename TOrthoTreeA::TScalar;
     using TFPGeometry = typename TOrthoTreeA::FPGeometry;
     using TVector = typename TOrthoTreeA::TVector;
     using TBox = typename TOrthoTreeA::TBox;
@@ -392,7 +392,7 @@ namespace
     using namespace OrthoTree;
     auto constexpr DIMENSION_NO = 2;
 
-    using GeometryA = typename TOrthoTreeA::TGeometry;
+    using GeometryA = typename TOrthoTreeA::TScalar;
 
     using Vector = VectorND<DIMENSION_NO, GeometryA>;
     using Box = BoundingBoxND<DIMENSION_NO, GeometryA>;
@@ -442,7 +442,7 @@ namespace
   void containerBoxTest2D_Check(TBoxTestInput& testdata, bool doCheck)
   {
     using AD = typename TOrthoTreeA::AD;
-    using GeometryA = typename TOrthoTreeA::TGeometry;
+    using GeometryA = typename TOrthoTreeA::TScalar;
     using FPGeometryA = typename TOrthoTreeA::FPGeometry;
     using EntityID = typename TOrthoTreeA::TEntityID;
 

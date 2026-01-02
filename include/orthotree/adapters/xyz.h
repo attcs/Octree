@@ -190,56 +190,56 @@ namespace XYZ
   using QuadtreePoint =
     OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, std::span<XYPoint2D const>>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  template<bool IS_LOOSE_TREE = true>
   using QuadtreeBox =
-    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYAdaptorGeneral, std::span<XYBoundingBox2D const>>;
+    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, IS_LOOSE_TREE, XYAdaptorGeneral, std::span<XYBoundingBox2D const>>;
 
   using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<DO_SPLIT_PARENT_ENTITIES>>;
+  template<bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<IS_LOOSE_TREE>>;
   using QuadtreeBoxC = QuadtreeBoxCs<true>;
 
   using OctreePoint =
     OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  template<bool IS_LOOSE_TREE = true>
   using OctreeBox =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, IS_LOOSE_TREE, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
 
 
   using OcreePointC = OrthoTreeContainerPoint<OctreePoint>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using OctreeBoxCs = OrthoTreeContainerBox<OctreeBox<DO_SPLIT_PARENT_ENTITIES>>;
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxCs = OrthoTreeContainerBox<OctreeBox<IS_LOOSE_TREE>>;
   using OctreeBoxC = OctreeBoxCs<true>;
 
 
   // Map types
-  template<typename TEntity>
-  using Map = std::unordered_map<int, TEntity>;
+  template<typename Entity>
+  using Map = std::unordered_map<int, Entity>;
 
   using QuadtreePointMap = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, Map<XYPoint2D>>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  template<bool IS_LOOSE_TREE = true>
   using QuadtreeBoxMap =
-    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYAdaptorGeneral, Map<XYBoundingBox2D>>;
+    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, IS_LOOSE_TREE, XYAdaptorGeneral, Map<XYBoundingBox2D>>;
 
   using QuadtreePointMapC = OrthoTreeContainerPoint<QuadtreePointMap>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBoxMapCs = OrthoTreeContainerBox<QuadtreeBoxMap<DO_SPLIT_PARENT_ENTITIES>>;
+  template<bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxMapCs = OrthoTreeContainerBox<QuadtreeBoxMap<IS_LOOSE_TREE>>;
   using QuadtreeBoxMapC = QuadtreeBoxMapCs<true>;
 
   using OctreePointMap = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, Map<XYZPoint3D>>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
+  template<bool IS_LOOSE_TREE = true>
   using OctreeBoxMap =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, DO_SPLIT_PARENT_ENTITIES, XYZAdaptorGeneral, Map<XYZBoundingBox3D>>;
+    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, IS_LOOSE_TREE, XYZAdaptorGeneral, Map<XYZBoundingBox3D>>;
 
   using OcreePointMapC = OrthoTreeContainerPoint<OctreePointMap>;
 
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using OctreeBoxMapCs = OrthoTreeContainerBox<OctreeBoxMap<DO_SPLIT_PARENT_ENTITIES>>;
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxMapCs = OrthoTreeContainerBox<OctreeBoxMap<IS_LOOSE_TREE>>;
   using OctreeBoxMapC = OctreeBoxMapCs<true>;
 } // namespace XYZ

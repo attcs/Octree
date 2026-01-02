@@ -9,7 +9,7 @@
 
 // add headers that you want to pre-compile here
 
-#include "octree/octree.h"
+#include "orthotree/octree.h"
 
 
 #include "CppUnitTest.h"

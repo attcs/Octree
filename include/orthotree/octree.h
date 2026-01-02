@@ -175,7 +175,6 @@ namespace OrthoTree
       constexpr NodeID GetKey() const noexcept { return m_key; }
       constexpr void SetKey(NodeID key) noexcept { m_key = key; }
 
-      constexpr void AddChild(ChildID childID) noexcept { assert(false); } // TODO: remove
       constexpr void AddChild(ChildID childID, NodeID nodeID) noexcept
       {
         std::size_t elementID = 0;
@@ -284,59 +283,60 @@ namespace OrthoTree
     // Mixed // Not supported yet
   };
 
-  template<GeometryType GEOMETRY_TYPE_, typename TEntity, typename TEntityID, typename TEntityContainerView, typename TGeometry, typename TEntityIDHash = std::hash<TEntityID>>
+  template<GeometryType GEOMETRY_TYPE_, typename TEntity, typename TEntityID, typename TEntityContainer, typename TEntityContainerView, typename TGeometry, typename TEntityIDHash = std::hash<TEntityID>>
   struct EntityAdapterDefault
   {
+  public:
+    // OctreeContainer requires the TEntityContainer to eliminate data conversion
+    using EntityContiner = TEntityContainer;
+
+    // Generally, EntityContainerView is used in the Core type
     using EntityContainerView = TEntityContainerView;
+
+    // Underlying data, that could be anything
     using Entity = TEntity;
+
+    // Trivially copyable type, that is stored in the nodes
     using EntityID = TEntityID;
+
+    // Geometric representation of the Entity: Point/Box
     using Geometry = TGeometry;
+
+    // Hash to store EntityID in hashmaps
     using Hash = TEntityIDHash;
 
     static constexpr GeometryType GEOMETRY_TYPE = GEOMETRY_TYPE_;
+
+  private:
+    using EntityContainerViewType = std::remove_cvref_t<EntityContainerView>;
+
+  public:
     static constexpr bool REQUIRES_CONTIGUOUS_ENTITY_IDS =
-      std::contiguous_iterator<typename EntityContainerView::iterator> && std::is_same_v<EntityContainerView::value_type, Geometry>;
+      std::contiguous_iterator<typename EntityContainerViewType::iterator> && std::is_same_v<typename EntityContainerViewType::value_type, Geometry>;
 
+  public:
     static constexpr EntityID GeEntityID(EntityContainerView entities, Entity const& entity) noexcept { return detail::getKeyPart(entities, entity); }
-
-    static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return detail::getValuePart(entity); }
-
     static constexpr Geometry const& GetGeometry(EntityContainerView entities, EntityID const& entityID) noexcept
     {
       return detail::at(entities, entityID);
     }
+    static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return detail::getValuePart(entity); }
+    static constexpr Geometry const& SetGeometry(Entity const& entity, Geometry const& geometry) noexcept { return detail::setValuePart(entity); }
   };
 
-  template<typename TBox>
-  using BoxEntitySpanAdapter = EntityAdapterDefault<GeometryType::Box, TBox, uint32_t, std::span<TBox const>, TBox>;
   template<typename TPoint>
-  using PointEntitySpanAdapter = EntityAdapterDefault<GeometryType::Point, TPoint, uint32_t, std::span<TPoint const>, TPoint>;
+  using PointEntitySpanAdapter = EntityAdapterDefault<GeometryType::Point, TPoint, uint32_t, std::vector<TPoint>, std::span<TPoint const>, TPoint>;
 
   template<typename TBox>
+  using BoxEntitySpanAdapter = EntityAdapterDefault<GeometryType::Box, TBox, uint32_t, std::vector<TBox>, std::span<TBox const>, TBox>;
+
+  template<typename TPoint, typename TEntityContainer = std::unordered_map<uint32_t, TPoint>, typename TEntityContainerView = TEntityContainer const&>
+  using PointEntityMapAdapter =
+    EntityAdapterDefault<GeometryType::Point, typename TEntityContainer::value_type, typename TEntityContainer::key_type, TEntityContainer, TEntityContainerView, TPoint>;
+
+  template<typename TBox, typename TEntityContainer = std::unordered_map<uint32_t, TBox>, typename TEntityContainerView = TEntityContainer const&>
   using BoxEntityMapAdapter =
-    EntityAdapterDefault<GeometryType::Box, typename std::unordered_map<uint32_t, TBox>::value_type, uint32_t, std::unordered_map<uint32_t, TBox> const&, TBox>;
-  template<typename TPoint>
-  using PointEntityMapAdapter = EntityAdapterDefault<GeometryType::Point, TPoint, uint32_t, std::unordered_map<uint32_t, TPoint> const&, TPoint>;
-
-  struct ComplexKey
-  {
-    uint32_t id1;
-    uint32_t id2;
-
-    auto operator<=>(ComplexKey const& rhs) const = default;
-  };
-
-  struct ComplexKeyHash
-  {
-    std::size_t operator()(ComplexKey const& key) const noexcept
-    {
-      return std::hash<uint64_t>()((static_cast<uint64_t>(key.id1) << 32) | static_cast<uint64_t>(key.id2));
-    }
-  };
-
-  template<typename TBox>
-  using BoxEntityMapComplexKeyAdapter =
-    EntityAdapterDefault<GeometryType::Box, TBox, ComplexKey, std::unordered_map<ComplexKey, TBox, ComplexKeyHash> const&, TBox, ComplexKeyHash>;
+    EntityAdapterDefault<GeometryType::Box, typename TEntityContainer::value_type, typename TEntityContainer::key_type, TEntityContainer, TEntityContainerView, TBox>;
 
   enum class NodeGeometryStorage
   {
@@ -386,8 +386,8 @@ namespace OrthoTree
 
   using PointConfiguration = Configuration<false, false>;
 
-  template<bool IS_LOOSE_OCTREE>
-  using BoxConfiguration = Configuration<IS_LOOSE_OCTREE, false>;
+  template<bool IS_LOOSE_TREE>
+  using BoxConfiguration = Configuration<IS_LOOSE_TREE, false>;
 
   // OrthoTree: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
@@ -1275,11 +1275,7 @@ namespace OrthoTree
 
     template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
     bool InsertWithRebalancingBase(
-      MortonNodeIDCR parentNodeKey,
-      depth_t parentDepthID,
-      SI::Location const& newEntityLocation,
-      EntityID newEntityID,
-      EntityContainerView entities) noexcept
+      MortonNodeIDCR parentNodeKey, depth_t parentDepthID, SI::Location const& newEntityLocation, EntityID newEntityID, EntityContainerView entities) noexcept
     {
       // TODO: handle out-of-tree geometry
       // TODO: reverse mapping
@@ -1493,7 +1489,12 @@ namespace OrthoTree
     }
 
     // Insert entity into the tree, if there is no entity within the same location by tolerance.
-    bool InsertUnique(EntityID entityID, EA::Geometry const& entityGeometry, IGM::Geometry tolerance, EntityContainerView entities, bool doInsertToLeaf = false)
+    bool InsertUnique(
+      EntityID entityID,
+      EA::Geometry const& entityGeometry,
+      EntityContainerView entities,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      bool doInsertToLeaf = false)
     {
       // TODO: reverse mapping
       if (!IsGeometryInTree(entityGeometry))
@@ -1533,7 +1534,7 @@ namespace OrthoTree
     // Update id by the new bounding box information
     bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
     {
-      if (!EraseEntity<false>(entityID))
+      if (!EraseEntity(entityID))
         return false;
 
       return Insert(entityID, newEntityGeometry, doInsertToLeaf);
@@ -1545,7 +1546,7 @@ namespace OrthoTree
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
         return Update(entityID, newEntityGeometry, doInsertToLeaf);
 
-      auto const oldEntityNodeID = SI::GetRootKey();
+      auto oldEntityNodeID = SI::GetRootKey();
       if (!IsGeometryInTree(oldEntityGeometry))
       {
         if constexpr (!CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
@@ -1563,7 +1564,7 @@ namespace OrthoTree
           return true; // No update is required.
       }
 
-      if (!Erase<false>(entityID, oldEntityGeometry))
+      if (!Erase(entityID, oldEntityGeometry))
         return false; // entityID was not registered previously.
 
       if (!isNewGeometryInTree)
@@ -1579,7 +1580,7 @@ namespace OrthoTree
     // Update id with rebalancing by the new bounding box information
     bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, EntityContainerView entities) noexcept
     {
-      if (!EraseEntity<false>(entityID))
+      if (!EraseEntity(entityID))
         return false;
 
       return InsertWithRebalancing(entityID, newEntityGeometry, entities);
@@ -1750,10 +1751,7 @@ namespace OrthoTree
 
     // Visit nodes with special selection and procedure and if unconditional selection is fulfilled descendants will not be test with selector
     void VisitNodes(
-      MortonNodeIDCR rootKey,
-      FProcedureUnconditional const& procedure,
-      FSelector const& selector,
-      FSelectorUnconditional const& selectorUnconditional) const noexcept
+      MortonNodeIDCR rootKey, FProcedureUnconditional const& procedure, FSelector const& selector, FSelectorUnconditional const& selectorUnconditional) const noexcept
     {
       struct Search
       {
@@ -1940,7 +1938,7 @@ namespace OrthoTree
     void Clear() noexcept
     {
       std::erase_if(m_nodes, [](auto const& p) { return p.first != SI::GetRootKey(); });
-      EA::GetGeometry(m_nodes, SI::GetRootKey()).Clear();
+      detail::at(m_nodes, SI::GetRootKey()).Clear();
     }
 
 
@@ -2013,7 +2011,6 @@ namespace OrthoTree
 
     MortonNodeID Find(EntityID entityID) const noexcept { return GetNodeIDByEntity(entityID); }
 
-  protected:
     constexpr bool EraseEntity(EntityID entityID) noexcept
     {
       bool isErased = false;
@@ -2056,6 +2053,46 @@ namespace OrthoTree
       return true;
     }
 
+  public: // Search functions
+    // Pick search
+    std::vector<EntityID> PickSearch(TVector const& pickPoint, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      auto foundEntitiyIDs = std::vector<EntityID>();
+      if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), pickPoint))
+        return foundEntitiyIDs;
+
+      foundEntitiyIDs.reserve(100);
+
+      this->VisitNodesInDFS(
+        SI::GetRootKey(),
+        [&](MortonNodeIDCR nodeID, Node const& node) {
+          auto const& nodeEntityIDs = this->GetNodeEntities(node);
+          std::copy_if(nodeEntityIDs.begin(), nodeEntityIDs.end(), std::back_inserter(foundEntitiyIDs), [&](auto const entityID) {
+            if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+            {
+              return GA::ArePointsEqual(EA::GetGeometry(entities, entityID), pickPoint, tolerance);
+            }
+            else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+            {
+              return GA::DoesBoxContainPoint(EA::GetGeometry(entities, entityID), pickPoint);
+            }
+            else
+            {
+              static_assert(false, "Unsupported geometry type!");
+            }
+          });
+        },
+        [&](MortonNodeIDCR nodeID, Node const& node) {
+          auto const& center = GetNodeCenter(node);
+          auto const& halfSize = GetNodeSize(SI::GetDepthID(nodeID) + 1);
+          return IGM::DoesBoxContainPointAD(center, halfSize, pickPoint, tolerance);
+        });
+
+      return foundEntitiyIDs;
+    }
+
+
+  protected:
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
     constexpr void RangeSearchBaseCopy(TBox const& range, EntityContainerView entities, Node const& parentNode, std::vector<EntityID>& foundEntities) const noexcept
     {
@@ -2104,8 +2141,8 @@ namespace OrthoTree
     }
 
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
-    void RangeSearchBase(TBox const& range, EntityContainerView entities, depth_t depthID, MortonNodeIDCR currentNodeKey, std::vector<EntityID>& foundEntities)
-      const noexcept
+    void RangeSearchBase(
+      TBox const& range, EntityContainerView entities, depth_t depthID, MortonNodeIDCR currentNodeKey, std::vector<EntityID>& foundEntities) const noexcept
     {
       auto const& currentNode = this->GetNode(currentNodeKey);
       if (!currentNode.IsAnyChildExist())
@@ -2198,10 +2235,7 @@ namespace OrthoTree
     }
 
     static constexpr PlaneRelation GetEntityPlaneRelation(
-      EA::Geometry const& entityGeometry,
-      TScalar distanceOfOrigo,
-      TVector const& planeNormal,
-      TFloatScalar tolerance) noexcept
+      EA::Geometry const& entityGeometry, TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance = GA::BASE_TOLERANCE) noexcept
     {
       if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
       {
@@ -2217,7 +2251,9 @@ namespace OrthoTree
       }
     }
 
-    std::vector<EntityID> PlaneIntersection(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, EntityContainerView entities) const noexcept
+    // Hyperplane intersection
+    std::vector<EntityID> PlaneSearch(
+      TScalar distanceOfOrigo, TVector const& planeNormal, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 
@@ -2240,13 +2276,14 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection using built-in plane
-    std::vector<EntityID> PlaneSearch(TPlane const& plane, TScalar tolerance, EntityContainerView const& points) const noexcept
+    std::vector<EntityID> PlaneSearch(TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return this->PlaneIntersection(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance, points);
+      return this->PlaneSearch(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), entities, tolerance);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> PlanePositiveSegmentation(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance, EntityContainerView entities) const noexcept
+    std::vector<EntityID> PlanePositiveSegmentation(
+      TScalar distanceOfOrigo, TVector const& planeNormal, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 
@@ -2275,13 +2312,14 @@ namespace OrthoTree
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> PlanePositiveSegmentation(TPlane const& plane, TScalar tolerance, EntityContainerView const& points) const noexcept
+    std::vector<EntityID> PlanePositiveSegmentation(TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return PlanePositiveSegmentation(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance, points);
+      return PlanePositiveSegmentation(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), entities, tolerance);
     }
 
     // Get all entities which relation is positive or intersected by the given space boundary planes
-    std::vector<EntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TScalar tolerance, EntityContainerView entities) const noexcept
+    std::vector<EntityID> FrustumCulling(
+      std::span<TPlane const> const& boundaryPlanes, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
       auto results = std::vector<EntityID>{};
       if (boundaryPlanes.empty())
@@ -2337,12 +2375,12 @@ namespace OrthoTree
     using EntityDistanceFn = std::function<TFloatScalar(TVector const&, EntityID)>;
 
   private: // K Nearest Neighbor helpers
-    static constexpr TFloatScalar GetValueWithToleranceUpper(TFloatScalar value, TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon()) noexcept
+    static constexpr TFloatScalar GetValueWithToleranceUpper(TFloatScalar value, TFloatScalar tolerance = GA::BASE_TOLERANCE) noexcept
     {
       return std::fmax(tolerance, value * (TFloatScalar(1.0) + tolerance));
     }
 
-    static constexpr TFloatScalar GetValueWithToleranceLower(TFloatScalar value, TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon()) noexcept
+    static constexpr TFloatScalar GetValueWithToleranceLower(TFloatScalar value, TFloatScalar tolerance = GA::BASE_TOLERANCE) noexcept
     {
       return value == 0 ? -tolerance : (value * (TFloatScalar(1.0) - tolerance));
     }
@@ -2357,9 +2395,7 @@ namespace OrthoTree
     };
 
     static bool AreOverflownNearestNeighborsDroppable(
-      std::size_t neighborNo,
-      std::vector<MinEntityDistance> const& neighborEntities,
-      TScalar farthestEntityDistance) noexcept
+      std::size_t neighborNo, std::vector<MinEntityDistance> const& neighborEntities, TScalar farthestEntityDistance) noexcept
     {
       std::size_t tieCountOverK = neighborNo >= neighborEntities.size() ? 0 : (neighborEntities.size() - neighborNo + 1);
       if (tieCountOverK == 0)
@@ -2535,7 +2571,7 @@ namespace OrthoTree
       std::size_t neighborNo,
       TScalar maxDistanceWithin,
       EntityContainerView entities,
-      TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon(),
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
     {
       assert(neighborNo > 0 && "At least one neighbor must be requested!");
@@ -2555,7 +2591,8 @@ namespace OrthoTree
 
       // Parent checks (in a usual case parents do not have entities)
       for (auto nodeKey = smallestNodeKey; SI::IsValidKey(nodeKey); nodeKey = SI::GetParentKey(nodeKey))
-        AddEntityDistance(neighborNo, searchPoint, entityDistanceFn, this->GetNodeEntities(nodeKey), entities, tolerance, neighborEntities, farthestEntityDistance);
+        AddEntityDistance(
+          neighborNo, searchPoint, entityDistanceFn, this->GetNodeEntities(nodeKey), entities, tolerance, neighborEntities, farthestEntityDistance);
 
       this->VisitNodesInPriorityOrder(
         SI::GetRootKey(),
@@ -2567,7 +2604,8 @@ namespace OrthoTree
           if (smallestNodeKey == node.GetKey() || SI::IsParentKey(smallestNodeKey, node.GetKey()))
             return TraverseControl::Continue;
 
-          AddEntityDistance(neighborNo, searchPoint, entityDistanceFn, this->GetNodeEntities(node), entities, tolerance, neighborEntities, farthestEntityDistance);
+          AddEntityDistance(
+            neighborNo, searchPoint, entityDistanceFn, this->GetNodeEntities(node), entities, tolerance, neighborEntities, farthestEntityDistance);
 
           return TraverseControl::Continue;
         },
@@ -2588,16 +2626,11 @@ namespace OrthoTree
       TVector const& searchPoint,
       std::size_t neighborNo,
       EntityContainerView entities,
-      TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon(),
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
     {
       return this->GetNearestNeighbors<SHOULD_SORT_ENTITIES_BY_DISTANCE>(
-        searchPoint,
-        neighborNo,
-        std::numeric_limits<TScalar>::max(),
-        entities,
-        tolerance,
-        entityDistanceFn);
+        searchPoint, neighborNo, std::numeric_limits<TScalar>::max(), entities, tolerance, entityDistanceFn);
     }
 
 
@@ -2639,7 +2672,7 @@ namespace OrthoTree
       EntityContainerView leftEntities,
       OrthoTreeBase const& rightTree,
       EntityContainerView rightEntities,
-      TFloatScalar tolerance = 10 * std::numeric_limits<TFloatScalar>::epsilon(),
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) noexcept
     {
       using NodeIterator = typename NodeContainer<Node>::const_iterator;
@@ -2792,7 +2825,7 @@ namespace OrthoTree
       EntityContainerView const& boxes,
       OrthoTreeBase const& otherTree,
       EntityContainerView const& otherBoxes,
-      TFloatScalar tolerance = 10 * std::numeric_limits<TFloatScalar>::epsilon(),
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
       return CollisionDetection(*this, boxes, otherTree, otherBoxes);
@@ -2806,7 +2839,8 @@ namespace OrthoTree
       std::vector<EntityID> EntityIDs;
     };
 
-    constexpr void FillNodeCollisionContext([[maybe_unused]] MortonNodeIDCR nodeKey, Node const& node, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
+    constexpr void FillNodeCollisionContext(
+      [[maybe_unused]] MortonNodeIDCR nodeKey, Node const& node, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
     {
       auto const& nodeEntities = this->GetNodeEntities(node);
 
@@ -2817,10 +2851,7 @@ namespace OrthoTree
     }
 
     constexpr void PrepareNodeCollisionContext(
-      auto const& comparator,
-      depth_t depthID,
-      NodeCollisionContext& nodeContext,
-      NodeCollisionContext* parentNodeContext) const noexcept
+      auto const& comparator, NodeCollisionContext& nodeContext) const noexcept
     {
       auto& entityIDs = nodeContext.EntityIDs;
       auto entityNo = entityIDs.size();
@@ -2978,7 +3009,7 @@ namespace OrthoTree
       auto const& node = this->GetNode(nodeKey);
 
       FillNodeCollisionContext(nodeKey, node, depthID, nodeContextStack[depthID]);
-      PrepareNodeCollisionContext(entities, comparator, depthID, nodeContextStack[depthID], depthID == 0 ? nullptr : &nodeContextStack[depthID - 1]);
+      PrepareNodeCollisionContext(entities, comparator, nodeContextStack[depthID]);
 
       auto const childDepthID = depthID + 1;
       for (MortonLocationIDCR childKey : node.GetChildren())
@@ -2992,7 +3023,7 @@ namespace OrthoTree
     template<bool IS_PARALLEL_EXEC = false>
     std::vector<std::pair<EntityID, EntityID>> CollectCollidedEntities(
       EntityContainerView entities,
-      TFloatScalar tolerance,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
       auto const comparator = [&entities](EntityID entityID1, EntityID entityID2) {
@@ -3088,14 +3119,7 @@ namespace OrthoTree
                 nodeContextStack[--parentDepthID] = nodeContextMap.at(parentKey);
 
               InsertCollidedEntitiesInSubtree(
-                entities,
-                comparator,
-                depthID,
-                taskContext.NodeIt->first,
-                nodeContextStack,
-                taskContext.CollidedEntityPairs,
-                tolerance,
-                collisionDetector);
+                entities, comparator, depthID, taskContext.NodeIt->first, nodeContextStack, taskContext.CollidedEntityPairs, tolerance, collisionDetector);
             });
 
             auto collidedEntityPairsInParents = std::vector<std::pair<EntityID, EntityID>>{};
@@ -3143,16 +3167,17 @@ namespace OrthoTree
   public:
     // Collision detection between the stored entities from bottom to top logic
     template<bool IS_PARALLEL_EXEC = false>
-    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(EntityContainerView entities) const noexcept
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, std::nullopt);
+      return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, tolerance, std::nullopt);
     }
 
     // Collision detection between the stored entities from bottom to top logic
     template<bool IS_PARALLEL_EXEC = false>
-    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(EntityContainerView entities, FCollisionDetector&& collisionDetector) const noexcept
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
+      EntityContainerView entities, FCollisionDetector&& collisionDetector, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, collisionDetector);
+      return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, tolerance, collisionDetector);
     }
 
   private:
@@ -3205,11 +3230,12 @@ namespace OrthoTree
       TVector const& rayBasePoint,
       TVector const& rayHeading,
       EntityContainerView entities,
-      TFloatScalar tolerance = {},
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxExaminationDistance = std::numeric_limits<TScalar>::max(),
       std::optional<std::function<std::optional<TScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
     {
+      assert(toleranceIncrement < tolerance * 10);
       const auto rayHitTester = IGM::RayHitTester::Make(rayBasePoint, rayHeading, tolerance, toleranceIncrement);
       if (!rayHitTester)
         return {};
@@ -3238,10 +3264,11 @@ namespace OrthoTree
     std::vector<EntityID> RayIntersectedAll(
       TRay const& ray,
       EntityContainerView entities,
-      TFloatScalar tolerance = {},
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TFloatScalar toleranceIncrement = {},
       TScalar maxExaminationDistance = std::numeric_limits<TScalar>::max()) const noexcept
     {
-      return RayIntersectedAll(GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, maxExaminationDistance);
+      return RayIntersectedAll(GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, toleranceIncrement, maxExaminationDistance);
     }
 
     // Get first entities that hit by the ray
@@ -3249,7 +3276,7 @@ namespace OrthoTree
       TVector const& rayBasePoint,
       TVector const& rayHeading,
       EntityContainerView entities,
-      TFloatScalar tolerance = {},
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       std::optional<std::function<std::optional<TFloatScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
@@ -3335,7 +3362,7 @@ namespace OrthoTree
     std::vector<EntityID> RayIntersectedFirst(
       TRay const& ray,
       EntityContainerView entities,
-      TFloatScalar tolerance = {},
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       std::optional<std::function<std::optional<TScalar>(EntityID)>> entityHitTester = std::nullopt) const noexcept
@@ -3344,7 +3371,7 @@ namespace OrthoTree
     }
 
   public: // Search functions
-    bool Contains(EA::Geometry const& geometry, EntityContainerView entities, TFloatScalar tolerance) const noexcept
+    bool Contains(EA::Geometry const& geometry, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
       auto const smallestNodeKey = this->FindSmallestNode(geometry);
       if (!SI::IsValidKey(smallestNodeKey))
@@ -3367,7 +3394,7 @@ namespace OrthoTree
       });
     }
 
-    bool Contains(EntityID const& entityID, EntityContainerView entities, TFloatScalar tolerance) const noexcept
+    bool Contains(EntityID const& entityID, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
@@ -3385,6 +3412,6 @@ namespace OrthoTree
 
 
 #include "adapters/general.h"
-// #include "octree_container.h"
+#include "octree_container.h"
 
 #include "detail/undefs.h"

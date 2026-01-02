@@ -4,7 +4,7 @@
 #include <array>
 #include <vector>
 
-#include "../octree.h"
+#include "orthotree/octree.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -28,7 +28,7 @@ void testCompilePoint()
 
   using OT = OrthoTree::TreePointND<N>;
 
-  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
   [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
   [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
   [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
@@ -37,8 +37,7 @@ void testCompilePoint()
 
   auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
-  auto constexpr boxes = std::array
-  {
+  auto constexpr boxes = std::array{
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
     BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
@@ -70,34 +69,48 @@ void testCompilePoint()
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
     [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
     [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
-    [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
-    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0, vpt);
-    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
-    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, vpt);
+    [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, vpt, 0.01);
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, vpt, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      vpt,
+      0.0);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, vpt, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      vpt,
+      0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, { 1.0, 0.0 }}
-      },
-      0.0,
-      vpt);
+        Plane{ 1.0, { 1.0, 0.0 } }
+    },
+      vpt,
+      0.0);
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-      , [](auto const&, auto const&) -> bool { return true; }
-    );
+    tree.VisitNodes(
+      keyRoot,
+      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
+      [](auto const&, auto const&) -> bool { return true; });
   }
 
   // non-const member functions
   {
-    tree.template EraseEntity<false>(4);
-    tree.template Erase<false>(3, vpt[3]);
+    tree.EraseEntity(4);
+    tree.Erase(3, vpt[3]);
     tree.Insert(3, vpt[3]);
     tree.Update(2, vpt[2], vpt[3]);
     tree.Update(3, vpt[4]);
-    tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
+    tree.UpdateIndexes(
+      {
+        { 1, std::nullopt },
+        { 3,            4 }
+    });
     tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
@@ -118,9 +131,9 @@ void testCompilePointMap()
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, Point>;
 
-  using OT = OrthoTree::TreePointND<N, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::TreePointNDUD<N, OrthoTree::BaseGeometryType, Map>;
 
-  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
   [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
   [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
   [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
@@ -136,11 +149,11 @@ void testCompilePointMap()
   };
 
   auto const boxes = std::array{
-    BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }},
-    BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }},
-    BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }},
-    BoundingBox{{ 3.0, 3.0 }, { 4.0, 4.0 }},
-    BoundingBox{{ 1.2, 1.2 }, { 2.8, 2.8 }}
+    BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+    BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+    BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+    BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+    BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
   auto tree = OT(vpt, 3, std::nullopt, 2);
@@ -167,27 +180,27 @@ void testCompilePointMap()
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
     [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
     [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
-    [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, 0.01, vpt);
-    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0, vpt);
+    [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, vpt, 0.01);
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, vpt, 0.0);
     [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
-      0.0,
-      vpt);
-    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, vpt);
+      vpt,
+      0.0);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, vpt, 0.0);
     [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
-      0.0,
-      vpt);
+      vpt,
+      0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, { 1.0, 0.0 }}
+        Plane{ 1.0, { 1.0, 0.0 } }
     },
-      0.0,
-      vpt);
+      vpt,
+      0.0);
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     auto vListIsAnyChild = std::vector<bool>{};
@@ -199,14 +212,15 @@ void testCompilePointMap()
 
   // non-const member functions
   {
-    tree.template EraseEntity<false>(20);
-    tree.template Erase<false>(30, vpt.at(30));
+    tree.EraseEntity(20);
+    tree.Erase(30, vpt.at(30));
     tree.Insert(3, vpt.at(11));
     tree.Update(11, vpt.at(11), vpt.at(12));
     tree.Update(3, vpt.at(12));
-    tree.UpdateIndexes({
-      {11, std::nullopt},
-      {3,            4}
+    tree.UpdateIndexes(
+      {
+        { 11, std::nullopt },
+        {  3,            4 }
     });
     tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
@@ -219,24 +233,23 @@ void testCompilePointMap()
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
 void testCompileBox()
 {
   using Vector = OrthoTree::VectorND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
 
-  using OT = OrthoTree::TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>;
+  using OT = OrthoTree::TreeBoxND<N, IS_LOOSE_TREE>;
 
-  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
   [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
   [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
   [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
   [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
   [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
 
-  auto constexpr boxes = std::array
-  {
+  auto constexpr boxes = std::array{
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
     BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
@@ -276,32 +289,46 @@ void testCompileBox()
     [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
     [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
 
-    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0, boxes);
-    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0, boxes);
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, boxes, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      boxes,
+      0.0);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, boxes, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      boxes,
+      0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, Vector{ 1.0, 0.0 }}
-      },
-      0.0,
-      boxes);
+        Plane{ 1.0, Vector{ 1.0, 0.0 } }
+    },
+      boxes,
+      0.0);
 
     [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.VisitNodes(keyRoot
-      , [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); }
-      , [](auto const&, auto const&) -> bool { return true; }
-    );
+    tree.VisitNodes(
+      keyRoot,
+      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
+      [](auto const&, auto const&) -> bool { return true; });
   }
 
   // non-const member functions
   {
-    tree.template EraseEntity<false>(4);
-    tree.template Erase<false>(3, boxes[3]);
+    tree.EraseEntity(4);
+    tree.Erase(3, boxes[3]);
     tree.Insert(3, boxes[3]);
     tree.Update(2, boxes[2], boxes[3]);
     tree.Update(3, boxes[4]);
-    tree.UpdateIndexes({ {1, std::nullopt }, {3, 4} });
+    tree.UpdateIndexes(
+      {
+        { 1, std::nullopt },
+        { 3,            4 }
+    });
     tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
     tree.Reset();
@@ -313,7 +340,7 @@ void testCompileBox()
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
 void testCompileBoxMap()
 {
   using Vector = OrthoTree::VectorND<N>;
@@ -321,9 +348,9 @@ void testCompileBoxMap()
   using Plane = OrthoTree::PlaneND<N>;
 
   using Map = std::unordered_map<int, BoundingBox>;
-  using OT = OrthoTree::TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::TreeBoxNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map>;
 
-  [[maybe_unused]] auto const key = OT::SI::GetHash(2, 3);
+  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
   [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
   [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
   [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
@@ -331,11 +358,11 @@ void testCompileBoxMap()
   [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
 
   auto const boxes = Map{
-    { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
-    { 12, BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
-    { 17, BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }}},
-    { 13, BoundingBox{{ 3.0, 3.0 }, { 4.0, 4.0 }}},
-    { 11, BoundingBox{{ 1.2, 1.2 }, { 2.8, 2.8 }}}
+    { 10, BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
+    { 12, BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } } },
+    { 17, BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } } },
+    { 13, BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } } },
+    { 11, BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } } }
   };
 
   auto tree = OT(boxes, 3, std::nullopt, 2);
@@ -373,20 +400,20 @@ void testCompileBoxMap()
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
     [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
       0.0,
       boxes);
     [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
     [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
       0.0,
       boxes);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, Vector{ 1.0, 0.0 }}
+        Plane{ 1.0, Vector{ 1.0, 0.0 } }
     },
       0.0,
       boxes);
@@ -400,14 +427,15 @@ void testCompileBoxMap()
 
   // non-const member functions
   {
-    tree.template EraseEntity<false>(12);
-    tree.template Erase<false>(10, boxes.at(10));
+    tree.EraseEntity(12);
+    tree.Erase(10, boxes.at(10));
     tree.Insert(23, boxes.at(17));
     tree.Update(11, boxes.at(11), boxes.at(17));
     tree.Update(23, boxes.at(13));
-    tree.UpdateIndexes({
-      {17, std::nullopt},
-      {23,            22}
+    tree.UpdateIndexes(
+      {
+        { 17, std::nullopt },
+        { 23,           22 }
     });
     tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
     tree.Clear();
@@ -431,8 +459,7 @@ void testCompilePointC()
 
   auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
-  auto constexpr boxes = std::array
-  {
+  auto constexpr boxes = std::array{
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
     BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
@@ -444,7 +471,7 @@ void testCompilePointC()
 #ifdef __cpp_lib_execution
   [[maybe_unused]] auto treePar = OT(vpt, 3, std::nullopt, 2, true);
 #endif
-    
+
   // const member functions
   {
     [[maybe_unused]] auto const& treeCore = tree.GetCore();
@@ -457,14 +484,22 @@ void testCompilePointC()
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2);
 
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
-    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      0.0);
     [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, { 1.0, 0.0 }},
-        Plane{1.0, { 0.0, 1.0 }}
-      },
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
       0.0);
   }
 
@@ -492,7 +527,7 @@ void testCompilePointMapC()
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, Point>;
-  using OT = OrthoTree::TreePointContainerND<N, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::TreePointContainerNDUD<N, OrthoTree::BaseGeometryType, Map>;
 
   auto const vpt = Map{
     { 10, Point{ 0.0 } },
@@ -503,11 +538,11 @@ void testCompilePointMapC()
   };
 
   auto constexpr boxes = std::array{
-    BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }},
-    BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }},
-    BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }},
-    BoundingBox{{ 3.0, 3.0 }, { 4.0, 4.0 }},
-    BoundingBox{{ 1.2, 1.2 }, { 2.8, 2.8 }}
+    BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+    BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+    BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+    BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+    BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
   auto tree = OT(vpt, 3, std::nullopt, 2, false);
@@ -528,19 +563,19 @@ void testCompilePointMapC()
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, 0.0);
     [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
       0.0);
     [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
     [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
       0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, { 1.0, 0.0 }},
-        Plane{1.0, { 0.0, 1.0 }}
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
     },
       0.0);
   }
@@ -565,21 +600,20 @@ void testCompilePointMapC()
         { 31, Point{ 2.0 } },
         { 41, Point{ 3.0 } },
         { 51, Point{ 4.0 } }
-      },
+    },
       4);
   }
 }
 
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
 void testCompileBoxC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
-  using OT = OrthoTree::TreeBoxContainerND<N, DO_SPLIT_PARENT_ENTITIES>;
+  using OT = OrthoTree::TreeBoxContainerND<N, IS_LOOSE_TREE>;
 
-  auto constexpr boxes = std::array
-  {
+  auto constexpr boxes = std::array{
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
     BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
     BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
@@ -591,7 +625,7 @@ void testCompileBoxC()
 #ifdef __cpp_lib_execution
   [[maybe_unused]] auto treePar = OT(boxes, 3, std::nullopt, 2, true);
 #endif
-    
+
   // const member functions
   {
     [[maybe_unused]] auto const& treeCore = tree.GetCore();
@@ -604,21 +638,28 @@ void testCompileBoxC()
 
     [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
     [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(tree);
-   
+
     [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
     [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
 
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
-    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      0.0);
     [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
-    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation({1.0, { 1.0, 0.0 }}, 0.0);
+    [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
+      {
+        1.0, { 1.0, 0.0 }
+    },
+      0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, { 1.0, 0.0 }},
-        Plane{1.0, { 0.0, 1.0 }}
-      },
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
       0.0);
-
   }
 
   // non-const member functions
@@ -634,35 +675,30 @@ void testCompileBoxC()
     tree.Reset();
 
     tree = OT::template Create<IS_PARALLEL_EXEC>(boxes);
-    tree = OT::template Create<IS_PARALLEL_EXEC>(
-      std::vector
-      {
-        BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
-        BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
-        BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
-        BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } },
-        BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
-      }
-    );
-
+    tree = OT::template Create<IS_PARALLEL_EXEC>(std::vector{
+      BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+      BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
+      BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
+      BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } },
+      BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
+    });
   }
-
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
+template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
 void testCompileBoxMapC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, BoundingBox>;
-  using OT = OrthoTree::TreeBoxContainerND<N, DO_SPLIT_PARENT_ENTITIES, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::TreeBoxContainerNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map>;
 
   auto const boxes = Map{
-    { 5, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
-    { 10, BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
-    { 20, BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }}},
-    { 40, BoundingBox{{ 3.0, 3.0 }, { 4.0, 4.0 }}},
-    { 30, BoundingBox{{ 1.2, 1.2 }, { 2.8, 2.8 }}}
+    {  5, BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
+    { 10, BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } } },
+    { 20, BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } } },
+    { 40, BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } } },
+    { 30, BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } } }
   };
 
   auto tree = OT(boxes, std::nullopt, std::nullopt, 2, false);
@@ -670,7 +706,7 @@ void testCompileBoxMapC()
 #ifdef __cpp_lib_execution
   [[maybe_unused]] auto treePar = OT(boxes, std::nullopt, std::nullopt, 2, true);
 #endif
-    
+
   // const member functions
   {
     [[maybe_unused]] auto const& treeCore = tree.GetCore();
@@ -690,19 +726,19 @@ void testCompileBoxMapC()
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
     [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
       0.0);
     [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0);
     [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
-        1.0, {1.0, 0.0}
+        1.0, { 1.0, 0.0 }
     },
       0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
-        Plane{1.0, { 1.0, 0.0 }},
-        Plane{1.0, { 0.0, 1.0 }}
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
     },
       0.0);
   }
@@ -722,18 +758,18 @@ void testCompileBoxMapC()
     tree = OT::template Create<IS_PARALLEL_EXEC>(boxes);
     tree = OT::template Create<IS_PARALLEL_EXEC>(
       Map{
-        { 10, BoundingBox{{ 0.0, 0.0 }, { 1.0, 1.0 }}},
-        { 15, BoundingBox{{ 1.0, 1.0 }, { 2.0, 2.0 }}},
-        { 16, BoundingBox{{ 2.0, 2.0 }, { 3.0, 3.0 }}},
-        { 12, BoundingBox{{ 3.0, 3.0 }, { 4.0, 4.0 }}},
-        { 11, BoundingBox{{ 1.2, 1.2 }, { 2.8, 2.8 }}}
-      },
+        { 10, BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
+        { 15, BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } } },
+        { 16, BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } } },
+        { 12, BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } } },
+        { 11, BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } } }
+    },
       4);
   }
 }
 
 
-template<bool IS_PARALLEL_EXEC, bool DO_SPLIT_PARENT_ENTITIES = true>
+template<bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
 void testCompileBoxBatchDimension()
 {
   auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
@@ -758,26 +794,26 @@ void testCompileBoxBatchDimension()
     testCompilePointMap<2, IS_PARALLEL_EXEC>();
     testCompilePointMap<3, IS_PARALLEL_EXEC>();
 
-    testCompileBox<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<4, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<5, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<6, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<7, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<8, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<12, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<16, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBox<31, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBox<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<4, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<5, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<6, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<7, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<8, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<12, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<16, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<31, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
     if constexpr (isPlatform64)
     {
-      testCompileBox<32, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-      testCompileBox<63, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+      testCompileBox<32, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+      testCompileBox<63, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
     }
 
-    testCompileBoxMap<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxMap<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxMap<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxMap<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
   }
-  
+
   // Container types
   {
     testCompilePointC<2, IS_PARALLEL_EXEC>();
@@ -798,37 +834,37 @@ void testCompileBoxBatchDimension()
     testCompilePointMapC<2, IS_PARALLEL_EXEC>();
     testCompilePointMapC<3, IS_PARALLEL_EXEC>();
 
-    testCompileBoxC<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<4, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<5, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<6, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<7, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<8, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<12, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<16, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxC<31, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxC<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<4, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<5, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<6, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<7, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<8, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<12, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<16, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<31, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
 
     if constexpr (isPlatform64)
     {
-      testCompileBoxC<32, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-      testCompileBoxC<63, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+      testCompileBoxC<32, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+      testCompileBoxC<63, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
     }
 
-    testCompileBoxMapC<2, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
-    testCompileBoxMapC<3, IS_PARALLEL_EXEC, DO_SPLIT_PARENT_ENTITIES>();
+    testCompileBoxMapC<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxMapC<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
   }
 }
 
 
-template<bool DO_SPLIT_PARENT_ENTITIES = true>
+template<bool IS_LOOSE_TREE = true>
 void testCompileBoxBatchExPol()
 {
 #ifdef __cpp_lib_execution
-  testCompileBoxBatchDimension<false, DO_SPLIT_PARENT_ENTITIES>();
-  testCompileBoxBatchDimension<true, DO_SPLIT_PARENT_ENTITIES>();
+  testCompileBoxBatchDimension<false, IS_LOOSE_TREE>();
+  testCompileBoxBatchDimension<true, IS_LOOSE_TREE>();
 #else
-  testCompileBoxBatchDimension<false, DO_SPLIT_PARENT_ENTITIES>();
+  testCompileBoxBatchDimension<false, IS_LOOSE_TREE>();
 #endif
 }
 
