@@ -740,7 +740,7 @@ namespace OrthoTree::Partitioning
 
 
   template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
-  constexpr void DepthFirstPartition(auto EXEC_TAG, auto beginIt, auto endIt, TLocation locationHint, depth_t maxDepthID, auto const& callback) noexcept
+  constexpr void DepthFirstPartition(auto EXEC_TAG, auto beginIt, auto endIt, TLocation locationHint, depth_t maxDepthID, auto const& processElements) noexcept
   {
     using Iterator = decltype(beginIt);
     using ValueType = typename decltype(beginIt)::value_type;
@@ -772,7 +772,7 @@ namespace OrthoTree::Partitioning
           lcaState.depthID = std::min(lcaState.depthID, location.depthID);
         });
 
-      callback(beginIt, middleIt, locationHint, true);
+      processElements(beginIt, middleIt, locationHint, true);
       beginIt = middleIt;
       locationHint = GetLocationFromLCAState<DIMENSION_NO, TLocation>(lcaState, maxDepthID);
     }
@@ -791,11 +791,11 @@ namespace OrthoTree::Partitioning
 
     for (auto partition : partitions)
     {
-      if (!callback(partition.beginIt, partition.endIt, partition.location, false))
+      if (processElements(partition.beginIt, partition.endIt, partition.location, false))
         continue;
 
       DepthFirstPartition<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
-        EXEC_TAG, partition.beginIt, partition.endIt, partition.location, maxDepthID, callback);
+        EXEC_TAG, partition.beginIt, partition.endIt, partition.location, maxDepthID, processElements);
     }
   }
 

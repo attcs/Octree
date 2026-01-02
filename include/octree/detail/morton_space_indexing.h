@@ -139,14 +139,13 @@ namespace OrthoTree::detail
     */
     static constexpr NodeID GetNodeID(auto&& location, depth_t maxDepthID) noexcept
     {
-      assert(location.locationID < (NodeID(1) << (location.depthID * DIMENSION_NO)));
       return (NodeID{ 1 } << (location.depthID * DIMENSION_NO)) | (location.locationID >> ((maxDepthID - location.depthID) * DIMENSION_NO));
     }
 
-    static constexpr NodeID GetNodeID(LocationIDCR locationID, depth_t maxDepthID) noexcept
+    static constexpr NodeID GetNodeID(LocationIDCR locationIDOnDepth, depth_t maxDepthID) noexcept
     {
-      assert(locationID < (NodeID(1) << (maxDepthID * DIMENSION_NO)));
-      return (NodeID{ 1 } << (maxDepthID * DIMENSION_NO)) | locationID;
+      assert(locationIDOnDepth < (NodeID(1) << (maxDepthID * DIMENSION_NO)));
+      return (NodeID{ 1 } << (maxDepthID * DIMENSION_NO)) | locationIDOnDepth;
     }
 
     static constexpr NodeID GetNodeID(LocationIDCR locationID, depth_t depthID, depth_t maxDepthID) noexcept

@@ -1111,7 +1111,7 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
       Partitioning::DepthFirstPartition<DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
         EXEC_TAG, locationsZip.begin(), locationsZip.end(), SI::GetRootLocation(), m_maxDepthID, [&](auto beginIt, auto endIt, auto location, bool isForcedToFinish) {
           auto const elementNum = detail::size(beginIt, endIt);
-          if (!isForcedToFinish && elementNum > m_maxElementNo)
+          if (!isForcedToFinish && elementNum > m_maxElementNo && location.depthID < m_maxDepthID)
             return false;
 
           auto nodeID = SI::GetNodeID(location, m_maxDepthID);
