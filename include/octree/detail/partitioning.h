@@ -596,15 +596,38 @@ namespace OrthoTree::Partitioning
   template<dim_t DIMENSION_NO, typename TLocation>
   TLocation GetLocationFromLCAState(auto const& lcaState, depth_t maxDepthID)
   {
+    if (lcaState.depthID == INVALID_DEPTH)
+      return TLocation{ .depthID = 0, .locationID = 0 };
+
     auto const levelID = (std::bit_width(lcaState.xorMask) + DIMENSION_NO - 1) / DIMENSION_NO;
     auto const depthID = std::min(lcaState.depthID, maxDepthID - levelID);
     auto const shift = decltype(TLocation::locationID)(levelID * DIMENSION_NO);
     return TLocation{ .depthID = depthID, .locationID = (lcaState.reference >> shift) << shift };
   }
 
+  template<dim_t DIMENSION_NO, uint32_t N>
+  consteval std::array<uint32_t, N + 1> CalculateLevelIndexes()
+  {
+    std::array<uint32_t, N + 1> indexes = {};
+    for (uint32_t i = 1; i < N + 1; ++i)
+    {
+      indexes[i] = indexes[i - 1] + (1 << (DIMENSION_NO * (N - i)));
+    }
+
+    return indexes;
+  }
+
   template<uint32_t kRadixBits, dim_t DIMENSION_NO, typename TLocation>
   constexpr uint32_t BucketPartition2(
-    auto beginIt, auto endIt, auto const& accessor, auto const& getDepth, uint32_t bitNumToTest, depth_t maxDepthID, auto& context, auto& partitions) noexcept
+    auto beginIt,
+    auto endIt,
+    auto const& accessor,
+    auto const& getDepth,
+    uint32_t bitNumToTest,
+    depth_t maxDepthID,
+    uint32_t minElementNum,
+    auto& context,
+    auto& partitions) noexcept
   {
     using Iterator = decltype(beginIt);
     using ValueType = typename decltype(beginIt)::value_type;
@@ -644,8 +667,8 @@ namespace OrthoTree::Partitioning
       }
       else
       {
-        lcaState.reference |= locationID;
         lcaState.xorMask |= (locationID ^ lcaState.reference);
+        lcaState.reference |= locationID;
         lcaState.depthID = std::min(lcaState.depthID, getDepth(*it));
       }
     }
@@ -661,45 +684,138 @@ namespace OrthoTree::Partitioning
       return remainingBitNum;
     }
 
-    uint32_t sum = 0;
-    uint32_t lastBucketID = 0;
-    for (auto bucketID : activeBuckets)
-    {
-      auto const segmentBeginIt = beginIt + sum;
-      auto const segmentEndIt = segmentBeginIt + histogram[bucketID];
-      auto const location = GetLocationFromLCAState<DIMENSION_NO, TLocation>(lcaStates[bucketID], maxDepthID);
-      partitions.push_back(
-        PartitionData<Iterator, TLocation>{ .beginIt = segmentBeginIt, .endIt = segmentEndIt, .location = location, .bucketID = bucketID });
+    constexpr std::size_t kParentNum = ((1u << kRadixBits) - 1) / ((1 << DIMENSION_NO) - 1);
+    constexpr uint32_t kLevelNum = kRadixBits / DIMENSION_NO;
+    constexpr auto kParentHistogramBegins = CalculateLevelIndexes<DIMENSION_NO, kLevelNum>();
+    constexpr auto GetParentHistogramID = [](auto levelID, auto bucketID) {
+      return kParentHistogramBegins[levelID] + (bucketID >> ((levelID + 1) * DIMENSION_NO));
+    };
 
-      offsets[bucketID] = sum;
-      sum += histogram[bucketID];
-      lastBucketID = bucketID;
-    }
 
-    // in-place permutation (cycle leader)
-    for (auto leaderBucketID : activeBuckets)
+    std::array<uint32_t, kParentNum> parentHistogram = {};
+    if constexpr (kLevelNum > 1)
     {
-      while (histogram[leaderBucketID] > 0)
+      for (auto bucketID : activeBuckets)
       {
-        auto from = beginIt + offsets[leaderBucketID];
-        ValueType v = std::move(*from);
-        auto bucketID = GetBucketID(accessor(v));
+        auto elementNum = histogram[bucketID];
+        uint32_t parentHistogramID = kParentHistogramBegins[0] + (bucketID >> DIMENSION_NO);
+        parentHistogram[parentHistogramID] += elementNum;
+      }
 
-        while (bucketID != leaderBucketID)
+      for (auto levelID = 0; levelID < kLevelNum - 1; ++levelID)
+      {
+        uint32_t stepNum = (1u << (DIMENSION_NO * (kLevelNum - levelID - 2)));
+        uint32_t parentBucketID = kParentHistogramBegins[levelID];
+        uint32_t parentBucketEnd = kParentHistogramBegins[levelID] + (1u << DIMENSION_NO);
+        uint32_t grandParentBucketID = kParentHistogramBegins[levelID + 1];
+        for (uint32_t stepID = 0; stepID < stepNum; ++stepID)
         {
-          auto to = beginIt + offsets[bucketID];
-          ValueType tmp = std::move(*to);
-          *to = std::move(v);
-          v = std::move(tmp);
+          for (; parentBucketID < parentBucketEnd; ++parentBucketID)
+            parentHistogram[grandParentBucketID] += parentHistogram[parentBucketID];
 
-          ++offsets[bucketID];
-          --histogram[bucketID];
-          bucketID = GetBucketID(accessor(v));
+          ++grandParentBucketID;
+          parentBucketEnd += (1u << DIMENSION_NO);
+        }
+      }
+
+
+      uint32_t sum = 0;
+      uint32_t parentBucketSum = 0;
+      uint32_t lastBucketID = 0;
+      for (auto bucketIt = activeBuckets.begin(); bucketIt != activeBuckets.end(); ++bucketIt)
+      {
+        auto const segmentBeginIt = beginIt + sum;
+
+        auto bucketID = *bucketIt;
+        auto bucketElementNum = histogram[bucketID];
+        offsets[bucketID] = sum;
+        sum += bucketElementNum;
+
+        auto lcaState = lcaStates[bucketID];
+        for (auto levelID = 0; bucketElementNum < minElementNum && levelID < kLevelNum - 1; ++levelID)
+        {
+          auto parentHistogramID = GetParentHistogramID(levelID, bucketID);
+          if (parentHistogram[parentHistogramID] > minElementNum)
+            break;
+
+          uint32_t processedElementNum = bucketElementNum;
+          bucketElementNum = parentHistogram[parentHistogramID];
+          while (processedElementNum < bucketElementNum)
+          {
+            ++bucketIt;
+            if (bucketIt == activeBuckets.end())
+              break;
+
+            auto nextbucketID = *bucketIt;
+            auto& nextLcaState = lcaStates[bucketID];
+
+            lcaState.xorMask |= (nextLcaState.reference ^ lcaState.reference);
+            lcaState.reference |= nextLcaState.reference;
+            lcaState.depthID = std::min(lcaState.depthID, nextLcaState.depthID);
+
+            processedElementNum += histogram[nextbucketID];
+            offsets[nextbucketID] = sum;
+            sum += histogram[nextbucketID];
+          }
+
+          if (bucketIt == activeBuckets.end())
+            break;
         }
 
-        *from = std::move(v);
-        ++offsets[leaderBucketID];
-        --histogram[leaderBucketID];
+        auto const segmentEndIt = segmentBeginIt + bucketElementNum;
+        auto const location = GetLocationFromLCAState<DIMENSION_NO, TLocation>(lcaState, maxDepthID);
+        partitions.push_back(
+          PartitionData<Iterator, TLocation>{ .beginIt = segmentBeginIt, .endIt = segmentEndIt, .location = location, .bucketID = bucketID });
+      }
+    }
+    else
+    {
+      uint32_t sum = 0;
+      for (auto bucketID : activeBuckets)
+      {
+        auto const segmentBeginIt = beginIt + sum;
+        auto const segmentEndIt = segmentBeginIt + histogram[bucketID];
+        auto const location = GetLocationFromLCAState<DIMENSION_NO, TLocation>(lcaStates[bucketID], maxDepthID);
+        partitions.push_back(
+          PartitionData<Iterator, TLocation>{ .beginIt = segmentBeginIt, .endIt = segmentEndIt, .location = location, .bucketID = bucketID });
+
+        offsets[bucketID] = sum;
+        sum += histogram[bucketID];
+      }
+    }
+
+
+    auto leaderBucketIt = activeBuckets.begin();
+    uint32_t leaderBucketID = 0;
+    auto leaderBucketEndIt = beginIt;
+    for (auto it = beginIt; it != endIt;)
+    {
+      if (it == leaderBucketEndIt)
+      {
+        leaderBucketID = *leaderBucketIt;
+        ++leaderBucketIt;
+        if (leaderBucketIt == activeBuckets.end())
+          break;
+
+        if (histogram[leaderBucketID] == 0)
+          continue;
+
+        it = beginIt + offsets[leaderBucketID];
+        leaderBucketEndIt = it + histogram[leaderBucketID];
+        histogram[leaderBucketID] = 0;
+      }
+
+      auto bucketID = GetBucketID(accessor(*it));
+      if (leaderBucketID == bucketID)
+      {
+        ++it;
+      }
+      else
+      {
+        std::iter_swap(it, beginIt + offsets[bucketID]);
+
+        ++offsets[bucketID];
+        --histogram[bucketID];
       }
     }
 
@@ -739,15 +855,60 @@ namespace OrthoTree::Partitioning
   }
 
 
+  constexpr auto partition(auto first, auto last, auto&& p, auto&& spectateTrue, auto&& spectateFalse) noexcept
+  {
+    auto find_if_not = [&](auto first, auto last, const auto& p) noexcept {
+      for (; first != last; ++first)
+      {
+        if (p(*first))
+        {
+          spectateTrue(*first);
+          return first;
+        }
+
+        spectateFalse(*first);
+      }
+
+      return last;
+    };
+
+    first = find_if_not(first, last, p);
+    if (first == last)
+      return first;
+
+    for (auto i = std::next(first); i != last; ++i)
+    {
+      if (!p(*i))
+      {
+        spectateFalse(*i);
+        continue;
+      }
+
+      spectateTrue(*i);
+      std::iter_swap(i, first);
+      ++first;
+    }
+    return first;
+  }
+
   template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
-  constexpr void DepthFirstPartition(auto EXEC_TAG, auto beginIt, auto endIt, TLocation locationHint, depth_t maxDepthID, auto const& processElements) noexcept
+  constexpr void DepthFirstPartitionRecursive(
+    auto beginIt,
+    auto endIt,
+    TLocation locationHint,
+    depth_t maxDepthID,
+    uint32_t maxElementNo,
+    auto& context,
+    auto const& processElements) noexcept
   {
     using Iterator = decltype(beginIt);
     using ValueType = typename decltype(beginIt)::value_type;
     using Reference = typename decltype(beginIt)::reference;
 
-    constexpr uint32_t kRadixBits = DIMENSION_NO;
+    constexpr uint32_t kRadixBits = std::max<uint32_t>(1u, 11u / DIMENSION_NO) * DIMENSION_NO;
     constexpr uint32_t kRadixSize = 1u << kRadixBits;
+
+    auto elementNum = detail::size(beginIt, endIt);
 
     if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
     {
@@ -767,8 +928,8 @@ namespace OrthoTree::Partitioning
             return;
           }
 
-          lcaState.reference |= location.locationID;
           lcaState.xorMask |= (location.locationID ^ lcaState.reference);
+          lcaState.reference |= location.locationID;
           lcaState.depthID = std::min(lcaState.depthID, location.depthID);
         });
 
@@ -778,7 +939,6 @@ namespace OrthoTree::Partitioning
     }
 
     auto partitions = detail::inplace_vector<PartitionData<Iterator, TLocation>, kRadixSize>{};
-    auto context = BucketPartitionContext<kRadixSize>{};
     BucketPartition2<kRadixBits, DIMENSION_NO, TLocation>(
       beginIt,
       endIt,
@@ -786,6 +946,7 @@ namespace OrthoTree::Partitioning
       [](Reference const& location) { return location.GetFirst().depthID; },
       (maxDepthID - locationHint.depthID) * DIMENSION_NO,
       maxDepthID,
+      maxElementNo,
       context,
       partitions);
 
@@ -794,9 +955,154 @@ namespace OrthoTree::Partitioning
       if (processElements(partition.beginIt, partition.endIt, partition.location, false))
         continue;
 
-      DepthFirstPartition<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
-        EXEC_TAG, partition.beginIt, partition.endIt, partition.location, maxDepthID, processElements);
+      DepthFirstPartitionRecursive<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
+        partition.beginIt,
+        partition.endIt,
+        partition.location,
+        maxDepthID,
+        maxElementNo,
+        context,
+        processElements);
     }
   }
 
+  template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
+  constexpr void DepthFirstPartitionRecursive2(
+    auto beginIt,
+    auto endIt,
+    TLocation locationHint,
+    depth_t maxDepthID,
+    uint32_t maxElementNo,
+    auto& context,
+    auto const& processElements) noexcept
+  {
+    using Iterator = decltype(beginIt);
+    using ValueType = typename decltype(beginIt)::value_type;
+    using Reference = typename decltype(beginIt)::reference;
+    using LocationID = decltype(locationHint.locationID);
+
+    constexpr uint32_t kRadixBits = std::max<uint32_t>(1u, 11u / DIMENSION_NO) * DIMENSION_NO;
+    constexpr uint32_t kRadixSize = 1u << kRadixBits;
+
+    auto elementNum = detail::size(beginIt, endIt);
+
+    if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
+    {
+      auto lcaState = BucketLcaState<LocationID>{};
+      auto middleIt = partition(
+        beginIt,
+        endIt,
+        [depthID = locationHint.depthID](auto const& element) { return element.GetFirst().depthID == depthID; },
+        [&](auto const& element) {
+          auto const& location = element.GetFirst();
+          if (lcaState.depthID == INVALID_DEPTH)
+          {
+            lcaState.reference = location.locationID;
+            lcaState.xorMask = 0;
+            lcaState.depthID = location.depthID;
+            return;
+          }
+
+          lcaState.xorMask |= (location.locationID ^ lcaState.reference);
+          lcaState.reference |= location.locationID;
+          lcaState.depthID = std::min(lcaState.depthID, location.depthID);
+        });
+
+      processElements(beginIt, middleIt, locationHint, true);
+      beginIt = middleIt;
+      locationHint = GetLocationFromLCAState<DIMENSION_NO, TLocation>(lcaState, maxDepthID);
+    }
+
+    // next level partitioning
+    LocationID const shift = (maxDepthID - locationHint.depthID - 1) * DIMENSION_NO;
+    LocationID const locationID = beginIt.GetFirst()->locationID >> shift;
+
+    auto lcaStateTrue = BucketLcaState<LocationID>{};
+    auto lcaStateFalse = BucketLcaState<LocationID>{};
+    auto middleIt = partition(
+      beginIt,
+      endIt,
+      [locationID, shift](auto const& element) { return (element.GetFirst().locationID >> shift) == locationID; },
+      [&](auto const& element) {
+        auto const& location = element.GetFirst();
+        if (lcaStateTrue.depthID == INVALID_DEPTH)
+        {
+          lcaStateTrue.reference = location.locationID;
+          lcaStateTrue.xorMask = 0;
+          lcaStateTrue.depthID = location.depthID;
+          return;
+        }
+
+        lcaStateTrue.xorMask |= (location.locationID ^ lcaStateTrue.reference);
+        lcaStateTrue.reference |= location.locationID;
+        lcaStateTrue.depthID = std::min(lcaStateTrue.depthID, location.depthID);
+      },
+      [&](auto const& element) {
+        auto const& location = element.GetFirst();
+        if (lcaStateFalse.depthID == INVALID_DEPTH)
+        {
+          lcaStateFalse.reference = location.locationID;
+          lcaStateFalse.xorMask = 0;
+          lcaStateFalse.depthID = location.depthID;
+          return;
+        }
+
+        lcaStateFalse.xorMask |= (location.locationID ^ lcaStateFalse.reference);
+        lcaStateFalse.reference |= location.locationID;
+        lcaStateFalse.depthID = std::min(lcaStateFalse.depthID, location.depthID);
+      });
+
+    if (middleIt == beginIt || middleIt == endIt)
+    {
+      processElements(beginIt, endIt, locationHint, true);
+      return;
+    }
+
+    auto locationHintTrue = GetLocationFromLCAState<DIMENSION_NO, TLocation>(lcaStateTrue, maxDepthID);
+    auto locationHintFalse = GetLocationFromLCAState<DIMENSION_NO, TLocation>(lcaStateFalse, maxDepthID);
+
+    locationHintTrue.locationID = beginIt.GetFirst()->locationID;
+    locationHintFalse.locationID = middleIt.GetFirst()->locationID;
+
+    if (locationHintTrue.depthID == locationHint.depthID || !processElements(beginIt, middleIt, locationHintTrue, false))
+    {
+      DepthFirstPartitionRecursive2<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
+        beginIt,
+        middleIt,
+        locationHintTrue,
+        maxDepthID,
+        maxElementNo,
+        context,
+        processElements);
+    }
+
+    if (locationHintTrue.depthID == locationHint.depthID || !processElements(middleIt, endIt, locationHintFalse, false))
+    {
+      DepthFirstPartitionRecursive2<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
+        middleIt,
+        endIt,
+        locationHintFalse,
+        maxDepthID,
+        maxElementNo,
+        context,
+        processElements);
+    }
+  }
+
+  template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
+  constexpr void DepthFirstPartition(
+    auto EXEC_TAG,
+    auto beginIt,
+    auto endIt,
+    TLocation locationHint,
+    depth_t maxDepthID,
+    uint32_t maxElementNo,
+    auto const& processElements) noexcept
+  {
+    constexpr uint32_t kRadixBits = std::max<uint32_t>(1u, 11u / DIMENSION_NO) * DIMENSION_NO;
+    constexpr uint32_t kRadixSize = 1u << kRadixBits;
+
+    auto context = BucketPartitionContext<kRadixSize>{};
+    DepthFirstPartitionRecursive<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(beginIt, endIt, locationHint, maxDepthID, maxElementNo, context, processElements);
+  }
 } // namespace OrthoTree::Partitioning

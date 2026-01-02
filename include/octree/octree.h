@@ -1108,9 +1108,19 @@ else if constexpr (IS_CONTIGOUS_CONTAINER && std::is_integral_v<EntityID> && &&s
       });
 
       auto orphanNodes = std::vector<MortonNodeID>{};
+      auto const maxElementNo = static_cast<uint32_t>(m_maxElementNo);
       Partitioning::DepthFirstPartition<DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
-        EXEC_TAG, locationsZip.begin(), locationsZip.end(), SI::GetRootLocation(), m_maxDepthID, [&](auto beginIt, auto endIt, auto location, bool isForcedToFinish) {
+        EXEC_TAG,
+        locationsZip.begin(),
+        locationsZip.end(),
+        SI::GetRootLocation(),
+        m_maxDepthID,
+        maxElementNo,
+        [&](auto beginIt, auto endIt, auto location, bool isForcedToFinish) {
           auto const elementNum = detail::size(beginIt, endIt);
+          if (elementNum == 0)
+            return true;
+
           if (!isForcedToFinish && elementNum > m_maxElementNo && location.depthID < m_maxDepthID)
             return false;
 
