@@ -9,7 +9,7 @@ set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE BOOL "Download Google Benchmark dep
 
 option(ENABLE_OPTIMIZATIONS "Enable high-performance compiler optimizations" ON)
 
-include_directories(../)
+include_directories(../ ../../include)
 
 # Add Google Benchmark as a subdirectory
 add_subdirectory(external/benchmark)

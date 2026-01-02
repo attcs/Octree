@@ -1,12 +1,12 @@
 #include "pch.h"
 
 // clang-format off
-#include "../octree.h"
-#include "../octree_container.h"
+#include "octree/octree.h"
+#include "octree/octree_container.h"
 
 // Boost
 #include <boost/geometry.hpp>
-#include "../adaptor.boost.h"
+#include "octree/adapters/boost.h"
 
 // CGAL
 #include <CGAL/Bbox_2.h>
@@ -20,19 +20,19 @@
 #include <CGAL/Ray_3.h>
 #include <CGAL/basic.h>
 #include <CGAL/cartesian.h>
-#include "../adaptor.cgal.h"
+#include "octree/adapters/cgal.h"
 
 // Eigen
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include "../adaptor.eigen.h"
+#include "octree/adapters/eigen.h"
 
 // glm
 #include <glm/glm.hpp>
-#include "../adaptor.glm.h"
+#include "octree/adapters.glm.h"
 
 // XYZ
-#include "../adaptor.xyz.h"
+#include "octree/adapters/xyz.h"
 
 // Unreal Engine
 #define UNREAL_DUMMY_TYPES

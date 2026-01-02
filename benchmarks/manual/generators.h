@@ -2,14 +2,14 @@
 #include <vector>
 #include <random>
 
-#include "../../octree.h"
+#include "octree/octree.h"
 
 using namespace OrthoTree;
 
 auto constexpr rMax = 8.0;
 
 template<dim_t DIMENSION_NO>
-constexpr std::vector<PointND<DIMENSION_NO>> GeneratePointsRandom(size_t pointsNo, int seed = 0)
+std::vector<PointND<DIMENSION_NO>> GeneratePointsRandom(size_t pointsNo, int seed = 0)
 {
   auto rng = std::mt19937(seed);
 
@@ -84,7 +84,7 @@ BoundingBoxND<DIMENSION_NO> CreateSearcBox(double rBegin, double rSize)
 
 
 template<dim_t DIMENSION_NO>
-constexpr std::vector<BoundingBoxND<DIMENSION_NO>> GenerateBoxesRandom(size_t nNumber, int seed = 0, double boxSizeScale = 0.125)
+std::vector<BoundingBoxND<DIMENSION_NO>> GenerateBoxesRandom(size_t nNumber, int seed = 0, double boxSizeScale = 0.125)
 {
   if (nNumber == 0)
     return {};
