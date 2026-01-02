@@ -1,0 +1,265 @@
+ethalon 5058b3090c8b88e405fe2bfddd6c1c872f2b79d2 + oversized modelspace
+
+2026-01-02T09:37:46+01:00
+Running G:\!Development\!GitHubPublished\Octree\benchmarks\automatic\build\Release\benchmarks.exe
+Run on (12 X 3693 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 512 KiB (x6)
+  L3 Unified 32768 KiB (x1)
+---------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                 Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------------------------------------------
+Benchmarks::Base::GetNodeID/1000                                       5026 ns         5000 ns       100000 items_per_second=200M/s
+Benchmarks::Base::GetDepthID/1000                                       871 ns          872 ns       896000 items_per_second=1.14688G/s
+Benchmarks::Base::GetNodeEntities/10000                                2452 ns         2455 ns       280000 items_per_second=4.07273G/s
+Benchmarks::Base::GetNodeEntities/100000                              30323 ns        30692 ns        22400 items_per_second=3.25818G/s
+Benchmarks::Base::GridSpaceIndexing_GetPointGridID/1000                1301 ns         1311 ns       560000 items_per_second=762.553M/s
+Benchmarks::Base::GridSpaceIndexing_GetBoxGridID/1000                  8382 ns         8580 ns        74667 items_per_second=116.553M/s
+Benchmarks::Point::Create<3, false>/10                                0.612 us        0.600 us      1120000
+Benchmarks::Point::Create<3, false>/20                                0.688 us        0.698 us      1120000
+Benchmarks::Point::Create<3, false>/50                                 1.42 us         1.41 us       497778
+Benchmarks::Point::Create<3, false>/100                                1.97 us         1.99 us       344615
+Benchmarks::Point::Create<3, false>/1000                               17.8 us         17.6 us        40727
+Benchmarks::Point::Create<3, false>/10000                               410 us          417 us         1723
+Benchmarks::Point::Create<3, false>/100000                             5290 us         5162 us          112
+Benchmarks::Point::Create<3, false>/1000000                           43040 us        43945 us           16
+Benchmarks::Point::Create<3, true>/10                                  1.25 us         1.25 us       640000
+Benchmarks::Point::Create<3, true>/20                                  1.73 us         1.65 us       407273
+Benchmarks::Point::Create<3, true>/50                                  6.00 us         5.31 us       100000
+Benchmarks::Point::Create<3, true>/100                                 9.14 us         7.32 us        74667
+Benchmarks::Point::Create<3, true>/1000                                43.0 us         37.7 us        18667
+Benchmarks::Point::Create<3, true>/10000                                312 us          311 us         2358
+Benchmarks::Point::Create<3, true>/100000                              3267 us         3217 us          204
+Benchmarks::Point::Create<3, true>/1000000                            17125 us        17530 us           41
+Benchmarks::Point::Create_OversizedModelspace<3, false>/10            0.663 us        0.656 us      1120000
+Benchmarks::Point::Create_OversizedModelspace<3, false>/20            0.742 us        0.732 us       896000
+Benchmarks::Point::Create_OversizedModelspace<3, false>/50             1.47 us         1.48 us       497778
+Benchmarks::Point::Create_OversizedModelspace<3, false>/100            2.02 us         2.04 us       344615
+Benchmarks::Point::Create_OversizedModelspace<3, false>/1000           23.0 us         23.0 us        29867
+Benchmarks::Point::Create_OversizedModelspace<3, false>/10000           435 us          430 us         1600
+Benchmarks::Point::Create_OversizedModelspace<3, false>/100000         5719 us         5781 us          100
+Benchmarks::Point::Create_OversizedModelspace<3, false>/1000000       83135 us        83333 us            9
+Benchmarks::Point::Create_OversizedModelspace<3, true>/10              1.26 us         1.28 us       560000
+Benchmarks::Point::Create_OversizedModelspace<3, true>/20              1.70 us         1.69 us       407273
+Benchmarks::Point::Create_OversizedModelspace<3, true>/50              6.11 us         5.02 us       112000
+Benchmarks::Point::Create_OversizedModelspace<3, true>/100             9.15 us         8.02 us        89600
+Benchmarks::Point::Create_OversizedModelspace<3, true>/1000            45.2 us         40.8 us        17231
+Benchmarks::Point::Create_OversizedModelspace<3, true>/10000            311 us          308 us         2489
+Benchmarks::Point::Create_OversizedModelspace<3, true>/100000          3314 us         3301 us          213
+Benchmarks::Point::Create_OversizedModelspace<3, true>/1000000        54088 us        53977 us           11
+Benchmarks::Point::Create<6, false>/10                                0.691 us        0.680 us       896000
+Benchmarks::Point::Create<6, false>/20                                 1.12 us         1.12 us       640000
+Benchmarks::Point::Create<6, false>/50                                 3.24 us         3.22 us       213333
+Benchmarks::Point::Create<6, false>/100                                5.09 us         5.00 us       100000
+Benchmarks::Point::Create<6, false>/1000                               73.5 us         73.2 us         8960
+Benchmarks::Point::Create<6, false>/10000                               675 us          663 us          896
+Benchmarks::Point::Create<6, false>/100000                            11250 us        11230 us           64
+Benchmarks::Point::Create<6, false>/1000000                          102390 us       102679 us            7
+Benchmarks::Point::Create<6, true>/10                                  1.33 us         1.31 us       560000
+Benchmarks::Point::Create<6, true>/20                                  2.26 us         2.20 us       298667
+Benchmarks::Point::Create<6, true>/50                                  9.13 us         6.98 us        89600
+Benchmarks::Point::Create<6, true>/100                                 11.1 us         10.7 us        74667
+Benchmarks::Point::Create<6, true>/1000                                84.9 us         78.5 us         8960
+Benchmarks::Point::Create<6, true>/10000                                414 us          417 us         1723
+Benchmarks::Point::Create<6, true>/100000                              7430 us         7118 us           90
+Benchmarks::Point::Create<6, true>/1000000                            49948 us        48958 us           15
+Benchmarks::Point::InsertToLeaf/10                                     4.19 us         4.17 us       172308
+Benchmarks::Point::InsertToLeaf/20                                     8.09 us         8.20 us        89600
+Benchmarks::Point::InsertToLeaf/50                                     16.7 us         16.7 us        44800
+Benchmarks::Point::InsertToLeaf/100                                    30.2 us         30.5 us        23579
+Benchmarks::Point::InsertToLeaf/1000                                    263 us          262 us         2800
+Benchmarks::Point::InsertToLeaf/10000                                  2611 us         2604 us          264
+Benchmarks::Point::InsertWithRebalancing/10                           0.912 us        0.900 us       746667
+Benchmarks::Point::InsertWithRebalancing/20                            2.26 us         2.25 us       298667
+Benchmarks::Point::InsertWithRebalancing/50                            3.69 us         3.69 us       194783
+Benchmarks::Point::InsertWithRebalancing/100                           9.97 us         10.0 us        64000
+Benchmarks::Point::InsertWithRebalancing/1000                           176 us          176 us         3733
+Benchmarks::Point::InsertWithRebalancing/10000                         2125 us         2100 us          320
+Benchmarks::Point::InsertUnique/10                                     2.50 us         2.37 us       263529
+Benchmarks::Point::InsertUnique/20                                     6.08 us         6.00 us       112000
+Benchmarks::Point::InsertUnique/50                                     15.2 us         15.3 us        44800
+Benchmarks::Point::InsertUnique/100                                    35.9 us         36.1 us        20364
+Benchmarks::Point::InsertUnique/1000                                    612 us          628 us         1120
+Benchmarks::Point::InsertUnique/10000                                  9476 us         9277 us           64
+Benchmarks::Point::Update/10                                          0.670 us        0.670 us      1120000 items_per_second=14.9333M/s
+Benchmarks::Point::Update/20                                          0.971 us        0.984 us       746667 items_per_second=20.3348M/s
+Benchmarks::Point::Update/50                                           2.07 us         2.05 us       373333 items_per_second=24.3809M/s
+Benchmarks::Point::Update/100                                          4.06 us         4.10 us       179200 items_per_second=24.4017M/s
+Benchmarks::Point::Update/1000                                         35.0 us         35.3 us        20364 items_per_second=28.3325M/s
+Benchmarks::Point::Update/10000                                         670 us          660 us          829 items_per_second=15.1589M/s
+Benchmarks::Point::Contains/1000                                       37.4 ns         36.8 ns     18666667
+Benchmarks::Point::Contains/10000                                      53.8 ns         54.7 ns     10000000
+Benchmarks::Point::RangeSearch/100                                     64.9 ns         64.2 ns     11200000
+Benchmarks::Point::RangeSearch/1000                                    86.1 ns         87.2 ns      8960000
+Benchmarks::Point::RangeSearch/10000                                    161 ns          160 ns      4480000
+Benchmarks::Point::RangeSearch/100000                                   683 ns          680 ns       896000
+Benchmarks::Point::GetNearestNeighbors/1000                           0.876 us        0.889 us       896000
+Benchmarks::Point::GetNearestNeighbors/10000                           1.68 us         1.66 us       497778
+Benchmarks::Point::GetNearestNeighbors<6>/1000                         3.05 us         3.05 us       235789
+Benchmarks::Point::GetNearestNeighbors<6>/10000                        17.7 us         17.6 us        40727
+Benchmarks::Point::GetNearestNeighbors<63>/1000                        2648 us         2636 us          249
+Benchmarks::Point::GetNearestNeighbors<63>/10000                      30606 us        30506 us           21
+Benchmarks::Point::FrustumCulling/1000                                 1.59 us         1.57 us       448000
+Benchmarks::Point::FrustumCulling/10000                                11.7 us         11.7 us        64000
+Benchmarks::Box::Create<3, 0, false>/10                               0.825 us        0.820 us       896000
+Benchmarks::Box::Create<3, 0, false>/20                                1.04 us         1.05 us       640000
+Benchmarks::Box::Create<3, 0, false>/50                                2.26 us         2.25 us       298667
+Benchmarks::Box::Create<3, 0, false>/100                               3.59 us         3.53 us       194783
+Benchmarks::Box::Create<3, 0, false>/1000                              29.5 us         29.2 us        23579
+Benchmarks::Box::Create<3, 0, false>/10000                              432 us          430 us         1600
+Benchmarks::Box::Create<3, 0, false>/100000                            4751 us         4741 us          145
+Benchmarks::Box::Create<3, 0, false>/1000000                          46545 us        46875 us           15
+Benchmarks::Box::Create<3, 0, true>/10                                 1.67 us         1.67 us       448000
+Benchmarks::Box::Create<3, 0, true>/20                                 2.98 us         2.72 us       235789
+Benchmarks::Box::Create<3, 0, true>/50                                 8.92 us         7.53 us       112000
+Benchmarks::Box::Create<3, 0, true>/100                                14.6 us         11.7 us        64000
+Benchmarks::Box::Create<3, 0, true>/1000                               49.2 us         40.8 us        14933
+Benchmarks::Box::Create<3, 0, true>/10000                               276 us          273 us         2635
+Benchmarks::Box::Create<3, 0, true>/100000                             2425 us         2404 us          299
+Benchmarks::Box::Create<3, 0, true>/1000000                           21357 us        21140 us           34
+Benchmarks::Box::Create<3, 1, false>/10                               0.881 us        0.879 us       746667
+Benchmarks::Box::Create<3, 1, false>/20                                1.10 us         1.10 us       640000
+Benchmarks::Box::Create<3, 1, false>/50                                2.83 us         2.83 us       248889
+Benchmarks::Box::Create<3, 1, false>/100                               6.05 us         6.00 us       112000
+Benchmarks::Box::Create<3, 1, false>/1000                              56.9 us         57.8 us        10000
+Benchmarks::Box::Create<3, 1, false>/10000                              974 us          983 us          747
+Benchmarks::Box::Create<3, 1, false>/100000                            9011 us         9167 us           75
+Benchmarks::Box::Create<3, 1, false>/1000000                          96420 us        95982 us            7
+Benchmarks::Box::Create<3, 1, true>/10                                 1.75 us         1.73 us       407273
+Benchmarks::Box::Create<3, 1, true>/20                                 3.23 us         2.76 us       248889
+Benchmarks::Box::Create<3, 1, true>/50                                 9.72 us         8.65 us       112000
+Benchmarks::Box::Create<3, 1, true>/100                                17.8 us         15.4 us        49778
+Benchmarks::Box::Create<3, 1, true>/1000                               80.2 us         79.5 us        11200
+Benchmarks::Box::Create<3, 1, true>/10000                               823 us          820 us          896
+Benchmarks::Box::Create<3, 1, true>/100000                             6436 us         6278 us          112
+Benchmarks::Box::Create<3, 1, true>/1000000                           68434 us        69602 us           11
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/10           0.906 us        0.900 us       746667
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/20            1.12 us         1.12 us       640000
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/50            2.37 us         2.41 us       298667
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/100           3.75 us         3.68 us       186667
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/1000          38.6 us         38.4 us        17920
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/10000          465 us          471 us         1493
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/100000        5040 us         5022 us          112
+Benchmarks::Box::Create_OversizedModelspace<3, 0, false>/1000000      51162 us        51562 us           10
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/10             1.73 us         1.69 us       407273
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/20             3.30 us         3.28 us       224000
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/50             8.95 us         8.02 us        89600
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/100            14.9 us         12.6 us        44800
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/1000           52.7 us         50.0 us        10000
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/10000           278 us          265 us         2358
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/100000         2341 us         2344 us          320
+Benchmarks::Box::Create_OversizedModelspace<3, 0, true>/1000000       22517 us        22949 us           32
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/10           0.968 us        0.984 us       746667
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/20            1.18 us         1.20 us       560000
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/50            2.95 us         2.92 us       235789
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/100           4.88 us         4.88 us       112000
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/1000          66.0 us         64.5 us         8960
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/10000          992 us          977 us          640
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/100000        8932 us         8958 us           75
+Benchmarks::Box::Create_OversizedModelspace<3, 1, false>/1000000     100048 us        98214 us            7
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/10             1.86 us         1.76 us       373333
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/20             3.24 us         2.98 us       235789
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/50             8.91 us         8.89 us        89600
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/100            16.4 us         14.3 us        44800
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/1000           85.6 us         71.1 us         7467
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/10000           828 us          820 us          896
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/100000         6306 us         6278 us          112
+Benchmarks::Box::Create_OversizedModelspace<3, 1, true>/1000000       71194 us        71181 us            9
+Benchmarks::Box::InsertToLeaf<0>/10                                    2.16 us         2.15 us       320000
+Benchmarks::Box::InsertToLeaf<0>/20                                    3.27 us         3.35 us       224000
+Benchmarks::Box::InsertToLeaf<0>/50                                    6.15 us         6.14 us       112000
+Benchmarks::Box::InsertToLeaf<0>/100                                   9.89 us         10.0 us        74667
+Benchmarks::Box::InsertToLeaf<0>/1000                                   104 us          103 us         6400
+Benchmarks::Box::InsertToLeaf<0>/10000                                  849 us          854 us          896
+Benchmarks::Box::InsertToLeaf<1>/10                                    6.13 us         6.14 us       112000
+Benchmarks::Box::InsertToLeaf<1>/20                                    10.4 us         10.5 us        74667
+Benchmarks::Box::InsertToLeaf<1>/50                                    20.7 us         20.5 us        32000
+Benchmarks::Box::InsertToLeaf<1>/100                                   33.2 us         33.5 us        22400
+Benchmarks::Box::InsertToLeaf<1>/1000                                   379 us          377 us         1867
+Benchmarks::Box::InsertToLeaf<1>/10000                                 2706 us         2698 us          249
+Benchmarks::Box::InsertWithRebalancing<0>/10                          0.976 us        0.984 us       746667
+Benchmarks::Box::InsertWithRebalancing<0>/20                           2.37 us         2.35 us       298667
+Benchmarks::Box::InsertWithRebalancing<0>/50                           4.08 us         4.08 us       172308
+Benchmarks::Box::InsertWithRebalancing<0>/100                          12.5 us         12.6 us        56000
+Benchmarks::Box::InsertWithRebalancing<0>/1000                          735 us          739 us         1120
+Benchmarks::Box::InsertWithRebalancing<0>/10000                       72910 us        72917 us            9
+Benchmarks::Box::InsertWithRebalancing<1>/10                          0.965 us        0.952 us       640000
+Benchmarks::Box::InsertWithRebalancing<1>/20                           2.60 us         2.55 us       263529
+Benchmarks::Box::InsertWithRebalancing<1>/50                           4.62 us         4.65 us       154483
+Benchmarks::Box::InsertWithRebalancing<1>/100                          15.9 us         15.7 us        40727
+Benchmarks::Box::InsertWithRebalancing<1>/1000                          663 us          656 us         1120
+Benchmarks::Box::InsertWithRebalancing<1>/10000                       49799 us        48295 us           11
+Benchmarks::Box::Update<0>/10                                         0.837 us        0.854 us       896000 items_per_second=11.7029M/s
+Benchmarks::Box::Update<0>/20                                          1.59 us         1.60 us       448000 items_per_second=12.4661M/s
+Benchmarks::Box::Update<0>/50                                          3.83 us         3.84 us       179200 items_per_second=13.0327M/s
+Benchmarks::Box::Update<0>/100                                         7.61 us         7.67 us        89600 items_per_second=13.0327M/s
+Benchmarks::Box::Update<0>/1000                                        80.0 us         79.5 us         7467 items_per_second=12.576M/s
+Benchmarks::Box::Update<0>/10000                                    1447117 us      1453125 us            1 items_per_second=6.88172k/s
+Benchmarks::Box::Update<1>/10                                          1.88 us         1.88 us       373333 items_per_second=5.30962M/s
+Benchmarks::Box::Update<1>/20                                          5.99 us         6.00 us       112000 items_per_second=3.33395M/s
+Benchmarks::Box::Update<1>/50                                          25.8 us         25.7 us        28000 items_per_second=1.94783M/s
+Benchmarks::Box::Update<1>/100                                          109 us          110 us         6400 items_per_second=910.222k/s
+Benchmarks::Box::Update<1>/1000                                       10512 us        10625 us           75 items_per_second=94.1176k/s
+Benchmarks::Box::Update<1>/10000                                    1176775 us      1171875 us            1 items_per_second=8.53333k/s
+Benchmarks::Box::PickSearch<0>/100                                      116 ns          117 ns      6400000
+Benchmarks::Box::PickSearch<0>/1000                                     182 ns          180 ns      3733333
+Benchmarks::Box::PickSearch<0>/10000                                    840 ns          837 ns       746667
+Benchmarks::Box::PickSearch<0>/100000                                 14136 ns        14125 ns        49778
+Benchmarks::Box::PickSearch<1>/100                                      110 ns          110 ns      6400000
+Benchmarks::Box::PickSearch<1>/1000                                     141 ns          141 ns      4977778
+Benchmarks::Box::PickSearch<1>/10000                                    452 ns          455 ns      1544828
+Benchmarks::Box::PickSearch<1>/100000                                  7476 ns         7324 ns        89600
+Benchmarks::Box::RangeSearch<0>/100                                    81.8 ns         79.5 ns      7466667
+Benchmarks::Box::RangeSearch<0>/1000                                    147 ns          148 ns      5600000
+Benchmarks::Box::RangeSearch<0>/10000                                   810 ns          820 ns       896000
+Benchmarks::Box::RangeSearch<0>/100000                                15308 ns        15381 ns        49778
+Benchmarks::Box::RangeSearch<1>/100                                    81.3 ns         79.5 ns      7466667
+Benchmarks::Box::RangeSearch<1>/1000                                    137 ns          138 ns      4977778
+Benchmarks::Box::RangeSearch<1>/10000                                   877 ns          872 ns       896000
+Benchmarks::Box::RangeSearch<1>/100000                                13460 ns        13497 ns        49778
+Benchmarks::Box::FrustumCulling<0>/1000                                1.73 us         1.73 us       407273
+Benchmarks::Box::FrustumCulling<0>/10000                               11.3 us         11.2 us        64000
+Benchmarks::Box::FrustumCulling<1>/1000                                1.66 us         1.65 us       407273
+Benchmarks::Box::FrustumCulling<1>/10000                               11.2 us         10.9 us        56000
+Benchmarks::Box::CollisionDetection<0, false>/100                      2.07 us         2.09 us       344615
+Benchmarks::Box::CollisionDetection<0, false>/1000                     67.8 us         68.0 us         8960
+Benchmarks::Box::CollisionDetection<0, false>/10000                    5017 us         5022 us          112
+Benchmarks::Box::CollisionDetection<0, false>/100000                 308877 us       304688 us            2
+Benchmarks::Box::CollisionDetection<0, true>/100                       2.38 us         2.35 us       298667
+Benchmarks::Box::CollisionDetection<0, true>/1000                      42.8 us         36.3 us        17231
+Benchmarks::Box::CollisionDetection<0, true>/10000                     1475 us         1475 us          498
+Benchmarks::Box::CollisionDetection<0, true>/100000                  116956 us       117188 us            6
+Benchmarks::Box::CollisionDetection<1, false>/100                      5.80 us         5.86 us       112000
+Benchmarks::Box::CollisionDetection<1, false>/1000                      136 us          135 us         4978
+Benchmarks::Box::CollisionDetection<1, false>/10000                   10988 us        10742 us           64
+Benchmarks::Box::CollisionDetection<1, false>/100000                 764070 us       765625 us            1
+Benchmarks::Box::CollisionDetection<1, true>/100                       6.21 us         6.28 us       112000
+Benchmarks::Box::CollisionDetection<1, true>/1000                      67.3 us         58.6 us        11200
+Benchmarks::Box::CollisionDetection<1, true>/10000                     2589 us         2486 us          264
+Benchmarks::Box::CollisionDetection<1, true>/100000                  192533 us       195312 us            4
+Benchmarks::Box::CollisionDetection_WithOtherTree<0>/100               8.65 us         8.58 us        74667
+Benchmarks::Box::CollisionDetection_WithOtherTree<0>/1000               417 us          414 us         1659
+Benchmarks::Box::CollisionDetection_WithOtherTree<0>/10000            22667 us        22396 us           30
+Benchmarks::Box::CollisionDetection_WithOtherTree<0>/100000         2302088 us      2296875 us            1
+Benchmarks::Box::CollisionDetection_WithOtherTree<1>/100               15.5 us         15.7 us        44800
+Benchmarks::Box::CollisionDetection_WithOtherTree<1>/1000               511 us          502 us         1120
+Benchmarks::Box::CollisionDetection_WithOtherTree<1>/10000            23413 us        22879 us           28
+Benchmarks::Box::CollisionDetection_WithOtherTree<1>/100000         1656120 us      1671875 us            1
+Benchmarks::Box::RayIntersectedFirst<0>/100                           0.780 us        0.785 us       896000
+Benchmarks::Box::RayIntersectedFirst<0>/1000                           2.13 us         2.13 us       344615
+Benchmarks::Box::RayIntersectedFirst<0>/10000                          9.92 us         9.84 us        74667
+Benchmarks::Box::RayIntersectedFirst<0>/100000                         90.2 us         87.9 us         7467
+Benchmarks::Box::RayIntersectedFirst<1>/100                           0.863 us        0.872 us       896000
+Benchmarks::Box::RayIntersectedFirst<1>/1000                           1.82 us         1.81 us       344615
+Benchmarks::Box::RayIntersectedFirst<1>/10000                          5.39 us         5.30 us       112000
+Benchmarks::Box::RayIntersectedFirst<1>/100000                         26.5 us         26.7 us        26353
+Benchmarks::Box::RayIntersectedAll<0>/100                             0.665 us        0.670 us      1120000
+Benchmarks::Box::RayIntersectedAll<0>/1000                             1.93 us         1.93 us       373333
+Benchmarks::Box::RayIntersectedAll<0>/10000                            10.5 us         10.3 us        64000
+Benchmarks::Box::RayIntersectedAll<0>/100000                            104 us          106 us         5600
+Benchmarks::Box::RayIntersectedAll<1>/100                             0.804 us        0.809 us      1120000
+Benchmarks::Box::RayIntersectedAll<1>/1000                             1.69 us         1.69 us       407273
+Benchmarks::Box::RayIntersectedAll<1>/10000                            6.59 us         6.70 us       112000
+Benchmarks::Box::RayIntersectedAll<1>/100000                           48.0 us         48.8 us        11200
