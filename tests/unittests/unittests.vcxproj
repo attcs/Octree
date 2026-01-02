@@ -193,26 +193,26 @@
     <ClCompile Include="random.tests.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\octree\adapters\boost.h" />
-    <ClInclude Include="..\include\octree\adapters\cgal.h" />
-    <ClInclude Include="..\include\octree\adapters\concepts.h" />
-    <ClInclude Include="..\include\octree\adapters\eigen.h" />
-    <ClInclude Include="..\include\octree\adapters\general.h" />
-    <ClInclude Include="..\include\octree\adapters\glm.h" />
-    <ClInclude Include="..\include\octree\adapters\unreal.h" />
-    <ClInclude Include="..\include\octree\adapters\xyz.h" />
-    <ClInclude Include="..\include\octree\detail\bitset_arithmetic.h" />
-    <ClInclude Include="..\include\octree\detail\common.h" />
-    <ClInclude Include="..\include\octree\detail\grid_space_indexing.h" />
-    <ClInclude Include="..\include\octree\detail\inplace_vector.h" />
-    <ClInclude Include="..\include\octree\detail\internal_geometry_module.h" />
-    <ClInclude Include="..\include\octree\detail\memory_resource.h" />
-    <ClInclude Include="..\include\octree\detail\morton_space_indexing.h" />
-    <ClInclude Include="..\include\octree\detail\partitioning.h" />
-    <ClInclude Include="..\include\octree\detail\undefs.h" />
-    <ClInclude Include="..\include\octree\detail\zip_view.h" />
-    <ClInclude Include="..\include\octree\octree.h" />
-    <ClInclude Include="..\include\octree\octree_container.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\boost.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\cgal.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\concepts.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\eigen.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\general.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\glm.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\unreal.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\xyz.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\bitset_arithmetic.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\common.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\grid_space_indexing.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\inplace_vector.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\internal_geometry_module.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\memory_resource.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\morton_space_indexing.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\partitioning.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\undefs.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\zip_view.h" />
+    <ClInclude Include="..\..\include\orthotree\octree.h" />
+    <ClInclude Include="..\..\include\orthotree\octree_container.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
