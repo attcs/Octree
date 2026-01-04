@@ -29,10 +29,10 @@
 
 // glm
 #include <glm/glm.hpp>
-#include "octree/adapters.glm.h"
+#include "orthotree/adapters/glm.h"
 
 // XYZ
-#include "octree/adapters/xyz.h"
+#include "orthotree/adapters/xyz.h"
 
 // Unreal Engine
 #define UNREAL_DUMMY_TYPES
@@ -45,7 +45,7 @@
 #include "Math/Vector.h"
 #include "Math/Vector2D.h"
 #endif // !UNREAL_DUMMY_TYPES
-#include "../adaptor.unreal.h"
+#include "orthotree/adapters/unreal.h"
 
 // clang-format on
 
@@ -67,7 +67,7 @@ namespace
   void vectorConv(TVector const& pointO, typename TOrthoTreeA::TVector& pointA)
   {
     for (int dimID = 0; dimID < DIMENSION_NO; ++dimID)
-      TOrthoTreeA::AD::SetPointC(pointA, dimID, pointO[dimID]);
+      TOrthoTreeA::GA::SetPointC(pointA, dimID, pointO[dimID]);
   }
 
   template<int DIMENSION_NO, typename TBox, typename TOrthoTreeA>
@@ -75,8 +75,8 @@ namespace
   {
     for (int dimID = 0; dimID < DIMENSION_NO; ++dimID)
     {
-      TOrthoTreeA::AD::SetBoxMinC(boxA, dimID, boxO.Min[dimID]);
-      TOrthoTreeA::AD::SetBoxMaxC(boxA, dimID, boxO.Max[dimID]);
+      TOrthoTreeA::GA::SetBoxMinC(boxA, dimID, boxO.Min[dimID]);
+      TOrthoTreeA::GA::SetBoxMaxC(boxA, dimID, boxO.Max[dimID]);
     }
   }
 
@@ -312,13 +312,13 @@ namespace
   template<typename TPointTestInput, typename TOrthoTreeA>
   void corePointTest3D_Check(TPointTestInput& testdata, bool doCheck)
   {
-    using AD = typename TOrthoTreeA::AD;
+    using GA = typename TOrthoTreeA::GA;
     using GeometryA = typename TOrthoTreeA::TScalar;
-    using EntityID = typename TOrthoTreeA::TEntityID;
+    using EntityID = typename TOrthoTreeA::EntityID;
 
     auto const& [points, pointOfkNN, searchBox, searchPlane, frustumPlanes] = testdata;
 
-    auto const pointNo = TOrthoTreeA::TEntityID(points.size());
+    auto const pointNo = TOrthoTreeA::EntityID(points.size());
     auto const points_span = std::span(points.begin(), points.end() - 1);
 
     auto tree = TOrthoTreeA(points_span, 3, std::nullopt, 1);
@@ -332,14 +332,14 @@ namespace
     auto const pointsInSearchBoxActual = tree.RangeSearch(searchBox, points);
     auto const pointsInSearchBoxExpected = std::vector<EntityID>{ 0, 1, 2, 8, 9 };
 
-    auto const pointsInPlaneActual = tree.PlaneSearch(AD::GetPlaneOrigoDistance(searchPlane), AD::GetPlaneNormal(searchPlane), GeometryA(0.3), points);
+    auto const pointsInPlaneActual = tree.PlaneSearch(GA::GetPlaneOrigoDistance(searchPlane), GA::GetPlaneNormal(searchPlane), points, GeometryA(0.3));
     auto const pointsInPlaneExpected = std::vector<EntityID>{ 5, 6, 7, 8, 9 };
 
-    auto const pointsInFrustumActual = tree.FrustumCulling(frustumPlanes, GeometryA(0.01), points);
+    auto const pointsInFrustumActual = tree.FrustumCulling(frustumPlanes, points, GeometryA(0.01));
     auto const pointsInFrustumExpected = std::vector<EntityID>{ 2, 3, 4, 6, 7 };
 
     tree.Insert(pointNo - 1, points.back());
-    tree.template Erase<false>(0, points[0]);
+    tree.Erase(0, points[0]);
     auto const entityIDsInDFS_AfterErase_Actual = tree.CollectAllEntitiesInDFS();
     auto const entityIDsInDFS_AfterErase_Expected = std::vector<EntityID>{ 1, 8, 10, 9, 7, 6, 5, 2, 3, 4 };
 
@@ -372,7 +372,7 @@ namespace
   struct BoxTestInputT
   {
     using TScalar = typename TOrthoTreeA::TScalar;
-    using TFPGeometry = typename TOrthoTreeA::FPGeometry;
+    using TFPGeometry = typename TOrthoTreeA::TFloatScalar;
     using TVector = typename TOrthoTreeA::TVector;
     using TBox = typename TOrthoTreeA::TBox;
     using TRay = typename TOrthoTreeA::TRay;
@@ -441,10 +441,10 @@ namespace
   template<typename TBoxTestInput, typename TOrthoTreeA>
   void containerBoxTest2D_Check(TBoxTestInput& testdata, bool doCheck)
   {
-    using AD = typename TOrthoTreeA::AD;
+    using GA = typename TOrthoTreeA::GA;
     using GeometryA = typename TOrthoTreeA::TScalar;
-    using FPGeometryA = typename TOrthoTreeA::FPGeometry;
-    using EntityID = typename TOrthoTreeA::TEntityID;
+    using FloatScalarA = typename TOrthoTreeA::TFloatScalar;
+    using EntityID = typename TOrthoTreeA::EntityID;
 
     auto const& [boxes, pickPoint, searchBox, ray, searchPlane, frustumPlanes] = testdata;
 
@@ -475,10 +475,10 @@ namespace
     auto const pickedIDsActual = quadtree.PickSearch(pickPoint); //: { 2, 4 }
     auto const pickedIDsExpected = std::vector<EntityID>{ 2, 4 };
 
-    auto const firstIntersectedBoxes = quadtree.RayIntersectedFirst(ray, FPGeometryA(0.01)); //: 4
+    auto const firstIntersectedBoxes = quadtree.RayIntersectedFirst(ray, FloatScalarA(0.01)); //: 4
 
     auto const intersectedPointsActual =
-      quadtree.RayIntersectedAll(AD::GetRayOrigin(ray), AD::GetRayDirection(ray), GeometryA(0.01)); //: { 4, 2, 3 } in distance order!
+      quadtree.RayIntersectedAll(GA::GetRayOrigin(ray), GA::GetRayDirection(ray), GeometryA(0.01)); //: { 4, 2, 3 } in distance order!
     auto const intersectedPointsExpected = std::vector<EntityID>{ 2, 3, 4 };
 
     auto const boxesInFrustumActual = quadtree.FrustumCulling(frustumPlanes, GeometryA(0.01));

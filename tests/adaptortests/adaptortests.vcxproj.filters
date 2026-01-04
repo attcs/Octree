@@ -6,10 +6,28 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="..\adaptor.glm.h">
+    <ClInclude Include="..\..\include\orthotree\adapters\boost.h">
       <Filter>Adapters</Filter>
     </ClInclude>
-    <ClInclude Include="..\adaptor.cgal.h">
+    <ClInclude Include="..\..\include\orthotree\adapters\cgal.h">
+      <Filter>Adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\concepts.h">
+      <Filter>Adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\eigen.h">
+      <Filter>Adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\general.h">
+      <Filter>Adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\glm.h">
+      <Filter>Adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\unreal.h">
+      <Filter>Adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\xyz.h">
       <Filter>Adapters</Filter>
     </ClInclude>
   </ItemGroup>

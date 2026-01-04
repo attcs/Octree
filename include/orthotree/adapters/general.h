@@ -51,7 +51,7 @@ namespace OrthoTree
     using Plane = TPlane;
 
     static constexpr dim_t DIMENSION_NO = DIMENSION_NO_;
-    static constexpr TFloatScalar BASE_TOLERANCE = std::numeric_limits<TFloatScalar>::epsilon() * 10.0;
+    static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
     static constexpr Scalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
     static constexpr void SetPointC(Vector& point, dim_t dimensionID, TScalar value) noexcept { point[dimensionID] = value; }
@@ -74,27 +74,27 @@ namespace OrthoTree
   {
     using Base = TBaseGeometryAdapter;
 
-    using TScalar = Base::Scalar;
-    using TFloatScalar = Base::FloatScalar;
-    using TVector = Base::Vector;
-    using TBox = Base::Box;
-    using TRay = Base::Ray;
-    using TPlane = Base::Plane;
+    using Scalar = Base::Scalar;
+    using FloatScalar = Base::FloatScalar;
+    using Vector = Base::Vector;
+    using Box = Base::Box;
+    using Ray = Base::Ray;
+    using Plane = Base::Plane;
 
     static constexpr dim_t DIMENSION_NO = Base::DIMENSION_NO;
 
-    static_assert(AdaptorBasicsConcept<Base, TVector, TBox, TRay, TPlane, TScalar>);
+    static_assert(BaseGeometryAdapterConcept<Base, DIMENSION_NO, Vector, Box, Ray, Plane, Scalar, FloatScalar>);
 
-    static constexpr TVector Add(TVector const& ptL, TVector const& ptR) noexcept
+    static constexpr Vector Add(Vector const& ptL, Vector const& ptR) noexcept
     {
-      auto point = TVector{};
+      auto point = Vector{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         Base::SetPointC(point, dimensionID, Base::GetPointC(ptL, dimensionID) + Base::GetPointC(ptR, dimensionID));
 
       return point;
     }
 
-    static void MoveBox(TBox& box, TVector const& moveVector) noexcept
+    static void MoveBox(Box& box, Vector const& moveVector) noexcept
     {
       LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -104,9 +104,9 @@ namespace OrthoTree
       }
     }
 
-    static constexpr TScalar Size2(TVector const& point) noexcept
+    static constexpr Scalar Size2(Vector const& point) noexcept
     {
-      auto d2 = TScalar{ 0 };
+      auto d2 = Scalar{ 0 };
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         auto const d = Base::GetPointC(point, dimensionID);
@@ -115,20 +115,20 @@ namespace OrthoTree
       return d2;
     }
 
-    static constexpr TScalar Size(TVector const& point) noexcept { return std::sqrt(Size2(point)); }
+    static constexpr Scalar Size(Vector const& point) noexcept { return std::sqrt(Size2(point)); }
 
-    static constexpr TScalar Dot(TVector const& ptL, TVector const& ptR) noexcept
+    static constexpr Scalar Dot(Vector const& ptL, Vector const& ptR) noexcept
     {
-      auto value = TScalar{};
+      auto value = Scalar{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         value += Base::GetPointC(ptL, dimensionID) * Base::GetPointC(ptR, dimensionID);
 
       return value;
     }
 
-    static constexpr TScalar Distance2(TVector const& ptL, TVector const& ptR) noexcept
+    static constexpr Scalar Distance2(Vector const& ptL, Vector const& ptR) noexcept
     {
-      auto d2 = TScalar{ 0 };
+      auto d2 = Scalar{ 0 };
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         auto const d = Base::GetPointC(ptL, dimensionID) - Base::GetPointC(ptR, dimensionID);
@@ -137,28 +137,28 @@ namespace OrthoTree
       return d2;
     }
 
-    static constexpr TScalar Distance(TVector const& ptL, TVector const& ptR) noexcept { return std::sqrt(Distance2(ptL, ptR)); }
+    static constexpr Scalar Distance(Vector const& ptL, Vector const& ptR) noexcept { return std::sqrt(Distance2(ptL, ptR)); }
 
     struct PointBoxMinMaxDistance
     {
       // Minimum possible distance from the query point to any object contained in the box.
       // If the point lies inside the box, this value is zero.
-      TScalar min = {};
+      Scalar min = {};
 
       // Maximum possible nearest-distance in the worst case.
       // Assumes an object inside the box is placed adversarially so as to maximize
       // its minimum distance to the query point (i.e. the worst-case nearest object).
-      TScalar minMax = {};
+      Scalar minMax = {};
     };
-    static constexpr PointBoxMinMaxDistance MinMaxDistance2(TVector const& pt, TBox const& box, TScalar tolerance) noexcept
+    static constexpr PointBoxMinMaxDistance MinMaxDistance2(Vector const& pt, Box const& box, FloatScalar tolerance) noexcept
     {
       // N. Roussopoulos, S. Kelley, F. Vincent - Nearest Neighbor Queries (1995) DOI.10.1145 / 223784.223794
       // MINMAXDIST
 
       auto dist2 = PointBoxMinMaxDistance{};
 
-      TScalar farthestInsideDistance2 = std::numeric_limits<TScalar>::max();
-      TScalar largestMinMax2Difference = {};
+      Scalar farthestInsideDistance2 = std::numeric_limits<Scalar>::max();
+      Scalar largestMinMax2Difference = {};
       auto isInside = true;
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
@@ -201,7 +201,7 @@ namespace OrthoTree
       return dist2;
     }
 
-    static constexpr PointBoxMinMaxDistance MinMaxDistance(TVector const& pt, TBox const& box, TFloatScalar tolerance) noexcept
+    static constexpr PointBoxMinMaxDistance MinMaxDistance(Vector const& pt, Box const& box, FloatScalar tolerance) noexcept
     {
       auto dist = MinMaxDistance2(pt, box, tolerance);
       dist.min = std::sqrt(dist.min);
@@ -209,14 +209,14 @@ namespace OrthoTree
       return dist;
     }
 
-    static constexpr bool ArePointsEqual(TVector const& ptL, TVector const& ptR, TFloatScalar tolerance) noexcept
+    static constexpr bool ArePointsEqual(Vector const& ptL, Vector const& ptR, FloatScalar tolerance) noexcept
     {
       return Distance2(ptL, ptR) <= tolerance * tolerance;
     }
 
-    static constexpr bool IsNormalizedVector(TVector const& normal) noexcept { return std::abs(Size2(normal) - 1.0) < 0.000001; }
+    static constexpr bool IsNormalizedVector(Vector const& normal) noexcept { return std::abs(Size2(normal) - 1.0) < 0.000001; }
 
-    static constexpr bool DoesBoxContainPoint(TBox const& box, TVector const& point, TScalar tolerance = 0) noexcept
+    static constexpr bool DoesBoxContainPoint(Box const& box, Vector const& point, FloatScalar tolerance = 0) noexcept
     {
       if (tolerance != 0.0)
       {
@@ -242,7 +242,7 @@ namespace OrthoTree
       Adjecent = 0,
       Separated = 1
     };
-    static constexpr EBoxRelation GetBoxRelation(TBox const& e1, TBox const& e2) noexcept
+    static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2) noexcept
     {
       enum EBoxRelationCandidate : uint8_t
       {
@@ -265,12 +265,12 @@ namespace OrthoTree
       return (rel & EBoxRelationCandidate::AdjecentC) ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
     }
 
-    static constexpr bool AreBoxesOverlappedStrict(TBox const& e1, TBox const& e2) noexcept
+    static constexpr bool AreBoxesOverlappedStrict(Box const& e1, Box const& e2) noexcept
     {
       return GetBoxRelation(e1, e2) == EBoxRelation::Overlapped;
     }
 
-    static constexpr bool AreBoxesOverlapped(TBox const& e1, TBox const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
+    static constexpr bool AreBoxesOverlapped(Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
     {
       if (e1_must_contain_e2)
       {
@@ -294,7 +294,7 @@ namespace OrthoTree
       }
     }
 
-    static constexpr std::optional<double> GetRayBoxDistance(TBox const& box, TVector const& rayOrigin, TVector const& rayDirection, TScalar tolerance) noexcept
+    static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Vector const& rayOrigin, Vector const& rayDirection, FloatScalar tolerance) noexcept
     {
       assert(tolerance >= 0 && "Tolerance cannot be negative!");
 
@@ -346,13 +346,13 @@ namespace OrthoTree
         return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
     }
 
-    static constexpr std::optional<double> GetRayBoxDistance(TBox const& box, TRay const& ray, TScalar tolerance) noexcept
+    static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Ray const& ray, FloatScalar tolerance) noexcept
     {
       return GetRayBoxDistance(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
     }
 
     // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    static constexpr PlaneRelation GetPointPlaneRelation(TVector const& point, TScalar distanceOfOrigo, TVector const& planeNormal, TScalar tolerance) noexcept
+    static constexpr PlaneRelation GetPointPlaneRelation(Vector const& point, Scalar distanceOfOrigo, Vector const& planeNormal, FloatScalar tolerance) noexcept
     {
       assert(IsNormalizedVector(planeNormal));
 

@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "octree.h"
+#include "../octree.h"
 /* Required headers
 #include <CGAL/Bbox_2.h>
 #include <CGAL/Bbox_3.h>
@@ -50,162 +50,160 @@ namespace CGAL
 
 namespace OrthoTree
 {
-  namespace CGALAdaptor
+  namespace CGALAdapter
   {
-    struct AdaptorGeneralBasics2D
+    struct BaseGeometryAdapter2D
     {
-      using TScalar = double;
-      using TVector = CGAL::Point_2<CGAL::Cartesian<TScalar>>;
-      using TBox = CGAL::Bbox_2;
-      using TRay = CGAL::Ray_2<CGAL::Cartesian<TScalar>>;
-      using TPlane = CGAL::Plane_2;
+      using Scalar = double;
+      using FloatScalar = double;
+      using Vector = CGAL::Point_2<CGAL::Cartesian<Scalar>>;
+      using Box = CGAL::Bbox_2;
+      using Ray = CGAL::Ray_2<CGAL::Cartesian<Scalar>>;
+      using Plane = CGAL::Plane_2;
 
-      static inline TScalar GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
-      static inline void SetPointC(TVector& point, dim_t dimensionID, TScalar value) noexcept
+      static constexpr dim_t DIMENSION_NO = 2;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
+      static Scalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+      static void SetPointC(Vector& point, dim_t dimensionID, Scalar value) noexcept
       {
         if (dimensionID == 0)
-          point = TVector(value, point.y());
+          point = Vector(value, point.y());
         else
-          point = TVector(point.x(), value);
+          point = Vector(point.x(), value);
       }
 
-      static inline TScalar GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return box.min(dimensionID); }
-      static inline TScalar GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return box.max(dimensionID); }
-      static inline void SetBoxMinC(TBox& box, dim_t dimensionID, TScalar value) noexcept
+      static Scalar GetBoxMinC(Box const& box, dim_t dimensionID) noexcept { return box.min(dimensionID); }
+      static Scalar GetBoxMaxC(Box const& box, dim_t dimensionID) noexcept { return box.max(dimensionID); }
+      static void SetBoxMinC(Box& box, dim_t dimensionID, Scalar value) noexcept
       {
         if (dimensionID == 0)
-          box = TBox(value, box.ymin(), box.xmax(), box.ymax());
+          box = Box(value, box.ymin(), box.xmax(), box.ymax());
         else
-          box = TBox(box.xmin(), value, box.xmax(), box.ymax());
+          box = Box(box.xmin(), value, box.xmax(), box.ymax());
       }
-      static inline void SetBoxMaxC(TBox& box, dim_t dimensionID, TScalar value) noexcept
+      static void SetBoxMaxC(Box& box, dim_t dimensionID, Scalar value) noexcept
       {
         if (dimensionID == 0)
-          box = TBox(box.xmin(), box.ymin(), value, box.ymax());
+          box = Box(box.xmin(), box.ymin(), value, box.ymax());
         else
-          box = TBox(box.xmin(), box.ymin(), box.xmax(), value);
+          box = Box(box.xmin(), box.ymin(), box.xmax(), value);
       }
 
-      static inline TVector GetRayDirection(TRay const& ray) noexcept
+      static Vector GetRayDirection(Ray const& ray) noexcept
       {
         auto const direction = ray.to_vector();
-        return TVector(direction.x(), direction.y());
+        return Vector(direction.x(), direction.y());
       }
-      static inline TVector GetRayOrigin(TRay const& ray) noexcept { return ray.source(); }
+      static Vector GetRayOrigin(Ray const& ray) noexcept { return ray.source(); }
 
-      static inline TVector const& GetPlaneNormal(TPlane const& plane) noexcept { return plane.normal; }
-      static inline TScalar GetPlaneOrigoDistance(TPlane const& plane) noexcept { return -plane.offset; }
+      static Vector const& GetPlaneNormal(Plane const& plane) noexcept { return plane.normal; }
+      static Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return -plane.offset; }
     };
 
-    using CGALAdaptorGeneral2D =
-      AdaptorGeneralBase<2, CGAL::Point_2<CGAL::Cartesian<double>>, CGAL::Bbox_2, CGAL::Ray_2<CGAL::Cartesian<double>>, CGAL::Plane_2, double, AdaptorGeneralBasics2D>;
+    using CGALGeometryAdapter2D = GeneralGeometryAdapter<BaseGeometryAdapter2D>;
 
 
-    struct AdaptorGeneralBasics3D
+    struct BaseGeometryAdapter3D
     {
-      using TScalar = double;
-      using TVector = CGAL::Point_3<CGAL::Cartesian<TScalar>>;
-      using TBox = CGAL::Bbox_3;
-      using TRay = CGAL::Ray_3<CGAL::Cartesian<TScalar>>;
-      using TPlane = CGAL::Plane_3<CGAL::Cartesian<TScalar>>;
+      using Scalar = double;
+      using FloatScalar = double;
+      using Vector = CGAL::Point_3<CGAL::Cartesian<Scalar>>;
+      using Box = CGAL::Bbox_3;
+      using Ray = CGAL::Ray_3<CGAL::Cartesian<Scalar>>;
+      using Plane = CGAL::Plane_3<CGAL::Cartesian<Scalar>>;
 
-      static inline TScalar GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
-      static inline void SetPointC(TVector& point, dim_t dimensionID, TScalar value) noexcept
+      static constexpr dim_t DIMENSION_NO = 2;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
+      static Scalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+      static void SetPointC(Vector& point, dim_t dimensionID, Scalar value) noexcept
       {
         switch (dimensionID)
         {
-        case 0: point = TVector(value, point.y(), point.z()); return;
-        case 1: point = TVector(point.x(), value, point.z()); return;
-        case 2: point = TVector(point.x(), point.y(), value); return;
+        case 0: point = Vector(value, point.y(), point.z()); return;
+        case 1: point = Vector(point.x(), value, point.z()); return;
+        case 2: point = Vector(point.x(), point.y(), value); return;
         }
         assert(false);
         std::terminate();
       }
 
-      static inline TScalar GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return box.min(dimensionID); }
-      static inline TScalar GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return box.max(dimensionID); }
-      static inline void SetBoxMinC(TBox& box, dim_t dimensionID, TScalar value) noexcept
+      static Scalar GetBoxMinC(Box const& box, dim_t dimensionID) noexcept { return box.min(dimensionID); }
+      static Scalar GetBoxMaxC(Box const& box, dim_t dimensionID) noexcept { return box.max(dimensionID); }
+      static void SetBoxMinC(Box& box, dim_t dimensionID, Scalar value) noexcept
       {
         switch (dimensionID)
         {
-        case 0: box = TBox(value, box.ymin(), box.zmin(), box.xmax(), box.ymax(), box.zmax()); return;
-        case 1: box = TBox(box.xmin(), value, box.zmin(), box.xmax(), box.ymax(), box.zmax()); return;
-        case 2: box = TBox(box.xmin(), box.ymin(), value, box.xmax(), box.ymax(), box.zmax()); return;
+        case 0: box = Box(value, box.ymin(), box.zmin(), box.xmax(), box.ymax(), box.zmax()); return;
+        case 1: box = Box(box.xmin(), value, box.zmin(), box.xmax(), box.ymax(), box.zmax()); return;
+        case 2: box = Box(box.xmin(), box.ymin(), value, box.xmax(), box.ymax(), box.zmax()); return;
         }
         assert(false);
         std::terminate();
       }
 
-      static inline void SetBoxMaxC(TBox& box, dim_t dimensionID, TScalar value) noexcept
+      static void SetBoxMaxC(Box& box, dim_t dimensionID, Scalar value) noexcept
       {
         switch (dimensionID)
         {
-        case 0: box = TBox(box.xmin(), box.ymin(), box.zmin(), value, box.ymax(), box.zmax()); return;
-        case 1: box = TBox(box.xmin(), box.ymin(), box.zmin(), box.xmax(), value, box.zmax()); return;
-        case 2: box = TBox(box.xmin(), box.ymin(), box.zmin(), box.xmax(), box.ymax(), value); return;
+        case 0: box = Box(box.xmin(), box.ymin(), box.zmin(), value, box.ymax(), box.zmax()); return;
+        case 1: box = Box(box.xmin(), box.ymin(), box.zmin(), box.xmax(), value, box.zmax()); return;
+        case 2: box = Box(box.xmin(), box.ymin(), box.zmin(), box.xmax(), box.ymax(), value); return;
         }
         assert(false);
         std::terminate();
       }
 
-      static inline TVector GetRayDirection(TRay const& ray) noexcept
+      static Vector GetRayDirection(Ray const& ray) noexcept
       {
         auto const direction = ray.to_vector();
-        return TVector(direction.x(), direction.y(), direction.z());
+        return Vector(direction.x(), direction.y(), direction.z());
       }
-      static inline TVector GetRayOrigin(TRay const& ray) noexcept { return ray.source(); }
+      static Vector GetRayOrigin(Ray const& ray) noexcept { return ray.source(); }
 
-      static inline TVector GetPlaneNormal(TPlane const& plane) noexcept { return TVector(plane.a(), plane.b(), plane.c()); }
-      static inline TScalar GetPlaneOrigoDistance(TPlane const& plane) noexcept { return -plane.d(); }
+      static Vector GetPlaneNormal(Plane const& plane) noexcept { return Vector(plane.a(), plane.b(), plane.c()); }
+      static Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return -plane.d(); }
     };
-    using CGALAdaptorGeneral3D =
-      AdaptorGeneralBase<3, CGAL::Point_3<CGAL::Cartesian<double>>, CGAL::Bbox_3, CGAL::Ray_3<CGAL::Cartesian<double>>, CGAL::Plane_3<CGAL::Cartesian<double>>, double, AdaptorGeneralBasics3D>;
 
-
-  } // namespace CGALAdaptor
+    using CGALGeometryAdapter3D = GeneralGeometryAdapter<BaseGeometryAdapter3D>;
+  } // namespace CGALAdapter
 } // namespace OrthoTree
 
 namespace CGAL
 {
-  using namespace OrthoTree::CGALAdaptor;
+  using namespace OrthoTree::CGALAdapter;
 
   // Core types
   using QuadtreePoint =
-    OrthoTree::OrthoTreePoint<2, CGAL::Point_2<CGAL::Cartesian<double>>, CGAL::Bbox_2, CGAL::Ray_2<CGAL::Cartesian<double>>, CGAL::Plane_2, double, CGALAdaptorGeneral2D>;
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration>;
 
-  using OctreePoint = OrthoTree::
-    OrthoTreePoint<3, CGAL::Point_3<CGAL::Cartesian<double>>, CGAL::Bbox_3, CGAL::Ray_3<CGAL::Cartesian<double>>, CGAL::Plane_3<CGAL::Cartesian<double>>, double, CGALAdaptorGeneral3D>;
+  using OctreePoint =
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration>;
 
   template<bool IS_LOOSE_TREE>
   using QuadtreeBoxs =
-    OrthoTree::OrthoTreeBoundingBox<2, CGAL::Point_2<CGAL::Cartesian<double>>, CGAL::Bbox_2, CGAL::Ray_2<CGAL::Cartesian<double>>, CGAL::Plane_2, double, IS_LOOSE_TREE, CGALAdaptorGeneral2D>;
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntitySpanAdapter<CGAL::Bbox_2>, CGALGeometryAdapter2D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
 
   using QuadtreeBox = QuadtreeBoxs<true>;
 
   template<bool IS_LOOSE_TREE>
-  using OctreeBoxs = OrthoTree::OrthoTreeBoundingBox<
-    3,
-    CGAL::Point_3<CGAL::Cartesian<double>>,
-    CGAL::Bbox_3,
-    CGAL::Ray_3<CGAL::Cartesian<double>>,
-    CGAL::Plane_3<CGAL::Cartesian<double>>,
-    double,
-    IS_LOOSE_TREE,
-    CGALAdaptorGeneral3D>;
+  using OctreeBoxs =
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntitySpanAdapter<CGAL::Bbox_3>, CGALGeometryAdapter3D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
 
   using OctreeBox = OctreeBoxs<true>;
 
 
   // Container types
 
-  using QuadtreePointC = OrthoTree::OrthoTreeContainerPoint<QuadtreePoint>;
-  using OctreePointC = OrthoTree::OrthoTreeContainerPoint<OctreePoint>;
+  using QuadtreePointC = OrthoTree::OrthoTreeContainer<QuadtreePoint>;
+  using OctreePointC = OrthoTree::OrthoTreeContainer<OctreePoint>;
 
   template<bool IS_LOOSE_TREE>
-  using QuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<QuadtreeBoxs<IS_LOOSE_TREE>>;
+  using QuadtreeBoxCs = OrthoTree::OrthoTreeContainer<QuadtreeBoxs<IS_LOOSE_TREE>>;
   using QuadtreeBoxC = QuadtreeBoxCs<true>;
   template<bool IS_LOOSE_TREE>
-  using OctreeBoxCs = OrthoTree::OrthoTreeContainerBox<OctreeBoxs<IS_LOOSE_TREE>>;
+  using OctreeBoxCs = OrthoTree::OrthoTreeContainer<OctreeBoxs<IS_LOOSE_TREE>>;
   using OctreeBoxC = OctreeBoxCs<true>;
 
 
@@ -215,64 +213,36 @@ namespace CGAL
   using CGALContainer = std::unordered_map<std::size_t, T>;
 
   // Core types
-  using QuadtreePointMap = OrthoTree::OrthoTreePoint<
-    2,
-    CGAL::Point_2<CGAL::Cartesian<double>>,
-    CGAL::Bbox_2,
-    CGAL::Ray_2<CGAL::Cartesian<double>>,
-    CGAL::Plane_2,
-    double,
-    CGALAdaptorGeneral2D,
-    CGALContainer<CGAL::Point_2<CGAL::Cartesian<double>>>>;
+  using QuadtreePointMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration>;
 
-  using OctreePointMap = OrthoTree::OrthoTreePoint<
-    3,
-    CGAL::Point_3<CGAL::Cartesian<double>>,
-    CGAL::Bbox_3,
-    CGAL::Ray_3<CGAL::Cartesian<double>>,
-    CGAL::Plane_3<CGAL::Cartesian<double>>,
-    double,
-    CGALAdaptorGeneral3D,
-    CGALContainer<CGAL::Point_3<CGAL::Cartesian<double>>>>;
+
+  using OctreePointMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration>;
+
 
   template<bool IS_LOOSE_TREE>
-  using QuadtreeBoxsMap = OrthoTree::OrthoTreeBoundingBox<
-    2,
-    CGAL::Point_2<CGAL::Cartesian<double>>,
-    CGAL::Bbox_2,
-    CGAL::Ray_2<CGAL::Cartesian<double>>,
-    CGAL::Plane_2,
-    double,
-    IS_LOOSE_TREE,
-    CGALAdaptorGeneral2D,
-    CGALContainer<CGAL::Bbox_2>>;
+  using QuadtreeBoxsMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntityMapAdapter<CGAL::Bbox_2>, CGALGeometryAdapter2D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
 
   using QuadtreeBoxMap = QuadtreeBoxs<true>;
 
   template<bool IS_LOOSE_TREE>
-  using OctreeBoxsMap = OrthoTree::OrthoTreeBoundingBox<
-    3,
-    CGAL::Point_3<CGAL::Cartesian<double>>,
-    CGAL::Bbox_3,
-    CGAL::Ray_3<CGAL::Cartesian<double>>,
-    CGAL::Plane_3<CGAL::Cartesian<double>>,
-    double,
-    IS_LOOSE_TREE,
-    CGALAdaptorGeneral3D,
-    CGALContainer<CGAL::Bbox_3>>;
+  using OctreeBoxsMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntityMapAdapter<CGAL::Bbox_3>, CGALGeometryAdapter3D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
 
   using OctreeBoxMap = OctreeBoxsMap<true>;
 
 
   // Container types
 
-  using QuadtreePointMapC = OrthoTree::OrthoTreeContainerPoint<QuadtreePointMap>;
-  using OctreePointMapC = OrthoTree::OrthoTreeContainerPoint<OctreePointMap>;
+  using QuadtreePointMapC = OrthoTree::OrthoTreeContainer<QuadtreePointMap>;
+  using OctreePointMapC = OrthoTree::OrthoTreeContainer<OctreePointMap>;
 
   template<bool IS_LOOSE_TREE>
-  using QuadtreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<QuadtreeBoxsMap<IS_LOOSE_TREE>>;
+  using QuadtreeBoxMapCs = OrthoTree::OrthoTreeContainer<QuadtreeBoxsMap<IS_LOOSE_TREE>>;
   using QuadtreeBoxMapC = QuadtreeBoxMapCs<true>;
   template<bool IS_LOOSE_TREE>
-  using OctreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<OctreeBoxsMap<IS_LOOSE_TREE>>;
+  using OctreeBoxMapCs = OrthoTree::OrthoTreeContainer<OctreeBoxsMap<IS_LOOSE_TREE>>;
   using OctreeBoxMapC = OctreeBoxMapCs<true>;
 } // namespace CGAL

@@ -23,10 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "octree.h"
+#include "../octree.h"
 
 
-namespace BasicTypesXYZ // Replaceble with simirarly build geometry types
+namespace BasicTypesXYZ // Replaceable with similarly build geometry types
 {
   using float_t = float;
 
@@ -91,8 +91,18 @@ namespace OrthoTree
     using XYRay2D = BasicTypesXYZ::Ray2D;
     using XYPlane2D = BasicTypesXYZ::Plane2D;
 
-    struct XYAdaptorBasics
+    struct XYBaseGeometryAdapter
     {
+      using Scalar = xy_geometry_type;
+      using FloatScalar = xy_geometry_type;
+      using Vector = XYPoint2D;
+      using Box = XYBoundingBox2D;
+      using Ray = XYRay2D;
+      using Plane = XYPlane2D;
+
+      static constexpr dim_t DIMENSION_NO = 2;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
       static constexpr xy_geometry_type GetPointC(XYPoint2D const& pt, dim_t dimensionID)
       {
         switch (dimensionID)
@@ -126,7 +136,7 @@ namespace OrthoTree
       static constexpr xy_geometry_type GetPlaneOrigoDistance(XYPlane2D const& plane) noexcept { return plane.OrigoDistance; }
     };
 
-    using XYAdaptorGeneral = AdaptorGeneralBase<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorBasics>;
+    using XYGeometryAdapter = GeneralGeometryAdapter<XYBaseGeometryAdapter>;
   } // namespace XYAdaptor2D
 
 
@@ -140,6 +150,16 @@ namespace OrthoTree
 
     struct XYZAdaptorBasics
     {
+      using Scalar = xyz_geometry_type;
+      using FloatScalar = xyz_geometry_type;
+      using Vector = XYZPoint3D;
+      using Box = XYZBoundingBox3D;
+      using Ray = XYZRay3D;
+      using Plane = XYZPlane3D;
+
+      static constexpr dim_t DIMENSION_NO = 3;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
       static constexpr xyz_geometry_type GetPointC(XYZPoint3D const& pt, dim_t dimensionID) noexcept
       {
         switch (dimensionID)
@@ -174,7 +194,7 @@ namespace OrthoTree
       static constexpr xyz_geometry_type GetPlaneOrigoDistance(XYZPlane3D const& plane) noexcept { return plane.OrigoDistance; }
     };
 
-    using XYZAdaptorGeneral = AdaptorGeneralBase<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorBasics>;
+    using XYZGeometryAdapter = GeneralGeometryAdapter<XYZAdaptorBasics>;
 
 
   } // namespace XYZAdaptor3D
@@ -186,32 +206,27 @@ namespace XYZ
   using namespace OrthoTree::XYAdaptor2D;
   using namespace OrthoTree::XYZAdaptor3D;
 
-
-  using QuadtreePoint =
-    OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, std::span<XYPoint2D const>>;
+  using QuadtreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYPoint2D>, XYGeometryAdapter, PointConfiguration>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBox =
-    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, IS_LOOSE_TREE, XYAdaptorGeneral, std::span<XYBoundingBox2D const>>;
+  using QuadtreeBox = OrthoTreeBase<BoxEntitySpanAdapter<XYBoundingBox2D>, XYGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
-  using QuadtreePointC = OrthoTreeContainerPoint<QuadtreePoint>;
+  using QuadtreePointC = OrthoTreeContainer<QuadtreePoint>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxCs = OrthoTreeContainerBox<QuadtreeBox<IS_LOOSE_TREE>>;
+  using QuadtreeBoxCs = OrthoTreeContainer<QuadtreeBox<IS_LOOSE_TREE>>;
   using QuadtreeBoxC = QuadtreeBoxCs<true>;
 
-  using OctreePoint =
-    OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
+  using OctreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBox =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, IS_LOOSE_TREE, XYZAdaptorGeneral, std::span<XYZPoint3D const>>;
+  using OctreeBox = OrthoTreeBase<BoxEntitySpanAdapter<XYZBoundingBox3D>, XYZGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
 
-  using OcreePointC = OrthoTreeContainerPoint<OctreePoint>;
+  using OcreePointC = OrthoTreeContainer<OctreePoint>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxCs = OrthoTreeContainerBox<OctreeBox<IS_LOOSE_TREE>>;
+  using OctreeBoxCs = OrthoTreeContainer<OctreeBox<IS_LOOSE_TREE>>;
   using OctreeBoxC = OctreeBoxCs<true>;
 
 
@@ -219,27 +234,25 @@ namespace XYZ
   template<typename Entity>
   using Map = std::unordered_map<int, Entity>;
 
-  using QuadtreePointMap = OrthoTreePoint<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, XYAdaptorGeneral, Map<XYPoint2D>>;
+  using QuadtreePointMap = OrthoTreeBase<PointEntityMapAdapter<XYPoint2D>, XYGeometryAdapter, PointConfiguration>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxMap =
-    OrthoTreeBoundingBox<2, XYPoint2D, XYBoundingBox2D, XYRay2D, XYPlane2D, xy_geometry_type, IS_LOOSE_TREE, XYAdaptorGeneral, Map<XYBoundingBox2D>>;
+  using QuadtreeBoxMap = OrthoTreeBase<BoxEntityMapAdapter<XYBoundingBox2D>, XYGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
-  using QuadtreePointMapC = OrthoTreeContainerPoint<QuadtreePointMap>;
+  using QuadtreePointMapC = OrthoTreeContainer<QuadtreePointMap>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxMapCs = OrthoTreeContainerBox<QuadtreeBoxMap<IS_LOOSE_TREE>>;
+  using QuadtreeBoxMapCs = OrthoTreeContainer<QuadtreeBoxMap<IS_LOOSE_TREE>>;
   using QuadtreeBoxMapC = QuadtreeBoxMapCs<true>;
 
-  using OctreePointMap = OrthoTreePoint<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, XYZAdaptorGeneral, Map<XYZPoint3D>>;
+  using OctreePointMap = OrthoTreeBase<PointEntityMapAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxMap =
-    OrthoTreeBoundingBox<3, XYZPoint3D, XYZBoundingBox3D, XYZRay3D, XYZPlane3D, xyz_geometry_type, IS_LOOSE_TREE, XYZAdaptorGeneral, Map<XYZBoundingBox3D>>;
+  using OctreeBoxMap = OrthoTreeBase<BoxEntityMapAdapter<XYZBoundingBox3D>, XYZGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
-  using OcreePointMapC = OrthoTreeContainerPoint<OctreePointMap>;
+  using OcreePointMapC = OrthoTreeContainer<OctreePointMap>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxMapCs = OrthoTreeContainerBox<OctreeBoxMap<IS_LOOSE_TREE>>;
+  using OctreeBoxMapCs = OrthoTreeContainer<OctreeBoxMap<IS_LOOSE_TREE>>;
   using OctreeBoxMapC = OctreeBoxMapCs<true>;
 } // namespace XYZ

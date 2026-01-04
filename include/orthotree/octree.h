@@ -353,7 +353,7 @@ namespace OrthoTree
     Box,
     MBR,
   };
-  template<bool LOOSE_OCTREE_, bool USE_MBR_>
+  template<bool LOOSE_OCTREE_ = false, bool USE_MBR_ = false>
   struct Configuration
   {
     // Geometry type cannot be mixed within the same octree.
@@ -407,20 +407,20 @@ namespace OrthoTree
   public:
     using EA = TEntityAdapter;
     using GA = TGeometryAdapter;
-    using CONFIG = Configuration<true, false>; // TODO: TConfiguration //!ATT
+    using CONFIG = Configuration<true, false>; // TConfiguration;
 
     static constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
     using TScalar = typename GA::Scalar;
     using TFloatScalar = typename GA::FloatScalar;
     using TVector = typename GA::Vector;
     using TBox = typename GA::Box;
-    using TRay = typename GA::Ray;     // Ray
-    using TPlane = typename GA::Plane; // Plane
+    using TRay = typename GA::Ray;
+    using TPlane = typename GA::Plane;
 
     using EntityContainerView = EA::EntityContainerView;
-    using EntityID = EA::EntityID; // EntityID
+    using EntityID = EA::EntityID;
 
-    static_assert(AdaptorConcept<GA, TVector, TBox, TRay, TPlane, TScalar>);
+    static_assert(GeometryAdapterConcept<GA, DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, TFloatScalar>);
     static_assert(0 < DIMENSION_NO && DIMENSION_NO < 64);
 
     static_assert(std::is_trivially_copyable_v<EntityID>, "Only trivially copyable EntityID types are supported!");

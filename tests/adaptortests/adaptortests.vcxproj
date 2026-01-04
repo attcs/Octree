@@ -111,8 +111,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\adaptor.cgal.h" />
-    <ClInclude Include="..\adaptor.glm.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\boost.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\cgal.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\concepts.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\eigen.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\general.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\glm.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\unreal.h" />
+    <ClInclude Include="..\..\include\orthotree\adapters\xyz.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

@@ -67,7 +67,7 @@ namespace CustomGeometryType
     using Plane = MyPlane2D;
 
     static constexpr dim_t DIMENSION_NO = 2;
-    static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * 10.0;
+    static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
     static float GetPointC(MyPoint2D const& pt, OrthoTree::dim_t i)
     {
@@ -101,14 +101,14 @@ namespace CustomGeometryType
     static float GetPlaneOrigoDistance(MyPlane2D const& plane) { return plane.OrigoDistance; }
   };
 
-  using AdaptorCustom = OrthoTree::GeneralGeometryAdapter<AdaptorBasicsCustom>;
+  using CustomGeometryAdapter = OrthoTree::GeneralGeometryAdapter<AdaptorBasicsCustom>;
 
 
   // Tailored Quadtree objects
 
-  using QuadtreePointCustom = OrthoTree::OrthoTreeBase<PointEntitySpanAdapter<MyPoint2D>, AdaptorCustom, PointConfiguration>;
+  using QuadtreePointCustom = OrthoTree::OrthoTreeBase<PointEntitySpanAdapter<MyPoint2D>, CustomGeometryAdapter, PointConfiguration>;
 
-  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBase<BoxEntitySpanAdapter<MyBox2D>, AdaptorCustom, BoxConfiguration<true>>;
+  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBase<BoxEntitySpanAdapter<MyBox2D>, CustomGeometryAdapter, BoxConfiguration<true>>;
 } // namespace CustomGeometryType
 
 
@@ -158,7 +158,7 @@ TEST_METHOD(Insert_NonLeaf_Successful)
 
   auto const& nodes = tree.GetNodes();
   Assert::AreEqual<size_t>(7, nodes.size());
-  Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(QuadtreePointCustom::SI::GetHash(2, 15)), vector<size_t>{ 3, 4 }));
+  Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(QuadtreePointCustom::SI::GetNodeID(15, 2)), vector<size_t>{ 3, 4 }));
 }
 
 TEST_METHOD(Contains__1__True)
@@ -194,7 +194,7 @@ namespace EigenAdaptorTest
   auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
 
   auto sqrt3Reciproc = 1.0 / sqrt(3.0);
-  auto pointsInPlane = tree.PlaneSearch(2.6, Eigen::Vector3d(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), 0.3, vpt);
+  auto pointsInPlane = tree.PlaneSearch(2.6, Eigen::Vector3d(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), vpt, 0.3);
 
   auto sqrt2 = sqrt(2.0);
   auto sqrt2Reciproc = 1.0 / sqrt2;
@@ -203,12 +203,12 @@ namespace EigenAdaptorTest
   planes.emplace_back(Eigen::Vector3d(0.0, sqrt2Reciproc, sqrt2Reciproc), -2 * sqrt2);
   planes.emplace_back(Eigen::Vector3d(sqrt2Reciproc, -sqrt2Reciproc, 0.0), 0);
 
-  auto pointsInFrustum = tree.FrustumCulling(planes, 0.01, vpt);
+  auto pointsInFrustum = tree.FrustumCulling(planes, vpt, 0.01);
 
   auto const n = EntityID(vpt.size());
   vpt.push_back(Eigen::Vector3d(1.0, 1.0, 1.5));
   tree.Insert(n, vpt.back());
-  tree.Erase<false>(0, vpt[0]);
+  tree.Erase(0, vpt[0]);
   auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
   auto searchPoint = Eigen::Vector3d(1.0, 1.0, 1.0);
@@ -329,7 +329,7 @@ namespace XYZAdaptorTest
   auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
 
   auto sqrt3Reciproc = BasicTypesXYZ::float_t(1.0 / sqrt(3.0));
-  auto pointsInPlane = tree.PlaneSearch(2.6f, BasicTypesXYZ::Point3D{ sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc }, 0.3f, vpt);
+  auto pointsInPlane = tree.PlaneSearch(2.6f, BasicTypesXYZ::Point3D{ sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc }, vpt, 0.3f);
 
   auto sqrt2 = float_t(sqrt(2.0));
   auto sqrt2Reciproc = float_t(1.0 / sqrt2);
@@ -340,13 +340,13 @@ namespace XYZAdaptorTest
             {2 * sqrt2,  { 0.0, sqrt2Reciproc, sqrt2Reciproc }},
             {      0.0, { sqrt2Reciproc, -sqrt2Reciproc, 0.0 }}
         },
-          0.01f,
-          vpt);
+          vpt,
+          0.01f);
 
   auto const n = EntityID(vpt.size());
   vpt.push_back(BasicTypesXYZ::Point3D(1.0, 1.0, 1.5));
   tree.Insert(n, vpt.back());
-  tree.Erase<false>(0, vpt[0]);
+  tree.Erase(0, vpt[0]);
   auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
   auto searchPoint = BasicTypesXYZ::Point3D(1.0, 1.0, 1.0);
@@ -521,10 +521,20 @@ namespace AbstractAdaptorTest
   };
 
 
-  // Adaptor
+  // Adapter
 
-  struct AdaptorBasicsCustom
+  struct CustomBaseGeometryAdapter
   {
+    using Scalar = float;
+    using FloatScalar = float;
+    using Vector = MyPoint2DBase*;
+    using Box = MyBox2DBase *;
+    using Ray = MyRay2DBase;
+    using Plane = MyPlane2DBase;
+
+    static constexpr dim_t DIMENSION_NO = 2;
+    static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
     static float GetPointC(MyPoint2DBase const* pt, OrthoTree::dim_t i)
     {
       switch (i)
@@ -559,15 +569,15 @@ namespace AbstractAdaptorTest
 
   using MyPoint2DPtr = MyPoint2DBase*;
   using MyBox2DPtr = MyBox2DBase*;
-  using AdaptorCustom = OrthoTree::AdaptorGeneralBase<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, AdaptorBasicsCustom>;
+  using CustomGeometryAdapter = OrthoTree::GeneralGeometryAdapter<CustomBaseGeometryAdapter>;
 
 
   // Tailored Quadtree objects
 
-  using QuadtreePointCustom = OrthoTree::OrthoTreePoint<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, AdaptorCustom>;
+  using QuadtreePointCustom = OrthoTree::OrthoTreeBase<PointEntitySpanAdapter<MyPoint2DBase*>, CustomGeometryAdapter, PointConfiguration>;
 
-  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBoundingBox<2, MyPoint2DBase*, MyBox2DBase*, MyRay2DBase, MyPlane2DBase, float, true, AdaptorCustom>;
-  using QuadtreeBoxCustomC = OrthoTreeContainerBox<QuadtreeBoxCustom>;
+  using QuadtreeBoxCustom = OrthoTree::OrthoTreeBase<BoxEntitySpanAdapter<MyBox2DBase*>, CustomGeometryAdapter, BoxConfiguration<true>>;
+  using QuadtreeBoxCustomC = OrthoTreeContainer<QuadtreeBoxCustom>;
 
   TEST_CLASS(AbstractAdaptorTest){ public: TEST_METHOD(PointGeneral2D){ using EntityID = QuadtreePointCustom::EntityID;
 
@@ -599,18 +609,18 @@ namespace AbstractAdaptorTest
 
   auto sqrt2Reciproc = float(1.0 / sqrt(2.0));
   auto planeNormal = std::make_unique<MyPoint2DConcrete2>(sqrt2Reciproc, sqrt2Reciproc);
-  auto pointsInPlane = tree.PlaneSearch(2.6f, planeNormal.get(), 0.3f, vptView);
+  auto pointsInPlane = tree.PlaneSearch(2.6f, planeNormal.get(), vptView, 0.3f);
 
   auto planesForFustrum = std::vector<MyPlane2DBase>{};
   planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(-1.0f, 0.0f) });
   planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(0.0f, -1.0f) });
   planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(+1.0f, 0.0f) });
-  auto pointsInFrustum = tree.FrustumCulling(planesForFustrum, 0.01f, vptView);
+  auto pointsInFrustum = tree.FrustumCulling(planesForFustrum, vptView, 0.01f);
 
   auto const n = EntityID(vptView.size());
   vptView.emplace_back(vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.1f)).get());
   tree.Insert(n, vptOwner.back().get());
-  tree.Erase<false>(0, vptOwner.front().get());
+  tree.Erase(0, vptOwner.front().get());
   auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
   auto searchPoint = std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f);
@@ -733,12 +743,12 @@ namespace UnrealAdaptorTest
   auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
 
   auto sqrt3Reciproc = 1.0 / sqrt(3.0);
-  auto pointsInPlane = tree.PlaneSearch(2.6, FVector(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), 0.3, vpt);
+  auto pointsInPlane = tree.PlaneSearch(2.6, FVector(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), vpt, 0.3);
 
   auto const n = EntityID(vpt.size());
   vpt.push_back(FVector(1.0, 1.0, 1.5));
   tree.Insert(n, vpt.back());
-  tree.Erase<false>(0, vpt[0]);
+  tree.Erase(0, vpt[0]);
   auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
   auto searchPoint = FVector{ 1.0, 1.0, 1.0 };
@@ -825,7 +835,7 @@ namespace BoostAdaptorTest
   auto pointsInSearchBox = tree.RangeSearch(searchBox, vpt);
 
   auto sqrt3Reciproc = 1.0 / sqrt(3.0);
-  auto pointsInPlane = tree.PlaneSearch(2.6, point_t(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), 0.3, vpt);
+  auto pointsInPlane = tree.PlaneSearch(2.6, point_t(sqrt3Reciproc, sqrt3Reciproc, sqrt3Reciproc), vpt, 0.3);
 
   auto sqrt2 = float_t(sqrt(2.0));
   auto sqrt2Reciproc = float_t(1.0 / sqrt2);
@@ -836,13 +846,13 @@ namespace BoostAdaptorTest
             {2 * sqrt2,  { 0.0, sqrt2Reciproc, sqrt2Reciproc }},
             {      0.0, { sqrt2Reciproc, -sqrt2Reciproc, 0.0 }}
         },
-          0.01f,
-          vpt);
+          vpt,
+          0.01f);
 
   auto const n = EntityID(vpt.size());
   vpt.push_back(point_t(1.0, 1.0, 1.5));
   tree.Insert(n, vpt.back());
-  tree.Erase<false>(0, vpt[0]);
+  tree.Erase(0, vpt[0]);
   auto entityIDsInDFS_AfterErase = tree.CollectAllEntitiesInDFS();
 
   auto searchPoint = point_t{ 1.0, 1.0, 1.0 };

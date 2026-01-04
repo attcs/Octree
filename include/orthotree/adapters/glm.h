@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "octree.h"
+#include "../octree.h"
 // #include <glm/glm.hpp>
 namespace glm
 {
@@ -69,62 +69,54 @@ namespace OrthoTree
   namespace GlmAdaptor
   {
 
-    template<dim_t DIMENSION_NO, typename TScalar = double>
-    struct BoostBaseGeometryAdapter
+    template<dim_t DIMENSION_NO_, typename TScalar = double>
+    struct GlmBaseGeometryAdapter
     {
-      using TVector = glm::vec<DIMENSION_NO, TScalar>;
-      using TBox = glm::boxNd_t<DIMENSION_NO, TScalar>;
-      using TRay = glm::rayNd_t<DIMENSION_NO, TScalar>;
-      using TPlane = glm::planeNd_t<DIMENSION_NO, TScalar>;
+      using Scalar = TScalar;
+      using FloatScalar = std::conditional_t<std::is_floating_point_v<TScalar>, TScalar, float>;
+      using Vector = glm::vec<DIMENSION_NO_, TScalar>;
+      using Box = glm::boxNd_t<DIMENSION_NO_, TScalar>;
+      using Ray = glm::rayNd_t<DIMENSION_NO_, TScalar>;
+      using Plane = glm::planeNd_t<DIMENSION_NO_, TScalar>;
 
+      static constexpr dim_t DIMENSION_NO = DIMENSION_NO_;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
-      static constexpr TScalar GetPointC(TVector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
-      static constexpr void SetPointC(TVector& point, dim_t dimensionID, TScalar value) noexcept { point[dimensionID] = value; }
+      static constexpr TScalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+      static constexpr void SetPointC(Vector& point, dim_t dimensionID, TScalar value) noexcept { point[dimensionID] = value; }
 
-      static constexpr TScalar GetBoxMinC(TBox const& box, dim_t dimensionID) noexcept { return GetPointC(box.min, dimensionID); }
-      static constexpr TScalar GetBoxMaxC(TBox const& box, dim_t dimensionID) noexcept { return GetPointC(box.max, dimensionID); }
-      static constexpr void SetBoxMinC(TBox& box, dim_t dimensionID, TScalar value) noexcept { SetPointC(box.min, dimensionID, value); }
-      static constexpr void SetBoxMaxC(TBox& box, dim_t dimensionID, TScalar value) noexcept { SetPointC(box.max, dimensionID, value); }
+      static constexpr TScalar GetBoxMinC(Box const& box, dim_t dimensionID) noexcept { return GetPointC(box.min, dimensionID); }
+      static constexpr TScalar GetBoxMaxC(Box const& box, dim_t dimensionID) noexcept { return GetPointC(box.max, dimensionID); }
+      static constexpr void SetBoxMinC(Box& box, dim_t dimensionID, TScalar value) noexcept { SetPointC(box.min, dimensionID, value); }
+      static constexpr void SetBoxMaxC(Box& box, dim_t dimensionID, TScalar value) noexcept { SetPointC(box.max, dimensionID, value); }
 
-      static constexpr TVector const& GetRayDirection(TRay const& ray) noexcept { return ray.direction; }
-      static constexpr TVector const& GetRayOrigin(TRay const& ray) noexcept { return ray.origin; }
+      static constexpr Vector const& GetRayDirection(Ray const& ray) noexcept { return ray.direction; }
+      static constexpr Vector const& GetRayOrigin(Ray const& ray) noexcept { return ray.origin; }
 
-      static constexpr TVector const& GetPlaneNormal(TPlane const& plane) noexcept { return plane.normal; }
-      static constexpr TScalar GetPlaneOrigoDistance(TPlane const& plane) noexcept { return plane.origo_distance; }
+      static constexpr Vector const& GetPlaneNormal(Plane const& plane) noexcept { return plane.normal; }
+      static constexpr TScalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return plane.origo_distance; }
     };
 
     template<dim_t DIMENSION_NO, typename TScalar>
-    using GlmAdaptorGeneral = AdaptorGeneralBase<
-      DIMENSION_NO,
-      glm::vec<DIMENSION_NO, TScalar>,
-      glm::boxNd_t<DIMENSION_NO, TScalar>,
-      glm::rayNd_t<DIMENSION_NO, TScalar>,
-      glm::planeNd_t<DIMENSION_NO, TScalar>,
-      TScalar,
-      BoostBaseGeometryAdapter<DIMENSION_NO, TScalar>>;
+    using GlmAdaptorGeneral = GeneralGeometryAdapter<GlmBaseGeometryAdapter<DIMENSION_NO, TScalar>>;
 
-    template<dim_t DIMENSION_NO, typename TScalar, typename TContainer = std::span<glm::vec<DIMENSION_NO, TScalar> const>>
-    using GlmOrthoTreePoint = OrthoTreePoint<
-      DIMENSION_NO,
-      glm::vec<DIMENSION_NO, TScalar>,
-      glm::boxNd_t<DIMENSION_NO, TScalar>,
-      glm::rayNd_t<DIMENSION_NO, TScalar>,
-      glm::planeNd_t<DIMENSION_NO, TScalar>,
-      TScalar,
-      GlmAdaptorGeneral<DIMENSION_NO, TScalar>,
-      TContainer>;
+    template<dim_t DIMENSION_NO, typename TScalar>
+    using GlmOrthoTreePoint =
+      OrthoTreeBase<PointEntitySpanAdapter<glm::vec<DIMENSION_NO, TScalar>>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, PointConfiguration>;
 
-    template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TContainer = std::span<glm::boxNd_t<DIMENSION_NO, TScalar> const>>
-    using GlmOrthoTreeBoundingBox = OrthoTreeBoundingBox<
-      DIMENSION_NO,
-      glm::vec<DIMENSION_NO, TScalar>,
-      glm::boxNd_t<DIMENSION_NO, TScalar>,
-      glm::rayNd_t<DIMENSION_NO, TScalar>,
-      glm::planeNd_t<DIMENSION_NO, TScalar>,
-      TScalar,
-      IS_LOOSE_TREE,
-      GlmAdaptorGeneral<DIMENSION_NO, TScalar>,
-      TContainer>;
+    template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar>
+    using GlmOrthoTreeBoundingBox =
+      OrthoTreeBase<BoxEntitySpanAdapter<glm::boxNd_t<DIMENSION_NO, TScalar>>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE>>;
+
+    template<dim_t DIMENSION_NO, typename TScalar, typename TContainer = std::unordered_map<index_t, glm::vec<DIMENSION_NO, TScalar>>>
+    using GlmOrthoTreePointMap =
+      OrthoTreeBase<PointEntityMapAdapter<glm::vec<DIMENSION_NO, TScalar>, TContainer>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, PointConfiguration>;
+
+    template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TContainer = std::unordered_map<index_t, glm::boxNd_t<DIMENSION_NO, TScalar>>>
+    using GlmOrthoTreeBoundingBoxMap =
+      OrthoTreeBase<BoxEntityMapAdapter<glm::boxNd_t<DIMENSION_NO, TScalar>, TContainer>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE>>;
+
+
   } // namespace GlmAdaptor
 } // namespace OrthoTree
 
@@ -134,8 +126,8 @@ namespace glm
 
   // Core types
 
-  template<int DIMENSION_NO, typename TScalar = double, typename TContainer = std::span<glm::vec<DIMENSION_NO, TScalar> const>>
-  using orthotree_point_t = GlmOrthoTreePoint<DIMENSION_NO, TScalar, TContainer>;
+  template<int DIMENSION_NO, typename TScalar = double>
+  using orthotree_point_t = GlmOrthoTreePoint<DIMENSION_NO, TScalar>;
 
   using quadtree_point_d = GlmOrthoTreePoint<2, double>;
   using quadtree_point_f = GlmOrthoTreePoint<2, float>;
@@ -152,8 +144,8 @@ namespace glm
   using hextree_point_i = GlmOrthoTreePoint<4, int>;
   using hextree_point = hextree_point_f;
 
-  template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double, typename TContainer = std::span<glm::boxNd_t<DIMENSION_NO, TScalar> const>>
-  using orthotree_box_t = GlmOrthoTreeBoundingBox<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TContainer>;
+  template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
+  using orthotree_box_t = GlmOrthoTreeBoundingBox<DIMENSION_NO, IS_LOOSE_TREE, TScalar>;
 
   template<bool IS_LOOSE_TREE = true>
   using quadtree_box_ds = GlmOrthoTreeBoundingBox<2, IS_LOOSE_TREE, double>;
@@ -179,7 +171,7 @@ namespace glm
   // Container types
 
   template<int DIMENSION_NO, typename TScalar = double>
-  using orthotree_point_c_t = OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TScalar>>;
+  using orthotree_point_c_t = OrthoTree::OrthoTreeContainer<orthotree_point_t<DIMENSION_NO, TScalar>>;
 
   using quadtree_point_c_d = orthotree_point_c_t<2, double>;
   using quadtree_point_c_f = orthotree_point_c_t<2, float>;
@@ -198,7 +190,7 @@ namespace glm
 
 
   template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
-  using orthotree_box_c_t = OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar>>;
+  using orthotree_box_c_t = OrthoTree::OrthoTreeContainer<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar>>;
 
   template<bool IS_LOOSE_TREE = true>
   using quadtree_box_c_ds = orthotree_box_c_t<2, IS_LOOSE_TREE, double>;
@@ -230,52 +222,52 @@ namespace glm
   //  Core types
 
   template<int DIMENSION_NO, typename TScalar = double>
-  using orthotree_point_map_t = GlmOrthoTreePoint<DIMENSION_NO, TScalar, GlmContainer<glm::vec<DIMENSION_NO, TScalar>>>;
+  using orthotree_point_map_t = GlmOrthoTreePointMap<DIMENSION_NO, TScalar, GlmContainer<glm::vec<DIMENSION_NO, TScalar>>>;
 
-  using quadtree_point_map_d = GlmOrthoTreePoint<2, double, GlmContainer<glm::vec<2, double>>>;
-  using quadtree_point_map_f = GlmOrthoTreePoint<2, float, GlmContainer<glm::vec<2, float>>>;
-  using quadtree_point_map_i = GlmOrthoTreePoint<2, int, GlmContainer<glm::vec<2, int>>>;
+  using quadtree_point_map_d = GlmOrthoTreePointMap<2, double, GlmContainer<glm::vec<2, double>>>;
+  using quadtree_point_map_f = GlmOrthoTreePointMap<2, float, GlmContainer<glm::vec<2, float>>>;
+  using quadtree_point_map_i = GlmOrthoTreePointMap<2, int, GlmContainer<glm::vec<2, int>>>;
   using quadtree_point_map = quadtree_point_map_f;
 
-  using octree_point_map_d = GlmOrthoTreePoint<3, double, GlmContainer<glm::vec<3, double>>>;
-  using octree_point_map_f = GlmOrthoTreePoint<3, float, GlmContainer<glm::vec<3, float>>>;
-  using octree_point_map_i = GlmOrthoTreePoint<3, int, GlmContainer<glm::vec<3, int>>>;
+  using octree_point_map_d = GlmOrthoTreePointMap<3, double, GlmContainer<glm::vec<3, double>>>;
+  using octree_point_map_f = GlmOrthoTreePointMap<3, float, GlmContainer<glm::vec<3, float>>>;
+  using octree_point_map_i = GlmOrthoTreePointMap<3, int, GlmContainer<glm::vec<3, int>>>;
   using octree_point_map = octree_point_map_f;
 
-  using hextree_point_map_d = GlmOrthoTreePoint<4, double, GlmContainer<glm::vec<4, double>>>;
-  using hextree_point_map_f = GlmOrthoTreePoint<4, float, GlmContainer<glm::vec<4, float>>>;
-  using hextree_point_map_i = GlmOrthoTreePoint<4, int, GlmContainer<glm::vec<4, int>>>;
+  using hextree_point_map_d = GlmOrthoTreePointMap<4, double, GlmContainer<glm::vec<4, double>>>;
+  using hextree_point_map_f = GlmOrthoTreePointMap<4, float, GlmContainer<glm::vec<4, float>>>;
+  using hextree_point_map_i = GlmOrthoTreePointMap<4, int, GlmContainer<glm::vec<4, int>>>;
   using hextree_point_map = hextree_point_map_f;
 
   template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double, typename TContainer = GlmContainer<glm::boxNd_t<DIMENSION_NO, TScalar>>>
-  using orthotree_box_map_t = GlmOrthoTreeBoundingBox<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TContainer>;
+  using orthotree_box_map_t = GlmOrthoTreeBoundingBoxMap<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TContainer>;
 
   template<bool IS_LOOSE_TREE = true>
-  using quadtree_box_map_ds = GlmOrthoTreeBoundingBox<2, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using quadtree_box_map_d = GlmOrthoTreeBoundingBox<2, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using quadtree_box_map_f = GlmOrthoTreeBoundingBox<2, true, float, GlmContainer<glm::boxNd_t<2, float>>>;
-  using quadtree_box_map_i = GlmOrthoTreeBoundingBox<2, true, int, GlmContainer<glm::boxNd_t<2, int>>>;
+  using quadtree_box_map_ds = GlmOrthoTreeBoundingBoxMap<2, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using quadtree_box_map_d = GlmOrthoTreeBoundingBoxMap<2, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using quadtree_box_map_f = GlmOrthoTreeBoundingBoxMap<2, true, float, GlmContainer<glm::boxNd_t<2, float>>>;
+  using quadtree_box_map_i = GlmOrthoTreeBoundingBoxMap<2, true, int, GlmContainer<glm::boxNd_t<2, int>>>;
   using quadtree_box_map = quadtree_box_f;
 
   template<bool IS_LOOSE_TREE = true>
-  using octree_box_map_ds = GlmOrthoTreeBoundingBox<3, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using octree_box_map_d = GlmOrthoTreeBoundingBox<3, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using octree_box_map_f = GlmOrthoTreeBoundingBox<3, true, float, GlmContainer<glm::boxNd_t<2, double>>>;
-  using octree_box_map_i = GlmOrthoTreeBoundingBox<3, true, int, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map_ds = GlmOrthoTreeBoundingBoxMap<3, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map_d = GlmOrthoTreeBoundingBoxMap<3, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map_f = GlmOrthoTreeBoundingBoxMap<3, true, float, GlmContainer<glm::boxNd_t<2, double>>>;
+  using octree_box_map_i = GlmOrthoTreeBoundingBoxMap<3, true, int, GlmContainer<glm::boxNd_t<2, double>>>;
   using octree_box_map = octree_box_f;
 
   template<bool IS_LOOSE_TREE = true>
-  using hextree_box_map_ds = GlmOrthoTreeBoundingBox<4, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using hextree_box_map_d = GlmOrthoTreeBoundingBox<4, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using hextree_box_map_f = GlmOrthoTreeBoundingBox<4, true, float, GlmContainer<glm::boxNd_t<2, double>>>;
-  using hextree_box_map_i = GlmOrthoTreeBoundingBox<4, true, int, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_ds = GlmOrthoTreeBoundingBoxMap<4, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_d = GlmOrthoTreeBoundingBoxMap<4, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_f = GlmOrthoTreeBoundingBoxMap<4, true, float, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_i = GlmOrthoTreeBoundingBoxMap<4, true, int, GlmContainer<glm::boxNd_t<2, double>>>;
   using hextree_box_map = hextree_box_map_f;
 
   // Container types
 
   template<int DIMENSION_NO, typename TScalar = double>
   using orthotree_point_map_c_t =
-    OrthoTree::OrthoTreeContainerPoint<orthotree_point_t<DIMENSION_NO, TScalar, GlmContainer<glm::vec<DIMENSION_NO, TScalar>>>>;
+    OrthoTree::OrthoTreeContainer<GlmOrthoTreePointMap<DIMENSION_NO, TScalar, GlmContainer<glm::vec<DIMENSION_NO, TScalar>>>>;
 
   using quadtree_point_map_c_d = orthotree_point_map_c_t<2, double>;
   using quadtree_point_map_c_f = orthotree_point_map_c_t<2, float>;
@@ -295,7 +287,7 @@ namespace glm
 
   template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
   using orthotree_box_map_c_t =
-    OrthoTree::OrthoTreeContainerBox<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar, GlmContainer<glm::boxNd_t<DIMENSION_NO, TScalar>>>>;
+    OrthoTree::OrthoTreeContainer<orthotree_box_map_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar, GlmContainer<glm::boxNd_t<DIMENSION_NO, TScalar>>>>;
 
   template<bool IS_LOOSE_TREE = true>
   using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, IS_LOOSE_TREE, double>;

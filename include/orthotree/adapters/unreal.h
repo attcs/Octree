@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "octree.h"
+#include "../octree.h"
 
 // #define UNREAL_DUMMY_TYPES
 // #define UNREAL_DUMMY_TYPES__SUPPRESS_ASSERTS
@@ -271,7 +271,7 @@ using namespace UnrealDummyTypes;
 
 namespace OrthoTree
 {
-  namespace UnrealAdaptor
+  namespace UnrealAdapter
   {
     template<typename FVector2D_>
     struct FRay2DTemplate
@@ -281,8 +281,18 @@ namespace OrthoTree
     };
 
     template<typename FGeometry_, typename FVector2D_, typename FBox2D_>
-    struct UnrealAdaptorBasics2D
+    struct UnrealBaseGeometryAdapter2D
     {
+      using Scalar = FGeometry_;
+      using FloatScalar = FGeometry_;
+      using Vector = FVector2D_;
+      using Box = FBox2D_;
+      using Ray = FRay2DTemplate<FVector2D_>;
+      using Plane = FRay2DTemplate<FVector2D_>;
+
+      static constexpr dim_t DIMENSION_NO = 2;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
       // There is no 2d ray and plane in Unreal
       using FRay2D_ = FRay2DTemplate<FVector2D_>;
       using FPlane2D_ = FRay2DTemplate<FVector2D_>;
@@ -324,8 +334,18 @@ namespace OrthoTree
 
 
     template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_>
-    struct UnrealAdaptorBasics3D
+    struct UnrealBaseGeometryAdapter3D
     {
+      using Scalar = FGeometry_;
+      using FloatScalar = FGeometry_;
+      using Vector = FVector_;
+      using Box = FBox_;
+      using Ray = FRay_;
+      using Plane = FPlane_;
+
+      static constexpr dim_t DIMENSION_NO = 3;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
       static constexpr FGeometry_ GetPointC(FVector_ const& v, dim_t dimensionID)
       {
         switch (dimensionID)
@@ -360,16 +380,25 @@ namespace OrthoTree
       static constexpr FGeometry_ GetPlaneOrigoDistance(FPlane_ const& plane) noexcept { return FGeometry_(plane.W); }
     };
 
-    template<int AmbientDim_, typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, typename UnrealAdaptorBasics_>
-    struct UnrealAdaptorGeneral : UnrealAdaptorBasics_
+    template<typename TUnrealBaseGeometryAdapter>
+    struct UnrealGeometryAdapter : TUnrealBaseGeometryAdapter
     {
-      using Base = UnrealAdaptorBasics_;
+      using Base = TUnrealBaseGeometryAdapter;
 
-      static_assert(AdaptorBasicsConcept<Base, FVector_, FBox_, FRay_, FPlane_, FGeometry_>);
+      using Scalar = Base::Scalar;
+      using FloatScalar = Base::FloatScalar;
+      using Vector = Base::Vector;
+      using Box = Base::Box;
+      using Ray = Base::Ray;
+      using Plane = Base::Plane;
 
-      static constexpr FGeometry_ Size2(FVector_ const& v) noexcept { return v.SizeSquared(); }
+      static constexpr dim_t DIMENSION_NO = Base::DIMENSION_NO;
 
-      static constexpr FGeometry_ Size(FVector_ const& point) noexcept { return point.Size(); }
+      static_assert(BaseGeometryAdapterConcept<Base, DIMENSION_NO, Vector, Box, Ray, Plane, Scalar, FloatScalar>);
+
+      static constexpr Scalar Size2(Vector const& v) noexcept { return v.SizeSquared(); }
+
+      static constexpr Scalar Size(Vector const& point) noexcept { return point.Size(); }
 
       struct PointBoxMinMaxDistance
       {
@@ -382,7 +411,7 @@ namespace OrthoTree
         // its minimum distance to the query point (i.e. the worst-case nearest object).
         double minMax = {};
       };
-      static constexpr PointBoxMinMaxDistance MinMaxDistance2(FVector_ const& pt, FBox_ const& box, double tolerance) noexcept
+      static constexpr PointBoxMinMaxDistance MinMaxDistance2(Vector const& pt, Box const& box, FloatScalar tolerance) noexcept
       {
         // N. Roussopoulos, S. Kelley, F. Vincent - Nearest Neighbor Queries (1995) DOI.10.1145 / 223784.223794
         // MINMAXDIST
@@ -392,7 +421,7 @@ namespace OrthoTree
         double farthestInsideDistance2 = std::numeric_limits<double>::max();
         double largestMinMax2Difference = {};
         auto isInside = true;
-        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           const auto v = Base::GetPointC(pt, dimensionID);
           const auto minC = Base::GetBoxMinC(box, dimensionID);
@@ -433,7 +462,7 @@ namespace OrthoTree
         return dist2;
       }
 
-      static constexpr PointBoxMinMaxDistance MinMaxDistance(FVector_ const& pt, FBox_ const& box, double tolerance) noexcept
+      static constexpr PointBoxMinMaxDistance MinMaxDistance(Vector const& pt, Box const& box, FloatScalar tolerance) noexcept
       {
         auto dist = MinMaxDistance2(pt, box, tolerance);
         dist.min = std::sqrt(dist.min);
@@ -441,30 +470,30 @@ namespace OrthoTree
         return dist;
       }
 
-      static constexpr FVector_ Add(FVector_ const& v1, FVector_ const& v2) noexcept { return v1 + v2; }
+      static constexpr Vector Add(Vector const& v1, Vector const& v2) noexcept { return v1 + v2; }
 
-      static constexpr FVector_ Subtract(FVector_ const& v1, FVector_ const& v2) noexcept { return v1 - v2; }
+      static constexpr Vector Subtract(Vector const& v1, Vector const& v2) noexcept { return v1 - v2; }
 
-      static constexpr FVector_ Multiply(FVector_ const& v, double scalarFactor) noexcept { return v * float(scalarFactor); }
+      static constexpr Vector Multiply(Vector const& v, FloatScalar scalarFactor) noexcept { return v * float(scalarFactor); }
 
-      static constexpr FGeometry_ Dot(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::DotProduct(v1, v2); }
+      static constexpr Scalar Dot(Vector const& v1, Vector const& v2) noexcept { return Vector::DotProduct(v1, v2); }
 
-      static constexpr FGeometry_ Distance(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::Dist(v1, v2); }
+      static constexpr Scalar Distance(Vector const& v1, Vector const& v2) noexcept { return Vector::Dist(v1, v2); }
 
-      static constexpr FGeometry_ Distance2(FVector_ const& v1, FVector_ const& v2) noexcept { return FVector_::DistSquared(v1, v2); }
+      static constexpr Scalar Distance2(Vector const& v1, Vector const& v2) noexcept { return Vector::DistSquared(v1, v2); }
 
-      static constexpr bool ArePointsEqual(FVector_ const& v1, FVector_ const& v2, FGeometry_ tolerance) noexcept
+      static constexpr bool ArePointsEqual(Vector const& v1, Vector const& v2, FloatScalar tolerance) noexcept
       {
         return Distance2(v1, v2) <= tolerance * tolerance;
       }
 
-      static constexpr bool IsNormalizedVector(FVector_ const& normal) noexcept { return normal.IsUnit(0.000001f); }
+      static constexpr bool IsNormalizedVector(Vector const& normal) noexcept { return normal.IsUnit(0.000001f); }
 
-      static constexpr bool DoesBoxContainPoint(FBox_ const& box, FVector_ const& point) noexcept { return box.IsInsideOrOn(point); }
+      static constexpr bool DoesBoxContainPoint(Box const& box, Vector const& point) noexcept { return box.IsInsideOrOn(point); }
 
-      static constexpr bool DoesBoxContainPointStrict(FBox_ const& box, FVector_ const& point) noexcept { return box.IsInside(point); }
+      static constexpr bool DoesBoxContainPointStrict(Box const& box, Vector const& point) noexcept { return box.IsInside(point); }
 
-      static constexpr bool AreBoxesOverlappedStrict(FBox_ const& e1, FBox_ const& e2) noexcept { return e1.Intersect(e2); }
+      static constexpr bool AreBoxesOverlappedStrict(Box const& e1, Box const& e2) noexcept { return e1.Intersect(e2); }
 
       enum class EBoxRelation
       {
@@ -472,7 +501,7 @@ namespace OrthoTree
         Adjecent = 0,
         Separated = 1
       };
-      static constexpr EBoxRelation GetBoxRelation(FBox_ const& e1, FBox_ const& e2) noexcept
+      static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2) noexcept
       {
         enum EBoxRelationCandidate : uint8_t
         {
@@ -481,7 +510,7 @@ namespace OrthoTree
           SeparatedC = 0x4
         };
         uint8_t rel = 0;
-        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           if (Base::GetBoxMinC(e1, dimensionID) < Base::GetBoxMaxC(e2, dimensionID) && Base::GetBoxMaxC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID))
             rel |= EBoxRelationCandidate::OverlappedC;
@@ -493,11 +522,11 @@ namespace OrthoTree
         return (rel & EBoxRelationCandidate::AdjecentC) == EBoxRelationCandidate::AdjecentC ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
       }
 
-      static constexpr bool AreBoxesOverlapped(FBox_ const& e1, FBox_ const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
+      static constexpr bool AreBoxesOverlapped(Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
       {
         if (e1_must_contain_e2)
         {
-          for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           {
             if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID) || Base::GetBoxMinC(e2, dimensionID) > Base::GetBoxMaxC(e1, dimensionID))
               return false;
@@ -517,12 +546,12 @@ namespace OrthoTree
         }
       }
 
-      static FBox_ GetBoxOfPoints(std::span<FVector_ const> const& points) noexcept
+      static Box GetBoxOfPoints(std::span<Vector const> const& points) noexcept
       {
-        auto ext = points.size() == 0 ? FBox_{} : FBox_(points[0], points[0]);
+        auto ext = points.size() == 0 ? Box{} : Box(points[0], points[0]);
         for (auto const& point : points)
         {
-          for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           {
             if (Base::GetBoxMinC(ext, dimensionID) > Base::GetPointC(point, dimensionID))
               Base::SetBoxMinC(ext, dimensionID, Base::GetPointC(point, dimensionID));
@@ -534,7 +563,7 @@ namespace OrthoTree
         return ext;
       }
 
-      static FBox_ GetBoxOfBoxes(std::span<FBox_ const> const& extents) noexcept
+      static Box GetBoxOfBoxes(std::span<Box const> const& extents) noexcept
       {
         if (extents.size() == 0)
           return {};
@@ -542,7 +571,7 @@ namespace OrthoTree
         auto ext = extents[0];
         for (auto const& e : extents)
         {
-          for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           {
             if (Base::GetBoxMinC(ext, dimensionID) > Base::GetBoxMinC(e, dimensionID))
               Base::SetBoxMinC(ext, dimensionID, Base::GetBoxMinC(e, dimensionID));
@@ -555,15 +584,14 @@ namespace OrthoTree
         return ext;
       }
 
-      static void MoveBox(FBox_& box, FVector_ const& moveVector) noexcept { box = box.ShiftBy(moveVector); }
+      static void MoveBox(Box& box, Vector const& moveVector) noexcept { box = box.ShiftBy(moveVector); }
 
-      static constexpr std::optional<double> GetRayBoxDistance(
-        FBox_ const& box, FVector_ const& rayOrigin, FVector_ const& rayDirection, FGeometry_ tolerance) noexcept
+      static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Vector const& rayOrigin, Vector const& rayDirection, FloatScalar tolerance) noexcept
       {
         assert(tolerance >= 0 && "Tolerance cannot be negative!");
 
-        auto rayBasePointBox = FBox_();
-        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        auto rayBasePointBox = Box();
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           Base::SetBoxMinC(rayBasePointBox, dimensionID, Base::GetPointC(rayOrigin, dimensionID) - tolerance);
           Base::SetBoxMaxC(rayBasePointBox, dimensionID, Base::GetPointC(rayOrigin, dimensionID) + tolerance);
@@ -576,7 +604,7 @@ namespace OrthoTree
 
         double minBoxDistance = -inf;
         double maxBoxDistance = +inf;
-        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           auto const origin = Base::GetPointC(rayOrigin, dimensionID);
           auto const direction = Base::GetPointC(rayDirection, dimensionID);
@@ -617,14 +645,13 @@ namespace OrthoTree
           return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
       }
 
-      static constexpr std::optional<double> GetRayBoxDistance(FBox_ const& box, FRay_ const& ray, FGeometry_ tolerance) noexcept
+      static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Ray const& ray, FloatScalar tolerance) noexcept
       {
         return GetRayBoxDistance(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
       }
 
       // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr PlaneRelation GetPointPlaneRelation(
-        FVector_ const& point, FGeometry_ distanceOfOrigo, FVector_ const& planeNormal, FGeometry_ tolerance) noexcept
+      static constexpr PlaneRelation GetPointPlaneRelation(Vector const& point, Scalar distanceOfOrigo, Vector const& planeNormal, FloatScalar tolerance) noexcept
       {
         assert(IsNormalizedVector(planeNormal));
 
@@ -640,22 +667,22 @@ namespace OrthoTree
       }
 
       // Get box-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr PlaneRelation GetBoxPlaneRelation(FBox_ const& box, FGeometry_ distanceOfOrigo, FVector_ const& planeNormal, FGeometry_ tolerance) noexcept
+      static constexpr PlaneRelation GetBoxPlaneRelation(Box const& box, Scalar distanceOfOrigo, Vector const& planeNormal, FloatScalar tolerance) noexcept
       {
         assert(IsNormalizedVector(planeNormal));
 
-        FVector_ center, radius;
-        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        Vector center, radius;
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           auto const minComponent = Base::GetBoxMinC(box, dimensionID);
           auto const maxComponent = Base::GetBoxMaxC(box, dimensionID);
-          auto const centerComponent = static_cast<FGeometry_>((minComponent + maxComponent) * 0.5);
+          auto const centerComponent = static_cast<Scalar>((minComponent + maxComponent) * 0.5);
           Base::SetPointC(center, dimensionID, centerComponent);
           Base::SetPointC(radius, dimensionID, centerComponent - minComponent);
         }
 
         double radiusProjected = 0.0;
-        for (dim_t dimensionID = 0; dimensionID < AmbientDim_; ++dimensionID)
+        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           radiusProjected += Base::GetPointC(radius, dimensionID) * std::abs(Base::GetPointC(planeNormal, dimensionID));
 
         auto const centerProjected = Dot(planeNormal, center);
@@ -672,73 +699,66 @@ namespace OrthoTree
 
 
     template<typename FGeometry_, typename FVector2D_, typename FBox2D_>
-    using UnrealAdaptorGeneral2D = UnrealAdaptorGeneral<
-      2,
-      FGeometry_,
-      FVector2D_,
-      FBox2D_,
-      typename UnrealAdaptorBasics2D<FGeometry_, FVector2D_, FBox2D_>::FRay2D_,
-      typename UnrealAdaptorBasics2D<FGeometry_, FVector2D_, FBox2D_>::FPlane2D_,
-      UnrealAdaptorBasics2D<FGeometry_, FVector2D_, FBox2D_>>;
+    using UnrealGeometryAdapter2D = UnrealGeometryAdapter<UnrealBaseGeometryAdapter2D<FGeometry_, FVector2D_, FBox2D_>>;
 
     template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_>
-    using UnrealAdaptorGeneral3D =
-      UnrealAdaptorGeneral<3, FGeometry_, FVector_, FBox_, FRay_, FPlane_, UnrealAdaptorBasics3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>>;
+    using UnrealGeometryAdapter3D = UnrealGeometryAdapter<UnrealBaseGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>>;
 
 
     // Templates for point types
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, typename TContainer_ = std::span<FVector_ const>>
-    using QuadtreePointTemplate = OrthoTreePoint<
-      2,
-      FVector_,
-      FBox_,
-      typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FRay2D_,
-      typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FPlane2D_,
-      FGeometry_,
-      UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>,
-      TContainer_>;
+    template<typename FGeometry_, typename FVector_, typename FBox_>
+    using QuadtreePointTemplate =
+      OrthoTreeBase<PointEntitySpanAdapter<FVector_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, PointConfiguration>;
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, typename TContainer_ = std::span<FVector_ const>>
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_>
     using OctreePointTemplate =
-      OrthoTreePoint<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, TContainer_>;
+      OrthoTreeBase<PointEntitySpanAdapter<FVector_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, PointConfiguration>;
 
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename TContainer_ = std::unordered_map<index_t, FVector_>>
+    using QuadtreePointMapTemplate =
+      OrthoTreeBase<PointEntityMapAdapter<FVector_, TContainer_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, PointConfiguration>;
+
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, typename TContainer_ = std::unordered_map<index_t, FVector_>>
+    using OctreePointMapTemplate =
+      OrthoTreeBase<PointEntityMapAdapter<FVector_, TContainer_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, PointConfiguration>;
 
     // Templates for box types
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, bool IS_LOOSE_TREE = true, typename TContainer_ = std::span<FBox_ const>>
-    using QuadtreeBoxTemplate = OrthoTreeBoundingBox<
-      2,
-      FVector_,
-      FBox_,
-      typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FRay2D_,
-      typename UnrealAdaptorBasics2D<FGeometry_, FVector_, FBox_>::FPlane2D_,
-      FGeometry_,
-      IS_LOOSE_TREE,
-      UnrealAdaptorGeneral2D<FGeometry_, FVector_, FBox_>,
-      TContainer_>;
+    template<typename FGeometry_, typename FVector_, typename FBox_, bool IS_LOOSE_TREE = true>
+    using QuadtreeBoxTemplate =
+      OrthoTreeBase<BoxEntitySpanAdapter<FBox_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, BoxConfiguration<IS_LOOSE_TREE>>;
 
-    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, bool IS_LOOSE_TREE = true, typename TContainer_ = std::span<FBox_ const>>
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, bool IS_LOOSE_TREE = true>
     using OctreeBoxTemplate =
-      OrthoTreeBoundingBox<3, FVector_, FBox_, FRay_, FPlane_, FGeometry_, IS_LOOSE_TREE, UnrealAdaptorGeneral3D<FGeometry_, FVector_, FBox_, FPlane_, FGeometry_>, TContainer_>;
-  } // namespace UnrealAdaptor
+      OrthoTreeBase<BoxEntitySpanAdapter<FBox_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FPlane_, FGeometry_>, BoxConfiguration<IS_LOOSE_TREE>>;
+
+    template<typename FGeometry_, typename FVector_, typename FBox_, bool IS_LOOSE_TREE = true, typename TContainer_ = std::unordered_map<index_t, FVector_>>
+    using QuadtreeBoxMapTemplate =
+      OrthoTreeBase<BoxEntityMapAdapter<FBox_, TContainer_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, BoxConfiguration<IS_LOOSE_TREE>>;
+
+    template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, bool IS_LOOSE_TREE = true, typename TContainer_ = std::unordered_map<index_t, FVector_>>
+    using OctreeBoxMapTemplate =
+      OrthoTreeBase<BoxEntityMapAdapter<FBox_, TContainer_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, BoxConfiguration<IS_LOOSE_TREE>>;
+
+  } // namespace UnrealAdapter
 } // namespace OrthoTree
 
 
 // Orthotree Core Types
 using FLargeWorldCoordinatesReal = double;
 
-using FQuadtreePoint = OrthoTree::UnrealAdaptor::QuadtreePointTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D>;
+using FQuadtreePoint = OrthoTree::UnrealAdapter::QuadtreePointTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D>;
 using FQuadtreePoint2D = FQuadtreePoint;
-using FQuadtreePoint2f = OrthoTree::UnrealAdaptor::QuadtreePointTemplate<float, FVector2f, FBox2f>;
+using FQuadtreePoint2f = OrthoTree::UnrealAdapter::QuadtreePointTemplate<float, FVector2f, FBox2f>;
 
-using FOctreePoint = OrthoTree::UnrealAdaptor::OctreePointTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane>;
-using FOctreePoint3d = OrthoTree::UnrealAdaptor::OctreePointTemplate<double, FVector3d, FBox3d, FRay, FPlane>;
-using FOctreePoint3f = OrthoTree::UnrealAdaptor::OctreePointTemplate<float, FVector3f, FBox3f, FRay, FPlane>;
+using FOctreePoint = OrthoTree::UnrealAdapter::OctreePointTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane>;
+using FOctreePoint3d = OrthoTree::UnrealAdapter::OctreePointTemplate<double, FVector3d, FBox3d, FRay, FPlane>;
+using FOctreePoint3f = OrthoTree::UnrealAdapter::OctreePointTemplate<float, FVector3f, FBox3f, FRay, FPlane>;
 
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, IS_LOOSE_TREE>;
+using FQuadtreeBoxs = OrthoTree::UnrealAdapter::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, IS_LOOSE_TREE>;
 using FQuadtreeBox = FQuadtreeBoxs<true>;
 
 template<bool IS_LOOSE_TREE = true>
@@ -746,72 +766,72 @@ using FQuadtreeBox2Ds = FQuadtreeBoxs<IS_LOOSE_TREE>;
 using FQuadtreeBox2D = FQuadtreeBox;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBox2fs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, IS_LOOSE_TREE>;
-using FQuadtreeBox2f = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, true>;
+using FQuadtreeBox2fs = OrthoTree::UnrealAdapter::QuadtreeBoxTemplate<float, FVector2f, FBox2f, IS_LOOSE_TREE>;
+using FQuadtreeBox2f = OrthoTree::UnrealAdapter::QuadtreeBoxTemplate<float, FVector2f, FBox2f, true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxs = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, IS_LOOSE_TREE>;
-using FOctreeBox = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, true>;
+using FOctreeBoxs = OrthoTree::UnrealAdapter::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, IS_LOOSE_TREE>;
+using FOctreeBox = OrthoTree::UnrealAdapter::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBox3ds = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, IS_LOOSE_TREE>;
-using FOctreeBox3d = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, true>;
+using FOctreeBox3ds = OrthoTree::UnrealAdapter::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, IS_LOOSE_TREE>;
+using FOctreeBox3d = OrthoTree::UnrealAdapter::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBox3fs = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, IS_LOOSE_TREE>;
-using FOctreeBox3f = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, true>;
+using FOctreeBox3fs = OrthoTree::UnrealAdapter::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, IS_LOOSE_TREE>;
+using FOctreeBox3f = OrthoTree::UnrealAdapter::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, true>;
 
 
 // Orthotree Container Types
 
-using FQuadtreePointC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePoint>;
+using FQuadtreePointC = OrthoTree::OrthoTreeContainer<FQuadtreePoint>;
 using FQuadtreePoint2DC = FQuadtreePointC;
-using FQuadtreePoint2fC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePoint2f>;
+using FQuadtreePoint2fC = OrthoTree::OrthoTreeContainer<FQuadtreePoint2f>;
 
-using FOctreePointC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint>;
-using FOctreePoint3dC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3d>;
-using FOctreePoint3fC = OrthoTree::OrthoTreeContainerPoint<FOctreePoint3f>;
+using FOctreePointC = OrthoTree::OrthoTreeContainer<FOctreePoint>;
+using FOctreePoint3dC = OrthoTree::OrthoTreeContainer<FOctreePoint3d>;
+using FOctreePoint3fC = OrthoTree::OrthoTreeContainer<FOctreePoint3f>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxs<IS_LOOSE_TREE>>;
+using FQuadtreeBoxCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxs<IS_LOOSE_TREE>>;
 using FQuadtreeBoxC = FQuadtreeBoxCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBox2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2Ds<IS_LOOSE_TREE>>;
+using FQuadtreeBox2DCs = OrthoTree::OrthoTreeContainer<FQuadtreeBox2Ds<IS_LOOSE_TREE>>;
 using FQuadtreeBox2DC = FQuadtreeBox2DCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBox2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBox2fs<IS_LOOSE_TREE>>;
+using FQuadtreeBox2fCs = OrthoTree::OrthoTreeContainer<FQuadtreeBox2fs<IS_LOOSE_TREE>>;
 using FQuadtreeBox2fC = FQuadtreeBox2fCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxs<IS_LOOSE_TREE>>;
+using FOctreeBoxCs = OrthoTree::OrthoTreeContainer<FOctreeBoxs<IS_LOOSE_TREE>>;
 using FOctreeBoxC = FOctreeBoxCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBox3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3ds<IS_LOOSE_TREE>>;
+using FOctreeBox3dCs = OrthoTree::OrthoTreeContainer<FOctreeBox3ds<IS_LOOSE_TREE>>;
 using FOctreeBox3dC = FOctreeBox3dCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBox3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBox3fs<IS_LOOSE_TREE>>;
+using FOctreeBox3fCs = OrthoTree::OrthoTreeContainer<FOctreeBox3fs<IS_LOOSE_TREE>>;
 using FOctreeBox3fC = FOctreeBox3fCs<true>;
 
 
 template<typename T>
 using FContainer = std::unordered_map<int, T>;
 
-using FQuadtreePointMap = OrthoTree::UnrealAdaptor::QuadtreePointTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, FContainer<FVector2D>>;
+using FQuadtreePointMap = OrthoTree::UnrealAdapter::QuadtreePointMapTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, FContainer<FVector2D>>;
 using FQuadtreePointMap2D = FQuadtreePointMap;
-using FQuadtreePointMap2f = OrthoTree::UnrealAdaptor::QuadtreePointTemplate<float, FVector2f, FBox2f, FContainer<FVector2f>>;
+using FQuadtreePointMap2f = OrthoTree::UnrealAdapter::QuadtreePointMapTemplate<float, FVector2f, FBox2f, FContainer<FVector2f>>;
 
-using FOctreePointMap = OrthoTree::UnrealAdaptor::OctreePointTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, FContainer<FVector>>;
-using FOctreePointMap3d = OrthoTree::UnrealAdaptor::OctreePointTemplate<double, FVector3d, FBox3d, FRay, FPlane, FContainer<FVector3d>>;
-using FOctreePointMap3f = OrthoTree::UnrealAdaptor::OctreePointTemplate<float, FVector3f, FBox3f, FRay, FPlane, FContainer<FVector3f>>;
+using FOctreePointMap = OrthoTree::UnrealAdapter::OctreePointMapTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, FContainer<FVector>>;
+using FOctreePointMap3d = OrthoTree::UnrealAdapter::OctreePointMapTemplate<double, FVector3d, FBox3d, FRay, FPlane, FContainer<FVector3d>>;
+using FOctreePointMap3f = OrthoTree::UnrealAdapter::OctreePointMapTemplate<float, FVector3f, FBox3f, FRay, FPlane, FContainer<FVector3f>>;
 
 
 template<bool IS_LOOSE_TREE = true>
 using FQuadtreeBoxsMap =
-  OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, IS_LOOSE_TREE, FContainer<FBox2D>>;
+  OrthoTree::UnrealAdapter::QuadtreeBoxMapTemplate<FLargeWorldCoordinatesReal, FVector2D, FBox2D, IS_LOOSE_TREE, FContainer<FBox2D>>;
 using FQuadtreeBoxMap = FQuadtreeBoxsMap<true>;
 
 template<bool IS_LOOSE_TREE = true>
@@ -819,53 +839,51 @@ using FQuadtreeBoxMap2Ds = FQuadtreeBoxsMap<IS_LOOSE_TREE>;
 using FQuadtreeBoxMap2D = FQuadtreeBoxMap;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxMap2fs = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, IS_LOOSE_TREE, FContainer<FBox2f>>;
-using FQuadtreeBoxMap2f = OrthoTree::UnrealAdaptor::QuadtreeBoxTemplate<float, FVector2f, FBox2f, true, FContainer<FBox2f>>;
+using FQuadtreeBoxMap2fs = OrthoTree::UnrealAdapter::QuadtreeBoxMapTemplate<float, FVector2f, FBox2f, IS_LOOSE_TREE, FContainer<FBox2f>>;
+using FQuadtreeBoxMap2f = OrthoTree::UnrealAdapter::QuadtreeBoxMapTemplate<float, FVector2f, FBox2f, true, FContainer<FBox2f>>;
 
 template<bool IS_LOOSE_TREE = true>
 using FOctreeBoxsMap =
-  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox>>;
-using FOctreeBoxMap = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, true, FContainer<FBox>>;
+  OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox>>;
+using FOctreeBoxMap = OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<FLargeWorldCoordinatesReal, FVector, FBox, FRay, FPlane, true, FContainer<FBox>>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMap3ds =
-  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox3d>>;
-using FOctreeBoxMap3d = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<double, FVector3d, FBox3d, FRay, FPlane, true, FContainer<FBox3d>>;
+using FOctreeBoxMap3ds = OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<double, FVector3d, FBox3d, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox3d>>;
+using FOctreeBoxMap3d = OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<double, FVector3d, FBox3d, FRay, FPlane, true, FContainer<FBox3d>>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMap3fs =
-  OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox3f>>;
-using FOctreeBoxMap3f = OrthoTree::UnrealAdaptor::OctreeBoxTemplate<float, FVector3f, FBox3f, FRay, FPlane, true, FContainer<FBox3f>>;
+using FOctreeBoxMap3fs = OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<float, FVector3f, FBox3f, FRay, FPlane, IS_LOOSE_TREE, FContainer<FBox3f>>;
+using FOctreeBoxMap3f = OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<float, FVector3f, FBox3f, FRay, FPlane, true, FContainer<FBox3f>>;
 
 
-using FQuadtreePointMapC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePointMap>;
+using FQuadtreePointMapC = OrthoTree::OrthoTreeContainer<FQuadtreePointMap>;
 using FQuadtreePointMap2DC = FQuadtreePointMapC;
-using FQuadtreePointMap2fC = OrthoTree::OrthoTreeContainerPoint<FQuadtreePointMap2f>;
+using FQuadtreePointMap2fC = OrthoTree::OrthoTreeContainer<FQuadtreePointMap2f>;
 
-using FOctreePointMapC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap>;
-using FOctreePointMap3dC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap3d>;
-using FOctreePointMap3fC = OrthoTree::OrthoTreeContainerPoint<FOctreePointMap3f>;
+using FOctreePointMapC = OrthoTree::OrthoTreeContainer<FOctreePointMap>;
+using FOctreePointMap3dC = OrthoTree::OrthoTreeContainer<FOctreePointMap3d>;
+using FOctreePointMap3fC = OrthoTree::OrthoTreeContainer<FOctreePointMap3f>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxsMap<IS_LOOSE_TREE>>;
+using FQuadtreeBoxMapCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxsMap<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMapC = FQuadtreeBoxMapCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxMap2DCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2Ds<IS_LOOSE_TREE>>;
+using FQuadtreeBoxMap2DCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxMap2Ds<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMap2DC = FQuadtreeBoxMap2DCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxMap2fCs = OrthoTree::OrthoTreeContainerBox<FQuadtreeBoxMap2fs<IS_LOOSE_TREE>>;
+using FQuadtreeBoxMap2fCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxMap2fs<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMap2fC = FQuadtreeBoxMap2fCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMapCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxsMap<IS_LOOSE_TREE>>;
+using FOctreeBoxMapCs = OrthoTree::OrthoTreeContainer<FOctreeBoxsMap<IS_LOOSE_TREE>>;
 using FOctreeBoxMapC = FOctreeBoxMapCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMap3dCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3ds<IS_LOOSE_TREE>>;
+using FOctreeBoxMap3dCs = OrthoTree::OrthoTreeContainer<FOctreeBoxMap3ds<IS_LOOSE_TREE>>;
 using FOctreeBoxMap3dC = FOctreeBoxMap3dCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMap3fCs = OrthoTree::OrthoTreeContainerBox<FOctreeBoxMap3fs<IS_LOOSE_TREE>>;
+using FOctreeBoxMap3fCs = OrthoTree::OrthoTreeContainer<FOctreeBoxMap3fs<IS_LOOSE_TREE>>;
 using FOctreeBoxMap3fC = FOctreeBoxMap3fCs<true>;
