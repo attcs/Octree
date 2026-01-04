@@ -397,26 +397,26 @@ void testCompileBoxMap()
     [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
     [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
 
-    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0, boxes);
-    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection(
+    [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, boxes, 0.0);
+    [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
       {
         1.0, { 1.0, 0.0 }
     },
-      0.0,
-      boxes);
-    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, 0.0, boxes);
+      boxes,
+      0.0);
+    [[maybe_unused]] auto const idPlanePosSeg = tree.PlanePositiveSegmentation(1.0, { 1.0, 0.0 }, boxes, 0.0);
     [[maybe_unused]] auto const idPlanePosSegP = tree.PlanePositiveSegmentation(
       {
         1.0, { 1.0, 0.0 }
     },
-      0.0,
-      boxes);
+      boxes,
+      0.0);
     [[maybe_unused]] auto const idFrustum = tree.FrustumCulling(
       std::vector{
         Plane{ 1.0, Vector{ 1.0, 0.0 } }
     },
-      0.0,
-      boxes);
+      boxes,
+      0.0);
 
     [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
     tree.VisitNodes(
@@ -583,6 +583,7 @@ void testCompilePointMapC()
   // non-const member functions
   {
     tree.Add(60, vpt.at(20));
+    tree.Add(std::pair{ 60, vpt.at(20) });
     tree.Erase(20);
     tree.Update(30, vpt.at(40));
     tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });

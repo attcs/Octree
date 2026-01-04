@@ -216,7 +216,7 @@ namespace GeneralTest
       auto constexpr nChild = 1 << N;
       for (child_id_type_ idChild = 0; idChild < nChild; ++idChild)
       {
-        node.AddChild(idChild);
+        node.AddChild(idChild, MortonNodeID(idChild));
         Assert::IsTrue(node.HasChild(idChild));
         Assert::IsTrue(node.IsAnyChildExist());
 
@@ -252,7 +252,7 @@ namespace GeneralTest
       for (ChildID idChild = 0; idChild < nChild; ++idChild)
       {
         auto const kChild = MortonNodeID(idChild);
-        node.AddChild(kChild);
+        node.AddChild(idChild, kChild);
         Assert::IsTrue(node.HasChild(kChild));
         Assert::IsTrue(node.IsAnyChildExist());
 
@@ -410,34 +410,34 @@ namespace GeneralTest
       Assert::IsTrue(vidE == vidA);
     }
 
-    TEST_METHOD(GetHash__00_1)
+    TEST_METHOD(GetNodeID__00_1)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 1 }, DualtreePoint::SI::GetHash(0, 0));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 1 }, DualtreePoint::SI::GetNodeID(0, 0));
     }
 
-    TEST_METHOD(GetHash__11_3)
+    TEST_METHOD(GetNodeIDh__11_3)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 3 }, DualtreePoint::SI::GetHash(1, 1));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 3 }, DualtreePoint::SI::GetNodeID(1, 1));
     }
-    TEST_METHOD(GetHash__22_4)
+    TEST_METHOD(GetNodeID__22_4)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 6 }, DualtreePoint::SI::GetHash(2, 2));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 6 }, DualtreePoint::SI::GetNodeID(2, 2));
     }
 
-    TEST_METHOD(GetHash__37_15)
+    TEST_METHOD(GetNodeIDh__37_15)
     {
-      Assert::AreEqual(DualtreePoint::MortonNodeID{ 15 }, DualtreePoint::SI::GetHash(3, 7));
+      Assert::AreEqual(DualtreePoint::MortonNodeID{ 15 }, DualtreePoint::SI::GetNodeID(7, 3));
     }
 
     TEST_METHOD(GetDepth__37_15__3)
     {
-      auto const lc = DualtreePoint::SI::GetDepthID(DualtreePoint::SI::GetHash(3, 7));
+      auto const lc = DualtreePoint::SI::GetDepthID(DualtreePoint::SI::GetNodeID(7, 3));
       Assert::AreEqual(depth_t{ 3 }, lc);
     }
 
     TEST_METHOD(RemoveSentinelBit__37_15__7)
     {
-      auto const lc = DualtreePoint::SI::RemoveSentinelBit(DualtreePoint::SI::GetHash(3, 7));
+      auto const lc = DualtreePoint::SI::RemoveSentinelBit(DualtreePoint::SI::GetNodeID(7, 3));
       Assert::AreEqual(MortonNodeID{ 7 }, lc);
     }
 
@@ -629,14 +629,14 @@ namespace GeneralTest
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 2, std::nullopt, 1);
 
-      auto const kNode = DualtreePoint::SI::GetHash(2, 2);
+      auto const kNode = DualtreePoint::SI::GetNodeID(2, 2);
       auto const& node = tree.GetNode(kNode);
       Assert::AreEqual<std::size_t>(tree.GetNodeEntitiesSize(node), 1);
       tree.EraseEntity(2);
       auto const& nodes = tree.GetNodes();
       Assert::IsTrue(nodes.find(kNode) == nodes.end());
 
-      auto const kNode3 = DualtreePoint::SI::GetHash(2, 3);
+      auto const kNode3 = DualtreePoint::SI::GetNodeID(3, 2);
       auto const& node3 = tree.GetNode(kNode3);
       Assert::AreEqual<EntityID>(*tree.GetNodeEntities(node3).begin(), 2);
     }
@@ -770,7 +770,7 @@ namespace GeneralTest
 
       tree.Clear();
       Assert::AreEqual<std::size_t>(1, nodes.size());
-      Assert::IsTrue(tree.IsNodeEntitiesEmpty(DualtreeBox::SI::GetHash(0, 0)));
+      Assert::IsTrue(tree.IsNodeEntitiesEmpty(DualtreeBox::SI::GetNodeID(0, 0)));
     }
 
     TEST_METHOD(Contains_EmptyTree__False)
@@ -2064,7 +2064,7 @@ namespace Tree2DTest
 
       auto const tree = OctreePoint(vpt, 3, std::nullopt, 2);
 
-      auto const ids = tree.PlaneSearch(0.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, vpt);
+      auto const ids = tree.PlaneSearch(0.0, Point3D{ 0.0, 0.0, 1.0 }, vpt, 0.01);
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 3, 4 }, ids));
     }
 
@@ -2082,7 +2082,7 @@ namespace Tree2DTest
 
       auto const tree = OctreePoint(vpt, 3, std::nullopt, 2);
 
-      auto const ids = tree.PlaneSearch(1.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, vpt);
+      auto const ids = tree.PlaneSearch(1.0, Point3D{ 0.0, 0.0, 1.0 }, vpt, 0.01);
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 4 }, ids));
     }
 
@@ -2100,7 +2100,7 @@ namespace Tree2DTest
 
       auto const tree = OctreePoint(vpt, 3, std::nullopt, 2);
 
-      auto const ids = tree.PlaneSearch(4.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01, vpt);
+      auto const ids = tree.PlaneSearch(4.0, Point3D{ 1.0, 0.0, 0.0 }, vpt, 0.01);
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids));
     }
 
@@ -2627,7 +2627,7 @@ namespace Tree2DTest
       };
 
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
-      auto const intersectedBoxes = octreebox.PlaneIntersection(0.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, boxes);
+      auto const intersectedBoxes = octreebox.PlaneIntersection(0.0, Point3D{ 0.0, 0.0, 1.0 }, boxes, 0.01);
 
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1, 4 }, intersectedBoxes));
     }
@@ -2645,7 +2645,7 @@ namespace Tree2DTest
       };
 
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
-      auto const intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, boxes);
+      auto const intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 0.0, 0.0, 1.0 }, boxes, 0.01);
 
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 4 }, intersectedBoxes));
     }
@@ -2662,7 +2662,7 @@ namespace Tree2DTest
       };
 
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
-      auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 0.0, 0.0, 1.0 }, 0.01, boxes);
+      auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 0.0, 0.0, 1.0 }, boxes, 0.01);
 
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, intersectedBoxes));
     }
@@ -2680,7 +2680,7 @@ namespace Tree2DTest
       };
 
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
-      auto const intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01, boxes);
+      auto const intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 1.0, 0.0, 0.0 }, boxes, 0.01);
 
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1 }, intersectedBoxes));
     }
@@ -2697,7 +2697,7 @@ namespace Tree2DTest
       };
 
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
-      auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01, boxes);
+      auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 1.0, 0.0, 0.0 }, boxes, 0.01);
 
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{}, intersectedBoxes));
     }
@@ -2731,7 +2731,7 @@ namespace Tree2DTest
 
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
       auto const sqrt2__2 = std::sqrt(2.0) * 0.5;
-      auto const intersectedBoxes = octreebox.PlaneIntersection(std::sqrt(2.0), Point3D{ 0.0, sqrt2__2, sqrt2__2 }, 0.01, boxes);
+      auto const intersectedBoxes = octreebox.PlaneIntersection(std::sqrt(2.0), Point3D{ 0.0, sqrt2__2, sqrt2__2 }, boxes, 0.01);
 
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{1, 2, 4}, intersectedBoxes));
     }
@@ -2884,16 +2884,16 @@ namespace Tree3DTest
       // InsertUnique
       {
         auto const p1 = Point3D{ +3.75, +3.75, +3.76 };
-        auto const isP1Inserted = tree.InsertUnique(pointNo, p1, 0.01, points);
+        auto const isP1Inserted = tree.InsertUnique(pointNo, p1, points, 0.01);
         Assert::IsFalse(isP1Inserted);
 
         points.emplace_back(Point3D{ +3.75, +3.75, +3.75 });
-        auto const isP2Inserted = tree.InsertUnique(pointNo, points.back(), 0.0, points);
+        auto const isP2Inserted = tree.InsertUnique(pointNo, points.back(), points, 0.0);
         Assert::IsTrue(isP2Inserted);
         ++pointNo;
 
         points.emplace_back(Point3D{ +3.75, +3.75, +3.77 });
-        auto const isP3Inserted = tree.InsertUnique(pointNo, points.back(), 0.001, points);
+        auto const isP3Inserted = tree.InsertUnique(pointNo, points.back(), points, 0.001);
         Assert::IsTrue(isP3Inserted);
         ++pointNo;
       }
@@ -3222,14 +3222,24 @@ namespace LongIntAdaptor
   using namespace OrthoTree;
 
   using GeometryType = long int;
-  template<EntityID N> using CustomVectorTypeND = std::array<GeometryType, N>;
-  template<EntityID N> using CustomBoundingBoxND = std::array<CustomVectorTypeND<N>, 2>;
-  template<EntityID N> using CustomRayND = std::array<CustomVectorTypeND<N>, 2>;
-  template<EntityID N> using CustomPlaneND = std::tuple<CustomVectorTypeND<N>, GeometryType>;
+  template<dim_t N> using CustomVectorTypeND = std::array<GeometryType, N>;
+  template<dim_t N> using CustomBoundingBoxND = std::array<CustomVectorTypeND<N>, 2>;
+  template<dim_t N> using CustomRayND = std::array<CustomVectorTypeND<N>, 2>;
+  template<dim_t N> using CustomPlaneND = std::tuple<CustomVectorTypeND<N>, GeometryType>;
 
-  template <EntityID N>
-  struct AdaptorBasicsCustom
+  template <dim_t N>
+  struct CustomBaseGeometryAdapter
   {
+    using Scalar = GeometryType;
+    using FloatScalar = float;
+    using Vector = CustomVectorTypeND<N>;
+    using Box = CustomBoundingBoxND<N>;
+    using Ray = CustomRayND<N>;
+    using Plane = CustomPlaneND<N>;
+
+    static constexpr dim_t DIMENSION_NO = N;
+    static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
     static constexpr GeometryType GetPointC(CustomVectorTypeND<N> const& pt, OrthoTree::dim_t iDimension) { return pt[iDimension]; }
 
     static constexpr void SetPointC(CustomVectorTypeND<N>& pt, OrthoTree::dim_t iDimension, GeometryType value)
@@ -3247,14 +3257,13 @@ namespace LongIntAdaptor
 
     static constexpr CustomVectorTypeND<N> const& GetPlaneNormal(CustomPlaneND<N> const& plane) noexcept { return std::get<0>(plane); }
     static constexpr GeometryType GetPlaneOrigoDistance(CustomPlaneND<N> const& plane) noexcept { return std::get<1>(plane); }
-
   };
 
-  template <EntityID N> using AdaptorCustom = AdaptorGeneralBase<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorBasicsCustom<N>>;
-  template <EntityID N> using OrthoTreePointCustom = OrthoTreePoint<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, AdaptorCustom<N>>;
-  template <EntityID N> using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainerPoint<OrthoTreePointCustom<N>>;
-  template <EntityID N, bool IS_LOOSE_TREE = true> using OrthoTreeBoxCustom = OrthoTreeBoundingBox<N, CustomVectorTypeND<N>, CustomBoundingBoxND<N>, CustomRayND<N>, CustomPlaneND<N>, GeometryType, IS_LOOSE_TREE, AdaptorCustom<N>>;
-  template <EntityID N> using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainerBox<OrthoTreeBoxCustom<N>>;
+  template <dim_t N> using CustomGeometryAdapter = GeneralGeometryAdapter<CustomBaseGeometryAdapter<N>>;
+  template <dim_t N> using OrthoTreePointCustom = OrthoTreeBase<PointEntitySpanAdapter<CustomVectorTypeND<N>>, CustomGeometryAdapter<N>, PointConfiguration>;
+  template <dim_t N> using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainer<OrthoTreePointCustom<N>>;
+  template <dim_t N, bool IS_LOOSE_TREE = true> using OrthoTreeBoxCustom = OrthoTreeBase<BoxEntitySpanAdapter<CustomBoundingBoxND<N>>, CustomGeometryAdapter<N>, BoxConfiguration<IS_LOOSE_TREE>>;
+  template <dim_t N> using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainer<OrthoTreeBoxCustom<N>>;
 
 
   TEST_CLASS(LongIntTest)
@@ -3628,7 +3637,7 @@ namespace LongIntAdaptor
       auto Entities = vector<EntityID>{};
       auto const nid = points.size();
       for (EntityID id = 0; id < nid; ++id)
-        if (AdaptorCustom<nDim>::DoesBoxContainPoint(searchbox, points[id]))
+        if (CustomGeometryAdapter<nDim>::DoesBoxContainPoint(searchbox, points[id]))
           Entities.emplace_back(id);
 
       return Entities;

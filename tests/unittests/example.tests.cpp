@@ -147,7 +147,7 @@ namespace Example
       auto boxes = vector{ BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } /* and more... */ };
       // Using ctor
       {
-        auto octreeBox = OctreeBoxC(PAR_EXEC, boxes, 3, std::nullopt, OctreeBox::DEFAULT_MAX_ELEMENT);
+        auto octreeBox = OctreeBoxC(PAR_EXEC, boxes, 3, std::nullopt, OctreeBox::CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES);
       }
       // Using Create
       {
