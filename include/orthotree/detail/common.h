@@ -335,19 +335,65 @@ namespace OrthoTree
     template<typename TContainer, typename... TElement>
     concept HasEmplaceBack = requires(TContainer container, TElement&&... elements) { container.emplace_back(std::forward<TElement>(elements)...); };
 
-    template<typename TContainer, typename... TElement>
-    concept HasEmplace = requires(TContainer container, TElement&&... elements) { container.emplace(std::forward<TElement>(elements)...); };
-
     template<HasEmplaceBack TContainer, typename... TElement>
     constexpr void emplace(TContainer& container, TElement&&... element) noexcept
     {
       container.emplace_back(std::forward<TElement>(element)...);
     }
 
+    template<typename TContainer, typename... TElement>
+    concept HasEmplace = requires(TContainer container, TElement&&... elements) { container.emplace(std::forward<TElement>(elements)...); };
+
     template<HasEmplace TContainer, typename... TElement>
     constexpr void emplace(TContainer& container, TElement&&... element) noexcept
     {
       container.emplace(std::forward<TElement>(element)...);
+    }
+
+    constexpr bool contains(auto const& container, auto const& element) noexcept
+    {
+      return container.contains(element);
+    }
+
+    constexpr void clear(auto& container) noexcept
+    {
+      container.clear();
+    }
+
+    constexpr auto erase(auto& container, auto const& element) noexcept
+    {
+      return container.erase(element);
+    }
+
+    // Indexable containers (std::array, std::vector, std::span)
+    template<typename Container, typename Key>
+      requires(
+        requires(Container& c, Key k) { c[k]; } && !requires(Container& c, Key k) { c.find(k); })
+    constexpr decltype(auto) get(Container& container, Key id) noexcept
+    {
+      return container[id];
+    }
+
+    template<typename Container, typename Key>
+      requires(
+        requires(const Container& c, Key k) { c[k]; } && !requires(const Container& c, Key k) { c.find(k); })
+    constexpr decltype(auto) get(const Container& container, Key id) noexcept
+    {
+      return container[id];
+    }
+
+    template<typename Container, typename Key>
+      requires requires(Container& c, Key k) { c.find(k); }
+    constexpr decltype(auto) get(Container& container, const Key& id) noexcept
+    {
+      return *container.find(id);
+    }
+
+    template<typename Container, typename Key>
+      requires requires(const Container& c, Key k) { c.find(k); }
+    constexpr decltype(auto) get(const Container& container, const Key& id) noexcept
+    {
+      return *container.find(id);
     }
 
     template<typename T, bool DOES_ORDER_MATTER>
@@ -404,7 +450,6 @@ namespace OrthoTree
   } // namespace detail
 
 
-  
   // Type of the dimension
   using dim_t = uint32_t;
 

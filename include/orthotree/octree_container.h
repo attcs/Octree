@@ -36,9 +36,9 @@ namespace OrthoTree
   class OrthoTreeContainer
   {
   public:
-    using EA = typename OrthoTreeCore::EA;
-    using GA = typename OrthoTreeCore::GA;
+    using CONFIG = typename OrthoTreeCore::CONFIG;
 
+    using GA = typename OrthoTreeCore::GA;
     using TScalar = typename GA::TScalar;
     using TFloatScalar = typename GA::TFloatScalar;
     using TVector = typename GA::TVector;
@@ -46,9 +46,9 @@ namespace OrthoTree
     using TRay = typename GA::TRay;
     using TPlane = typename GA::TPlane;
 
-    using EntityID = typename GA::EntityID;
-    using Entity = typename GA::Entity;
-
+    using EA = typename OrthoTreeCore::EA;
+    using Entity = typename EA::Entity;
+    using EntityID = typename EA::EntityID;
     using EntityContainer = EA::EntityContainer;
 
   protected:
@@ -63,7 +63,7 @@ namespace OrthoTree
       std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       bool isParallelCreation = false) noexcept
       requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
@@ -82,7 +82,7 @@ namespace OrthoTree
       EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       bool isParallelCreation = false) noexcept
     : m_entities(geometryCollection)
     {
@@ -100,7 +100,7 @@ namespace OrthoTree
       EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       bool isParallelCreation = false) noexcept
     : m_entities(std::move(geometryCollection))
     {
@@ -120,7 +120,7 @@ namespace OrthoTree
       std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
       requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
@@ -138,7 +138,7 @@ namespace OrthoTree
       EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     : m_entities(geometryCollection)
     {
 #ifdef __cpp_lib_execution
@@ -155,7 +155,7 @@ namespace OrthoTree
       EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     : m_entities(std::move(geometryCollection))
     {
 #ifdef __cpp_lib_execution
@@ -171,7 +171,7 @@ namespace OrthoTree
       std::span<Entity const> const& entities,
       depth_t maxDepthID = 0,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
       requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto otc = OrthoTreeContainer();
@@ -185,7 +185,7 @@ namespace OrthoTree
       EntityContainer const& entities,
       depth_t maxDepthID = 0,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = entities;
@@ -198,7 +198,7 @@ namespace OrthoTree
       EntityContainer&& entities,
       depth_t maxDepthID = 0,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = std::move(entities);
@@ -219,99 +219,162 @@ namespace OrthoTree
     Entity const& Get(EntityID entityID) const noexcept { return detail::at(m_entities, entityID); }
 
     // Add entity without tree rebalancing
-    bool Add(Entity const& newEntity, bool doInsertToLeaf = false) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool Add(EA::Entity const& newEntity, bool doInsertToLeaf = false) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
-      auto const newEntityID = EntityID(m_entities.size());
-      if (!m_tree.Insert(newEntityID, newEntity, doInsertToLeaf))
+      auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
+      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      {
+        if (detail::contains(m_entities, newEntityID))
+          return false;
+      }
+
+      if (!m_tree.Insert(newEntityID, EA::GetGeometry(newEntity), doInsertToLeaf))
         return false;
 
-      m_entities.emplace_back(newEntity);
+      detail::emplace(m_entities, newEntity);
       return true;
     }
 
     // Add entity without tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(EntityID newEntityID, Entity const& newEntity, bool doInsertToLeaf = false) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
-      {
-        if (m_entities.contains(newEntityID))
-          return false;
-      }
-
-      if (!m_tree.Insert(newEntityID, newEntity, doInsertToLeaf))
-        return false;
-
-      m_entities.emplace(newEntityID, newEntity);
-      return true;
-    }
-
-    // Add entity with tree rebalancing
-    bool AddAndRebalance(Entity const& newEntity) noexcept
+    bool Add(EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
       requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto const newEntityID = EntityID(m_entities.size());
-      if (!m_tree.InsertWithRebalance(newEntityID, newEntity))
+      if (!m_tree.Insert(newEntityID, newEntityGeometry, doInsertToLeaf))
         return false;
 
-      m_entities.emplace_back(newEntity);
+      detail::emplace(m_entities, newEntityGeometry);
+      return true;
+    }
+
+
+    // Add entity without tree rebalancing for Entities that represents only the Geometry
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool Add(EntityID newEntityID, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
+    {
+      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      {
+        if (detail::contains(m_entities, newEntityID))
+          return false;
+      }
+
+      if (!m_tree.Insert(newEntityID, newEntityGeometry, doInsertToLeaf))
+        return false;
+
+      detail::emplace(m_entities, newEntityID, newEntityGeometry);
       return true;
     }
 
     // Add entity with tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddAndRebalance(EntityID newEntityID, Entity const& newEntity) noexcept
+    bool AddAndRebalance(EA::Entity const& newEntity) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
+      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      {
+        if (detail::contains(m_entities, newEntityID))
+          return false;
+      }
+
+      if (!m_tree.InsertWithRebalance(newEntityID, EA::GetGeometry(newEntity)))
+        return false;
+
+      detail::emplace(m_entities, newEntity);
+      return true;
+    }
+
+    // Add entity with tree rebalancing
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool AddAndRebalance(EA::Geometry const& newEntityGeometry) noexcept
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      auto const newEntityID = EntityID(m_entities.size());
+      if (!m_tree.InsertWithRebalance(*newEntityID, newEntityGeometry))
+        return false;
+
+      detail::emplace(m_entities, newEntityGeometry);
+      return true;
+    }
+
+    // Add entity with tree rebalancing
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool AddAndRebalance(EntityID newEntityID, EA::Geometry const& newEntityGeometry) noexcept
       requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       if constexpr (CHECK_ID_FOR_CONTAINMENT)
       {
-        if (m_entities.contains(newEntityID))
+        if (detail::contains(m_entities, newEntityID))
           return false;
       }
 
-      if (!m_tree.InsertWithRebalance(newEntityID, newEntity))
+      if (!m_tree.InsertWithRebalance(newEntityID, newEntityGeometry))
         return false;
 
-      m_entities.emplace(newEntityID, newEntity);
-      return true;
-    }
-
-    bool AddUnique(Entity const& newEntity, TFloatScalar tolerance, bool doInsertToLeaf = false) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      auto const newEntityID = EntityID(this->m_entities.size());
-      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_entities, doInsertToLeaf))
-        return false;
-
-      this->m_entities.emplace_back(newEntity);
+      detail::emplace(m_entities, newEntityID, newEntityGeometry);
       return true;
     }
 
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddUnique(EntityID newEntityID, Entity const& newEntity, TFloatScalar tolerance, bool doInsertToLeaf = false) noexcept
+    bool AddUnique(EA::Entity const& newEntity, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool doInsertToLeaf = false) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
+      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      {
+        if (detail::contains(m_entities, newEntityID))
+          return false;
+      }
+
+      if (!m_tree.InsertUnique(*newEntityID, EA::GetGeometry(newEntity), m_entities, tolerance, doInsertToLeaf))
+        return false;
+
+      detail::emplace(m_entities, newEntity);
+      return true;
+    }
+
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool AddUnique(EA::Geometry const& newEntityGeometry, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool doInsertToLeaf = false) noexcept
+      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      auto const newEntityID = EntityID(this->m_entities.size());
+
+      if (!m_tree.InsertUnique(*newEntityID, newEntityGeometry, m_entities, tolerance, doInsertToLeaf))
+        return false;
+
+      detail::emplace(m_entities, newEntityGeometry);
+      return true;
+    }
+
+    template<bool CHECK_ID_FOR_CONTAINMENT = false>
+    bool AddUnique(EntityID newEntityID, EA::Geometry const& newEntityGeometry, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool doInsertToLeaf = false) noexcept
       requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       if constexpr (CHECK_ID_FOR_CONTAINMENT)
       {
-        if (this->m_entities.contains(newEntityID))
+        if (detail::contains(m_entities, newEntityID))
           return false;
       }
 
-      if (!this->m_tree.InsertUnique(newEntityID, newEntity, tolerance, this->m_entities, doInsertToLeaf))
+      if (!this->m_tree.InsertUnique(newEntityID, newEntityGeometry, this->m_entities, tolerance, doInsertToLeaf))
         return false;
 
-      this->m_entities.emplace(newEntityID, newEntity);
+      detail::emplace(this->m_entities, newEntityID, newEntityGeometry);
       return true;
     }
 
     // Update with tree rebalancing
-    bool Update(EntityID entityID, Entity const& newEntity) noexcept
+    bool Update(EA::Entity const& changedEntity) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
+      auto const entityID = EA::GetEntityID(m_entities, changedEntity);
       auto const oldEntity = detail::at(m_entities, entityID);
-      detail::set(m_entities, entityID, newEntity);
-      if (!m_tree.Update(entityID, oldEntity, newEntity, m_entities))
+
+      detail::set(m_entities, entityID, changedEntity);
+      if (!m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(changedEntity), m_entities))
       {
         // restore the original state
         detail::set(m_entities, entityID, oldEntity);
@@ -321,12 +384,48 @@ namespace OrthoTree
       return true;
     }
 
+    // Update with tree rebalancing
+    bool Update(EntityID entityID, EA::Geometry const& changedGeometry) noexcept
+    {
+      auto& entity = EA::GetEntity(m_entities, entityID);
+      auto const oldGeometry = EA::GetGeometry(entity);
+      EA::SetGeometry(entity, changedGeometry);
+      if (!m_tree.Update(entityID, oldGeometry, changedGeometry, m_entities))
+      {
+        // restore the original state
+        EA::SetGeometry(entity, oldGeometry);
+        return false;
+      }
+
+      return true;
+    }
+
     // Update without tree rebalancing
-    bool Update(EntityID entityID, Entity const& newEntity, bool doInsertToLeaf) noexcept
+    bool Update(EA::Entity const& changedEntity, bool doInsertToLeaf) noexcept
+      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    {
+      auto const entityID = EA::GetEntityID(m_entities, changedEntity);
+      auto const oldGeometry = EA::GetGeometry(m_entities, entityID);
+
+      auto& entity = EA::GetEntity(m_entities, entityID);
+      auto const& newGeometry = EA::GetGeometry(changedEntity);
+      EA::SetGeometry(entity, newGeometry);
+      if (!m_tree.Update(entityID, oldGeometry, newGeometry, doInsertToLeaf))
+      {
+        // restore the original state
+        EA::SetGeometry(entity, oldGeometry);
+        return false;
+      }
+
+      return true;
+    }
+
+    // Update without tree rebalancing
+    bool Update(EntityID entityID, EA::Geometry const& changedEntityGeometry, bool doInsertToLeaf) noexcept
     {
       auto const oldEntity = detail::at(m_entities, entityID);
-      detail::set(m_entities, entityID, newEntity);
-      if (!m_tree.Update(entityID, oldEntity, newEntity, doInsertToLeaf))
+      detail::set(m_entities, entityID, changedEntityGeometry);
+      if (!m_tree.Update(entityID, EA::GetGeometry(oldEntity), changedEntityGeometry, doInsertToLeaf))
       {
         // restore the original state
         detail::set(m_entities, entityID, oldEntity);
@@ -345,13 +444,13 @@ namespace OrthoTree
           return false;
       }
 
-      if (!m_tree.Erase(entityID, detail::at(m_entities, entityID)))
+      if (!m_tree.Erase(entityID, EA::GetGeometry(m_entities, entityID)))
         return false;
 
       if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-        m_entities.erase(std::next(m_entities.begin(), entityID));
+        detail::erase(m_entities, std::next(m_entities.begin(), entityID));
       else
-        m_entities.erase(entityID);
+        detail::erase(m_entities, entityID);
 
       return true;
     }
@@ -360,14 +459,14 @@ namespace OrthoTree
     void Clear() noexcept
     {
       m_tree.Clear();
-      m_entities.clear();
+      detail::clear(m_entities);
     }
 
     // Reset the tree: Same as clear but also reset the handled domain
     void Reset() noexcept
     {
       m_tree.Reset();
-      m_entities.clear();
+      detail::clear(m_entities);
     }
 
     template<bool IS_PARALLEL_EXEC = false>
@@ -375,7 +474,7 @@ namespace OrthoTree
     {
       this->m_tree.template Move<IS_PARALLEL_EXEC>(moveVector);
       EXEC_POL_DEF(ep); // GCC 11.3
-      std::for_each(EXEC_POL_ADD(ep) this->m_entities.begin(), this->m_entities.end(), [&moveVector](auto& entity) {
+      std::for_each(EXEC_POL_ADD(ep) this->m_entities.begin(), this->m_entities.end(), [&moveVector](EA::Entity& entity) {
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
         {
           EA::SetGeometry(entity, GA::Add(EA::GetGeometry(entity), moveVector));
@@ -412,21 +511,21 @@ namespace OrthoTree
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> PlanePositiveSegmentation(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) const noexcept
+    std::vector<EntityID> PlanePositiveSegmentation(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return this->m_tree.PlanePositiveSegmentation(distanceOfOrigo, planeNormal, tolerance, this->m_entities);
+      return this->m_tree.PlanePositiveSegmentation(distanceOfOrigo, planeNormal, this->m_entities, tolerance);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> PlanePositiveSegmentation(TPlane const& plane, TScalar tolerance) const noexcept
+    std::vector<EntityID> PlanePositiveSegmentation(TPlane const& plane, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return this->m_tree.PlanePositiveSegmentation(plane, tolerance, this->m_entities);
+      return this->m_tree.PlanePositiveSegmentation(plane, this->m_entities, tolerance);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TFloatScalar tolerance) const noexcept
+    std::vector<EntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return this->m_tree.FrustumCulling(boundaryPlanes, tolerance, this->m_entities);
+      return this->m_tree.FrustumCulling(boundaryPlanes, this->m_entities, tolerance);
     }
 
     // K Nearest Neighbor
@@ -434,7 +533,7 @@ namespace OrthoTree
       TVector const& pt,
       std::size_t k,
       TScalar maxDistanceWithin = std::numeric_limits<TScalar>::max(),
-      TFloatScalar tolerance = std::numeric_limits<TFloatScalar>::epsilon(),
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<typename OrthoTreeCore::EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
     {
       return this->m_tree.GetNearestNeighbors(pt, k, maxDistanceWithin, this->m_entities, tolerance, entityDistanceFn);
@@ -464,22 +563,30 @@ namespace OrthoTree
   public: // Ray intersection
           // Get all entities that are intersected by the ray in order
     std::vector<EntityID> RayIntersectedAll(
-      TVector const& rayBasePoint, TVector const& rayHeading, TFloatScalar tolerance, TScalar maxDistance = std::numeric_limits<TScalar>::max()) const noexcept
+      TVector const& rayBasePoint,
+      TVector const& rayHeading,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TFloatScalar toleranceIncrement = {},
+      TScalar maxDistance = std::numeric_limits<TScalar>::max()) const noexcept
     {
-      return this->m_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->m_entities, tolerance, maxDistance);
+      return this->m_tree.RayIntersectedAll(rayBasePoint, rayHeading, this->m_entities, tolerance, toleranceIncrement, maxDistance);
     }
 
     // Get all entities that are intersected by the ray in order
-    std::vector<EntityID> RayIntersectedAll(TRay const& ray, TFloatScalar tolerance, TScalar maxDistance = std::numeric_limits<TScalar>::max()) const noexcept
+    std::vector<EntityID> RayIntersectedAll(
+      TRay const& ray,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TFloatScalar toleranceIncrement = {},
+      TScalar maxDistance = std::numeric_limits<TScalar>::max()) const noexcept
     {
-      return this->m_tree.RayIntersectedAll(ray, this->m_entities, tolerance, maxDistance);
+      return this->m_tree.RayIntersectedAll(ray, this->m_entities, tolerance, toleranceIncrement, maxDistance);
     }
 
     // Get first entities that hit by the ray
     std::vector<EntityID> RayIntersectedFirst(
       TVector const& rayBasePoint,
       TVector const& rayHeading,
-      TFloatScalar tolerance = {},
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       std::optional<std::function<std::optional<TScalar>(EntityID)>> entityHitTester = std::nullopt) const noexcept
@@ -490,7 +597,7 @@ namespace OrthoTree
     // Get first entities that hit by the ray
     std::vector<EntityID> RayIntersectedFirst(
       TRay const& ray,
-      TFloatScalar tolerance = {},
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       std::optional<std::function<std::optional<TScalar>(EntityID)>> entityHitTester = std::nullopt) const noexcept
@@ -500,15 +607,27 @@ namespace OrthoTree
 
   public: // Plane
     // Hyperplane intersection (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> PlaneIntersection(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) const noexcept
+    std::vector<EntityID> PlaneSearch(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return this->m_tree.PlaneIntersection(distanceOfOrigo, planeNormal, tolerance, this->m_entities);
+      return m_tree.PlaneSearch(distanceOfOrigo, planeNormal, m_entities, tolerance);
     }
 
     // Hyperplane intersection using built-in plane
-    std::vector<EntityID> PlaneIntersection(TPlane const& plane, TFloatScalar tolerance) const noexcept
+    std::vector<EntityID> PlaneSearch(TPlane const& plane, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return this->m_tree.PlaneIntersection(plane, tolerance, this->m_entities);
+      return m_tree.PlaneSearch(plane, m_entities, tolerance);
+    }
+
+    // Hyperplane intersection using built-in plane
+    std::vector<EntityID> PlaneIntersection(TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      return m_tree.PlaneSearch(distanceOfOrigo, planeNormal, m_entities, tolerance);
+    }
+
+    // Hyperplane intersection using built-in plane
+    std::vector<EntityID> PlaneIntersection(TPlane const& plane, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      return m_tree.PlaneSearch(plane, m_entities, tolerance);
     }
   };
 
