@@ -96,7 +96,7 @@ namespace OrthoTree
 
     static void MoveBox(Box& box, Vector const& moveVector) noexcept
     {
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         Base::SetBoxMinC(box, dimensionID, Base::GetBoxMinC(box, dimensionID) + Base::GetPointC(moveVector, dimensionID));

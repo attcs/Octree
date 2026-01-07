@@ -86,7 +86,7 @@ namespace OrthoTree::detail
       auto const halfGrid = IGM_Geometry(detail::pow2(centerLevel)) * IGM_Geometry(0.5);
 
       IGM_Vector center;
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         center[dimensionID] = (IGM_Geometry(gridID[dimensionID]) + halfGrid) / m_rasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
 
@@ -94,7 +94,7 @@ namespace OrthoTree::detail
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr DimArray<GridID> GetPointGridID(GA::TVector const& point) const noexcept
+    constexpr DimArray<GridID> GetPointGridID(GA::Vector const& point) const noexcept
     {
       auto gridIDs = DimArray<GridID>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -116,7 +116,7 @@ namespace OrthoTree::detail
       return gridIDs;
     }
 
-    constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(GA::TVector const& point) const noexcept
+    constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(GA::Vector const& point) const noexcept
     {
       auto constexpr minRasterID = IGM_Geometry{};
       auto const maxRasterID = static_cast<IGM_Geometry>(m_maxRasterResolution - 1);
@@ -134,7 +134,7 @@ namespace OrthoTree::detail
       return pointMinMaxGridID;
     }
 
-    template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = GA::TBox>
+    template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = GA::Box>
     constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox_ const& box) const noexcept
     {
       std::array<DimArray<GridID>, 2> gridID;
@@ -142,7 +142,7 @@ namespace OrthoTree::detail
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         IGM_Geometry boxMin, boxMax;
-        if constexpr (std::is_same_v<TBox_, typename GA::TBox>)
+        if constexpr (std::is_same_v<TBox_, typename GA::Box>)
         {
           boxMin = IGM_Geometry(GA::GetBoxMinC(box, dimensionID));
           boxMax = IGM_Geometry(GA::GetBoxMaxC(box, dimensionID));
@@ -181,10 +181,10 @@ namespace OrthoTree::detail
       return gridID;
     }
 
-    template<double LOOSE_FACTOR, bool ALLOW_OUT_OF_SPACE_INSERTION = false, typename TBox_ = GA::TBox>
+    template<double LOOSE_FACTOR, bool ALLOW_OUT_OF_SPACE_INSERTION = false, typename TBox_ = GA::Box>
     constexpr std::pair<GridPosition, depth_t> GetLooseBoxGridData(TBox_ const& box) const noexcept
     {
-      if (IGM::DoesRangeContainBoxAD(m_boxSpace, box))
+      if (!IGM::DoesRangeContainBoxAD(m_boxSpace, box))
       {
         if constexpr (ALLOW_OUT_OF_SPACE_INSERTION)
           return { GridPosition{}, 0 };

@@ -55,25 +55,37 @@ SOFTWARE.
 #include <vector>
 #include <version>
 
+#if defined(__cpp_lib_unreachable) && (__cpp_lib_unreachable >= 202202L)
+#include <utility>
+#define ORTHOTREE_UNREACHABLE() std::unreachable()
+#elif defined(_MSC_VER)
+#define ORTHOTREE_UNREACHABLE() __assume(0)
+#elif defined(__GNUC__) || defined(__clang__)
+#define ORTHOTREE_UNREACHABLE() __builtin_unreachable()
+#else
+#include <cstdlib>
+#define ORTHOTREE_UNREACHABLE() std::abort()
+#endif
+
 #if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_M_X64) || defined(__x86_64__) || defined(__amd64__))
 #ifdef __has_include
 #if __has_include(<immintrin.h>)
 #include <immintrin.h>
-#define BMI2_PDEP_AVAILABLE 1
+#define ORTHOTREE_BMI2_PDEP_AVAILABLE 1
 #endif
 #endif
 #endif
 
 #if defined(__clang__)
-#define LOOPIVDEP
+#define ORTHOTREE_LOOPIVDEP
 #elif defined(__INTEL_COMPILER)
-#define LOOPIVDEP _Pragma("ivdep")
+#define ORTHOTREE_LOOPIVDEP _Pragma("ivdep")
 #elif defined(__GNUC__)
-#define LOOPIVDEP _Pragma("GCC ivdep")
+#define ORTHOTREE_LOOPIVDEP _Pragma("GCC ivdep")
 #elif defined(_MSC_VER)
-#define LOOPIVDEP _Pragma("loop(ivdep)")
+#define ORTHOTREE_LOOPIVDEP _Pragma("loop(ivdep)")
 #else
-#define LOOPIVDEP
+#define ORTHOTREE_LOOPIVDEP
 #endif
 
 #ifndef CRASH
@@ -86,9 +98,9 @@ SOFTWARE.
   } while (0)
 #endif // !CRASH
 
-#ifndef CRASH_IF
+#ifndef ORTHOTREE_CRASH_IF
 #define CRASH_IF_UNDEF
-#define CRASH_IF(cond, errorMessage) \
+#define ORTHOTREE_CRASH_IF(cond, errorMessage) \
   do                                 \
   {                                  \
     if (cond)                        \
@@ -96,7 +108,7 @@ SOFTWARE.
       CRASH(errorMessage);           \
     }                                \
   } while (0)
-#endif // !CRASH_IF
+#endif // !ORTHOTREE_CRASH_IF
 
 #ifdef __cpp_lib_execution
 #define EXEC_POL_DEF(e) \

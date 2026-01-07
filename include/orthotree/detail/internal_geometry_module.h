@@ -31,30 +31,30 @@ SOFTWARE.
 #include <optional>
 #include <type_traits>
 
-#include "common.h"
 #include "../adapters/concepts.h"
+#include "common.h"
 
 namespace OrthoTree::detail
 {
 
   // Internal geometry system which
   //  - can be instantiated
-  //  - is float-based (and not suffer from integer aritmetic issues)
+  //  - is float-based (and not suffer from integer arithmetic issues)
   template<typename TGeometryAdapter>
   struct InternalGeometryModule
   {
     using GA = TGeometryAdapter;
 
-    using TScalar = typename GA::TScalar;
-    using TFloatScalar = typename GA::TFloatScalar;
-    using TVector = typename GA::TVector;
-    using TBox = typename GA::TBox;
-    using TRay = typename GA::TRay;
-    using TPlane = typename GA::TPlane;
+    using TScalar = typename GA::Scalar;
+    using TFloatScalar = typename GA::FloatScalar;
+    using TVector = typename GA::Vector;
+    using TBox = typename GA::Box;
+    using TRay = typename GA::Ray;
+    using TPlane = typename GA::Plane;
 
     static constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
 
-    using Geometry = GA::TFloatScalar;
+    using Geometry = GA::FloatScalar;
     using Vector = std::array<Geometry, DIMENSION_NO>;
 
     struct Box
@@ -65,7 +65,7 @@ namespace OrthoTree::detail
     static constexpr Geometry Size2(Vector const& vector) noexcept
     {
       auto d2 = Geometry{ 0 };
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         d2 += vector[dimensionID] * vector[dimensionID];
 
@@ -92,14 +92,14 @@ namespace OrthoTree::detail
     static constexpr Vector GetBoxSizeAD(TBox const& box) noexcept
     {
       Vector sizes;
-      static_for<DIMENSION_NO>([&](auto dimensionID) { sizes[dimensionID] = (GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID)); });
+      static_for<DIMENSION_NO>([&](auto dimensionID) { sizes[dimensionID] = Geometry((GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID))); });
       return sizes;
     }
 
     static constexpr Vector GetBoxHalfSizeAD(TBox const& box) noexcept
     {
       Vector halfSize;
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         halfSize[dimensionID] = (GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID)) * Geometry(0.5);
 
@@ -109,12 +109,12 @@ namespace OrthoTree::detail
     static bool AreBoxesOverlappingByCenter(Vector const& centerLhs, Vector const& centerRhs, Vector const& sizeLhs, Vector const& sizeRhs) noexcept
     {
       Vector distance;
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         distance[dimensionID] = centerLhs[dimensionID] - centerRhs[dimensionID];
 
       Vector sizeLimit;
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         sizeLimit[dimensionID] = (sizeLhs[dimensionID] + sizeRhs[dimensionID]) * Geometry(0.5);
 
@@ -127,14 +127,14 @@ namespace OrthoTree::detail
 
     static constexpr void MoveAD(Vector& v, TVector const& moveVector) noexcept
     {
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         v[dimensionID] += GA::GetPointC(moveVector, dimensionID);
     }
 
     static constexpr void MoveAD(Box& box, TVector const& moveVector) noexcept
     {
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         box.Min[dimensionID] += GA::GetPointC(moveVector, dimensionID);
@@ -145,7 +145,7 @@ namespace OrthoTree::detail
     static constexpr TScalar DotAD(TVector const& ptL, Vector const& ptR) noexcept
     {
       auto value = TScalar{};
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         value += GA::GetPointC(ptL, dimensionID) * ptR[dimensionID];
 
@@ -200,6 +200,21 @@ namespace OrthoTree::detail
       return true;
     }
 
+    static constexpr bool DoesRangeContainBoxAD(TBox const& range, Vector const& center, Vector const& halfSize) noexcept
+    {
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+      {
+        const auto boxMin = center[dimensionID] - halfSize[dimensionID];
+        const auto boxMax = center[dimensionID] + halfSize[dimensionID];
+
+        if (!DoesRangeContainBox(GA::GetBoxMinC(range, dimensionID), GA::GetBoxMaxC(range, dimensionID), boxMin, boxMax))
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+
     static constexpr PlaneRelation GetBoxPlaneRelationAD(
       Vector const& center, Vector const& halfSize, TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) noexcept
     {
@@ -231,7 +246,7 @@ namespace OrthoTree::detail
     static constexpr Box GetBoxAD(TBox const& box) noexcept
     {
       Box boxIGM;
-      LOOPIVDEP
+      ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         boxIGM.Min[dimensionID] = Geometry(GA::GetBoxMinC(box, dimensionID));
@@ -448,9 +463,8 @@ namespace OrthoTree::detail
         boxPickTester->m_minTolerance = minTolerance;
         boxPickTester->m_toleranceIncrement = toleranceIncrement;
 
-        detail::static_for<DIMENSION_NO>([&](dim_t dimensionID) noexcept {
-          boxPickTester->m_normalizedDirection[dimensionID] = GA::GetPointC(normalizedDirection, dimensionID);
-        });
+        detail::static_for<DIMENSION_NO>(
+          [&](dim_t dimensionID) noexcept { boxPickTester->m_normalizedDirection[dimensionID] = GA::GetPointC(normalizedDirection, dimensionID); });
 
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {

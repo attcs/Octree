@@ -372,7 +372,7 @@ namespace OrthoTree::detail
       }
       else if constexpr (DIMENSION_NO == 2)
       {
-#ifdef BMI2_PDEP_AVAILABLE
+#ifdef ORTHOTREE_BMI2_PDEP_AVAILABLE
         return _pdep_u32(gridID[1], 0b10101010'10101010'10101010'10101010) | _pdep_u32(gridID[0], 0b01010101'01010101'01010101'01010101);
 #else
         return (Part1By1(gridID[1]) << 1) + Part1By1(gridID[0]);
@@ -380,14 +380,14 @@ namespace OrthoTree::detail
       }
       else if constexpr (DIMENSION_NO == 3)
       {
-#ifdef BMI2_PDEP_AVAILABLE
+#ifdef ORTHOTREE_BMI2_PDEP_AVAILABLE
         return _pdep_u32(gridID[2], 0b00100100'10010010'01001001'00100100) | _pdep_u32(gridID[1], 0b10010010'01001001'00100100'10010010) |
                _pdep_u32(gridID[0], 0b01001001'00100100'10010010'01001001);
 #else
         return (Part1By2(gridID[2]) << 2) + (Part1By2(gridID[1]) << 1) + Part1By2(gridID[0]);
 #endif
       }
-#ifdef BMI2_PDEP_AVAILABLE
+#ifdef ORTHOTREE_BMI2_PDEP_AVAILABLE
       else if constexpr (IS_64BIT_LOCATION)
       {
         static constexpr auto bitPatterns = GetBitPatterns();
@@ -409,7 +409,7 @@ namespace OrthoTree::detail
         GridID mask = 1;
         for (dim_t i = 0; msb; mask <<= 1, msb >>= 1, ++i)
         {
-          LOOPIVDEP
+          ORTHOTREE_LOOPIVDEP
           for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           {
             auto const shift = dimensionID + i * DIMENSION_NO;
@@ -436,7 +436,7 @@ namespace OrthoTree::detail
         auto const examinationLevelID = maxDepthID - depthID;
         gridID[0] = GridID(RemoveSentinelBit(nodeKey) << examinationLevelID);
       }
-#ifdef BMI2_PDEP_AVAILABLE
+#ifdef ORTHOTREE_BMI2_PDEP_AVAILABLE
       else if constexpr (IS_LINEAR_TREE)
       {
         static constexpr auto bitPatterns = GetBitPatterns();

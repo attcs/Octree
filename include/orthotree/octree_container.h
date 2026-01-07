@@ -39,12 +39,12 @@ namespace OrthoTree
     using CONFIG = typename OrthoTreeCore::CONFIG;
 
     using GA = typename OrthoTreeCore::GA;
-    using TScalar = typename GA::TScalar;
-    using TFloatScalar = typename GA::TFloatScalar;
-    using TVector = typename GA::TVector;
-    using TBox = typename GA::TBox;
-    using TRay = typename GA::TRay;
-    using TPlane = typename GA::TPlane;
+    using TScalar = typename GA::Scalar;
+    using TFloatScalar = typename GA::FloatScalar;
+    using TVector = typename GA::Vector;
+    using TBox = typename GA::Box;
+    using TRay = typename GA::Ray;
+    using TPlane = typename GA::Plane;
 
     using EA = typename OrthoTreeCore::EA;
     using Entity = typename EA::Entity;
