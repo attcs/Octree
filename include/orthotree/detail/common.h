@@ -181,7 +181,7 @@ namespace OrthoTree
     }
 
     template<typename T>
-    inline constexpr bool IsStdOptionalV = IsStdOptional<T>::value;
+    constexpr bool IsStdOptionalV = IsStdOptional<T>::value;
 
     template<typename TContainer, typename TKey>
     concept HasAt = requires(TContainer container, TKey key) { container.at(key); };
@@ -428,13 +428,13 @@ namespace OrthoTree
     concept HasReserve = requires(TContainer container) { container.reserve(0); };
 
     template<HasReserve TContainer>
-    inline constexpr void reserve(TContainer& c, std::size_t n) noexcept
+    constexpr void reserve(TContainer& c, std::size_t n) noexcept
     {
       c.reserve(n);
     };
 
     template<typename TContainer>
-    inline constexpr void reserve(TContainer&, std::size_t) noexcept {};
+    constexpr void reserve(TContainer&, std::size_t) noexcept {};
 
     template<uint8_t e, typename TOut = std::size_t>
     consteval TOut pow2_ce()
@@ -445,7 +445,7 @@ namespace OrthoTree
     }
 
     template<typename TIn, typename TOut = std::size_t>
-    inline constexpr TOut pow2(TIn e) noexcept
+    constexpr TOut pow2(TIn e) noexcept
     {
       assert(e >= 0 && e < (sizeof(TOut) * CHAR_BIT));
       return TOut{ 1 } << e;

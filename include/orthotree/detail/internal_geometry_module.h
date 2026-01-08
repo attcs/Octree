@@ -106,7 +106,7 @@ namespace OrthoTree::detail
       return halfSize;
     }
 
-    static bool AreBoxesOverlappingByCenter(Vector const& centerLhs, Vector const& centerRhs, Vector const& sizeLhs, Vector const& sizeRhs) noexcept
+    static bool AreBoxesOverlappingByCenter(Vector const& centerLhs, Vector const& halfSizeLhs, Vector const& centerRhs, Vector const& halfSizeRhs) noexcept
     {
       Vector distance;
       ORTHOTREE_LOOPIVDEP
@@ -116,7 +116,7 @@ namespace OrthoTree::detail
       Vector sizeLimit;
       ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        sizeLimit[dimensionID] = (sizeLhs[dimensionID] + sizeRhs[dimensionID]) * Geometry(0.5);
+        sizeLimit[dimensionID] = halfSizeLhs[dimensionID] + halfSizeRhs[dimensionID];
 
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         if (sizeLimit[dimensionID] <= std::abs(distance[dimensionID]))
