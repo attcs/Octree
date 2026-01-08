@@ -14,6 +14,10 @@ Interface changes
 * Configuration is introduced.
 * Loose octree is implemented.
 * Split strategy is removed completely: Last iteration (single depth split) was an inferior solution in every aspect.
+* `Visit*()` functions are changed: `TraverseNodesBreadthFirst()`/`TraverseNodesDepthFirst()`/`TraverseNodesByPriority()`. 
+  Only one lambda is required which 
+  * input is NodeValue (currently std::pair<const NodeID, Node>, but do not rely on in long term), other API function are available to ask node geometry data and entities (`GetNodeCenter()`, `GetNodeHalfSize()`, `GetNodeEntities()`).
+  * must return TraverseControl enum to control the traverse.
 
 Performance improvements
 * Loose octree has major performance advantage for picking

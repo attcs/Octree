@@ -51,7 +51,7 @@ void testCompilePoint()
   {
     auto const keyRoot = OT::SI::GetRootKey();
     [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
 
     [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
     [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
@@ -93,10 +93,10 @@ void testCompilePoint()
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.VisitNodes(
-      keyRoot,
-      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
-      [](auto const&, auto const&) -> bool { return true; });
+    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
+      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
+      return OrthoTree::TraverseControl::Continue;
+    });
   }
 
   // non-const member functions
@@ -162,7 +162,7 @@ void testCompilePointMap()
   {
     [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
     [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
 
     [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
     [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
@@ -204,10 +204,10 @@ void testCompilePointMap()
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
 
     auto vListIsAnyChild = std::vector<bool>{};
-    tree.VisitNodes(
-      keyRoot,
-      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
-      [](auto const&, auto const&) -> bool { return true; });
+    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
+      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
+      return OrthoTree::TraverseControl::Continue;
+    });
   }
 
   // non-const member functions
@@ -263,7 +263,7 @@ void testCompileBox()
   {
     [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
     [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
 
     [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
     [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
@@ -311,10 +311,10 @@ void testCompileBox()
       0.0);
 
     [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.VisitNodes(
-      keyRoot,
-      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
-      [](auto const&, auto const&) -> bool { return true; });
+    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
+      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
+      return OrthoTree::TraverseControl::Continue;
+    });
   }
 
   // non-const member functions
@@ -371,7 +371,7 @@ void testCompileBoxMap()
   {
     [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
     [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeSize(0);
+    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
 
     [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
     [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
@@ -419,10 +419,10 @@ void testCompileBoxMap()
       0.0);
 
     [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.VisitNodes(
-      keyRoot,
-      [&vListIsAnyChild](auto const&, auto const& node) { vListIsAnyChild.emplace_back(node.IsAnyChildExist()); },
-      [](auto const&, auto const&) -> bool { return true; });
+    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
+      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
+      return OrthoTree::TraverseControl::Continue;
+    });
   }
 
   // non-const member functions

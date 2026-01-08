@@ -240,7 +240,7 @@ namespace OrthoTree
 
           ChildFlags const childFlag = (ChildFlags{ 1 } << childID);
           ChildFlags const childMask = childFlag - ChildFlags{ 1 };
-          elementID = std::popcount(ChildFlags(m_childIndex & childMask)) + 1;
+          elementID = std::popcount(ChildFlags(m_childIndex & childMask));
           m_childIndex &= ~childFlag;
         }
 
@@ -266,6 +266,15 @@ namespace OrthoTree
 
   auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
   auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
+
+
+  // TraverseControl is the result type of node-visitor functions' procedure.
+  enum class TraverseControl
+  {
+    Terminate,    // Terminates the traverse
+    SkipChildren, // Skips children nodes
+    Continue      // Continues the traverse
+  };
 
   enum class GeometryType
   {
@@ -1753,41 +1762,33 @@ namespace OrthoTree
     using FSelector = std::function<bool(MortonNodeIDCR, Node const&)>;
     using FSelectorUnconditional = std::function<bool(MortonNodeIDCR, Node const&)>;
 
+
     // Visit nodes with special selection and procedure in breadth-first search order
-    void VisitNodes(MortonNodeIDCR rootKey, FProcedure const& procedure, FSelector const& selector) const noexcept
+    void TraverseNodesBreadthFirst(auto&& procedure, MortonNodeIDCR rootKey = SI::GetRootKey()) const noexcept
     {
-      auto nodeIDsToProceed = std::queue<MortonNodeID>();
-      for (nodeIDsToProceed.push(rootKey); !nodeIDsToProceed.empty(); nodeIDsToProceed.pop())
+      auto queue = std::queue<NodeValue const*>();
+      queue.push(&GetNodeValue(rootKey));
+      while (!queue.empty())
       {
-        auto const& key = nodeIDsToProceed.front();
-        auto const& node = GetNode(key);
-        if (!selector(key, node))
-          continue;
+        auto const* pNodeValue = queue.front();
+        queue.pop();
 
-        procedure(key, node);
+        auto const traverseControl = procedure(*pNodeValue);
+        switch (traverseControl)
+        {
+        case TraverseControl::Terminate: return;
+        case TraverseControl::SkipChildren: continue;
+        case TraverseControl::Continue:
+          for (MortonNodeIDCR childNodeID : pNodeValue->second.GetChildren())
+            queue.push(&GetNodeValue(childNodeID));
 
-        for (auto childKey : node.GetChildren())
-          nodeIDsToProceed.push(childKey);
+          break;
+        }
       }
     }
 
-
-    // Visit nodes with special selection and procedure in breadth-first search order
-    void VisitNodes(MortonNodeIDCR rootKey, FProcedure const& procedure) const noexcept
-    {
-      VisitNodes(rootKey, procedure, [](MortonNodeIDCR, Node const&) { return true; });
-    }
-
-    // TraverseControl is the result type of node-visitor functions' procedure.
-    enum class TraverseControl
-    {
-      Terminate,    // Terminates the traverse
-      SkipChildren, // Skips children nodes
-      Continue      // Continues the traverse
-    };
-
     // Visit nodes in depth first order
-    constexpr void VisitNodesInDepthFirst(auto&& procedure, NodeValue const& rootValue) const noexcept
+    constexpr void TraverseNodesDepthFirst(auto&& procedure, NodeValue const& rootValue) const noexcept
     {
       auto nodeStack = std::vector<NodeValue const*>{};
       nodeStack.reserve(64);
@@ -1817,12 +1818,12 @@ namespace OrthoTree
     }
 
     // Visit nodes in depth first order
-    constexpr void VisitNodesInDepthFirst(auto&& procedure) const noexcept
+    constexpr void TraverseNodesDepthFirst(auto&& procedure) const noexcept
     {
-      VisitNodesInDepthFirst(std::forward<decltype(procedure)>(procedure), GetNodeValue(SI::GetRootKey()));
+      TraverseNodesDepthFirst(std::forward<decltype(procedure)>(procedure), GetNodeValue(SI::GetRootKey()));
     }
 
-    constexpr void VisitNodesInPriorityOrder(auto&& procedure, auto&& priorityCalculator, NodeValue const& nodeValue) const noexcept
+    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator, NodeValue const& nodeValue) const noexcept
     {
       using TPriorityResult = std::invoke_result_t<decltype(priorityCalculator), Node>;
       using TPriority = std::conditional_t<detail::IsStdOptionalV<TPriorityResult>, typename TPriorityResult::value_type, TPriorityResult>;
@@ -1881,9 +1882,9 @@ namespace OrthoTree
       }
     }
 
-    constexpr void VisitNodesInPriorityOrder(auto&& procedure, auto&& priorityCalculator) const noexcept
+    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator) const noexcept
     {
-      VisitNodesInPriorityOrder(
+      TraverseNodesByPriority(
         std::forward<decltype(procedure)>(procedure), std::forward<decltype(priorityCalculator)>(priorityCalculator), GetNodeValue(SI::GetRootKey()));
     }
 
@@ -1893,18 +1894,22 @@ namespace OrthoTree
       auto entityIDs = std::vector<EntityID>();
       entityIDs.reserve(m_nodes.size() * std::max<std::size_t>(2, m_maxElementNo / 2));
 
-      VisitNodes(rootKey, [&](MortonNodeIDCR, auto const& node) {
-        auto const& entities = this->GetNodeEntities(node);
-        auto const entityIDsSize = entityIDs.size();
-        entityIDs.insert(entityIDs.end(), entities.begin(), entities.end());
-        if (shouldSortInsideNodes)
-          std::sort(entityIDs.begin() + entityIDsSize, entityIDs.end());
-      });
+      TraverseNodesBreadthFirst(
+        [&](auto const& nodeValue) {
+          auto const& entities = GetNodeEntities(nodeValue);
+          auto const entityIDsSize = entityIDs.size();
+          entityIDs.insert(entityIDs.end(), entities.begin(), entities.end());
+          if (shouldSortInsideNodes)
+            std::sort(entityIDs.begin() + entityIDsSize, entityIDs.end());
+
+          return TraverseControl::Continue;
+        },
+        rootKey);
       return entityIDs;
     }
 
   private:
-    void CollectAllEntitiesInDFSRecursive(Node const& parentNode, std::vector<EntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
+    void CollectAllEntitiesInDFSRecursive(NodeValue const& parentNode, std::vector<EntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
     {
       auto const& entities = this->GetNodeEntities(parentNode);
       auto const entityIDsSize = foundEntities.size();
@@ -1912,8 +1917,8 @@ namespace OrthoTree
       if (shouldSortInsideNodes)
         std::sort(foundEntities.begin() + entityIDsSize, foundEntities.end());
 
-      for (MortonNodeIDCR childKey : parentNode.GetChildren())
-        CollectAllEntitiesInDFSRecursive(this->GetNode(childKey), foundEntities, shouldSortInsideNodes);
+      for (MortonNodeIDCR childKey : parentNode.second.GetChildren())
+        CollectAllEntitiesInDFSRecursive(this->GetNodeValue(childKey), foundEntities, shouldSortInsideNodes);
     }
 
   public:
@@ -1921,7 +1926,7 @@ namespace OrthoTree
     std::vector<EntityID> CollectAllEntitiesInDFS(MortonNodeIDCR parentKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
     {
       auto entityIDs = std::vector<EntityID>{};
-      CollectAllEntitiesInDFSRecursive(GetNode(parentKey), entityIDs, shouldSortInsideNodes);
+      CollectAllEntitiesInDFSRecursive(GetNodeValue(parentKey), entityIDs, shouldSortInsideNodes);
       return entityIDs;
     }
 
@@ -2095,7 +2100,7 @@ namespace OrthoTree
 
       foundEntitiyIDs.reserve(100);
 
-      VisitNodesInDepthFirst([&](auto const& nodeValue) {
+      TraverseNodesDepthFirst([&](auto const& nodeValue) {
         // TODO: use tolerance here also ?
         if (!IGM::DoesBoxContainPointAD(GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue), pickPoint))
           return TraverseControl::SkipChildren;
@@ -2172,7 +2177,7 @@ namespace OrthoTree
 
       auto const searchRangeCenter = IGM::GetBoxCenterAD(range);
       auto const searchRangeHalfSize = IGM::GetBoxHalfSizeAD(range);
-      VisitNodesInDepthFirst([&](auto const& nodeValue) {
+      TraverseNodesDepthFirst([&](auto const& nodeValue) {
         auto const& nodeCenter = GetNodeCenter(nodeValue);
         auto const& nodeHalfSize = GetNodeHalfSize(nodeValue);
         if (!IGM::AreBoxesOverlappingByCenter(searchRangeCenter, searchRangeHalfSize, nodeCenter, nodeHalfSize))
@@ -2180,7 +2185,7 @@ namespace OrthoTree
 
         if (IGM::DoesRangeContainBoxAD(range, nodeCenter, nodeHalfSize))
         {
-          VisitNodesInDepthFirst(
+          TraverseNodesDepthFirst(
             [&](auto const& childNodeValue) {
               std::ranges::copy(GetNodeEntities(childNodeValue), std::back_inserter(foundEntities));
               return TraverseControl::Continue;
@@ -2223,7 +2228,7 @@ namespace OrthoTree
       assert(GA::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<EntityID>{};
-      VisitNodesInDepthFirst([&](auto const& nodeValue) {
+      TraverseNodesDepthFirst([&](auto const& nodeValue) {
         auto const& halfSize = GetNodeHalfSize(nodeValue);
         if (IGM::GetBoxPlaneRelationAD(GetNodeCenter(nodeValue), halfSize, distanceOfOrigo, planeNormal, tolerance) != PlaneRelation::Hit)
           return TraverseControl::SkipChildren;
@@ -2264,7 +2269,7 @@ namespace OrthoTree
       assert(GA::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<EntityID>{};
-      VisitNodesInDepthFirst([&](auto const& nodeValue) {
+      TraverseNodesDepthFirst([&](auto const& nodeValue) {
         auto const nodeRelation =
           IGM::GetBoxPlaneRelationAD(GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue), distanceOfOrigo, planeNormal, tolerance);
 
@@ -2272,7 +2277,7 @@ namespace OrthoTree
         {
         case PlaneRelation::Negative: return TraverseControl::SkipChildren;
         case PlaneRelation::Positive:
-          VisitNodesInDepthFirst(
+          TraverseNodesDepthFirst(
             [&](auto const& childNodeValue) {
               auto const& [_, childNode] = childNodeValue;
               std::ranges::copy(GetNodeEntities(childNode), std::back_inserter(results));
@@ -2357,7 +2362,7 @@ namespace OrthoTree
         return TraverseControl::Continue;
       };
 
-      VisitNodesInDepthFirst(procedure);
+      TraverseNodesDepthFirst(procedure);
 
       return results;
     }
@@ -2582,7 +2587,7 @@ namespace OrthoTree
       for (auto nodeKey = smallestNodeKey; SI::IsValidKey(nodeKey); nodeKey = SI::GetParentKey(nodeKey))
         AddEntityDistance(neighborNo, searchPoint, entityDistanceFn, GetNodeEntities(nodeKey), entities, tolerance, neighborEntities, farthestEntityDistance);
 
-      VisitNodesInPriorityOrder(
+      TraverseNodesByPriority(
         [&](auto const& nodeValue, TFloatScalar nodeDistance) -> TraverseControl {
           if (nodeDistance >= farthestEntityDistance.upper)
             return TraverseControl::Terminate;
@@ -3180,7 +3185,10 @@ namespace OrthoTree
       TScalar maxExaminationDistance = std::numeric_limits<TScalar>::max(),
       std::optional<std::function<std::optional<TScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
     {
-      assert(toleranceIncrement <= tolerance * 10);
+      assert(
+        toleranceIncrement <= std::max<TFloatScalar>(tolerance * 10, 0.1) &&
+        "toleranceIncrement seems to be large. Probably maxExaminationDistance is used.");
+
       const auto rayHitTester = IGM::RayHitTester::Make(rayBasePoint, rayHeading, tolerance, toleranceIncrement);
       if (!rayHitTester)
         return {};
@@ -3190,7 +3198,7 @@ namespace OrthoTree
       auto foundEntities = EntityDistanceContainer{};
       foundEntities.reserve(20);
 
-      VisitNodesInDepthFirst([&](auto const& nodeValue) {
+      TraverseNodesDepthFirst([&](auto const& nodeValue) {
         auto const nodeHit = rayHitTester->Hit(GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue));
         if (!nodeHit)
           return TraverseControl::SkipChildren;
@@ -3272,7 +3280,7 @@ namespace OrthoTree
       // max-heap by enterDistance (largest enterDistance at top)
       auto maxDistanceHeap = std::priority_queue<Candidate, std::vector<Candidate>>{};
       auto maxExaminationDistance = TFloatScalar(maxDistance);
-      VisitNodesInPriorityOrder(
+      TraverseNodesByPriority(
         [&, rayHitTester = *rayHitTester](const auto& nodeValue, TFloatScalar nodeEnterDistance) {
           if (nodeEnterDistance > maxExaminationDistance)
             return TraverseControl::Terminate;
