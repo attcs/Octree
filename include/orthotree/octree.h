@@ -2573,32 +2573,18 @@ namespace OrthoTree
       auto neighborEntities = std::vector<MinEntityDistance>();
       neighborEntities.reserve(neighborNo + 4);
 
-      auto smallestNodeKey = FindSmallestNodeKey(GetNodeID<true>(searchPoint));
-      if (!SI::IsValidKey(smallestNodeKey))
-        smallestNodeKey = SI::GetRootKey();
-
       // farthestEntityDistance already contains the numerical tolerance
       auto farthestEntityDistance =
         FarthestDistance{ {},
                           maxDistanceWithin == std::numeric_limits<TScalar>::max() ? std::numeric_limits<TScalar>::max()
                                                                                    : GetValueWithToleranceUpper(maxDistanceWithin, tolerance) };
-
-      // Parent checks (in a usual case parents do not have entities)
-      for (auto nodeKey = smallestNodeKey; SI::IsValidKey(nodeKey); nodeKey = SI::GetParentKey(nodeKey))
-        AddEntityDistance(neighborNo, searchPoint, entityDistanceFn, GetNodeEntities(nodeKey), entities, tolerance, neighborEntities, farthestEntityDistance);
-
       TraverseNodesByPriority(
         [&](auto const& nodeValue, TFloatScalar nodeDistance) -> TraverseControl {
           if (nodeDistance >= farthestEntityDistance.upper)
             return TraverseControl::Terminate;
 
-          auto const& [nodeID, node] = nodeValue;
-
-          // Skip already visited parent nodes
-          if (smallestNodeKey == nodeID || SI::IsParentKey(smallestNodeKey, nodeID))
-            return TraverseControl::Continue;
-
-          AddEntityDistance(neighborNo, searchPoint, entityDistanceFn, GetNodeEntities(node), entities, tolerance, neighborEntities, farthestEntityDistance);
+          AddEntityDistance(
+            neighborNo, searchPoint, entityDistanceFn, GetNodeEntities(nodeValue), entities, tolerance, neighborEntities, farthestEntityDistance);
 
           return TraverseControl::Continue;
         },
