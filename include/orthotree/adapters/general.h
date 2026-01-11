@@ -236,13 +236,16 @@ namespace OrthoTree
       return true;
     }
 
+    static constexpr bool IsAlmostEqual(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept { return std::abs(lhs - rhs) <= tolerance; }
+    static constexpr bool IsLess(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept { return lhs + tolerance < rhs; }
+
     enum class EBoxRelation
     {
       Overlapped = -1,
       Adjecent = 0,
       Separated = 1
     };
-    static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2) noexcept
+    static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2, FloatScalar tolerance = {}) noexcept
     {
       enum EBoxRelationCandidate : uint8_t
       {
@@ -254,11 +257,17 @@ namespace OrthoTree
 
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        if (Base::GetBoxMinC(e1, dimensionID) < Base::GetBoxMaxC(e2, dimensionID) && Base::GetBoxMaxC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID))
+        if (
+          IsLess(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) &&
+          IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
           rel |= EBoxRelationCandidate::OverlappedC;
-        else if (Base::GetBoxMinC(e1, dimensionID) == Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e1, dimensionID) == Base::GetBoxMinC(e2, dimensionID))
+        else if (
+          IsAlmostEqual(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) ||
+          IsAlmostEqual(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
           rel |= EBoxRelationCandidate::AdjecentC;
-        else if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e1, dimensionID) < Base::GetBoxMinC(e2, dimensionID))
+        else if (
+          IsLess(Base::GetBoxMaxC(e2, dimensionID), Base::GetBoxMinC(e1, dimensionID), tolerance) ||
+          IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
           return EBoxRelation::Separated;
       }
 
@@ -267,10 +276,11 @@ namespace OrthoTree
 
     static constexpr bool AreBoxesOverlappedStrict(Box const& e1, Box const& e2) noexcept
     {
-      return GetBoxRelation(e1, e2) == EBoxRelation::Overlapped;
+      return GetBoxRelation(e1, e2, 0) == EBoxRelation::Overlapped;
     }
 
-    static constexpr bool AreBoxesOverlapped(Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
+    static constexpr bool AreBoxesOverlapped(
+      Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false, FloatScalar tolerance = {}) noexcept
     {
       if (e1_must_contain_e2)
       {
@@ -286,7 +296,7 @@ namespace OrthoTree
       }
       else
       {
-        auto const rel = GetBoxRelation(e1, e2);
+        auto const rel = GetBoxRelation(e1, e2, tolerance);
         if (fOverlapPtTouchAllowed)
           return rel == EBoxRelation::Adjecent || rel == EBoxRelation::Overlapped;
         else
@@ -370,8 +380,8 @@ namespace OrthoTree
 
 
   template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TScalar = double>
-  using AdaptorGeneral =
-    GeneralGeometryAdapter<GeneralBaseGeometryAdapter<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, std::conditional_t<std::is_integral_v<TScalar>, float, TScalar>>>;
+  using AdaptorGeneral = GeneralGeometryAdapter<
+    GeneralBaseGeometryAdapter<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, std::conditional_t<std::is_integral_v<TScalar>, float, TScalar>>>;
 
   template<dim_t DIMENSION_NO, typename TScalar = double>
   using VectorND = std::array<TScalar, DIMENSION_NO>;

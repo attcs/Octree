@@ -195,14 +195,58 @@ namespace OrthoTree
         return true;
       }
 
-      static constexpr bool AreBoxesOverlapped(Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false) noexcept
+      static constexpr bool IsAlmostEqual(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept
+      {
+        return std::abs(lhs - rhs) <= tolerance;
+      }
+      static constexpr bool IsLess(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept { return lhs + tolerance < rhs; }
+
+      enum class EBoxRelation
+      {
+        Overlapped = -1,
+        Adjecent = 0,
+        Separated = 1
+      };
+      static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2, FloatScalar tolerance = {}) noexcept
+      {
+        enum EBoxRelationCandidate : uint8_t
+        {
+          OverlappedC = 0x1,
+          AdjecentC = 0x2,
+          SeparatedC = 0x4
+        };
+        uint8_t rel = 0;
+
+        for (dim_t dimensionID = 0; dimensionID < AmbientDim; ++dimensionID)
+        {
+          if (
+            IsLess(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) &&
+            IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
+            rel |= EBoxRelationCandidate::OverlappedC;
+          else if (
+            IsAlmostEqual(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) ||
+            IsAlmostEqual(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
+            rel |= EBoxRelationCandidate::AdjecentC;
+          else if (
+            IsLess(Base::GetBoxMaxC(e2, dimensionID), Base::GetBoxMinC(e1, dimensionID), tolerance) ||
+            IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
+            return EBoxRelation::Separated;
+        }
+
+        return (rel & EBoxRelationCandidate::AdjecentC) ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
+      }
+
+      static constexpr bool AreBoxesOverlapped(
+        Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false, FloatScalar tolerance = {}) noexcept
       {
         if (e1_must_contain_e2)
           return e1.contains(e2);
         else if (!fOverlapPtTouchAllowed)
           return AreBoxesOverlappedStrict(e1, e2);
-        else
+        else if (tolerance == 0.0)
           return e1.intersects(e2);
+        else
+          return GetBoxRelation(e1, e2, tolerance) == EBoxRelation::Overlapped;
       }
 
       static Box GetBoxOfPoints(std::span<Vector const> const& points) noexcept
@@ -330,7 +374,7 @@ namespace OrthoTree
       }
     };
 
-  } // namespace EigenAdaptor
+  } // namespace EigenAdapter
 } // namespace OrthoTree
 
 

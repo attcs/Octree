@@ -355,17 +355,14 @@ namespace OrthoTree
     Box,
     MBR,
   };
-  template<bool IS_LOOSE_TREE_ = false, bool USE_MBR_ = false>
+  template<double IS_LOOSE_FACTOR_ = 1.0, bool USE_MBR_ = false>
   struct Configuration
   {
     // Geometry type cannot be mixed within the same octree.
     static constexpr bool IS_HOMOGENEOUS_GEOMETRY = true;
 
-    // If true, loose octree will be used (nodes are allowed to overlap each other). Otherwise, strict octree will be used.
-    static constexpr bool IS_LOOSE_TREE = IS_LOOSE_TREE_;
-
-    // If IS_LOOSE_TREE == true, this looseness factor will be applied.
-    static constexpr double LOOSE_FACTOR = 2.0;
+    // Loose tree's looseness factor. Recommended value for Box trees with ray-picking: 2.0
+    static constexpr double LOOSE_FACTOR = IS_LOOSE_FACTOR_;
 
     // If true, out-of-handled space element will be stored in the root node. Otherwise, insertion will fail.
     static constexpr bool ALLOW_OUT_OF_SPACE_INSERTION = true;
@@ -397,10 +394,10 @@ namespace OrthoTree
     using ReverseMap = std::unordered_map<TKey, TValue, THash>;
   };
 
-  using PointConfiguration = Configuration<false, false>;
+  using PointConfiguration = Configuration<1.0, false>;
 
   template<bool IS_LOOSE_TREE>
-  using BoxConfiguration = Configuration<IS_LOOSE_TREE, false>;
+  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, false>;
 
   // OrthoTree: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
@@ -409,7 +406,7 @@ namespace OrthoTree
   public:
     using EA = TEntityAdapter;
     using GA = TGeometryAdapter;
-    using CONFIG = Configuration<true, false>; // TConfiguration;
+    using CONFIG = Configuration<2.0, false>; // TConfiguration;
 
     static constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
     using TScalar = typename GA::Scalar;
@@ -429,6 +426,7 @@ namespace OrthoTree
     static_assert(CONFIG::IS_HOMOGENEOUS_GEOMETRY, "Mixed geometry types are not supported yet!");
     static_assert(EA::GEOMETRY_TYPE == GeometryType::Point || EA::GEOMETRY_TYPE == GeometryType::Box, "Entity geometry type is not supported!");
     static_assert(CONFIG::MAX_ALLOWED_DEPTH_ID <= MAX_DEPTH_ID, "MAX_ALLOWED_DEPTH_ID of Configuration is too large.");
+    static_assert(CONFIG::LOOSE_FACTOR >= 1.0, "Wrong loose factor for Loose trees.");
 
     template<typename T>
     using DimArray = std::array<T, DIMENSION_NO>;
@@ -445,6 +443,7 @@ namespace OrthoTree
 
     using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, MortonNodeID, MortonChildID, EntityID, typename IGM::Vector>;
     using NodeValue = std::pair<MortonNodeID const, Node>;
+    using NodeValueCR = std::pair<MortonNodeID const, Node> const&;
 
   protected: // Aid struct to partitioning and distance ordering
     struct ItemDistance
@@ -791,7 +790,7 @@ namespace OrthoTree
     constexpr auto const& GetNodeEntities(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntities(GetNode(nodeKey)); }
 
     // Get EntityIDs of the node
-    constexpr auto const& GetNodeEntities(NodeValue const& nodeValue) const noexcept { return nodeValue.second.GetEntities(); }
+    constexpr auto const& GetNodeEntities(NodeValueCR nodeValue) const noexcept { return nodeValue.second.GetEntities(); }
 
     // Get EntityIDs number of the node
     constexpr std::size_t GetNodeEntitiesSize(Node const& node) const noexcept { return node.GetEntitiesSize(); }
@@ -811,7 +810,7 @@ namespace OrthoTree
       return m_grid.CalculateGridCellCenter(SI::Decode(key, m_maxDepthID), m_maxDepthID - SI::GetDepthID(key));
     }
 
-    constexpr decltype(auto) GetNodeCenter(NodeValue const& nodeValue) const noexcept
+    constexpr decltype(auto) GetNodeCenter(NodeValueCR nodeValue) const noexcept
     {
 #ifdef ORTHOTREE__DISABLED_NODECENTER
       return CalculateNodeCenter(nodeValue.first);
@@ -830,7 +829,7 @@ namespace OrthoTree
 #endif // ORTHOTREE__DISABLED_NODECENTER
     }
 
-    constexpr decltype(auto) GetNodeHalfSize(NodeValue const& nodeValue) const noexcept
+    constexpr decltype(auto) GetNodeHalfSize(NodeValueCR nodeValue) const noexcept
     {
       auto const depthID = SI::GetDepthID(nodeValue.first) + 1;
 
@@ -864,7 +863,12 @@ namespace OrthoTree
       return box;
     }
 
-    constexpr IGM::Box GetNodeBox(MortonNodeIDCR key) const noexcept { return this->GetNodeBox(SI::GetDepthID(key), this->GetNodeCenter(key)); }
+    constexpr decltype(auto) GetNodeChildren(NodeValueCR nodeValue) const noexcept { return nodeValue.second.GetChildren(); }
+
+    constexpr IGM::Box GetNodeBox(NodeValueCR nodeValue) const noexcept
+    {
+      return GetNodeBox(SI::GetDepthID(nodeValue.first), GetNodeCenter(nodeValue));
+    }
 
   protected:
     constexpr void AddNodeEntity(Node& node, EntityID newEntity) noexcept
@@ -925,7 +929,7 @@ namespace OrthoTree
     {
       // TODO: handle out-of-tree geometry
 
-      if constexpr (CONFIG::IS_LOOSE_TREE)
+      if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
       {
         auto const [centerGridID, levelID] = this->m_grid.template GetLooseBoxGridData<CONFIG::LOOSE_FACTOR, HANDLE_OUT_OF_TREE_GEOMETRY>(box);
         return SI::GetLocation(SI::Encode(centerGridID), m_maxDepthID - levelID);
@@ -1779,7 +1783,7 @@ namespace OrthoTree
         case TraverseControl::Terminate: return;
         case TraverseControl::SkipChildren: continue;
         case TraverseControl::Continue:
-          for (MortonNodeIDCR childNodeID : pNodeValue->second.GetChildren())
+          for (MortonNodeIDCR childNodeID : GetNodeChildren(*pNodeValue))
             queue.push(&GetNodeValue(childNodeID));
 
           break;
@@ -1788,7 +1792,7 @@ namespace OrthoTree
     }
 
     // Visit nodes in depth first order
-    constexpr void TraverseNodesDepthFirst(auto&& procedure, NodeValue const& rootValue) const noexcept
+    constexpr void TraverseNodesDepthFirst(auto&& procedure, NodeValueCR rootValue) const noexcept
     {
       auto nodeStack = std::vector<NodeValue const*>{};
       nodeStack.reserve(64);
@@ -1805,8 +1809,7 @@ namespace OrthoTree
         case TraverseControl::Terminate: return;
         case TraverseControl::SkipChildren: continue;
         case TraverseControl::Continue: {
-          auto const& [nodeID, node] = *currentNodeValue;
-          for (auto const& childNodeID : node.GetChildren())
+          for (auto const& childNodeID : GetNodeChildren(*currentNodeValue))
           {
             auto const& childNodeValue = GetNodeValue(childNodeID);
             nodeStack.push_back(&childNodeValue);
@@ -1823,7 +1826,7 @@ namespace OrthoTree
       TraverseNodesDepthFirst(std::forward<decltype(procedure)>(procedure), GetNodeValue(SI::GetRootKey()));
     }
 
-    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator, NodeValue const& nodeValue) const noexcept
+    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator, NodeValueCR nodeValue) const noexcept
     {
       using TPriorityResult = std::invoke_result_t<decltype(priorityCalculator), Node>;
       using TPriority = std::conditional_t<detail::IsStdOptionalV<TPriorityResult>, typename TPriorityResult::value_type, TPriorityResult>;
@@ -1865,8 +1868,7 @@ namespace OrthoTree
         case TraverseControl::Continue: break;
         }
 
-        auto const& node = pNodeValue->second;
-        for (MortonNodeIDCR childNodeID : node.GetChildren())
+        for (MortonNodeIDCR childNodeID : GetNodeChildren(*pNodeValue))
         {
           auto const& childNodeValue = GetNodeValue(childNodeID);
           auto childNodePriority = priorityCalculator(childNodeValue);
@@ -1909,15 +1911,15 @@ namespace OrthoTree
     }
 
   private:
-    void CollectAllEntitiesInDFSRecursive(NodeValue const& parentNode, std::vector<EntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
+    void CollectAllEntitiesInDFSRecursive(NodeValueCR parentNode, std::vector<EntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
     {
-      auto const& entities = this->GetNodeEntities(parentNode);
+      auto const& entities = GetNodeEntities(parentNode);
       auto const entityIDsSize = foundEntities.size();
       foundEntities.insert(foundEntities.end(), entities.begin(), entities.end());
       if (shouldSortInsideNodes)
         std::sort(foundEntities.begin() + entityIDsSize, foundEntities.end());
 
-      for (MortonNodeIDCR childKey : parentNode.second.GetChildren())
+      for (MortonNodeIDCR childKey : GetNodeChildren(parentNode))
         CollectAllEntitiesInDFSRecursive(this->GetNodeValue(childKey), foundEntities, shouldSortInsideNodes);
     }
 
@@ -2129,7 +2131,7 @@ namespace OrthoTree
     }
 
   public:
-    template<bool DO_RANGE_MUST_FULLY_CONTAIN = false>
+    template<bool DO_RANGE_MUST_FULLY_CONTAIN = true>
     std::vector<EntityID> RangeSearch(TBox const& range, EntityContainerView entities) const noexcept
     {
       auto foundEntities = std::vector<EntityID>{};
@@ -2551,7 +2553,7 @@ namespace OrthoTree
       return entityIDs;
     }
 
-    constexpr IGM::Geometry GetNodeWallDistance(TVector const& searchPoint, NodeValue const& nodeValue, bool isInsideConsideredAsZero) const noexcept
+    constexpr IGM::Geometry GetNodeWallDistance(TVector const& searchPoint, NodeValueCR nodeValue, bool isInsideConsideredAsZero) const noexcept
     {
       return IGM::GetBoxWallDistanceAD(searchPoint, GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue), isInsideConsideredAsZero);
     }
@@ -2646,22 +2648,24 @@ namespace OrthoTree
     // Client-defined Collision detector based on indexes. AABB intersection is executed independently from this checker.
     using FCollisionDetector = std::function<bool(EntityID, EntityID)>;
 
+  private:
     // Collision detection: Returns all overlapping entities from the source trees.
-    static std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
+    static void CollisionDetection(
       OrthoTreeBase const& leftTree,
       EntityContainerView leftEntities,
+      NodeValueCR leftNodeValue,
       OrthoTreeBase const& rightTree,
       EntityContainerView rightEntities,
-      TFloatScalar tolerance = GA::BASE_TOLERANCE,
-      std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) noexcept
+      NodeValueCR rightNodeValue,
+      std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
+      TFloatScalar tolerance,
+      std::optional<FCollisionDetector> const& collisionDetector) noexcept
     {
-      using NodeIterator = typename NodeContainer<Node>::const_iterator;
-      struct NodeIteratorAndStatus
+      struct NodeValueAndStatus
       {
-        NodeIterator Iterator;
+        NodeValue const* pNodeValue;
         bool IsTraversed;
       };
-      using ParentIteratorArray = std::array<NodeIteratorAndStatus, 2>;
 
       enum : bool
       {
@@ -2669,47 +2673,47 @@ namespace OrthoTree
         Right
       };
 
-      auto results = std::vector<std::pair<EntityID, EntityID>>{};
-      results.reserve(leftEntities.size() / 10);
+      auto const isSameTree = &leftTree == &rightTree;
 
-      auto constexpr rootKey = SI::GetRootKey();
       auto const trees = std::array{ &leftTree, &rightTree };
 
       auto entitiesInOrderCache = std::array<std::unordered_map<MortonNodeID, SweepAndPruneDatabase>, 2>{};
-      auto const getOrCreateEntitiesInOrder = [&](bool side, NodeIterator const& it, EntityContainerView entities) -> std::vector<EntityID> const& {
-        auto itKeyAndSPD = entitiesInOrderCache[side].find(it->first);
+      auto const GetOrCreateEntitiesInOrder = [&](bool side, NodeValueCR nodeValue, EntityContainerView entities) -> std::vector<EntityID> const& {
+        if (isSameTree)
+          side = Left;
+
+        auto itKeyAndSPD = entitiesInOrderCache[side].find(nodeValue.first);
         if (itKeyAndSPD == entitiesInOrderCache[side].end())
         {
           bool isInserted = false;
           std::tie(itKeyAndSPD, isInserted) =
-            entitiesInOrderCache[side].emplace(it->first, SweepAndPruneDatabase(entities, trees[side]->GetNodeEntities(it->second)));
+            entitiesInOrderCache[side].emplace(nodeValue.first, SweepAndPruneDatabase(entities, trees[side]->GetNodeEntities(nodeValue)));
         }
 
         return itKeyAndSPD->second.GetEntities();
       };
 
-      [[maybe_unused]] auto const pLeftTree = &leftTree;
-      [[maybe_unused]] auto const pRightTree = &rightTree;
-      auto nodePairToProceed = std::queue<ParentIteratorArray>{};
+      auto nodePairToProceed = std::queue<std::array<NodeValueAndStatus, 2>>{};
       nodePairToProceed.push(
         {
-          NodeIteratorAndStatus{  leftTree.m_nodes.find(rootKey), false },
-          NodeIteratorAndStatus{ rightTree.m_nodes.find(rootKey), false }
+          NodeValueAndStatus{  &leftNodeValue, false },
+          NodeValueAndStatus{ &rightNodeValue, false }
       });
-      for (; !nodePairToProceed.empty(); nodePairToProceed.pop())
+      while (!nodePairToProceed.empty())
       {
-        auto const& parentNodePair = nodePairToProceed.front();
+        auto const parentNodePair = nodePairToProceed.front();
+        nodePairToProceed.pop();
 
         // Check the current ascendant content
 
-        auto const& leftEntitiesInOrder = getOrCreateEntitiesInOrder(Left, parentNodePair[Left].Iterator, leftEntities);
-        auto const& rightEntitiesInOrder = getOrCreateEntitiesInOrder(Right, parentNodePair[Right].Iterator, rightEntities);
+        auto const& leftEntitiesInOrder = GetOrCreateEntitiesInOrder(Left, *parentNodePair[Left].pNodeValue, leftEntities);
+        auto const& rightEntitiesInOrder = GetOrCreateEntitiesInOrder(Right, *parentNodePair[Right].pNodeValue, rightEntities);
 
         auto const rightEntityNo = rightEntitiesInOrder.size();
         std::size_t iRightEntityBegin = 0;
-        for (auto const lefEntityID : leftEntitiesInOrder)
+        for (auto const leftEntityID : leftEntitiesInOrder)
         {
-          auto const& leftEntityGeometry = EA::GetGeometry(leftEntities, lefEntityID);
+          auto const& leftEntityGeometry = EA::GetGeometry(leftEntities, leftEntityID);
           for (; iRightEntityBegin < rightEntityNo; ++iRightEntityBegin)
           {
             auto const& rightEntityGeometry = EA::GetGeometry(rightEntities, rightEntitiesInOrder[iRightEntityBegin]);
@@ -2740,17 +2744,17 @@ namespace OrthoTree
                 break; // sweep and prune optimization
 
               if (GA::ArePointEqual(leftEntityGeometry, rightEntityGeometry, tolerance))
-                if (!collisionDetector || (*collisionDetector)(lefEntityID, righEntityID))
-                  results.emplace_back(lefEntityID, righEntityID);
+                if (!collisionDetector || (*collisionDetector)(leftEntityID, righEntityID))
+                  collidedEntities.emplace_back(leftEntityID, righEntityID);
             }
             else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
             {
               if (GA::GetBoxMaxC(leftEntityGeometry, 0) < GA::GetBoxMinC(rightEntityGeometry, 0))
                 break; // sweep and prune optimization
 
-              if (GA::AreBoxesOverlapped(leftEntityGeometry, rightEntityGeometry, false, tolerance))
-                if (!collisionDetector || (*collisionDetector)(lefEntityID, righEntityID))
-                  results.emplace_back(lefEntityID, righEntityID);
+              if (GA::AreBoxesOverlapped(leftEntityGeometry, rightEntityGeometry, false, false, tolerance))
+                if (!collisionDetector || (*collisionDetector)(leftEntityID, righEntityID))
+                  collidedEntities.emplace_back(leftEntityID, righEntityID);
             }
             else
             {
@@ -2760,17 +2764,17 @@ namespace OrthoTree
         }
 
         // Collect children
-        auto childNodes = std::array<std::vector<NodeIteratorAndStatus>, 2>{};
+        auto childNodes = std::array<std::vector<NodeValueAndStatus>, 2>{};
         for (auto const sideID : { Left, Right })
         {
-          auto const& [nodeIterator, fTraversed] = parentNodePair[sideID];
-          if (fTraversed)
+          auto const& [pNodeValue, isTraversed] = parentNodePair[sideID];
+          if (isTraversed)
             continue;
 
-          auto const& childIDs = nodeIterator->second.GetChildren();
+          auto const& childIDs = trees[sideID]->GetNodeChildren(*pNodeValue);
           childNodes[sideID].resize(childIDs.size());
-          std::transform(childIDs.begin(), childIDs.end(), childNodes[sideID].begin(), [&](MortonNodeIDCR childKey) -> NodeIteratorAndStatus {
-            return { trees[sideID]->m_nodes.find(childKey), false };
+          std::transform(childIDs.begin(), childIDs.end(), childNodes[sideID].begin(), [&](MortonNodeIDCR childNodeID) -> NodeValueAndStatus {
+            return { &trees[sideID]->GetNodeValue(childNodeID), false };
           });
         }
 
@@ -2780,23 +2784,48 @@ namespace OrthoTree
 
         // Add parent if it has any element
         for (auto const sideID : { Left, Right })
-          if (!trees[sideID]->IsNodeEntitiesEmpty(parentNodePair[sideID].Iterator->second))
-            childNodes[sideID].push_back({ parentNodePair[sideID].Iterator, true });
+          if (!trees[sideID]->IsNodeEntitiesEmpty(parentNodePair[sideID].pNodeValue->second))
+            childNodes[sideID].push_back({ parentNodePair[sideID].pNodeValue, true });
 
 
         // Cartesian product of childNodes left and right
         for (auto const& leftChildNode : childNodes[Left])
           for (auto const& rightChildNode : childNodes[Right])
-            if (!(leftChildNode.Iterator == parentNodePair[Left].Iterator && rightChildNode.Iterator == parentNodePair[Right].Iterator))
+            if (!(leftChildNode.pNodeValue == parentNodePair[Left].pNodeValue && rightChildNode.pNodeValue == parentNodePair[Right].pNodeValue))
               if (IGM::AreBoxesOverlappingByCenter(
-                    pLeftTree->GetNodeCenter(*leftChildNode.Iterator),
-                    leftTree.GetNodeHalfSize(*leftChildNode.Iterator),
-                    pRightTree->GetNodeCenter(*rightChildNode.Iterator),
-                    rightTree.GetNodeHalfSize(*rightChildNode.Iterator)))
+                    trees[Left]->GetNodeCenter(*leftChildNode.pNodeValue),
+                    trees[Left]->GetNodeHalfSize(*leftChildNode.pNodeValue),
+                    trees[Right]->GetNodeCenter(*rightChildNode.pNodeValue),
+                    trees[Right]->GetNodeHalfSize(*rightChildNode.pNodeValue)))
                 nodePairToProceed.emplace(std::array{ leftChildNode, rightChildNode });
       }
+    }
 
-      return results;
+  public:
+    // Collision detection: Returns all overlapping entities from the source trees.
+    static std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
+      OrthoTreeBase const& leftTree,
+      EntityContainerView leftEntities,
+      OrthoTreeBase const& rightTree,
+      EntityContainerView rightEntities,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) noexcept
+    {
+      std::vector<std::pair<EntityID, EntityID>> collidedEntities;
+      collidedEntities.reserve(leftEntities.size() / 10);
+
+      CollisionDetection(
+        leftTree,
+        leftEntities,
+        leftTree.GetNodeValue(SI::GetRootKey()),
+        rightTree,
+        rightEntities,
+        rightTree.GetNodeValue(SI::GetRootKey()),
+        collidedEntities,
+        tolerance,
+        collisionDetector);
+
+      return collidedEntities;
     }
 
 
@@ -2820,7 +2849,7 @@ namespace OrthoTree
       std::vector<EntityID> EntityIDs;
     };
 
-    constexpr void FillNodeCollisionContext(NodeValue const& nodeValue, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
+    constexpr void FillNodeCollisionContext(NodeValueCR nodeValue, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
     {
       auto const& nodeEntities = GetNodeEntities(nodeValue);
 
@@ -2840,7 +2869,7 @@ namespace OrthoTree
     constexpr void InsertCollidedEntitiesInsideNode(
       EntityContainerView entities,
       NodeCollisionContext const& context,
-      std::vector<std::pair<EntityID, EntityID>>& collidedEntityPairs,
+      std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
@@ -2863,7 +2892,7 @@ namespace OrthoTree
 
             if (GA::ArePointsEqual(entityBoxI, entityBoxJ, tolerance))
               if (!collisionDetector || (*collisionDetector)(entityIDI, entityIDJ))
-                collidedEntityPairs.emplace_back(entityIDI, entityIDJ);
+                collidedEntities.emplace_back(entityIDI, entityIDJ);
           }
           else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
           {
@@ -2872,7 +2901,7 @@ namespace OrthoTree
 
             if (GA::AreBoxesOverlappedStrict(entityBoxI, entityBoxJ))
               if (!collisionDetector || (*collisionDetector)(entityIDI, entityIDJ))
-                collidedEntityPairs.emplace_back(entityIDI, entityIDJ);
+                collidedEntities.emplace_back(entityIDI, entityIDJ);
           }
           else
           {
@@ -2886,7 +2915,7 @@ namespace OrthoTree
       EntityContainerView entities,
       depth_t depthID,
       std::vector<NodeCollisionContext> const& nodeContextStack,
-      std::vector<std::pair<EntityID, EntityID>>& collidedEntityPairs,
+      std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
@@ -2955,7 +2984,7 @@ namespace OrthoTree
 
               if (GA::ArePointsEqual(parentEntityGeometry, entityGeometry, tolerance))
                 if (!collisionDetector || (*collisionDetector)(entityID, parenEntityID))
-                  collidedEntityPairs.emplace_back(entityID, parenEntityID);
+                  collidedEntities.emplace_back(entityID, parenEntityID);
             }
             else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
             {
@@ -2965,7 +2994,7 @@ namespace OrthoTree
               // TODO: Add tolerance-based box-box overlap check
               if (GA::AreBoxesOverlappedStrict(entityGeometry, parentEntityGeometry))
                 if (!collisionDetector || (*collisionDetector)(entityID, parenEntityID))
-                  collidedEntityPairs.emplace_back(entityID, parenEntityID);
+                  collidedEntities.emplace_back(entityID, parenEntityID);
             }
             else
             {
@@ -2980,30 +3009,41 @@ namespace OrthoTree
       EntityContainerView entities,
       auto const& comparator,
       depth_t depthID,
-      MortonNodeIDCR nodeKey,
+      NodeValue const& nodeValue,
       std::vector<NodeCollisionContext>& nodeContextStack,
-      std::vector<std::pair<EntityID, EntityID>>& collidedEntityPairs,
+      std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
-      auto const& nodeValue = GetNodeValue(nodeKey);
-
       FillNodeCollisionContext(nodeValue, depthID, nodeContextStack[depthID]);
       PrepareNodeCollisionContext(comparator, nodeContextStack[depthID]);
 
       auto const childDepthID = depthID + 1;
-      for (MortonLocationIDCR childKey : nodeValue.second.GetChildren())
-        InsertCollidedEntitiesInSubtree(entities, comparator, childDepthID, childKey, nodeContextStack, collidedEntityPairs, tolerance, collisionDetector);
+      for (MortonNodeIDCR childKey : GetNodeChildren(nodeValue))
+        InsertCollidedEntitiesInSubtree(entities, comparator, childDepthID, GetNodeValue(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
-      InsertCollidedEntitiesInsideNode(entities, nodeContextStack[depthID], collidedEntityPairs, tolerance, collisionDetector);
-      InsertCollidedEntitiesWithParents(entities, depthID, nodeContextStack, collidedEntityPairs, tolerance, collisionDetector);
+      InsertCollidedEntitiesInsideNode(entities, nodeContextStack[depthID], collidedEntities, tolerance, collisionDetector);
+      InsertCollidedEntitiesWithParents(entities, depthID, nodeContextStack, collidedEntities, tolerance, collisionDetector);
+
+      // Pairwise sub-tree collision detection for loose octree
+      if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
+      {
+        auto const& childNodeIDs = GetNodeChildren(nodeValue);
+        for (auto it1 = childNodeIDs.begin(); it1 != childNodeIDs.end(); ++it1)
+        {
+          for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
+          {
+            CollisionDetection(*this, entities, GetNodeValue(*it1), *this, entities, GetNodeValue(*it2), collidedEntities, tolerance, collisionDetector);
+          }
+        }
+      }
     }
 
     // Collision detection between the stored entities from bottom to top logic
     template<bool IS_PARALLEL_EXEC = false>
     std::vector<std::pair<EntityID, EntityID>> CollectCollidedEntities(
       EntityContainerView entities,
-      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TFloatScalar tolerance = EA::GEOMETRY_TYPE == GeometryType::Point ? GA::BASE_TOLERANCE : 0,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
       auto const comparator = [&entities](EntityID entityID1, EntityID entityID2) {
@@ -3026,40 +3066,45 @@ namespace OrthoTree
       };
 
       auto const entityNo = entities.size();
-      auto collidedEntityPairs = std::vector<std::pair<EntityID, EntityID>>{};
-      collidedEntityPairs.reserve(std::max<std::size_t>(100, entityNo / 10));
+      auto collidedEntities = std::vector<std::pair<EntityID, EntityID>>{};
+      collidedEntities.reserve(std::max<std::size_t>(100, entityNo / 10));
       if constexpr (!IS_PARALLEL_EXEC)
       {
         auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
-        this->InsertCollidedEntitiesInSubtree(entities, comparator, 0, SI::GetRootKey(), nodeContextStack, collidedEntityPairs, tolerance, collisionDetector);
+        InsertCollidedEntitiesInSubtree(
+          entities, comparator, 0, GetNodeValue(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
       }
       else
       {
-        auto const nodeNo = this->m_nodes.size();
-        auto const threadNo = std::size_t(std::thread::hardware_concurrency());
-        auto const isSingleThreadMoreEffective = nodeNo < threadNo * 3;
+        auto const nodeNo = m_nodes.size();
+        auto const threadNum = std::size_t(std::thread::hardware_concurrency());
+        auto const isSingleThreadMoreEffective = nodeNo < threadNum * 3;
         if (isSingleThreadMoreEffective)
         {
           auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
-          this->InsertCollidedEntitiesInSubtree(entities, comparator, 0, SI::GetRootKey(), nodeContextStack, collidedEntityPairs, tolerance, collisionDetector);
+          InsertCollidedEntitiesInSubtree(
+            entities, comparator, 0, GetNodeValue(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
         }
         else
         {
           using NodeIterator = typename NodeContainer<Node>::const_iterator;
 
-          auto nodeQueue = std::vector<NodeIterator>{};
-          nodeQueue.reserve(threadNo * 2);
-          nodeQueue.emplace_back(this->m_nodes.find(SI::GetRootKey()));
+          auto nodeQueue = std::vector<NodeValue const*>{};
+          nodeQueue.reserve(threadNum * 2);
+          nodeQueue.emplace_back(&GetNodeValue(SI::GetRootKey()));
 
           auto nodeContextMap = std::unordered_map<MortonNodeID, NodeCollisionContext>{};
 
-          std::size_t nodeQueueNo = 1;
-          for (std::size_t i = 0; 0 < nodeQueueNo && nodeQueueNo < threadNo - 2; --nodeQueueNo, ++i)
+          // TODO: Loose octree
+          std::size_t nodeQueueNum = 1;
+          std::size_t childNodeAddedParentNum = 0;
+          for (std::size_t i = 0; 0 < nodeQueueNum && nodeQueueNum < threadNum - 2; --nodeQueueNum, ++i)
           {
-            for (MortonLocationIDCR childKey : nodeQueue[i]->second.GetChildren())
+            ++childNodeAddedParentNum;
+            for (MortonLocationIDCR childKey : GetNodeChildren(*nodeQueue[i]))
             {
-              nodeQueue.emplace_back(this->m_nodes.find(childKey));
-              ++nodeQueueNo;
+              nodeQueue.emplace_back(&GetNodeValue(childKey));
+              ++nodeQueueNum;
             }
 
             MortonNodeIDCR nodeKey = nodeQueue[i]->first;
@@ -3069,45 +3114,70 @@ namespace OrthoTree
             PrepareNodeCollisionContext(comparator, nodeContext);
           }
 
-          if (nodeQueueNo == 0)
+          if (nodeQueueNum < threadNum)
           {
             auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
-            InsertCollidedEntitiesInSubtree(entities, comparator, 0, SI::GetRootKey(), nodeContextStack, collidedEntityPairs, tolerance, collisionDetector);
+            InsertCollidedEntitiesInSubtree(
+              entities, comparator, 0, GetNodeValue(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
           }
           else
           {
             struct TaskContext
             {
-              NodeIterator NodeIt;
-              std::vector<std::pair<EntityID, EntityID>> CollidedEntityPairs;
+              NodeValue const* nodeValue;
+              NodeValue const* nodeValueSecondary;
+              std::vector<std::pair<EntityID, EntityID>> collidedEntities;
             };
 
             auto const nodeQueueAllNo = nodeQueue.size();
-            auto const nodeQueueBegin = nodeQueueAllNo - nodeQueueNo;
-            auto taskContexts = std::vector<TaskContext>(nodeQueueNo);
-            for (std::size_t taskID = 0; taskID < nodeQueueNo; ++taskID)
-              taskContexts[taskID].NodeIt = nodeQueue[nodeQueueBegin + taskID];
+            auto const nodeQueueBegin = nodeQueueAllNo - nodeQueueNum;
+            auto taskContexts = std::vector<TaskContext>(nodeQueueNum);
+            for (std::size_t taskID = 0; taskID < nodeQueueNum; ++taskID)
+              taskContexts[taskID].nodeValue = nodeQueue[nodeQueueBegin + taskID];
 
             EXEC_POL_DEF(epcd); // GCC 11.3
             std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin(), taskContexts.end(), [&](auto& taskContext) {
-              auto const depthID = SI::GetDepthID(taskContext.NodeIt->first);
+              auto const depthID = SI::GetDepthID(taskContext.nodeValue->first);
               auto parentDepthID = depthID;
 
               auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
-              for (auto parentKey = SI::GetParentKey(taskContext.NodeIt->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
+              // TODO: remove backtrack
+              for (auto parentKey = SI::GetParentKey(taskContext.nodeValue->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
                 nodeContextStack[--parentDepthID] = nodeContextMap.at(parentKey);
 
               InsertCollidedEntitiesInSubtree(
-                entities, comparator, depthID, taskContext.NodeIt->first, nodeContextStack, taskContext.CollidedEntityPairs, tolerance, collisionDetector);
+                entities, comparator, depthID, *taskContext.nodeValue, nodeContextStack, taskContext.collidedEntities, tolerance, collisionDetector);
             });
 
-            auto collidedEntityPairsInParents = std::vector<std::pair<EntityID, EntityID>>{};
+            if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
+            {
+              for (std::size_t i = 0; i < childNodeAddedParentNum; ++i)
+              {
+                auto const& childNodeIDs = GetNodeChildren(*nodeQueue[i]);
+                for (auto it1 = childNodeIDs.begin(); it1 != childNodeIDs.end(); ++it1)
+                {
+                  for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
+                  {
+                    taskContexts.push_back({ .nodeValue = &GetNodeValue(*it1), .nodeValueSecondary = &GetNodeValue(*it2) });
+                  }
+                }
+              }
+
+              EXEC_POL_DEF(epcd); // GCC 11.3
+              std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin() + nodeQueueNum, taskContexts.end(), [&](auto& taskContext) {
+                CollisionDetection(
+                  *this, entities, *taskContext.nodeValue, *this, entities, *taskContext.nodeValueSecondary, taskContext.collidedEntities, tolerance, collisionDetector);
+              });
+            }
+
+            auto collidedEntitiesInParents = std::vector<std::pair<EntityID, EntityID>>{};
             auto nodeContextStack = std::vector<NodeCollisionContext>();
             auto usedContextsStack = std::vector<NodeCollisionContext*>{};
-            std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNo, [&](auto& nodeIt) {
+            std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNum, [&](auto const* nodeValue) {
               {
-                usedContextsStack.emplace_back(&nodeContextMap.at(nodeIt->first));
-                for (auto parentKey = SI::GetParentKey(nodeIt->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
+                usedContextsStack.emplace_back(&nodeContextMap.at(nodeValue->first));
+                // TODO: remove backtrack
+                for (auto parentKey = SI::GetParentKey(nodeValue->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
                   usedContextsStack.emplace_back(&nodeContextMap.at(parentKey));
 
                 for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it)
@@ -3115,8 +3185,8 @@ namespace OrthoTree
               }
 
               auto const depthID = depth_t(usedContextsStack.size()) - 1;
-              InsertCollidedEntitiesInsideNode(entities, nodeContextStack[depthID], collidedEntityPairsInParents, tolerance, collisionDetector);
-              InsertCollidedEntitiesWithParents(entities, depthID, nodeContextStack, collidedEntityPairsInParents, tolerance, collisionDetector);
+              InsertCollidedEntitiesInsideNode(entities, nodeContextStack[depthID], collidedEntitiesInParents, tolerance, collisionDetector);
+              InsertCollidedEntitiesWithParents(entities, depthID, nodeContextStack, collidedEntitiesInParents, tolerance, collisionDetector);
 
               {
                 auto i = 0;
@@ -3128,19 +3198,19 @@ namespace OrthoTree
             });
 
             auto const collisionNo =
-              std::transform_reduce(taskContexts.begin(), taskContexts.end(), collidedEntityPairsInParents.size(), std::plus{}, [](auto const& taskContext) {
-                return taskContext.CollidedEntityPairs.size();
+              std::transform_reduce(taskContexts.begin(), taskContexts.end(), collidedEntitiesInParents.size(), std::plus{}, [](auto const& taskContext) {
+                return taskContext.collidedEntities.size();
               });
 
-            collidedEntityPairs.reserve(collisionNo);
-            collidedEntityPairs.insert(collidedEntityPairs.end(), collidedEntityPairsInParents.begin(), collidedEntityPairsInParents.end());
+            collidedEntities.reserve(collisionNo);
+            collidedEntities.insert(collidedEntities.end(), collidedEntitiesInParents.begin(), collidedEntitiesInParents.end());
             for (auto const& taskContext : taskContexts)
-              collidedEntityPairs.insert(collidedEntityPairs.end(), taskContext.CollidedEntityPairs.begin(), taskContext.CollidedEntityPairs.end());
+              collidedEntities.insert(collidedEntities.end(), taskContext.collidedEntities.begin(), taskContext.collidedEntities.end());
           }
         }
       }
 
-      return collidedEntityPairs;
+      return collidedEntities;
     }
 
   public:
