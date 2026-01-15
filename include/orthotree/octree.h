@@ -399,16 +399,18 @@ namespace OrthoTree
   template<bool IS_LOOSE_TREE>
   using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, false>;
 
-  // OrthoTree: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-  class OrthoTreeBase
+  class OrthoTreeCoreBase
   {
-  public:
+  protected:
     using EA = TEntityAdapter;
     using GA = TGeometryAdapter;
     using CONFIG = Configuration<2.0, false>; // TConfiguration;
+    using IGM = detail::InternalGeometryModule<GA>;
+    using SI = detail::MortonSpaceIndexing<GA::DIMENSION_NO>;
 
-    static constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
+    using IGM_Geometry = typename IGM::Geometry;
+
     using TScalar = typename GA::Scalar;
     using TFloatScalar = typename GA::FloatScalar;
     using TVector = typename GA::Vector;
@@ -416,66 +418,605 @@ namespace OrthoTree
     using TRay = typename GA::Ray;
     using TPlane = typename GA::Plane;
 
+    std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
+    depth_t m_maxDepthID = {};
+
+    std::vector<typename IGM::Vector> m_nodeLooseSizes;
+    std::vector<typename IGM::Vector> m_nodeNominalSizes;
+
+    detail::GridSpaceIndexing<GA> m_grid;
+
+  public:
     using EntityContainerView = EA::EntityContainerView;
     using EntityID = EA::EntityID;
 
-    static_assert(GeometryAdapterConcept<GA, DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, TFloatScalar>);
-    static_assert(0 < DIMENSION_NO && DIMENSION_NO < 64);
+  protected:
+    constexpr OrthoTreeCoreBase() = default;
 
-    static_assert(std::is_trivially_copyable_v<EntityID>, "Only trivially copyable EntityID types are supported!");
-    static_assert(CONFIG::IS_HOMOGENEOUS_GEOMETRY, "Mixed geometry types are not supported yet!");
-    static_assert(EA::GEOMETRY_TYPE == GeometryType::Point || EA::GEOMETRY_TYPE == GeometryType::Box, "Entity geometry type is not supported!");
-    static_assert(CONFIG::MAX_ALLOWED_DEPTH_ID <= MAX_DEPTH_ID, "MAX_ALLOWED_DEPTH_ID of Configuration is too large.");
-    static_assert(CONFIG::LOOSE_FACTOR >= 1.0, "Wrong loose factor for Loose trees.");
-
-    template<typename T>
-    using DimArray = std::array<T, DIMENSION_NO>;
-    using IGM = typename detail::InternalGeometryModule<GA>;
-    using IGM_Geometry = typename IGM::Geometry;
-
-    using SI = detail::MortonSpaceIndexing<DIMENSION_NO>;
-    using MortonNodeID = typename SI::NodeID;
-    using MortonNodeIDCR = typename SI::NodeIDCR;
-    using MortonLocationID = typename SI::LocationID;
-    using MortonLocationIDCR = typename SI::LocationIDCR;
-    using MortonChildID = typename SI::ChildID;
-
-
-    using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, MortonNodeID, MortonChildID, EntityID, typename IGM::Vector>;
-    using NodeValue = std::pair<MortonNodeID const, Node>;
-    using NodeValueCR = std::pair<MortonNodeID const, Node> const&;
-
-  protected: // Aid struct to partitioning and distance ordering
-    struct ItemDistance
+  protected:
+    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo) noexcept
     {
-      IGM_Geometry Distance;
-      auto operator<=>(ItemDistance const& rhs) const = default;
-    };
+      ORTHOTREE_CRASH_IF(maxDepthID < 1, "maxDepthID must be largar than 0!");
+      ORTHOTREE_CRASH_IF(maxDepthID > SI::MAX_THEORETICAL_DEPTH_ID, "maxDepthID is larger than the applicable with the current GA::DIMENSION_NO!");
+      ORTHOTREE_CRASH_IF(maxDepthID >= std::numeric_limits<uint8_t>::max(), "maxDepthID is too large.");
+      ORTHOTREE_CRASH_IF(maxElementNo == 0, "maxElementNo must be larger than 0. It is allowed max entity number for one node.");
+      ORTHOTREE_CRASH_IF(CHAR_BIT * sizeof(GridID) < maxDepthID, "GridID and maxDepthID are not compatible.");
 
-    struct EntityDistance : ItemDistance
-    {
-      EntityID EntityID;
-      auto operator<=>(EntityDistance const& rhs) const = default;
-    };
+      m_grid = detail::GridSpaceIndexing<GA>(maxDepthID, boxSpace);
+      m_maxDepthID = maxDepthID;
+      m_maxElementNum = maxElementNo;
 
-    struct BoxDistance : ItemDistance
+      // the 0-based depth size of the tree is m_maxDepthID+1, and a fictive childnode halfsize (+2) could be asked prematurely.
+      depth_t constexpr additionalDepth = 3;
+      auto const examinedDepthSize = m_maxDepthID + additionalDepth;
+      m_nodeNominalSizes.resize(examinedDepthSize);
+      m_nodeLooseSizes.resize(examinedDepthSize);
+      m_nodeNominalSizes[0] = m_nodeLooseSizes[0] = m_grid.GetSizes();
+
+      auto constexpr multiplier = IGM_Geometry(0.5);
+      auto nominalfactor = IGM_Geometry(1.0);
+      auto looseFactor = IGM_Geometry(CONFIG::LOOSE_FACTOR);
+
+      for (depth_t depthID = 0; depthID < examinedDepthSize; ++depthID, nominalfactor *= multiplier, looseFactor *= multiplier)
+        for (dim_t dimensionID = 0; dimensionID < GA::DIMENSION_NO; ++dimensionID)
+        {
+          m_nodeNominalSizes[depthID][dimensionID] = m_nodeNominalSizes[0][dimensionID] * nominalfactor;
+          m_nodeLooseSizes[depthID][dimensionID] = m_nodeNominalSizes[0][dimensionID] * looseFactor;
+        }
+    }
+
+  protected:
+    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
+    constexpr SI::Location GetLocation(TVector const& point) const noexcept
     {
-      MortonNodeID NodeKey;
-      Node const* NodePtr;
+      // TODO: handle out-of-tree geometry
+      return SI::GetLocation(SI::Encode(m_grid.template GetPointGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(point)), m_maxDepthID);
+    }
+
+    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
+    constexpr SI::Location GetLocation(TBox const& box) const noexcept
+    {
+      // TODO: handle out-of-tree geometry
+
+      if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
+      {
+        auto const [centerGridID, levelID] = this->m_grid.template GetLooseBoxGridData<CONFIG::LOOSE_FACTOR, HANDLE_OUT_OF_TREE_GEOMETRY>(box);
+        return SI::GetLocation(SI::Encode(centerGridID), m_maxDepthID - levelID);
+      }
+      else
+      {
+        return SI::GetRangeLocation(m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(box), m_maxDepthID);
+      }
+    }
+
+  public:
+    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
+    SI::NodeID GetNodeID(TVector const& point) const noexcept
+    {
+      auto locationID = SI::Encode(m_grid.template GetPointGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
+      return SI::GetNodeID(locationID, m_maxDepthID);
+    }
+
+    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
+    SI::NodeID GetNodeID(TBox const& box) const noexcept
+    {
+      return SI::GetNodeID(GetLocation<HANDLE_OUT_OF_TREE_GEOMETRY>(box), m_maxDepthID);
+    }
+
+    constexpr depth_t GetExaminationLevelID(depth_t depthID) const { return m_maxDepthID - depthID; }
+
+
+    constexpr IGM::Vector CalculateNodeSize(depth_t depthID) const noexcept { return IGM::Multiply(m_grid.GetSizes(), detail::pow2(depthID)); }
+
+
+    constexpr IGM::Box GetNodeBox(depth_t depthID, IGM::Vector const& center) const noexcept
+    {
+      depth_t const halfSizeDepthID = depthID + 1;
+#ifdef ORTHOTREE__DISABLED_NODESIZE
+      auto const halfSize = CalculateNodeSize(halfSizeDepthID);
+#else
+      auto const& halfSize = m_nodeLooseSizes[halfSizeDepthID];
+#endif // ORTHOTREE__DISABLED_NODESIZE
+
+      typename IGM::Box box{ .Min = center, .Max = center };
+
+      ORTHOTREE_LOOPIVDEP
+      for (dim_t dimensionID = 0; dimensionID < GA::DIMENSION_NO; ++dimensionID)
+      {
+        box.Min[dimensionID] -= halfSize[dimensionID];
+        box.Max[dimensionID] += halfSize[dimensionID];
+      }
+
+      return box;
+    }
+
+  public:
+    constexpr auto GetMaxDepthID() const noexcept { return m_maxDepthID; }
+    constexpr auto GetDepthNo() const noexcept { return m_maxDepthID + 1; }
+    constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
+    constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
+
+  protected:
+    bool IsGeometryInTree(EA::Geometry const& entityGeometry) const noexcept
+    {
+      if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+      {
+        if (!IGM::DoesBoxContainPointAD(m_grid.GetBoxSpace(), entityGeometry))
+          return false;
+      }
+      else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+      {
+        if (!IGM::DoesRangeContainBoxAD(m_grid.GetBoxSpace(), entityGeometry))
+          return false;
+      }
+      else
+      {
+        static_assert(false, "Unsupported geometry type!");
+      }
+
+      return false;
+    }
+  };
+
+#define ORTHOTREE_DEPENDENT_TYPES(Base)                \
+  using EA = Base::EA;                                 \
+  using GA = Base::GA;                                 \
+  using CONFIG = typename Base::CONFIG;                \
+  using IGM = Base::IGM;                               \
+  using SI = Base::SI;                                 \
+  using IGM_Geometry = IGM::Geometry;                  \
+                                                       \
+  using TScalar = typename GA::Scalar;                 \
+  using TFloatScalar = typename GA::FloatScalar;       \
+  using TVector = typename GA::Vector;                 \
+  using TBox = typename GA::Box;                       \
+  using TRay = typename GA::Ray;                       \
+  using TPlane = typename GA::Plane;                   \
+  using EntityContainerView = EA::EntityContainerView; \
+  using EntityID = EA::EntityID
+
+
+  // Non-owning ortho-tree with compact SoA storage for not changing datasets.
+  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  class StaticLinearOrthoTreeCore : public OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>
+  {
+  public:
+    using Base = OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>;
+    ORTHOTREE_DEPENDENT_TYPES(Base);
+
+  public:
+    using NodeID = uint32_t;
+    using NodeIDCR = NodeID;
+
+    using NodeValue = NodeID;
+    using NodeValueCP = NodeID;
+    using NodeValueCP = NodeID;
+
+  private:
+    static_assert(GA::DIMENSION_NO <= 16);
+    static_assert(SI::IS_LINEAR_TREE);
+
+    using ChildNodeSegment = std::conditional_t<GA::DIMENSION_NO <= 6, uint32_t, uint64_t>;
+    using EntitySegment = std::pair<uint32_t, uint32_t>; // begin, end
+
+  private:
+    std::vector<typename IGM::Vector> m_nodeCenters;
+    std::vector<uint8_t> m_nodeDepthIDs;
+    std::vector<ChildNodeSegment> m_nodeChildSegments;
+    std::vector<NodeID> m_nodeChildIDs;
+    std::vector<EntitySegment> m_nodeEntities;
+    std::vector<EntityID> m_entityStorage;
+
+
+  public: // Constructors
+    // Default constructor. Requires Create call before usage.
+    constexpr StaticLinearOrthoTreeCore() = default;
+
+    constexpr StaticLinearOrthoTreeCore(StaticLinearOrthoTreeCore&&) = default;
+
+    // Initialize the base octree structure with entity collection
+    explicit StaticLinearOrthoTreeCore(
+      EA::EntityContainerView entities,
+      std::optional<depth_t> maxDepthIDIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      bool isParallelExec = false) noexcept
+    {
+      auto isSuccessfullyInsertedAllElements = false;
+      if (isParallelExec)
+        isSuccessfullyInsertedAllElements = Create<true>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      else
+        isSuccessfullyInsertedAllElements = Create<false>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      assert(isSuccessfullyInsertedAllElements);
+    }
+
+    // Initialize the base octree structure with entity collection and parallel tree-building option
+    template<typename EXEC_TAG>
+    StaticLinearOrthoTreeCore(
+      EXEC_TAG,
+      EntityContainerView entities,
+      std::optional<depth_t> maxDepthIDIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+    {
+      auto isSuccessfullyInsertedAllElements =
+        Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      assert(isSuccessfullyInsertedAllElements);
+    }
+
+  public:
+    static NodeID GetRootNodeID() noexcept { return 0; }
+
+    constexpr std::size_t GetNodeCount() const noexcept { return m_nodeDepthIDs.size(); }
+    constexpr std::size_t GetNodeEntityCount(NodeID nodeID) const noexcept { return m_nodeEntities[nodeID].second; }
+
+    constexpr std::span<NodeID> GetNodeChildren(NodeID nodeID) noexcept
+    {
+      constexpr ChildNodeSegment shift = GA::DIMENSION_NO <= 6 ? 26 : (64 - GA::DIMENSION_NO);
+      constexpr ChildNodeSegment beginMask = GA::DIMENSION_NO <= 6 ? ChildNodeSegment(0x02FFFFFF) : ChildNodeSegment((1ull << shift) - 1ull);
+
+      uint32_t begin = m_nodeChildIDs[nodeID] & beginMask;
+      uint32_t length = m_nodeChildIDs[nodeID] >> shift;
+      return std::span<NodeID>(&m_nodeChildSegments[begin], length);
+    }
+
+    constexpr std::span<EntityID const> GetNodeEntities(NodeID nodeID) noexcept
+    {
+      auto const& segment = m_nodeEntities[nodeID];
+      return { &m_entityStorage[segment.first], segment.second - segment.first };
+    }
+
+    constexpr decltype(auto) GetNodeCenter(NodeID nodeID) const noexcept { return m_nodeCenters[nodeID]; }
+
+    constexpr decltype(auto) GetNodeHalfSize(NodeID nodeID) const noexcept { return Base::m_nodeLooseSizes[m_nodeDepthIDs[nodeID] + 1]; }
+
+  private: // Build
+    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
+    {
+      Base::InitBase(boxSpace, maxDepthID, maxElementNo);
+
+      ORTHOTREE_CRASH_IF(
+        !this->m_nodes.empty(), "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
+
+      m_nodeDepthIDs.emplace_back();
+      m_nodeCenters.push_back(IGM::GetBoxCenter(boxSpace));
+      m_nodeChildSegments.emplace_back({});
+      m_nodeEntities.emplace_back();
+    }
+    /*
+    using LocationIterator = typename detail::zip_view<std::vector<typename SI::Location>, std::span<EntityID>>::iterator;
+
+    struct NodeProcessingData
+    {
+      std::pair<NodeID, Node> NodeInstance;
+      LocationIterator EndLocationIt;
     };
+    template<bool ARE_LOCATIONS_SORTED>
+    constexpr void ProcessNode(depth_t depthID, LocationIterator& locationIt, NodeProcessingData& nodeProcessingData)
+    {
+      auto& [node, endLocationIt] = nodeProcessingData;
+
+      auto const subtreeEntityNum = detail::size(locationIt, endLocationIt);
+      if (subtreeEntityNum == 0)
+        return;
+
+      auto nodeEntityNum = subtreeEntityNum;
+      auto stuckedEndLocationIt = endLocationIt;
+      if (subtreeEntityNum > Base::m_maxElementNum && depthID < Base::m_maxDepthID)
+      {
+        if constexpr (ARE_LOCATIONS_SORTED)
+        {
+          stuckedEndLocationIt =
+            std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+        }
+        else
+        {
+          stuckedEndLocationIt =
+            std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+        }
+
+        nodeEntityNum = std::size_t(std::distance(locationIt, stuckedEndLocationIt));
+      }
+
+      if (nodeEntityNum == 0)
+        return;
+
+      node.second.ReplaceEntities(std::span(locationIt.GetSecond(), stuckedEndLocationIt.GetSecond()));
+      locationIt += nodeEntityNum;
+    }
+
+    template<bool ARE_LOCATIONS_SORTED>
+    constexpr void CreateProcessingData(
+      depth_t examinedLevelID,
+      SI::ChildKeyGenerator const& keyGenerator,
+      LocationIterator const& locationIt,
+      NodeProcessingData& parentNodeProcessingData,
+      NodeProcessingData& nodeProcessingData) const noexcept
+    {
+      auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, (*locationIt).GetFirst().locationID);
+      auto const childID = childChecker.GetChildID(examinedLevelID);
+      auto childKey = keyGenerator.GetChildNodeKey(childID);
+
+      parentNodeProcessingData.NodeInstance.second.AddChild(childID, childKey);
+      if constexpr (ARE_LOCATIONS_SORTED)
+      {
+        nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
+          return childChecker.Test(location.GetFirst().locationID);
+        });
+      }
+      else
+      {
+        nodeProcessingData.EndLocationIt = std::partition(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
+          return childChecker.Test(location.GetFirst().locationID);
+        });
+      }
+
+      nodeProcessingData.NodeInstance.second = CreateChild(parentNodeProcessingData.NodeInstance.second, childKey);
+      nodeProcessingData.NodeInstance.first = std::move(childKey);
+    }
+    */
+
+  private:
+    static constexpr void IncreaseChildSegmentLength(NodeID nodeID) noexcept
+    {
+      constexpr ChildNodeSegment shift = GA::DIMENSION_NO <= 6 ? 26 : (64 - GA::DIMENSION_NO);
+      constexpr ChildNodeSegment beginMask = GA::DIMENSION_NO <= 6 ? ChildNodeSegment(0x02FFFFFF) : ChildNodeSegment((1ull << shift) - 1ull);
+
+      uint32_t begin = m_nodeChildSegments[nodeID] & beginMask;
+      m_nodeChildSegments[nodeID] = (++(m_nodeChildSegments[nodeID] >> shift)) << shift | begin;
+    }
+
+    template<bool IS_ROOT>
+    constexpr NodeID AttachNode(SI::Location location, uint32_t beginID, uint32_t length, NodeID parentNodeID)
+    {
+      auto const nodeID = static_cast<NodeID>(m_nodeChildSegments.size());
+      m_nodeDepthIDs.emplace_back(location.GetDepthID());
+      m_nodeEntities.emplace_back(beginID, length);
+      m_nodeCenters.emplace_back(CalculateNodeCenter(location));
+      return nodeID;
+    }
+
+    // Build the tree in depth-first order
+    template<bool ARE_LOCATIONS_SORTED, typename TResulEntityContainerView>
+    constexpr void BuildSubtree(auto const& rootBeginLocationIt, auto const& rootEndLocationIt, NodeID rootNodeID) noexcept
+    { /*
+      using LocationIterator = typename detail::zip_view<std::vector<typename SI::Location>, std::span<EntityID>>::iterator;
+
+      struct NodeProcessingData
+      {
+        SI::Location location;
+        NodeID parentNodeID;
+        uint32_t beginID = 0, length = 0;
+      };
+
+      uint32_t nonLeafNodeCount = 0;
+      std::array<std::vector<NodeID>, SI::MAX_THEORETICAL_DEPTH> childNodeIDOnLevels;
+      std::vector<uint8_t> childSegmentLengths;
+
+      constexpr NodeID kInvalidNodeID = -1;
+      auto nodeQueue = std::vector<NodeProcessingData>(64);
+      nodeQueue[0] = NodeProcessingData{, kInvalidNodeID, 0 };
+
+      auto locationIt = rootBeginLocationIt;
+      while (!nodeQueue.empty())
+      {
+        auto& [location, parentNodeID, beginID, nodeEntityCount] = nodeQueue.back();
+        nodeQueue.pop_back();
+
+        auto const depthID = location.GetDepthID();
+        if (nodeEntityCount <= Base::m_maxElementNum || depthID < Base::m_maxDepthID)
+        {
+          auto nodeID = AttachNode(location, beginID, nodeEntityCount);
+          childNodeIDOnLevels[m_nodeDepthIDs[parentNodeID]].push_back(nodeID);
+          ++childSegmentLengths[parentNodeID];
+          // TODO: CalculateGeometry(location)
+          continue;
+        }
+
+        auto nodeEntityNum = subtreeEntityNum;
+        auto stuckedEndLocationIt = endLocationIt;
+        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+        {
+          if constexpr (ARE_LOCATIONS_SORTED)
+          {
+            stuckedEndLocationIt =
+              std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+          }
+          else
+          {
+            stuckedEndLocationIt =
+              std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+          }
+
+          nodeEntityNum = detail::size<uint32_t>(locationIt, stuckedEndLocationIt));
+
+          if (nodeEntityNum > 0)
+          {
+            // TODO: create node
+            m_nodeEntities.push_back({ detail::size<uint32_t>(rootBeginLocationIt.GetSecond(), locationIt.GetSecond()), nodeEntityNum });
+          }
+        }
+
+        if (nodeEntityNum == 0)
+          return;
+
+        node.second.ReplaceEntities(std::span(locationIt.GetSecond(), stuckedEndLocationIt.GetSecond()));
+        locationIt += nodeEntityNum;
+
+        auto const isEntitesProcessed = locationIt == nodeStack[depthID].EndLocationIt;
+
+        if (isEntitesProcessed || depthID == Base::m_maxDepthID)
+        {
+          detail::emplace(nodes, std::move(nodeStack[depthID].NodeInstance));
+          --depthID;
+          continue;
+        }
+
+        ++depthID;
+        auto const examinedLevelID = GetExaminationLevelID(depthID);
+        auto const keyGenerator = typename SI::ChildKeyGenerator(nodeStack[depthID - 1].NodeInstance.first);
+        auto pivotLocationIt = locationIt;
+        while ()
+        {
+          auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, (*locationIt).GetFirst().locationID);
+          auto const childID = childChecker.GetChildID(examinedLevelID);
+          auto childKey = keyGenerator.GetChildNodeKey(childID);
+
+          if constexpr (ARE_LOCATIONS_SORTED)
+          {
+            nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
+              return childChecker.Test(location.GetFirst().locationID);
+            });
+          }
+          else
+          {
+            nodeProcessingData.EndLocationIt = std::partition(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
+              return childChecker.Test(location.GetFirst().locationID);
+            });
+          }
+
+          nodeProcessingData.NodeInstance.second = CreateChild(parentNodeProcessingData.NodeInstance.second, childKey);
+          nodeProcessingData.NodeInstance.first = std::move(childKey);
+        }
+      }
+
+      // flattening child segment lengths into m_nodeChildIDs
+      m_nodeChildSegments.resize(nonLeafNodeCount);
+      m_nodeChildIDs.resize(0);
+      for (auto depthID = depth_t{ 0 }; depthID < childNodeIDOnLevels.size(); ++depthID)
+      {
+        auto& childNodeIDs = childNodeIDOnLevels[depthID];
+        auto it = childNodeIDOnLevels[depthID].begin();
+
+        std::copy()
+        for (auto const childNodeID : childNodeIDs)
+        {
+          auto const parentNodeID = m_nodeDepthIDs[childNodeID] - 1;
+          IncreaseChildSegmentLength(parentNodeID);
+        }
+      }
+      */
+    }
+
+  public: // Create
+    // Create
+    template<bool IS_PARALLEL_EXEC = false, bool ARE_ENTITIES_SURELY_IN_MODELSPACE = false>
+    bool Create(
+      EntityContainerView entities,
+      std::optional<depth_t> maxDepthIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNumInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+    {
+      typename IGM::Box boxSpace;
+      if (boxSpaceOptional)
+        boxSpace = IGM::GetBoxAD(*boxSpaceOptional);
+      else
+      {
+        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+        {
+          boxSpace = IGM::GetBoxOfPointsAD(entities);
+        }
+        else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+        {
+          boxSpace = IGM::GetBoxOfBoxesAD(entities);
+        }
+        else
+        {
+          static_assert(false, "Unsupported geometry type!");
+        }
+      }
+
+      auto const entityNum = entities.size();
+      auto const maxDepthID = (!maxDepthIn || maxDepthIn == depth_t{})
+                              ? detail::EstimateMaxDepth<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNum, maxElementNumInNode)
+                              : *maxDepthIn;
+      InitBase(boxSpace, maxDepthID, maxElementNumInNode, entityNum);
+
+      if (entityNum == 0)
+        return true;
+
+      auto mortonIDs = std::vector<typename SI::Location>(entityNum);
+      m_entityStorage.resize(entityNum);
+
+      auto locationsZip = detail::zip_view(mortonIDs, m_entityStorage);
+      using Location = decltype(locationsZip)::iterator::value_type;
+
+      EXEC_POL_DEF(epf); // GCC 11.3
+      std::transform(EXEC_POL_ADD(epf) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> Location {
+        return { GetLocation<ARE_ENTITIES_SURELY_IN_MODELSPACE>(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+      });
+
+      // TODO: out-of-space handling //!ATT
+
+      constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
+      if constexpr (ARE_LOCATIONS_SORTED)
+      {
+        EXEC_POL_DEF(eps); // GCC 11.3
+        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), locationsZip.end(), [](Location const& l, Location const& r) {
+          return SI::IsLess(l.first, r.first);
+        });
+      }
+
+      auto const estimatedNodeNum = detail::EstimateNodeNumber<GA::DIMENSION_NO>(entityNum, maxDepthID, maxElementNumInNode);
+      m_nodeChildSegments.reserve(estimatedNodeNum);
+      m_nodeChildIDs.reserve(estimatedNodeNum);
+      m_nodeDepthIDs.reserve(estimatedNodeNum);
+      m_nodeCenters.reserve(estimatedNodeNum);
+      m_nodeEntities.reserve(estimatedNodeNum);
+
+      BuildSubtree<ARE_LOCATIONS_SORTED>(locationsZip.begin(), locationsZip.end(), GetRootNodeID());
+      return true;
+    }
+
+  public: // Create
+    // Create
+    template<bool IS_PARALLEL_EXEC = false>
+    static bool Create(
+      StaticLinearOrthoTreeCore& tree,
+      EntityContainerView entities,
+      std::optional<depth_t> maxDepthIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+    {
+      return tree.Create<IS_PARALLEL_EXEC>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode);
+    }
+  };
+
+
+  // Non-owning ortho-tree with dynamic storage for changing datasets.
+  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  class DynamicHashOrthoTreeCore : public OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>
+  {
+  public:
+    using Base = OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>;
+    ORTHOTREE_DEPENDENT_TYPES(Base);
+
+  public:
+    using NodeID = typename SI::NodeID;
+    using NodeIDCR = typename SI::NodeIDCR;
+
+    // TODO: remove
+    // using MortonLocationID = typename SI::LocationID;
+    // using MortonLocationIDCR = typename SI::LocationIDCR;
+    // using MortonChildID = typename SI::ChildID;
+
+    using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, NodeID, typename SI::ChildID, EntityID, typename IGM::Vector>;
+    using NodeValue = std::pair<NodeID const, Node>;
+    using NodeValueCP = std::pair<NodeID const, Node> const*;
+
 
 #ifdef ORTHOTREE_IS_PMR_USED
     template<typename TData>
-    using LinearNodeContainer = std::pmr::unordered_map<MortonNodeID, TData>;
+    using LinearNodeContainer = std::pmr::unordered_map<NodeID, TData>;
 
     template<typename TData>
-    using NonLinearNodeContainer = std::pmr::map<MortonNodeID, TData, bitset_arithmetic_compare>;
+    using NonLinearNodeContainer = std::pmr::map<NodeID, TData, bitset_arithmetic_compare>;
 #else
     template<typename TData>
-    using LinearNodeContainer = typename CONFIG::LinearNodeContainer<MortonNodeID, TData, std::hash<MortonNodeID>>;
+    using LinearNodeContainer = typename CONFIG::LinearNodeContainer<NodeID, TData, std::hash<NodeID>>;
 
     template<typename TData>
-    using NonLinearNodeContainer = std::map<MortonNodeID, TData, bitset_arithmetic_compare>;
+    using NonLinearNodeContainer = std::map<NodeID, TData, bitset_arithmetic_compare>;
 #endif // ORTHOTREE_IS_PMR_USED
 
     template<typename TData>
@@ -488,39 +1029,70 @@ namespace OrthoTree
 #else
     NodeContainer<Node> m_nodes;
 #endif
+
     // TODO: add element indexing in nodes
-    using ReverseMapType = typename CONFIG::ReverseMap<EntityID, MortonNodeID, typename EA::Hash>;
+    // TODO: using ReverseMapType = typename CONFIG::ReverseMap<EntityID, NodeID, typename EA::Hash>;
+    using ReverseMapType = typename std::unordered_map<EntityID, NodeID, typename EA::Hash>;
     using ReverseMap = std::conditional_t<CONFIG::USE_REVERSE_MAPPING, ReverseMapType, std::monostate>;
     ReverseMap m_reverseMap;
 
     detail::MemoryResource<EntityID> m_memoryResource;
 
-    std::size_t m_maxElementNo = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
-    depth_t m_maxDepthID = {};
-
-    std::vector<typename IGM::Vector> m_nodeLooseSizes;
-    std::vector<typename IGM::Vector> m_nodeNominalSizes;
-
-    detail::GridSpaceIndexing<GA> m_grid;
-
   public: // Constructors
     // Default constructor. Requires InitBase call before usage.
-    constexpr OrthoTreeBase() = default;
+    constexpr DynamicHashOrthoTreeCore() = default;
 
-    OrthoTreeBase(OrthoTreeBase&&) = default;
+    constexpr DynamicHashOrthoTreeCore(DynamicHashOrthoTreeCore&&) = default;
 
-    OrthoTreeBase(OrthoTreeBase const& other)
+    // Initialize the base octree structure
+    constexpr DynamicHashOrthoTreeCore(
+      TBox const& boxSpace,
+      depth_t maxDepthID,
+      std::size_t maxElementNo = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      std::size_t estimatedEntityNo = detail::MemoryResource<EntityID>::DEFAULT_PAGE_SIZE) noexcept
+    {
+      this->InitBase(IGM::GetBoxAD(boxSpace), maxDepthID, maxElementNo, estimatedEntityNo);
+    }
+
+    // Initialize the base octree structure with entity collection
+    explicit DynamicHashOrthoTreeCore(
+      EntityContainerView entities,
+      std::optional<depth_t> maxDepthIDIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      bool isParallelExec = false) noexcept
+    {
+      auto isSuccessfullyInsertedAllElements = false;
+      if (isParallelExec)
+        isSuccessfullyInsertedAllElements = Create<true>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      else
+        isSuccessfullyInsertedAllElements = Create<false>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+
+      assert(isSuccessfullyInsertedAllElements);
+    }
+
+    // Initialize the base octree structure with entity collection and parallel tree-building option
+    template<typename EXEC_TAG>
+    DynamicHashOrthoTreeCore(
+      EXEC_TAG,
+      EntityContainerView entities,
+      std::optional<depth_t> maxDepthIDIn = std::nullopt,
+      std::optional<TBox> boxSpaceOptional = std::nullopt,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+    {
+      auto isSuccessfullyInsertedAllElements =
+        Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      assert(isSuccessfullyInsertedAllElements);
+    }
+
+    DynamicHashOrthoTreeCore(DynamicHashOrthoTreeCore const& other)
+    : Base(other)
 #ifdef ORTHOTREE_IS_PMR_USED
-    : m_umrNodes()
+    , m_umrNodes()
     , m_nodes(&m_umrNodes)
 #else
     : m_nodes(other.m_nodes)
 #endif
-    , m_maxElementNo(other.m_maxElementNo)
-    , m_maxDepthID(other.m_maxDepthID)
-    , m_nodeNominalSizes(other.m_nodeNominalSizes)
-    , m_nodeLooseSizes(other.m_nodeLooseSizes)
-    , m_grid(other.m_grid)
     {
 #ifdef ORTHOTREE_IS_PMR_USED
       m_nodes = other.m_nodes;
@@ -536,13 +1108,13 @@ namespace OrthoTree
       other.m_memoryResource.Clone(m_memoryResource, segments);
     }
 
-    OrthoTreeBase& operator=(OrthoTreeBase const& other)
+    DynamicHashOrthoTreeCore& operator=(DynamicHashOrthoTreeCore const& other)
     {
-      m_maxElementNo = other.m_maxElementNo;
-      m_maxDepthID = other.m_maxDepthID;
-      m_nodeNominalSizes = other.m_nodeNominalSizes;
-      m_nodeLooseSizes = other.m_nodeLooseSizes;
-      m_grid = other.m_grid;
+      if (this == &other)
+        return *this;
+
+      Base::operator=(other);
+
       m_nodes = other.m_nodes;
 
       // using MR = detail::MemoryResource<EntityID>;
@@ -557,53 +1129,166 @@ namespace OrthoTree
       return *this;
     }
 
-    // Initialize the base octree structure
-    constexpr OrthoTreeBase(
-      TBox const& boxSpace,
-      depth_t maxDepthID,
-      std::size_t maxElementNo = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      std::size_t estimatedEntityNo = detail::MemoryResource<EntityID>::DEFAULT_PAGE_SIZE) noexcept
+
+  public: // Node helpers
+    constexpr auto const& GetNodes() const noexcept { return m_nodes; }
+    constexpr std::size_t GetNodeCount() const noexcept { return m_nodes.size(); }
+    bool HasNode(NodeIDCR key) const noexcept { return m_nodes.contains(key); }
+    static NodeID GetRootNodeID() noexcept { return SI::GetRootKey(); }
+    auto const& GetNode(NodeIDCR key) const noexcept { return m_nodes.at(key); }
+
+    NodeValueCP GetNodeValueP(NodeIDCR nodeID) const noexcept { return &(*m_nodes.find(nodeID)); }
+    NodeValueCP GetRootNodeValue() const noexcept { return GetNodeValueP(SI::GetRootKey()); }
+
+
+    // Get EntityIDs of the node
+    constexpr auto const& GetNodeEntities(Node const& node) const noexcept { return node.GetEntities(); }
+
+    // Get EntityIDs of the node
+    constexpr auto const& GetNodeEntities(NodeIDCR nodeKey) const noexcept { return GetNodeEntities(GetNode(nodeKey)); }
+
+    // Get EntityIDs of the node
+    constexpr auto const& GetNodeEntities(NodeValueCP pNodeValue) const noexcept { return pNodeValue->second.GetEntities(); }
+
+    // Get EntityIDs number of the node
+    constexpr std::size_t GetNodeEntityCount(Node const& node) const noexcept { return node.GetEntitiesSize(); }
+    constexpr std::size_t GetNodeEntityCount(NodeValueCP nodeValue) const noexcept { return nodeValue->second.GetEntitiesSize(); }
+
+    // Get EntityIDs number of the node
+    constexpr std::size_t GetNodeEntityCount(NodeIDCR nodeKey) const noexcept { return GetNodeEntityCount(GetNode(nodeKey)); }
+
+    // Is the node has any entity
+    constexpr bool IsNodeEntitiesEmpty(Node const& node) const noexcept { return node.IsEntitiesEmpty(); }
+
+    // Is the node has any entity
+    constexpr bool IsNodeEntitiesEmpty(NodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNode(nodeKey)); }
+
+    // Calculate extent by box of the tree and the nodeID of the node
+    constexpr IGM::Vector CalculateNodeCenter(NodeIDCR key) const noexcept
     {
-      this->InitBase(IGM::GetBoxAD(boxSpace), maxDepthID, maxElementNo, estimatedEntityNo);
+      return Base::m_grid.CalculateGridCellCenter(SI::Decode(key, Base::m_maxDepthID), Base::m_maxDepthID - SI::GetDepthID(key));
     }
 
-    // Initialize the base octree structure with entity collection
-    explicit OrthoTreeBase(
-      EntityContainerView entities,
-      std::optional<depth_t> maxDepthIDIn = std::nullopt,
-      std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      bool isParallelExec = false) noexcept
+    constexpr decltype(auto) GetNodeCenter(NodeValueCP pNodeValue) const noexcept
     {
-      auto isSuccessfullyInsertedAllElements = false;
-      if (isParallelExec)
-        isSuccessfullyInsertedAllElements = this->template Create<true>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
-      else
-        isSuccessfullyInsertedAllElements = this->template Create<false>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
-
-      assert(isSuccessfullyInsertedAllElements);
+#ifdef ORTHOTREE__DISABLED_NODECENTER
+      return CalculateNodeCenter(pNodeValue->first);
+#else
+      return pNodeValue->second.GetCenter();
+#endif // ORTHOTREE__DISABLED_NODECENTER
     }
 
-    // Initialize the base octree structure with entity collection and parallel tree-building option
-    template<typename EXEC_TAG>
-    OrthoTreeBase(
-      EXEC_TAG,
-      EntityContainerView entities,
-      std::optional<depth_t> maxDepthIDIn = std::nullopt,
-      std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+    // Obsolete
+    constexpr decltype(auto) GetNodeCenter(NodeIDCR nodeID) const noexcept
     {
-      auto isSuccessfullyInsertedAllElements =
-        this->template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
-      assert(isSuccessfullyInsertedAllElements);
+#ifdef ORTHOTREE__DISABLED_NODECENTER
+      return CalculateNodeCenter(nodeID);
+#else
+      return GetNode(nodeID).GetCenter();
+#endif // ORTHOTREE__DISABLED_NODECENTER
     }
+
+    constexpr decltype(auto) GetNodeHalfSize(NodeValueCP pNodeValue) const noexcept
+    {
+      auto const depthID = SI::GetDepthID(pNodeValue->first) + 1;
+
+#ifdef ORTHOTREE__DISABLED_NODESIZE
+      return CalculateNodeSize(depthID);
+#else
+      return Base::m_nodeLooseSizes[depthID];
+#endif // ORTHOTREE__DISABLED_NODESIZE
+    }
+
+
+    constexpr decltype(auto) GetNodeChildren(NodeValueCP pNodeValue) const noexcept { return pNodeValue->second.GetChildren(); }
+
+    constexpr IGM::Box GetNodeBox(NodeValueCP pNodeValue) const noexcept
+    {
+      return GetNodeBox(SI::GetDepthID(pNodeValue->first), GetNodeCenter(pNodeValue));
+    }
+
+  protected:
+    constexpr void AddNodeEntity(Node& node, EntityID newEntity) noexcept
+    {
+      m_memoryResource.IncreaseSegment(node.GetEntitySegment(), 1);
+      node.GetEntities().back() = std::move(newEntity);
+    }
+
+    constexpr bool RemoveNodeEntity(Node& node, EntityID entity) noexcept
+    {
+      auto const isRemoved = node.RemoveEntity(entity);
+      if (isRemoved)
+        m_memoryResource.DecreaseSegment(node.GetEntitySegment(), 1);
+
+      return isRemoved;
+    }
+
+    constexpr void ResizeNodeEntities(Node& node, std::size_t size) noexcept
+    {
+      auto& ms = node.GetEntitySegment();
+      m_memoryResource.DecreaseSegment(ms, ms.segment.size() - size);
+    }
+
+    constexpr Node CreateChild([[maybe_unused]] Node const& parentNode, NodeIDCR childKey) const noexcept
+    {
+#ifdef ORTHOTREE__DISABLED_NODECENTER
+      return Node();
+#else
+      auto nodeChild = Node();
+
+      auto const depthID = SI::GetDepthID(childKey);
+      auto const& halfSizes = Base::m_nodeNominalSizes[depthID + 1];
+      auto const& parentCenter = parentNode.GetCenter();
+
+      typename IGM::Vector childCenter;
+      ORTHOTREE_LOOPIVDEP
+      for (dim_t dimensionID = 0; dimensionID < GA::DIMENSION_NO; ++dimensionID)
+      {
+        auto const isGreater = SI::IsChildInGreaterSegment(childKey, dimensionID);
+        auto const sign = IGM_Geometry(isGreater * 2 - 1);
+        childCenter[dimensionID] = parentCenter[dimensionID] + sign * halfSizes[dimensionID];
+      }
+
+      nodeChild.SetCenter(std::move(childCenter));
+      return nodeChild;
+#endif // ORTHOTREE__DISABLED_NODECENTER
+    }
+
 
   private:
+    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
+    {
+      Base::InitBase(boxSpace, maxDepthID, maxElementNo);
+
+      ORTHOTREE_CRASH_IF(
+        !this->m_nodes.empty(), "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
+
+
+#ifndef ORTHOTREE__DISABLED_NODECENTER
+      auto& nodeRoot = m_nodes[SI::GetRootKey()];
+      nodeRoot.SetCenter(IGM::GetBoxCenter(boxSpace));
+#endif // !ORTHOTREE__DISABLED_NODECENTER
+
+      m_memoryResource.Init(estimatedEntityNo);
+    }
+
+  public: // Main service functions
+    // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
+    constexpr void Init(
+      TBox const& box,
+      depth_t maxDepthID,
+      std::size_t maxElementNo = 11,
+      std::size_t estimatedEntityNo = detail::MemoryResource<EntityID>::DEFAULT_PAGE_SIZE) noexcept
+    {
+      InitBase(IGM::GetBoxAD(box), maxDepthID, maxElementNo, estimatedEntityNo);
+    }
+
+  private: // Build
     using LocationIterator = typename detail::zip_view<std::vector<typename SI::Location>, std::span<EntityID>>::iterator;
 
     struct NodeProcessingData
     {
-      std::pair<MortonNodeID, Node> NodeInstance;
+      std::pair<NodeID, Node> NodeInstance;
       LocationIterator EndLocationIt;
     };
     template<bool ARE_LOCATIONS_SORTED>
@@ -617,7 +1302,7 @@ namespace OrthoTree
 
       auto nodeEntityNo = subtreeEntityNo;
       auto stuckedEndLocationIt = endLocationIt;
-      if (subtreeEntityNo > this->m_maxElementNo && depthID < this->m_maxDepthID)
+      if (subtreeEntityNo > this->Base::m_maxElementNum && depthID < Base::m_maxDepthID)
       {
         if constexpr (ARE_LOCATIONS_SORTED)
         {
@@ -675,7 +1360,7 @@ namespace OrthoTree
     constexpr void BuildSubtree(
       LocationIterator const& rootBeginLocationIt,
       LocationIterator const& rootEndLocationIt,
-      std::pair<MortonNodeID, Node> const& rootNode,
+      std::pair<NodeID, Node> const& rootNode,
       TResulEntityContainerView& nodes) noexcept
     {
       auto nodeStack = std::vector<NodeProcessingData>(this->GetDepthNo());
@@ -692,7 +1377,7 @@ namespace OrthoTree
 
         auto const isEntitesProcessed = locationIt == nodeStack[depthID].EndLocationIt;
 
-        if (isEntitesProcessed || depthID == this->m_maxDepthID)
+        if (isEntitesProcessed || depthID == Base::m_maxDepthID)
         {
           detail::emplace(nodes, std::move(nodeStack[depthID].NodeInstance));
           --depthID;
@@ -735,7 +1420,9 @@ namespace OrthoTree
       }
 
       auto const entityNo = entities.size();
-      auto const maxDepthID = (!maxDepthIn || maxDepthIn == depth_t{}) ? EstimateMaxDepth(entityNo, maxElementNoInNode) : *maxDepthIn;
+      auto const maxDepthID = (!maxDepthIn || maxDepthIn == depth_t{})
+                              ? detail::EstimateMaxDepth<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, maxElementNoInNode)
+                              : *maxDepthIn;
       this->InitBase(boxSpace, maxDepthID, maxElementNoInNode, entityNo);
 
       if (entityNo == 0)
@@ -765,15 +1452,15 @@ namespace OrthoTree
 
       auto const rootNode = *this->m_nodes.begin();
       this->m_nodes.clear();
-      detail::reserve(this->m_nodes, EstimateNodeNumber(entityNo, maxDepthID, maxElementNoInNode));
-      this->template BuildSubtree<ARE_LOCATIONS_SORTED>(locationsZip.begin(), locationsZip.end(), rootNode, this->m_nodes);
+      detail::reserve(this->m_nodes, detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, maxDepthID, maxElementNoInNode));
+      BuildSubtree<ARE_LOCATIONS_SORTED>(locationsZip.begin(), locationsZip.end(), rootNode, this->m_nodes);
       return true;
     }
 
     // Create
     template<bool IS_PARALLEL_EXEC = false>
     static bool Create(
-      OrthoTreeBase& tree,
+      DynamicHashOrthoTreeCore& tree,
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
@@ -782,241 +1469,7 @@ namespace OrthoTree
       return tree.Create<IS_PARALLEL_EXEC>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode);
     }
 
-  public: // Node helpers
-          // Get EntityIDs of the node
-    constexpr auto const& GetNodeEntities(Node const& node) const noexcept { return node.GetEntities(); }
-
-    // Get EntityIDs of the node
-    constexpr auto const& GetNodeEntities(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntities(GetNode(nodeKey)); }
-
-    // Get EntityIDs of the node
-    constexpr auto const& GetNodeEntities(NodeValueCR nodeValue) const noexcept { return nodeValue.second.GetEntities(); }
-
-    // Get EntityIDs number of the node
-    constexpr std::size_t GetNodeEntitiesSize(Node const& node) const noexcept { return node.GetEntitiesSize(); }
-
-    // Get EntityIDs number of the node
-    constexpr std::size_t GetNodeEntitiesSize(MortonNodeIDCR nodeKey) const noexcept { return GetNodeEntitiesSize(GetNode(nodeKey)); }
-
-    // Is the node has any entity
-    constexpr bool IsNodeEntitiesEmpty(Node const& node) const noexcept { return node.IsEntitiesEmpty(); }
-
-    // Is the node has any entity
-    constexpr bool IsNodeEntitiesEmpty(MortonNodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNode(nodeKey)); }
-
-    // Calculate extent by box of the tree and the nodeID of the node
-    constexpr IGM::Vector CalculateNodeCenter(MortonNodeIDCR key) const noexcept
-    {
-      return m_grid.CalculateGridCellCenter(SI::Decode(key, m_maxDepthID), m_maxDepthID - SI::GetDepthID(key));
-    }
-
-    constexpr decltype(auto) GetNodeCenter(NodeValueCR nodeValue) const noexcept
-    {
-#ifdef ORTHOTREE__DISABLED_NODECENTER
-      return CalculateNodeCenter(nodeValue.first);
-#else
-      return nodeValue.second.GetCenter();
-#endif // ORTHOTREE__DISABLED_NODECENTER
-    }
-
-    // Obsolete
-    constexpr decltype(auto) GetNodeCenter(MortonNodeIDCR nodeID) const noexcept
-    {
-#ifdef ORTHOTREE__DISABLED_NODECENTER
-      return CalculateNodeCenter(nodeID);
-#else
-      return GetNode(nodeID).GetCenter();
-#endif // ORTHOTREE__DISABLED_NODECENTER
-    }
-
-    constexpr decltype(auto) GetNodeHalfSize(NodeValueCR nodeValue) const noexcept
-    {
-      auto const depthID = SI::GetDepthID(nodeValue.first) + 1;
-
-#ifdef ORTHOTREE__DISABLED_NODESIZE
-      return CalculateNodeSize(depthID);
-#else
-      return m_nodeLooseSizes[depthID];
-#endif // ORTHOTREE__DISABLED_NODESIZE
-    }
-
-    constexpr decltype(auto) GetNodeHalfSize(MortonNodeIDCR nodeID) const noexcept { return GetNodeHalfSize(GetNodeValue(nodeID)); }
-
-    constexpr IGM::Box GetNodeBox(depth_t depthID, IGM::Vector const& center) const noexcept
-    {
-      depth_t const halfSizeDepthID = depthID + 1;
-#ifdef ORTHOTREE__DISABLED_NODESIZE
-      auto const halfSize = CalculateNodeSize(halfSizeDepthID);
-#else
-      auto const& halfSize = m_nodeLooseSizes[halfSizeDepthID];
-#endif // ORTHOTREE__DISABLED_NODESIZE
-
-      typename IGM::Box box{ .Min = center, .Max = center };
-
-      ORTHOTREE_LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        box.Min[dimensionID] -= halfSize[dimensionID];
-        box.Max[dimensionID] += halfSize[dimensionID];
-      }
-
-      return box;
-    }
-
-    constexpr decltype(auto) GetNodeChildren(NodeValueCR nodeValue) const noexcept { return nodeValue.second.GetChildren(); }
-
-    constexpr IGM::Box GetNodeBox(NodeValueCR nodeValue) const noexcept
-    {
-      return GetNodeBox(SI::GetDepthID(nodeValue.first), GetNodeCenter(nodeValue));
-    }
-
-  protected:
-    constexpr void AddNodeEntity(Node& node, EntityID newEntity) noexcept
-    {
-      m_memoryResource.IncreaseSegment(node.GetEntitySegment(), 1);
-      node.GetEntities().back() = std::move(newEntity);
-    }
-
-    constexpr bool RemoveNodeEntity(Node& node, EntityID entity) noexcept
-    {
-      auto const isRemoved = node.RemoveEntity(entity);
-      if (isRemoved)
-        m_memoryResource.DecreaseSegment(node.GetEntitySegment(), 1);
-
-      return isRemoved;
-    }
-
-    constexpr void ResizeNodeEntities(Node& node, std::size_t size) noexcept
-    {
-      auto& ms = node.GetEntitySegment();
-      m_memoryResource.DecreaseSegment(ms, ms.segment.size() - size);
-    }
-
-    constexpr Node CreateChild([[maybe_unused]] Node const& parentNode, MortonNodeIDCR childKey) const noexcept
-    {
-#ifdef ORTHOTREE__DISABLED_NODECENTER
-      return Node();
-#else
-      auto nodeChild = Node();
-
-      auto const depthID = SI::GetDepthID(childKey);
-      auto const& halfSizes = m_nodeNominalSizes[depthID + 1];
-      auto const& parentCenter = parentNode.GetCenter();
-
-      typename IGM::Vector childCenter;
-      ORTHOTREE_LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        auto const isGreater = SI::IsChildInGreaterSegment(childKey, dimensionID);
-        auto const sign = IGM_Geometry(isGreater * 2 - 1);
-        childCenter[dimensionID] = parentCenter[dimensionID] + sign * halfSizes[dimensionID];
-      }
-
-      nodeChild.SetCenter(std::move(childCenter));
-      return nodeChild;
-#endif // ORTHOTREE__DISABLED_NODECENTER
-    }
-
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr SI::Location GetLocation(TVector const& point) const noexcept
-    {
-      // TODO: handle out-of-tree geometry
-      return SI::GetLocation(SI::Encode(this->m_grid.template GetPointGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(point)), this->m_maxDepthID);
-    }
-
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    constexpr SI::Location GetLocation(TBox const& box) const noexcept
-    {
-      // TODO: handle out-of-tree geometry
-
-      if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
-      {
-        auto const [centerGridID, levelID] = this->m_grid.template GetLooseBoxGridData<CONFIG::LOOSE_FACTOR, HANDLE_OUT_OF_TREE_GEOMETRY>(box);
-        return SI::GetLocation(SI::Encode(centerGridID), m_maxDepthID - levelID);
-      }
-      else
-      {
-        return SI::GetRangeLocation(this->m_grid.template GetBoxGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(box), this->m_maxDepthID);
-      }
-    }
-
-  public:
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    MortonNodeID GetNodeID(TVector const& point) const noexcept
-    {
-      auto locationID = SI::Encode(this->m_grid.template GetPointGridID<HANDLE_OUT_OF_TREE_GEOMETRY>(point));
-      return SI::GetNodeID(locationID, m_maxDepthID);
-    }
-
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    MortonNodeID GetNodeID(TBox const& box) const noexcept
-    {
-      return SI::GetNodeID(this->GetLocation<HANDLE_OUT_OF_TREE_GEOMETRY>(box), m_maxDepthID);
-    }
-
-    constexpr depth_t GetExaminationLevelID(depth_t depth) const { return m_maxDepthID - depth; }
-
-  private:
-    auto FindParentNodeIt(MortonNodeIDCR nodeID)
-    {
-
-      for (auto parentNodeID = SI::GetParentKey(nodeID); SI::IsValidKey(parentNodeID); parentNodeID = SI::GetParentKey(parentNodeID))
-      {
-        auto parentNodeIt = m_nodes.find(parentNodeID);
-        if (parentNodeIt == m_nodes.end())
-          continue;
-
-        return parentNodeIt;
-      }
-
-      assert(false);
-      return m_nodes.find(SI::GetRootKey());
-    }
-
-    void RemoveNodeIfPossible(auto nodeIt) noexcept
-    {
-      while (true)
-      {
-        auto& [nodeID, node] = *nodeIt;
-        if (nodeID == SI::GetRootKey())
-          return;
-
-        if (node.IsAnyChildExist() || !IsNodeEntitiesEmpty(node))
-          return;
-
-        m_memoryResource.Deallocate(node.GetEntitySegment());
-        auto parentNodeIt = FindParentNodeIt(nodeID);
-
-        auto& [parentNodeID, parentNode] = *parentNodeIt;
-        parentNode.RemoveChild(SI::GetChildID2(parentNodeID, nodeID));
-        m_nodes.erase(nodeIt);
-
-        nodeIt = parentNodeIt;
-      }
-    }
-
-  protected:
-    bool IsGeometryInTree(EA::Geometry const& entityGeometry) const noexcept
-    {
-      if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
-      {
-        if (!IGM::DoesBoxContainPointAD(m_grid.GetBoxSpace(), entityGeometry))
-          return false;
-      }
-      else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
-      {
-        if (!IGM::DoesRangeContainBoxAD(m_grid.GetBoxSpace(), entityGeometry))
-          return false;
-      }
-      else
-      {
-        static_assert(false, "Unsupported geometry type!");
-      }
-
-      return false;
-    }
-
-  public:
+  public: // BulkInsert // TODO finish
     void BulkInsertV1(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
     {
       constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
@@ -1026,7 +1479,7 @@ namespace OrthoTree
       auto mortonIDs = std::vector<typename SI::Location>(entityNo);
       auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
       auto locationsZip = detail::zip_view(mortonIDs, mainMemorySegment.segment);
-      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, m_maxDepthID, m_maxElementNo));
+      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, Base::m_maxDepthID, Base::m_maxElementNum));
 
 
       using EntityLocation = decltype(locationsZip)::iterator::value_type;
@@ -1035,19 +1488,19 @@ namespace OrthoTree
         return { this->GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
       });
 
-      auto const partitions = Partitioning::Partition<std::min(dim_t(9), DIMENSION_NO * 3), IS_PARALLEL_EXEC>(
+      auto const partitions = Partitioning::Partition<std::min(dim_t(9), GA::DIMENSION_NO * 3), IS_PARALLEL_EXEC>(
         locationsZip.begin(),
         locationsZip.end(),
-        [](EntityLocation const& e) -> MortonNodeID { return e.first.locationID; },
-        m_maxElementNo,
-        m_maxDepthID* DIMENSION_NO);
+        [](EntityLocation const& e) -> NodeID { return e.first.locationID; },
+        Base::m_maxElementNum,
+        Base::m_maxDepthID* GA::DIMENSION_NO);
 
-      auto orphanNodes = std::vector<MortonNodeID>{};
+      auto orphanNodes = std::vector<NodeID>{};
       auto partitionIt = partitions.begin();
       for (auto beginIt = locationsZip.begin(); beginIt != locationsZip.end();)
       {
         /*
-        auto const possibleEndIt = beginIt + std::min(detail::size(beginIt, locationsZip.end()), m_maxElementNo);
+        auto const possibleEndIt = beginIt + std::min(detail::size(beginIt, locationsZip.end()), Base::m_maxElementNum);
         partitionIt =
           std::partition_point(partitionIt, partitions.end(), [possibleEndIt](auto partitionEndIt) { return partitionEndIt <= possibleEndIt; });
 
@@ -1059,8 +1512,8 @@ namespace OrthoTree
         // auto const [minIt, maxIt] =
         //   std::minmax_element(beginIt, endIt, [](EntityLocation const& l, EntityLocation const& r) { return SI::Less(l.first, r.first); });
         auto const [minIt, maxIt] = std::minmax_element(beginIt.GetFirst(), endIt.GetFirst(), SI::IsLess);
-        auto const minNodeID = SI::GetNodeID(*minIt, m_maxDepthID);
-        auto const maxNodeID = SI::GetNodeID(*maxIt, m_maxDepthID);
+        auto const minNodeID = SI::GetNodeID(*minIt, Base::m_maxDepthID);
+        auto const maxNodeID = SI::GetNodeID(*maxIt, Base::m_maxDepthID);
 
         auto nodeID = SI::GetLowestCommonAncestor(minNodeID, maxNodeID);
         auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
@@ -1120,7 +1573,7 @@ namespace OrthoTree
       auto mortonIDs = std::vector<typename SI::Location>(entityNo);
       auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
       auto locationsZip = detail::zip_view(mortonIDs, mainMemorySegment.segment);
-      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, m_maxDepthID, m_maxElementNo));
+      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, Base::m_maxDepthID, Base::m_maxElementNum));
 
 
       using EntityLocation = decltype(locationsZip)::iterator::value_type;
@@ -1129,24 +1582,24 @@ namespace OrthoTree
         return { this->GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
       });
 
-      auto orphanNodes = std::vector<MortonNodeID>{};
-      auto const maxElementNo = static_cast<uint32_t>(m_maxElementNo);
-      Partitioning::DepthFirstPartition<DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
+      auto orphanNodes = std::vector<NodeID>{};
+      auto const maxElementNo = static_cast<uint32_t>(Base::m_maxElementNum);
+      Partitioning::DepthFirstPartition<GA::DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
         EXEC_TAG,
         locationsZip.begin(),
         locationsZip.end(),
         SI::GetRootLocation(),
-        m_maxDepthID,
+        Base::m_maxDepthID,
         maxElementNo,
         [&](auto beginIt, auto endIt, auto location, bool isForcedToFinish) {
           auto const elementNum = detail::size(beginIt, endIt);
           if (elementNum == 0)
             return true;
 
-          if (!isForcedToFinish && elementNum > m_maxElementNo && location.depthID < m_maxDepthID)
+          if (!isForcedToFinish && elementNum > Base::m_maxElementNum && location.depthID < Base::m_maxDepthID)
             return false;
 
-          auto nodeID = SI::GetNodeID(location, m_maxDepthID);
+          auto nodeID = SI::GetNodeID(location, Base::m_maxDepthID);
           auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
           if (isInserted)
           {
@@ -1204,9 +1657,9 @@ namespace OrthoTree
 
       auto mortonIDs = std::vector<typename SI::Location>(entityNo);
       auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
-      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, m_maxDepthID, m_maxElementNo));
+      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, Base::m_maxDepthID, Base::m_maxElementNum));
 
-      auto orphanNodes = std::vector<MortonNodeID>{};
+      auto orphanNodes = std::vector<NodeID>{};
       for (auto const& entity : entities)
       {
         auto nodeID = this->GetNodeID(EA::GetGeometry(entity));
@@ -1256,46 +1709,102 @@ namespace OrthoTree
       }
     }
 
-    // Erase id, aided with the original geometry
-    bool Erase(EntityID entitiyID, EA::Geometry const& entityGeometry) noexcept
-    {
-      auto nodeID = this->FindSmallestNode(entityGeometry);
-      if (!SI::IsValidKey(nodeID))
-        return false; // old box is not in the handled space domain
 
-      for (; SI::IsValidKey(nodeID); nodeID = SI::GetParentKey(nodeID))
+  private:
+    auto FindParentNodeIt(NodeIDCR nodeID)
+    {
+
+      for (auto parentNodeID = SI::GetParentKey(nodeID); SI::IsValidKey(parentNodeID); parentNodeID = SI::GetParentKey(parentNodeID))
       {
-        auto nodeIt = this->m_nodes.find(nodeID);
-        if (nodeIt == this->m_nodes.end())
+        auto parentNodeIt = m_nodes.find(parentNodeID);
+        if (parentNodeIt == m_nodes.end())
           continue;
 
-        bool const isEntityRemoved = this->RemoveNodeEntity(nodeIt->second, entitiyID);
-        if (isEntityRemoved)
-        {
-          this->RemoveNodeIfPossible(nodeIt);
-          break;
-        }
+        return parentNodeIt;
       }
 
-      if (!SI::IsValidKey(nodeID))
-        return false; // id was not registered previously.
-
-      if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-      {
-        for (auto& [key, node] : this->m_nodes)
-          node.DecreaseEntityIDs(entitiyID);
-      }
-
-
-      return true;
+      assert(false);
+      return m_nodes.find(SI::GetRootKey());
     }
+
+    std::tuple<NodeID, depth_t> FindSmallestNodeKeyWithDepth(NodeID searchKey) const noexcept
+    {
+      for (depth_t depthID = SI::GetDepthID(searchKey); SI::IsValidKey(searchKey); searchKey = SI::GetParentKey(searchKey), --depthID)
+        if (this->m_nodes.contains(searchKey))
+          return { searchKey, depthID };
+
+      return {}; // Not found
+    }
+
+    auto GetParentNode(NodeID nodeID)
+    {
+      auto const endIt = this->m_nodes.end();
+      for (nodeID = SI::GetParentKey(nodeID); SI::IsValidKey(nodeID); nodeID = SI::GetParentKey(nodeID))
+      {
+        auto nodeIt = this->m_nodes.find(nodeID);
+        if (nodeIt != endIt)
+          return nodeIt;
+      }
+
+      return this->m_nodes.find(SI::GetRootKey());
+    }
+
+    NodeID FindSmallestNodeKey(NodeID searchKey) const noexcept
+    {
+      for (; SI::IsValidKey(searchKey); searchKey = SI::GetParentKey(searchKey))
+        if (this->m_nodes.contains(searchKey))
+          return searchKey;
+
+      return NodeID{}; // Not found
+    }
+
+    // Find smallest node which contains the box
+    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
+    NodeID FindSmallestNode(TVector const& searchPoint) const noexcept
+    {
+      if constexpr (!HANDLE_OUT_OF_TREE_GEOMETRY)
+      {
+        if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), searchPoint))
+          return NodeID{};
+      }
+      return this->FindSmallestNodeKey(this->GetNodeID<HANDLE_OUT_OF_TREE_GEOMETRY>(searchPoint));
+    }
+
+    // Find smallest node which contains the box
+    NodeID FindSmallestNode(TBox const& box) const noexcept
+    {
+      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), box))
+        return NodeID{};
+
+      return FindSmallestNodeKey(this->GetNodeID(box));
+    }
+
+    constexpr NodeID GetNodeIDByEntity(EntityID entityID) const noexcept
+    {
+      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+      {
+        auto const it = this->m_reverseMap.find(entityID);
+        return it != this->m_reverseMap.end();
+      }
+      else
+      {
+        auto const it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](auto const& keyAndValue) {
+          auto const& entities = GetNodeEntities(&keyAndValue);
+          return std::ranges::find(entities, entityID) != entities.end();
+        });
+        return it == m_nodes.end() ? NodeID{} : it->first;
+      }
+    }
+
+  public:
+    NodeID Find(EntityID entityID) const noexcept { return GetNodeIDByEntity(entityID); }
 
     bool IsEveryEntityUnique() const noexcept
     {
       auto ids = std::vector<EntityID>();
       ids.reserve(100);
       std::for_each(m_nodes.begin(), m_nodes.end(), [&](auto& nodeValue) {
-        auto const& entities = this->GetNodeEntities(nodeValue);
+        auto const& entities = GetNodeEntities(&nodeValue);
         ids.insert(ids.end(), entities.begin(), entities.end());
       });
 
@@ -1306,7 +1815,7 @@ namespace OrthoTree
 
     template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
     bool InsertWithRebalancingBase(
-      MortonNodeIDCR parentNodeKey, depth_t parentDepthID, SI::Location const& newEntityLocation, EntityID newEntityID, EntityContainerView entities) noexcept
+      NodeIDCR parentNodeKey, depth_t parentDepthID, SI::Location const& newEntityLocation, EntityID newEntityID, EntityContainerView entities) noexcept
     {
       // TODO: handle out-of-tree geometry
       // TODO: reverse mapping
@@ -1320,16 +1829,16 @@ namespace OrthoTree
 
 
       // If newEntityNodeKey is not the equal to the parentNodeKey, it is not exists.
-      auto const newEntityNodeKey = SI::GetNodeID(newEntityLocation, this->m_maxDepthID);
+      auto const newEntityNodeKey = SI::GetNodeID(newEntityLocation, Base::m_maxDepthID);
       auto const shouldInsertInParentNode = newEntityNodeKey == parentNodeKey;
 
       auto& parentNode = this->m_nodes.at(parentNodeKey);
       auto const cf = [&] {
-        if (parentDepthID == this->m_maxDepthID)
+        if (parentDepthID == Base::m_maxDepthID)
           return ControlFlow::InsertInParentNode;
         else if (parentNode.IsAnyChildExist() && !shouldInsertInParentNode) // !shouldInsertInParentNode means the entity's node not exist
           return ControlFlow::ShouldCreateOnlyOneChild; // If possible, entity should be placed in a leaf node, therefore if the parent node is not a leaf, a new child should be created.
-        else if (this->GetNodeEntitiesSize(parentNode) + 1 >= this->m_maxElementNo)
+        else if (this->GetNodeEntityCount(parentNode) + 1 >= this->Base::m_maxElementNum)
           return ControlFlow::FullRebalancing;
         else
           return ControlFlow::InsertInParentNode;
@@ -1339,7 +1848,7 @@ namespace OrthoTree
       {
       case ControlFlow::ShouldCreateOnlyOneChild: {
         auto const childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
-        auto const childID = SI::GetChildID(newEntityLocation.locationID, m_maxDepthID - parentDepthID);
+        auto const childID = SI::GetChildID(newEntityLocation.locationID, Base::m_maxDepthID - parentDepthID);
         assert(childID < SI::CHILD_NO);
         auto const childNodeKey = childGenerator.GetChildNodeKey(childID);
 
@@ -1355,7 +1864,7 @@ namespace OrthoTree
       case ControlFlow::FullRebalancing: {
         auto const childGenerator = typename SI::ChildKeyGenerator(parentNodeKey);
         this->AddNodeEntity(parentNode, newEntityID);
-        auto& parentEntities = this->GetNodeEntities(parentNode); // Box entities could be stuck in the parent node.
+        auto& parentEntities = GetNodeEntities(parentNode); // Box entities could be stuck in the parent node.
         auto parentEntitiesNo = parentEntities.size();
         for (std::size_t i = 0; i < parentEntitiesNo; ++i)
         {
@@ -1373,7 +1882,7 @@ namespace OrthoTree
             {
               // ShouldCreateOnlyOneChild supposes if newEntityNodeKey == parentNodeKey then parentNodeKey does not exist, therefore we need to find
               // the smallest smallestChildNodeKey which may not have the relevant child.
-              auto const entityNodeKey = SI::GetNodeID(entityLocation, this->m_maxDepthID);
+              auto const entityNodeKey = SI::GetNodeID(entityLocation, Base::m_maxDepthID);
               auto const& [smallestChildNodeKey, smallestChildDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
 
               this->template InsertWithRebalancingBase<false>(smallestChildNodeKey, smallestChildDepthID, entityLocation, entityID, entities);
@@ -1411,7 +1920,7 @@ namespace OrthoTree
     }
 
     template<bool DO_UNIQUENESS_CHECK_TO_INDICIES>
-    bool InsertWithoutRebalancingBase(MortonNodeIDCR existingParentNodeKey, MortonNodeIDCR entityNodeKey, EntityID entityID, bool doInsertToLeaf) noexcept
+    bool InsertWithoutRebalancingBase(NodeIDCR existingParentNodeKey, NodeIDCR entityNodeKey, EntityID entityID, bool doInsertToLeaf) noexcept
     {
       // TODO: handle out-of-tree geometry
       // TODO: reverse mapping
@@ -1426,7 +1935,7 @@ namespace OrthoTree
 
       if (doInsertToLeaf)
       {
-        auto nonExistingNodeStack = std::stack<MortonNodeID, std::vector<MortonNodeID>>{};
+        auto nonExistingNodeStack = std::stack<NodeID, std::vector<NodeID>>{};
         auto parentNodeKey = entityNodeKey;
         for (; parentNodeKey != existingParentNodeKey; parentNodeKey = SI::GetParentKey(nonExistingNodeStack.top()))
         {
@@ -1439,7 +1948,7 @@ namespace OrthoTree
         auto parentNodeIt = this->m_nodes.find(parentNodeKey);
         for (; !nonExistingNodeStack.empty(); nonExistingNodeStack.pop())
         {
-          MortonNodeIDCR newParentNodeKey = nonExistingNodeStack.top();
+          NodeIDCR newParentNodeKey = nonExistingNodeStack.top();
 
           [[maybe_unused]] bool isSuccessful = false;
           parentNodeIt->second.AddChild(SI::GetChildID(newParentNodeKey), newParentNodeKey);
@@ -1477,7 +1986,7 @@ namespace OrthoTree
     {
       // TODO: reverse mapping
 
-      if (!IsGeometryInTree(entityGeometry))
+      if (!Base::IsGeometryInTree(entityGeometry))
       {
         if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
         {
@@ -1490,7 +1999,7 @@ namespace OrthoTree
         }
       }
 
-      auto const entityNodeKey = GetNodeID(entityGeometry);
+      auto const entityNodeKey = Base::GetNodeID(entityGeometry);
       auto const smallestNodeKey = FindSmallestNodeKey(entityNodeKey);
       if (!SI::IsValidKey(smallestNodeKey))
         return false;
@@ -1501,7 +2010,7 @@ namespace OrthoTree
     // Insert entity into the tree with node rebalancing
     bool InsertWithRebalancing(EntityID entityID, EA::Geometry const& entityGeometry, EntityContainerView entities) noexcept
     {
-      if (!IsGeometryInTree(entityGeometry))
+      if (!Base::IsGeometryInTree(entityGeometry))
       {
         if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
         {
@@ -1515,54 +2024,12 @@ namespace OrthoTree
       }
 
       auto const entityLocation = this->GetLocation(entityGeometry);
-      auto const entityNodeKey = SI::GetNodeID(entityLocation, m_maxDepthID);
+      auto const entityNodeKey = SI::GetNodeID(entityLocation, Base::m_maxDepthID);
       auto const [parentNodeNodeID, parentDepthID] = this->FindSmallestNodeKeyWithDepth(entityNodeKey);
       if (!SI::IsValidKey(parentNodeNodeID))
         return false;
 
       return this->template InsertWithRebalancingBase<true>(parentNodeNodeID, parentDepthID, entityLocation, entityID, entities);
-    }
-
-    // Insert entity into the tree, if there is no entity within the same location by tolerance.
-    bool InsertUnique(
-      EntityID entityID,
-      EA::Geometry const& entityGeometry,
-      EntityContainerView entities,
-      TFloatScalar tolerance = GA::BASE_TOLERANCE,
-      bool doInsertToLeaf = false)
-    {
-      // TODO: reverse mapping
-      if (!IsGeometryInTree(entityGeometry))
-      {
-        if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
-        {
-          auto const nearestEntityList = GetNearestNeighbors(entityGeometry, 1, 0.0, entities, tolerance);
-          if (!nearestEntityList.empty())
-            return false;
-
-          AddNodeEntity(m_nodes.at(SI::GetRootKey()), entityID);
-          return true;
-        }
-        else
-        {
-          return false;
-        }
-      }
-
-      auto const location = GetLocation(entityGeometry);
-      auto const nodeID = SI::GetNodeID(location, m_maxDepthID);
-      auto const [parentNodeKey, parentDepthID] = FindSmallestNodeKeyWithDepth(nodeID);
-      if (!SI::IsValidKey(parentNodeKey))
-        return false;
-
-      auto const nearestEntityList = GetNearestNeighbors(entityGeometry, 1, 0.0, entities, tolerance);
-      if (!nearestEntityList.empty())
-        return false;
-
-      if (doInsertToLeaf)
-        return InsertWithoutRebalancingBase<true>(parentNodeKey, nodeID, entityID, true);
-      else
-        return InsertWithRebalancingBase<true>(parentNodeKey, parentDepthID, location, entityID, entities);
     }
 
 
@@ -1582,7 +2049,7 @@ namespace OrthoTree
         return Update(entityID, newEntityGeometry, doInsertToLeaf);
 
       auto oldEntityNodeID = SI::GetRootKey();
-      if (!IsGeometryInTree(oldEntityGeometry))
+      if (!Base::IsGeometryInTree(oldEntityGeometry))
       {
         if constexpr (!CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
           return false;
@@ -1592,7 +2059,7 @@ namespace OrthoTree
         oldEntityNodeID = FindSmallestNode(oldEntityGeometry);
       }
 
-      auto const isNewGeometryInTree = IsGeometryInTree(newEntityGeometry);
+      auto const isNewGeometryInTree = Base::IsGeometryInTree(newEntityGeometry);
       if (isNewGeometryInTree)
       {
         if (oldEntityNodeID == FindSmallestNode(newEntityGeometry))
@@ -1611,7 +2078,6 @@ namespace OrthoTree
       return Insert(entityID, newEntityGeometry, doInsertToLeaf);
     }
 
-
     // Update id with rebalancing by the new bounding box information
     bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, EntityContainerView entities) noexcept
     {
@@ -1628,7 +2094,7 @@ namespace OrthoTree
         return Update(entityID, newEntityGeometry, entities);
 
       auto oldEntityNodeID = SI::GetRootKey();
-      if (IsGeometryInTree(oldEntityGeometry))
+      if (Base::IsGeometryInTree(oldEntityGeometry))
         oldEntityNodeID = FindSmallestNode(oldEntityGeometry);
       else
       {
@@ -1636,7 +2102,7 @@ namespace OrthoTree
           return false;
       }
 
-      auto const isNewGeometryInTree = IsGeometryInTree(newEntityGeometry);
+      auto const isNewGeometryInTree = Base::IsGeometryInTree(newEntityGeometry);
       if (isNewGeometryInTree)
       {
         if (oldEntityNodeID == FindSmallestNode(newEntityGeometry))
@@ -1653,283 +2119,6 @@ namespace OrthoTree
       }
 
       return InsertWithRebalancing(entityID, newEntityGeometry, entities);
-    }
-
-  public: // Static aid functions
-    static constexpr std::size_t EstimateNodeNumber(std::size_t elementNo, depth_t maxDepthID, std::size_t maxElementNo) noexcept
-    {
-      assert(maxElementNo > 0);
-      assert(maxDepthID > 0);
-
-      if (elementNo < 10)
-        return 10;
-
-      auto constexpr rMult = 1.5;
-      constexpr depth_t bitSize = sizeof(std::size_t) * CHAR_BIT;
-      if ((maxDepthID + 1) * DIMENSION_NO < bitSize)
-      {
-        auto const nMaxChild = detail::pow2(maxDepthID * DIMENSION_NO);
-        auto const nElementInNode = elementNo / nMaxChild;
-        if (nElementInNode > maxElementNo / 2)
-          return nMaxChild;
-      }
-
-      auto const nElementInNodeAvg = static_cast<float>(elementNo) / static_cast<float>(maxElementNo);
-      auto const nDepthEstimated = std::min(maxDepthID, static_cast<depth_t>(ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(DIMENSION_NO))));
-      if (nDepthEstimated * DIMENSION_NO < 64)
-        return static_cast<std::size_t>(1.05 * detail::pow2(nDepthEstimated * std::min<depth_t>(6, DIMENSION_NO)));
-
-      return static_cast<std::size_t>(rMult * nElementInNodeAvg);
-    }
-
-    static depth_t EstimateMaxDepth(std::size_t elementNo, std::size_t maxElementNo) noexcept
-    {
-      if (elementNo <= maxElementNo)
-        return 2;
-
-      auto const nLeaf = elementNo / maxElementNo;
-      // nLeaf = (2^nDepth)^DIMENSION_NO
-      return std::clamp(static_cast<depth_t>(std::log2(nLeaf) / static_cast<double>(DIMENSION_NO)), depth_t(2), SI::MAX_THEORETICAL_DEPTH_ID);
-    }
-
-
-  public: // Getters
-    constexpr auto const& GetNodes() const noexcept { return m_nodes; }
-    bool HasNode(MortonNodeIDCR key) const noexcept { return m_nodes.contains(key); }
-    auto const& GetNode(MortonNodeIDCR key) const noexcept { return m_nodes.at(key); }
-    auto const& GetNodeValue(MortonNodeIDCR nodeID) const noexcept { return *m_nodes.find(nodeID); }
-    constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
-    constexpr auto GetMaxDepthID() const noexcept { return m_maxDepthID; }
-    constexpr auto GetDepthNo() const noexcept { return m_maxDepthID + 1; }
-    constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
-    constexpr auto GetNodeIDByEntity(EntityID entityID) const noexcept
-    {
-      auto const it = std::find_if(m_nodes.begin(), m_nodes.end(), [&](auto const& keyAndValue) { return keyAndValue.second.ContainsEntity(entityID); });
-
-      return it == m_nodes.end() ? MortonNodeID{} : it->first;
-    }
-
-  protected:
-    // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
-    {
-      ORTHOTREE_CRASH_IF(
-        !this->m_nodes.empty(), "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
-      ORTHOTREE_CRASH_IF(maxDepthID < 1, "maxDepthID must be largar than 0!");
-      ORTHOTREE_CRASH_IF(maxDepthID > SI::MAX_THEORETICAL_DEPTH_ID, "maxDepthID is larger than the applicable with the current DIMENSION_NO!");
-      ORTHOTREE_CRASH_IF(maxDepthID >= std::numeric_limits<uint8_t>::max(), "maxDepthID is too large.");
-      ORTHOTREE_CRASH_IF(maxElementNo == 0, "maxElementNo must be larger than 0. It is allowed max entity number for one node.");
-      ORTHOTREE_CRASH_IF(CHAR_BIT * sizeof(GridID) < maxDepthID, "GridID and maxDepthID are not compatible.");
-
-      m_grid = detail::GridSpaceIndexing<GA>(maxDepthID, boxSpace);
-      m_maxDepthID = maxDepthID;
-      m_maxElementNo = maxElementNo;
-
-#ifndef ORTHOTREE__DISABLED_NODECENTER
-      auto& nodeRoot = m_nodes[SI::GetRootKey()];
-      nodeRoot.SetCenter(IGM::GetBoxCenter(boxSpace));
-#endif // !ORTHOTREE__DISABLED_NODECENTER
-
-      // the 0-based depth size of the tree is m_maxDepthID+1, and a fictive childnode halfsize (+2) could be asked prematurely.
-      depth_t constexpr additionalDepth = 3;
-      auto const examinedDepthSize = this->m_maxDepthID + additionalDepth;
-      m_nodeNominalSizes.resize(examinedDepthSize);
-      m_nodeLooseSizes.resize(examinedDepthSize);
-      m_nodeNominalSizes[0] = m_nodeLooseSizes[0] = m_grid.GetSizes();
-
-      auto constexpr multiplier = IGM_Geometry(0.5);
-      auto nominalfactor = IGM_Geometry(1.0);
-      auto looseFactor = IGM_Geometry(CONFIG::LOOSE_FACTOR);
-
-      for (depth_t depthID = 0; depthID < examinedDepthSize; ++depthID, nominalfactor *= multiplier, looseFactor *= multiplier)
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          m_nodeNominalSizes[depthID][dimensionID] = m_nodeNominalSizes[0][dimensionID] * nominalfactor;
-          m_nodeLooseSizes[depthID][dimensionID] = m_nodeNominalSizes[0][dimensionID] * looseFactor;
-        }
-      m_memoryResource.Init(estimatedEntityNo);
-    }
-
-  public: // Main service functions
-          // Alternative creation mode (instead of Create), Init then Insert items into leafs one by one. NOT RECOMMENDED.
-    constexpr void Init(
-      TBox const& box,
-      depth_t maxDepthID,
-      std::size_t maxElementNo = 11,
-      std::size_t estimatedEntityNo = detail::MemoryResource<EntityID>::DEFAULT_PAGE_SIZE) noexcept
-    {
-      this->InitBase(IGM::GetBoxAD(box), maxDepthID, maxElementNo, estimatedEntityNo);
-    }
-
-    using FProcedure = std::function<void(MortonNodeIDCR, Node const&)>;
-    using FProcedureUnconditional = std::function<void(MortonNodeIDCR, Node const&, bool)>;
-    using FSelector = std::function<bool(MortonNodeIDCR, Node const&)>;
-    using FSelectorUnconditional = std::function<bool(MortonNodeIDCR, Node const&)>;
-
-
-    // Visit nodes with special selection and procedure in breadth-first search order
-    void TraverseNodesBreadthFirst(auto&& procedure, MortonNodeIDCR rootKey = SI::GetRootKey()) const noexcept
-    {
-      auto queue = std::queue<NodeValue const*>();
-      queue.push(&GetNodeValue(rootKey));
-      while (!queue.empty())
-      {
-        auto const* pNodeValue = queue.front();
-        queue.pop();
-
-        auto const traverseControl = procedure(*pNodeValue);
-        switch (traverseControl)
-        {
-        case TraverseControl::Terminate: return;
-        case TraverseControl::SkipChildren: continue;
-        case TraverseControl::Continue:
-          for (MortonNodeIDCR childNodeID : GetNodeChildren(*pNodeValue))
-            queue.push(&GetNodeValue(childNodeID));
-
-          break;
-        }
-      }
-    }
-
-    // Visit nodes in depth first order
-    constexpr void TraverseNodesDepthFirst(auto&& procedure, NodeValueCR rootValue) const noexcept
-    {
-      auto nodeStack = std::vector<NodeValue const*>{};
-      nodeStack.reserve(64);
-      nodeStack.push_back(&rootValue);
-
-      while (!nodeStack.empty())
-      {
-        auto const* currentNodeValue = nodeStack.back();
-        nodeStack.pop_back();
-
-        auto const control = procedure(*currentNodeValue);
-        switch (control)
-        {
-        case TraverseControl::Terminate: return;
-        case TraverseControl::SkipChildren: continue;
-        case TraverseControl::Continue: {
-          for (auto const& childNodeID : GetNodeChildren(*currentNodeValue))
-          {
-            auto const& childNodeValue = GetNodeValue(childNodeID);
-            nodeStack.push_back(&childNodeValue);
-          }
-          break;
-        }
-        }
-      }
-    }
-
-    // Visit nodes in depth first order
-    constexpr void TraverseNodesDepthFirst(auto&& procedure) const noexcept
-    {
-      TraverseNodesDepthFirst(std::forward<decltype(procedure)>(procedure), GetNodeValue(SI::GetRootKey()));
-    }
-
-    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator, NodeValueCR nodeValue) const noexcept
-    {
-      using TPriorityResult = std::invoke_result_t<decltype(priorityCalculator), Node>;
-      using TPriority = std::conditional_t<detail::IsStdOptionalV<TPriorityResult>, typename TPriorityResult::value_type, TPriorityResult>;
-
-      auto constexpr GetValue = [](TPriorityResult const& pr) noexcept -> TPriority {
-        if constexpr (detail::IsStdOptionalV<TPriorityResult>)
-          return *pr;
-        else
-          return pr;
-      };
-
-      struct PrioritizedNode
-      {
-        NodeValue const* pNodeValue;
-        TPriority priority;
-
-        constexpr auto operator<=>(PrioritizedNode const& other) const noexcept { return priority <=> other.priority; }
-      };
-
-      auto nodePriority = priorityCalculator(nodeValue);
-      if constexpr (detail::IsStdOptionalV<TPriorityResult>)
-      {
-        if (!nodePriority)
-          return;
-      }
-
-      auto nodesToProceed = std::priority_queue<PrioritizedNode, std::vector<PrioritizedNode>, std::greater<PrioritizedNode>>();
-      nodesToProceed.push({ &nodeValue, GetValue(nodePriority) });
-      while (!nodesToProceed.empty())
-      {
-        auto const [pNodeValue, priority] = nodesToProceed.top();
-        nodesToProceed.pop();
-
-        auto const control = procedure(*pNodeValue, priority);
-        switch (control)
-        {
-        case TraverseControl::Terminate: return;
-        case TraverseControl::SkipChildren: continue;
-        case TraverseControl::Continue: break;
-        }
-
-        for (MortonNodeIDCR childNodeID : GetNodeChildren(*pNodeValue))
-        {
-          auto const& childNodeValue = GetNodeValue(childNodeID);
-          auto childNodePriority = priorityCalculator(childNodeValue);
-
-          if constexpr (detail::IsStdOptionalV<TPriorityResult>)
-          {
-            if (!childNodePriority)
-              continue;
-          }
-
-          nodesToProceed.push({ &childNodeValue, GetValue(childNodePriority) });
-        }
-      }
-    }
-
-    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator) const noexcept
-    {
-      TraverseNodesByPriority(
-        std::forward<decltype(procedure)>(procedure), std::forward<decltype(priorityCalculator)>(priorityCalculator), GetNodeValue(SI::GetRootKey()));
-    }
-
-    // Collect all item id, traversing the tree in breadth-first search order
-    std::vector<EntityID> CollectAllEntitiesInBFS(MortonNodeIDCR rootKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
-    {
-      auto entityIDs = std::vector<EntityID>();
-      entityIDs.reserve(m_nodes.size() * std::max<std::size_t>(2, m_maxElementNo / 2));
-
-      TraverseNodesBreadthFirst(
-        [&](auto const& nodeValue) {
-          auto const& entities = GetNodeEntities(nodeValue);
-          auto const entityIDsSize = entityIDs.size();
-          entityIDs.insert(entityIDs.end(), entities.begin(), entities.end());
-          if (shouldSortInsideNodes)
-            std::sort(entityIDs.begin() + entityIDsSize, entityIDs.end());
-
-          return TraverseControl::Continue;
-        },
-        rootKey);
-      return entityIDs;
-    }
-
-  private:
-    void CollectAllEntitiesInDFSRecursive(NodeValueCR parentNode, std::vector<EntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
-    {
-      auto const& entities = GetNodeEntities(parentNode);
-      auto const entityIDsSize = foundEntities.size();
-      foundEntities.insert(foundEntities.end(), entities.begin(), entities.end());
-      if (shouldSortInsideNodes)
-        std::sort(foundEntities.begin() + entityIDsSize, foundEntities.end());
-
-      for (MortonNodeIDCR childKey : GetNodeChildren(parentNode))
-        CollectAllEntitiesInDFSRecursive(this->GetNodeValue(childKey), foundEntities, shouldSortInsideNodes);
-    }
-
-  public:
-    // Collect all entity id, traversing the tree in depth-first search pre-order
-    std::vector<EntityID> CollectAllEntitiesInDFS(MortonNodeIDCR parentKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
-    {
-      auto entityIDs = std::vector<EntityID>{};
-      CollectAllEntitiesInDFSRecursive(GetNodeValue(parentKey), entityIDs, shouldSortInsideNodes);
-      return entityIDs;
     }
 
     // Update all element which are in the given hash-table.
@@ -1968,8 +2157,8 @@ namespace OrthoTree
     void Reset() noexcept
     {
       m_nodes.clear();
-      m_grid = {};
       m_memoryResource.Reset();
+      Base::m_grid = {};
     }
 
 
@@ -1993,63 +2182,33 @@ namespace OrthoTree
         pairKeyNode.second.SetCenter(std::move(center));
       });
 #endif // !ORTHOTREE__DISABLED_NODECENTER
-      m_grid.Move(moveVector);
+      Base::m_grid.Move(moveVector);
     }
 
-    std::tuple<MortonNodeID, depth_t> FindSmallestNodeKeyWithDepth(MortonNodeID searchKey) const noexcept
+  private:
+    void RemoveNodeIfPossible(auto nodeIt) noexcept
     {
-      for (depth_t depthID = SI::GetDepthID(searchKey); SI::IsValidKey(searchKey); searchKey = SI::GetParentKey(searchKey), --depthID)
-        if (this->m_nodes.contains(searchKey))
-          return { searchKey, depthID };
-
-      return {}; // Not found
-    }
-
-    auto GetParentNode(MortonNodeID nodeID)
-    {
-      auto const endIt = this->m_nodes.end();
-      for (nodeID = SI::GetParentKey(nodeID); SI::IsValidKey(nodeID); nodeID = SI::GetParentKey(nodeID))
+      while (true)
       {
-        auto nodeIt = this->m_nodes.find(nodeID);
-        if (nodeIt != endIt)
-          return nodeIt;
+        auto& [nodeID, node] = *nodeIt;
+        if (nodeID == SI::GetRootKey())
+          return;
+
+        if (node.IsAnyChildExist() || !IsNodeEntitiesEmpty(node))
+          return;
+
+        m_memoryResource.Deallocate(node.GetEntitySegment());
+        auto parentNodeIt = FindParentNodeIt(nodeID);
+
+        auto& [parentNodeID, parentNode] = *parentNodeIt;
+        parentNode.RemoveChild(SI::GetChildID2(parentNodeID, nodeID));
+        m_nodes.erase(nodeIt);
+
+        nodeIt = parentNodeIt;
       }
-
-      return this->m_nodes.find(SI::GetRootKey());
     }
 
-    MortonNodeID FindSmallestNodeKey(MortonNodeID searchKey) const noexcept
-    {
-      for (; SI::IsValidKey(searchKey); searchKey = SI::GetParentKey(searchKey))
-        if (this->m_nodes.contains(searchKey))
-          return searchKey;
-
-      return MortonNodeID{}; // Not found
-    }
-
-    // Find smallest node which contains the box
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
-    MortonNodeID FindSmallestNode(TVector const& searchPoint) const noexcept
-    {
-      if constexpr (!HANDLE_OUT_OF_TREE_GEOMETRY)
-      {
-        if (!IGM::DoesBoxContainPointAD(this->m_grid.GetBoxSpace(), searchPoint))
-          return MortonNodeID{};
-      }
-      return this->FindSmallestNodeKey(this->GetNodeID<HANDLE_OUT_OF_TREE_GEOMETRY>(searchPoint));
-    }
-
-    // Find smallest node which contains the box
-    MortonNodeID FindSmallestNode(TBox const& box) const noexcept
-    {
-      if (!IGM::DoesRangeContainBoxAD(this->m_grid.GetBoxSpace(), box))
-        return MortonNodeID{};
-
-      return FindSmallestNodeKey(this->GetNodeID(box));
-    }
-
-    MortonNodeID Find(EntityID entityID) const noexcept { return GetNodeIDByEntity(entityID); }
-
+  public: // Entity handling
     constexpr bool EraseEntity(EntityID entityID) noexcept
     {
       bool isErased = false;
@@ -2092,6 +2251,301 @@ namespace OrthoTree
       return true;
     }
 
+
+    // Erase id, aided with the original geometry
+    bool Erase(EntityID entitiyID, EA::Geometry const& entityGeometry) noexcept
+    {
+      auto nodeID = this->FindSmallestNode(entityGeometry);
+      if (!SI::IsValidKey(nodeID))
+        return false; // old box is not in the handled space domain
+
+      for (; SI::IsValidKey(nodeID); nodeID = SI::GetParentKey(nodeID))
+      {
+        auto nodeIt = this->m_nodes.find(nodeID);
+        if (nodeIt == this->m_nodes.end())
+          continue;
+
+        bool const isEntityRemoved = this->RemoveNodeEntity(nodeIt->second, entitiyID);
+        if (isEntityRemoved)
+        {
+          this->RemoveNodeIfPossible(nodeIt);
+          break;
+        }
+      }
+
+      if (!SI::IsValidKey(nodeID))
+        return false; // id was not registered previously.
+
+      if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+      {
+        for (auto& [key, node] : this->m_nodes)
+          node.DecreaseEntityIDs(entitiyID);
+      }
+
+      return true;
+    }
+
+  public: // Search functions
+    bool Contains(EA::Geometry const& geometry, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      auto const smallestNodeKey = this->FindSmallestNode(geometry);
+      if (!SI::IsValidKey(smallestNodeKey))
+        return false;
+
+      auto const& nodeEntityIDs = GetNodeEntities(smallestNodeKey);
+      return std::any_of(nodeEntityIDs.begin(), nodeEntityIDs.end(), [&](auto const& entityID) {
+        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+        {
+          return GA::ArePointsEqual(geometry, EA::GetGeometry(entities, entityID), tolerance);
+        }
+        else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+        {
+          return GA::AreBoxesEqual(geometry, EA::GetGeometry(entities, entityID), tolerance);
+        }
+        else
+        {
+          static_assert(false, "Unsupported geometry type!");
+        }
+        ORTHOTREE_UNREACHABLE();
+      });
+    }
+
+    bool Contains(EntityID const& entityID, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+      {
+        auto const it = this->m_reverseMap.find(entityID);
+        return it != this->m_reverseMap.end();
+      }
+      else
+      {
+        if (entities.size() == 0)
+          return false;
+
+        auto const& entityGeometry = EA::GetGeometry(entities, entityID);
+        return Contains(entityGeometry, entities, tolerance);
+      }
+    }
+  };
+
+  // OrthoTree: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
+  template<typename TOrthoTreeCore>
+  class OrthoTreeQueryBase : public TOrthoTreeCore
+  {
+  public:
+    using Core = TOrthoTreeCore;
+    ORTHOTREE_DEPENDENT_TYPES(Core);
+
+
+  public:
+    static_assert(GeometryAdapterConcept<GA, GA::DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, TFloatScalar>);
+    static_assert(0 < GA::DIMENSION_NO && GA::DIMENSION_NO < 64);
+
+    static_assert(std::is_trivially_copyable_v<EntityID>, "Only trivially copyable EntityID types are supported!");
+    static_assert(CONFIG::IS_HOMOGENEOUS_GEOMETRY, "Mixed geometry types are not supported yet!");
+    static_assert(EA::GEOMETRY_TYPE == GeometryType::Point || EA::GEOMETRY_TYPE == GeometryType::Box, "Entity geometry type is not supported!");
+    static_assert(CONFIG::MAX_ALLOWED_DEPTH_ID <= MAX_DEPTH_ID, "MAX_ALLOWED_DEPTH_ID of Configuration is too large.");
+    static_assert(CONFIG::LOOSE_FACTOR >= 1.0, "Wrong loose factor for Loose trees.");
+
+    using TOrthoTreeCore::TOrthoTreeCore;
+
+    using NodeID = typename Core::NodeID;
+    using NodeIDCR = typename Core::NodeIDCR;
+    using NodeValueCP = Core::NodeValueCP;
+
+  protected: // Aid struct to partitioning and distance ordering
+    template<typename T>
+    using DimArray = std::array<T, GA::DIMENSION_NO>;
+
+  public:
+    // Insert entity into the tree, if there is no entity within the same location by tolerance.
+    bool InsertUnique(
+      EntityID entityID,
+      EA::Geometry const& entityGeometry,
+      EntityContainerView entities,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      bool doInsertToLeaf = false)
+    // requires(std::is_same_v<TOrthoTreeCore, DynamicHashOrthoTreeCore<Core::EA, Core::GA, Core::CONFIG>>)
+    {
+      auto const nearestEntityList = GetNearestNeighbors(entityGeometry, 1, 0.0, entities, tolerance);
+      if (!nearestEntityList.empty())
+        return false;
+
+      return doInsertToLeaf ? Core::Insert(entityID, entityGeometry, true) : Core::InsertWithRebalancing(entityID, entityGeometry, entities);
+    }
+
+
+  public: // Getters
+    // Visit nodes in breadth first order
+    constexpr void TraverseNodesBreadthFirst(auto&& procedure, NodeValueCP pRootNode) const noexcept
+    {
+      auto queue = std::queue<NodeValueCP>();
+      queue.push(pRootNode);
+      while (!queue.empty())
+      {
+        auto const pNodeValue = queue.front();
+        queue.pop();
+
+        auto const traverseControl = procedure(pNodeValue);
+        switch (traverseControl)
+        {
+        case TraverseControl::Terminate: return;
+        case TraverseControl::SkipChildren: continue;
+        case TraverseControl::Continue:
+          for (NodeIDCR childNodeID : Core::GetNodeChildren(pNodeValue))
+            queue.push(Core::GetNodeValueP(childNodeID));
+
+          break;
+        }
+      }
+    }
+
+    // Visit nodes in breadth first order
+    constexpr void TraverseNodesBreadthFirst(auto&& procedure) const noexcept
+    {
+      TraverseNodesBreadthFirst(std::forward<decltype(procedure)>(procedure), Core::GetRootNodeValue());
+    }
+
+    // Visit nodes in depth first order
+    constexpr void TraverseNodesDepthFirst(auto&& procedure, NodeValueCP pRootValue) const noexcept
+    {
+      auto nodeStack = std::vector<NodeValueCP>{};
+      nodeStack.reserve(64);
+      nodeStack.push_back(pRootValue);
+
+      while (!nodeStack.empty())
+      {
+        auto const currentNodeValue = nodeStack.back();
+        nodeStack.pop_back();
+
+        auto const control = procedure(currentNodeValue);
+        switch (control)
+        {
+        case TraverseControl::Terminate: return;
+        case TraverseControl::SkipChildren: continue;
+        case TraverseControl::Continue: {
+          for (auto const& childNodeID : Core::GetNodeChildren(currentNodeValue))
+          {
+            nodeStack.push_back(Core::GetNodeValueP(childNodeID));
+          }
+          break;
+        }
+        }
+      }
+    }
+
+    // Visit nodes in depth first order
+    constexpr void TraverseNodesDepthFirst(auto&& procedure) const noexcept
+    {
+      TraverseNodesDepthFirst(std::forward<decltype(procedure)>(procedure), Core::GetRootNodeValue());
+    }
+
+    // Visit nodes in priority order
+    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator, NodeValueCP nodeValue) const noexcept
+    {
+      using TPriorityResult = std::invoke_result_t<decltype(priorityCalculator), NodeValueCP>;
+      using TPriority = std::conditional_t<detail::IsStdOptionalV<TPriorityResult>, typename TPriorityResult::value_type, TPriorityResult>;
+
+      auto constexpr GetValue = [](TPriorityResult const& pr) noexcept -> TPriority {
+        if constexpr (detail::IsStdOptionalV<TPriorityResult>)
+          return *pr;
+        else
+          return pr;
+      };
+
+      struct PrioritizedNode
+      {
+        NodeValueCP pNodeValue;
+        TPriority priority;
+
+        constexpr auto operator<=>(PrioritizedNode const& other) const noexcept { return priority <=> other.priority; }
+      };
+
+      auto nodePriority = priorityCalculator(nodeValue);
+      if constexpr (detail::IsStdOptionalV<TPriorityResult>)
+      {
+        if (!nodePriority)
+          return;
+      }
+
+      auto nodesToProceed = std::priority_queue<PrioritizedNode, std::vector<PrioritizedNode>, std::greater<PrioritizedNode>>();
+      nodesToProceed.push({ nodeValue, GetValue(nodePriority) });
+      while (!nodesToProceed.empty())
+      {
+        auto const [pNodeValue, priority] = nodesToProceed.top();
+        nodesToProceed.pop();
+
+        auto const control = procedure(pNodeValue, priority);
+        switch (control)
+        {
+        case TraverseControl::Terminate: return;
+        case TraverseControl::SkipChildren: continue;
+        case TraverseControl::Continue: break;
+        }
+
+        for (NodeIDCR childNodeID : Core::GetNodeChildren(pNodeValue))
+        {
+          auto const& childNodeValue = Core::GetNodeValueP(childNodeID);
+          auto childNodePriority = priorityCalculator(childNodeValue);
+
+          if constexpr (detail::IsStdOptionalV<TPriorityResult>)
+          {
+            if (!childNodePriority)
+              continue;
+          }
+
+          nodesToProceed.push({ childNodeValue, GetValue(childNodePriority) });
+        }
+      }
+    }
+
+    // Visit nodes in priority order
+    constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator) const noexcept
+    {
+      TraverseNodesByPriority(
+        std::forward<decltype(procedure)>(procedure), std::forward<decltype(priorityCalculator)>(priorityCalculator), Core::GetRootNodeValue());
+    }
+
+    // Collect all item id, traversing the tree in breadth-first search order
+    std::vector<EntityID> CollectAllEntitiesInBFS(NodeIDCR rootKey = Core::GetRootNodeID(), bool shouldSortInsideNodes = false) const noexcept
+    {
+      auto entityIDs = std::vector<EntityID>();
+      TraverseNodesBreadthFirst(
+        [&](auto const pNodeValue) {
+          auto const& entities = Core::GetNodeEntities(pNodeValue);
+          auto const entityIDsSize = entityIDs.size();
+          entityIDs.insert(entityIDs.end(), entities.begin(), entities.end());
+          if (shouldSortInsideNodes)
+            std::sort(entityIDs.begin() + entityIDsSize, entityIDs.end());
+
+          return TraverseControl::Continue;
+        },
+        Core::GetNodeValueP(rootKey));
+      return entityIDs;
+    }
+
+  private:
+    void CollectAllEntitiesInDFSRecursive(NodeValueCP parentNode, std::vector<EntityID>& foundEntities, bool shouldSortInsideNodes) const noexcept
+    {
+      auto const& entities = Core::GetNodeEntities(parentNode);
+      auto const entityIDsSize = foundEntities.size();
+      foundEntities.insert(foundEntities.end(), entities.begin(), entities.end());
+      if (shouldSortInsideNodes)
+        std::sort(foundEntities.begin() + entityIDsSize, foundEntities.end());
+
+      for (NodeIDCR childKey : Core::GetNodeChildren(parentNode))
+        CollectAllEntitiesInDFSRecursive(Core::GetNodeValueP(childKey), foundEntities, shouldSortInsideNodes);
+    }
+
+  public:
+    // Collect all entity id, traversing the tree in depth-first search pre-order
+    std::vector<EntityID> CollectAllEntitiesInDFS(NodeIDCR parentKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
+    {
+      auto entityIDs = std::vector<EntityID>{};
+      CollectAllEntitiesInDFSRecursive(Core::GetNodeValueP(parentKey), entityIDs, shouldSortInsideNodes);
+      return entityIDs;
+    }
+
   public: // Search functions
     // Pick search
     std::vector<EntityID> PickSearch(TVector const& pickPoint, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
@@ -2104,10 +2558,10 @@ namespace OrthoTree
 
       TraverseNodesDepthFirst([&](auto const& nodeValue) {
         // TODO: use tolerance here also ?
-        if (!IGM::DoesBoxContainPointAD(GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue), pickPoint))
+        if (!IGM::DoesBoxContainPointAD(Core::GetNodeCenter(nodeValue), Core::GetNodeHalfSize(nodeValue), pickPoint))
           return TraverseControl::SkipChildren;
 
-        auto const& nodeEntityIDs = GetNodeEntities(nodeValue);
+        auto const& nodeEntityIDs = Core::GetNodeEntities(nodeValue);
         std::ranges::copy_if(nodeEntityIDs, std::back_inserter(foundEntitiyIDs), [&](auto const entityID) {
           if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
           {
@@ -2179,25 +2633,25 @@ namespace OrthoTree
 
       auto const searchRangeCenter = IGM::GetBoxCenterAD(range);
       auto const searchRangeHalfSize = IGM::GetBoxHalfSizeAD(range);
-      TraverseNodesDepthFirst([&](auto const& nodeValue) {
-        auto const& nodeCenter = GetNodeCenter(nodeValue);
-        auto const& nodeHalfSize = GetNodeHalfSize(nodeValue);
+      TraverseNodesDepthFirst([&](auto const pNodeValue) {
+        auto const& nodeCenter = Core::GetNodeCenter(pNodeValue);
+        auto const& nodeHalfSize = Core::GetNodeHalfSize(pNodeValue);
         if (!IGM::AreBoxesOverlappingByCenter(searchRangeCenter, searchRangeHalfSize, nodeCenter, nodeHalfSize))
           return TraverseControl::SkipChildren;
 
         if (IGM::DoesRangeContainBoxAD(range, nodeCenter, nodeHalfSize))
         {
           TraverseNodesDepthFirst(
-            [&](auto const& childNodeValue) {
-              std::ranges::copy(GetNodeEntities(childNodeValue), std::back_inserter(foundEntities));
+            [&](auto const pChildNodeValue) {
+              std::ranges::copy(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(foundEntities));
               return TraverseControl::Continue;
             },
-            nodeValue);
+            pNodeValue);
 
           return TraverseControl::SkipChildren;
         }
 
-        std::ranges::copy_if(GetNodeEntities(nodeValue), std::back_inserter(foundEntities), entityFilter);
+        std::ranges::copy_if(Core::GetNodeEntities(pNodeValue), std::back_inserter(foundEntities), entityFilter);
 
         return TraverseControl::Continue;
       });
@@ -2230,12 +2684,12 @@ namespace OrthoTree
       assert(GA::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<EntityID>{};
-      TraverseNodesDepthFirst([&](auto const& nodeValue) {
-        auto const& halfSize = GetNodeHalfSize(nodeValue);
-        if (IGM::GetBoxPlaneRelationAD(GetNodeCenter(nodeValue), halfSize, distanceOfOrigo, planeNormal, tolerance) != PlaneRelation::Hit)
+      TraverseNodesDepthFirst([&](auto const pNodeValue) {
+        auto const& halfSize = Core::GetNodeHalfSize(pNodeValue);
+        if (IGM::GetBoxPlaneRelationAD(Core::GetNodeCenter(pNodeValue), halfSize, distanceOfOrigo, planeNormal, tolerance) != PlaneRelation::Hit)
           return TraverseControl::SkipChildren;
 
-        for (auto const entityID : GetNodeEntities(nodeValue))
+        for (auto const entityID : Core::GetNodeEntities(pNodeValue))
           if (GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit)
             results.emplace_back(entityID);
 
@@ -2271,25 +2725,24 @@ namespace OrthoTree
       assert(GA::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<EntityID>{};
-      TraverseNodesDepthFirst([&](auto const& nodeValue) {
+      TraverseNodesDepthFirst([&](auto const pNodeValue) {
         auto const nodeRelation =
-          IGM::GetBoxPlaneRelationAD(GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue), distanceOfOrigo, planeNormal, tolerance);
+          IGM::GetBoxPlaneRelationAD(Core::GetNodeCenter(pNodeValue), Core::GetNodeHalfSize(pNodeValue), distanceOfOrigo, planeNormal, tolerance);
 
         switch (nodeRelation)
         {
         case PlaneRelation::Negative: return TraverseControl::SkipChildren;
         case PlaneRelation::Positive:
           TraverseNodesDepthFirst(
-            [&](auto const& childNodeValue) {
-              auto const& [_, childNode] = childNodeValue;
-              std::ranges::copy(GetNodeEntities(childNode), std::back_inserter(results));
+            [&](auto const pChildNodeValue) {
+              std::ranges::copy(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(results));
               return TraverseControl::Continue;
             },
-            nodeValue);
+            pNodeValue);
           return TraverseControl::SkipChildren;
 
         case PlaneRelation::Hit:
-          for (auto const entityID : GetNodeEntities(nodeValue))
+          for (auto const entityID : Core::GetNodeEntities(pNodeValue))
           {
             auto const entityRelation = GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), distanceOfOrigo, planeNormal, tolerance);
             if (entityRelation == PlaneRelation::Negative)
@@ -2324,9 +2777,9 @@ namespace OrthoTree
         return GA::IsNormalizedVector(GA::GetPlaneNormal(plane));
       }));
 
-      auto const selector = [&](auto const& nodeValue) -> bool {
-        auto const& halfSize = GetNodeHalfSize(nodeValue);
-        auto const& center = GetNodeCenter(nodeValue);
+      auto const selector = [&](auto const pNodeValue) -> bool {
+        auto const& halfSize = Core::GetNodeHalfSize(pNodeValue);
+        auto const& center = Core::GetNodeCenter(pNodeValue);
 
         for (auto const& plane : boundaryPlanes)
         {
@@ -2340,11 +2793,11 @@ namespace OrthoTree
         return true;
       };
 
-      auto const procedure = [&](auto const& nodeValue) {
-        if (!selector(nodeValue))
+      auto const procedure = [&](auto const pNodeValue) {
+        if (!selector(pNodeValue))
           return TraverseControl::SkipChildren;
 
-        for (auto const entityID : GetNodeEntities(nodeValue))
+        for (auto const entityID : Core::GetNodeEntities(pNodeValue))
         {
           auto relation = PlaneRelation::Negative;
           for (auto const& plane : boundaryPlanes)
@@ -2439,7 +2892,7 @@ namespace OrthoTree
     };
 
     static void AddEntityDistance(
-      std::size_t neighborNo,
+      std::size_t neighborCount,
       TVector const& searchPoint,
       std::optional<EntityDistanceFn> const& entityDistanceFn,
       auto const& nodeEntityIDs,
@@ -2448,6 +2901,11 @@ namespace OrthoTree
       std::vector<MinEntityDistance>& neighborEntities,
       FarthestDistance& farthestEntityDistance) noexcept
     {
+      auto constexpr pessimisticCmp = [](auto const& lhs, auto const& rhs) {
+        return lhs.pessimisticDistance < rhs.pessimisticDistance;
+      };
+
+      auto neighborEntitiesPessimisticMaxHeap = std::vector<TFloatScalar>{};
       for (auto const entityID : nodeEntityIDs)
       {
         typename GA::PointBoxMinMaxDistance pbd;
@@ -2477,51 +2935,103 @@ namespace OrthoTree
           pbd.minMax = pbd.min;
         }
 
-        auto const shouldHeapify = neighborEntities.size() == neighborNo - 1;
+        auto const shouldHeapify = neighborEntities.size() == neighborCount - 1;
         neighborEntities.push_back({ entityID, pbd.min, pbd.minMax });
-        if (neighborEntities.size() < neighborNo)
+        if (neighborEntities.size() < neighborCount)
           continue;
 
         if (shouldHeapify)
         {
           std::make_heap(neighborEntities.begin(), neighborEntities.end());
+          TFloatScalar maxMinMax;
+          if constexpr (EA ::GEOMETRY_TYPE == GeometryType::Point)
+          {
+            maxMinMax = neighborEntities.front().optimisticDistance;
+          }
+          else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+          {
+            maxMinMax = std::ranges::max_element(neighborEntities, pessimisticCmp)->pessimisticDistance;
+          }
+          else
+          {
+            static_assert(false);
+          }
+
+          farthestEntityDistance.lower = GetValueWithToleranceLower(maxMinMax, tolerance);
+          farthestEntityDistance.upper = GetValueWithToleranceUpper(maxMinMax, tolerance);
         }
         else
         {
           std::push_heap(neighborEntities.begin(), neighborEntities.end());
 
-          if (AreOverflownNearestNeighborsDroppable(neighborNo, neighborEntities, farthestEntityDistance.lower))
+          // TODO: Measure and maybe use neighborEntitiesPessimisticMaxHeap as an actively maintained cache.
+          auto nthFarthestEntityDistanceLimit = -std::numeric_limits<TFloatScalar>::max();
+          if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box || EA::GEOMETRY_TYPE == GeometryType::Point)
           {
-            auto endIt = neighborEntities.end();
+            if (neighborEntitiesPessimisticMaxHeap.capacity() == 0)
+              neighborEntitiesPessimisticMaxHeap.reserve(neighborEntities.size() + 3);
+
+            neighborEntitiesPessimisticMaxHeap.clear();
+            for (auto const& [entityID, od, pessimisticDistance] : neighborEntities)
+            {
+              if (neighborEntitiesPessimisticMaxHeap.size() < neighborCount - 1)
+              {
+                neighborEntitiesPessimisticMaxHeap.push_back(pessimisticDistance);
+              }
+              else if (neighborEntitiesPessimisticMaxHeap.size() == neighborCount - 1)
+              {
+                neighborEntitiesPessimisticMaxHeap.push_back(pessimisticDistance);
+                std::ranges::make_heap(neighborEntitiesPessimisticMaxHeap);
+                nthFarthestEntityDistanceLimit = GetValueWithToleranceUpper(neighborEntitiesPessimisticMaxHeap.front(), tolerance);
+              }
+              else
+              {
+                if (pessimisticDistance >= nthFarthestEntityDistanceLimit)
+                  continue;
+
+                neighborEntitiesPessimisticMaxHeap.push_back(pessimisticDistance);
+                std::ranges::push_heap(neighborEntitiesPessimisticMaxHeap);
+                while (neighborEntitiesPessimisticMaxHeap.size() > neighborCount)
+                {
+                  TFloatScalar remainingMaxElement = {};
+                  switch (neighborEntitiesPessimisticMaxHeap.size())
+                  {
+                  case 1: assert(false); return;
+                  case 2: remainingMaxElement = neighborEntitiesPessimisticMaxHeap[1]; break;
+                  default:
+                    remainingMaxElement = std::max(neighborEntitiesPessimisticMaxHeap[1], neighborEntitiesPessimisticMaxHeap[2]);
+                    break;
+                  }
+
+                  // only removing the definitely larger elements
+                  auto remainingMaxElementLimit = GetValueWithToleranceUpper(remainingMaxElement, tolerance);
+                  if (remainingMaxElementLimit >= neighborEntitiesPessimisticMaxHeap[0])
+                    break;
+                  
+                  std::ranges::pop_heap(neighborEntitiesPessimisticMaxHeap);
+                  neighborEntitiesPessimisticMaxHeap.pop_back();
+                }
+
+                nthFarthestEntityDistanceLimit = GetValueWithToleranceUpper(neighborEntitiesPessimisticMaxHeap.front(), tolerance);
+              }
+            }
+          }
+          else
+          {
+            static_assert(false);
+          }
+
+          if (nthFarthestEntityDistanceLimit < farthestEntityDistance.upper)
+          {
+            farthestEntityDistance.lower = GetValueWithToleranceLower(neighborEntitiesPessimisticMaxHeap.front(), tolerance);
+            farthestEntityDistance.upper = nthFarthestEntityDistanceLimit;
+
             while (neighborEntities.front().optimisticDistance >= farthestEntityDistance.lower)
             {
-              std::pop_heap(neighborEntities.begin(), endIt);
-              --endIt;
+              std::pop_heap(neighborEntities.begin(), neighborEntities.end());
+              neighborEntities.pop_back();
             }
-
-            neighborEntities.resize(neighborNo);
           }
-        }
-
-        TFloatScalar maxMinMax;
-        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
-        {
-          maxMinMax = std::max_element(
-                        neighborEntities.begin(),
-                        neighborEntities.begin() + std::min(neighborNo, neighborEntities.size()),
-                        [](auto const& lhs, auto const& rhs) { return lhs.pessimisticDistance < rhs.pessimisticDistance; })
-                        ->pessimisticDistance;
-        }
-        else
-        {
-          maxMinMax = neighborEntities.front().optimisticDistance;
-        }
-
-        auto const newFarthestEntityDistanceUpper = GetValueWithToleranceUpper(maxMinMax, tolerance);
-        if (newFarthestEntityDistanceUpper < farthestEntityDistance.upper)
-        {
-          farthestEntityDistance.lower = GetValueWithToleranceLower(maxMinMax, tolerance);
-          farthestEntityDistance.upper = newFarthestEntityDistanceUpper;
         }
       }
     }
@@ -2553,27 +3063,29 @@ namespace OrthoTree
       return entityIDs;
     }
 
-    constexpr IGM::Geometry GetNodeWallDistance(TVector const& searchPoint, NodeValueCR nodeValue, bool isInsideConsideredAsZero) const noexcept
+    constexpr IGM::Geometry GetNodeWallDistance(TVector const& searchPoint, NodeValueCP pNodeValue, bool isInsideConsideredAsZero) const noexcept
     {
-      return IGM::GetBoxWallDistanceAD(searchPoint, GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue), isInsideConsideredAsZero);
+      return IGM::GetBoxWallDistanceAD(searchPoint, Core::GetNodeCenter(pNodeValue), Core::GetNodeHalfSize(pNodeValue), isInsideConsideredAsZero);
     }
 
   public:
     // Get K Nearest Neighbor sorted by distance (point distance should be less than maxDistanceWithin, it is used as a Tolerance check). It may
-    // results more element than neighborNo, if those are in equal distance (point-like) or possible hit (box-like).
+    // results more element than neighborCount, if those are in equal distance (point-like) or possible hit (box-like).
     template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
     std::vector<EntityID> GetNearestNeighbors(
       TVector const& searchPoint,
-      std::size_t neighborNo,
+      std::size_t neighborCount,
       TScalar maxDistanceWithin,
       EntityContainerView entities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
     {
-      assert(neighborNo > 0 && "At least one neighbor must be requested!");
+      assert(neighborCount > 0 && "At least one neighbor must be requested!");
+      if (neighborCount == 0)
+        return {};
 
       auto neighborEntities = std::vector<MinEntityDistance>();
-      neighborEntities.reserve(neighborNo + 4);
+      neighborEntities.reserve(neighborCount + 4);
 
       // farthestEntityDistance already contains the numerical tolerance
       auto farthestEntityDistance =
@@ -2581,24 +3093,24 @@ namespace OrthoTree
                           maxDistanceWithin == std::numeric_limits<TScalar>::max() ? std::numeric_limits<TScalar>::max()
                                                                                    : GetValueWithToleranceUpper(maxDistanceWithin, tolerance) };
       TraverseNodesByPriority(
-        [&](auto const& nodeValue, TFloatScalar nodeDistance) -> TraverseControl {
+        [&](auto const pNodeValue, TFloatScalar nodeDistance) -> TraverseControl {
           if (nodeDistance >= farthestEntityDistance.upper)
             return TraverseControl::Terminate;
 
           AddEntityDistance(
-            neighborNo, searchPoint, entityDistanceFn, GetNodeEntities(nodeValue), entities, tolerance, neighborEntities, farthestEntityDistance);
+            neighborCount, searchPoint, entityDistanceFn, Core::GetNodeEntities(pNodeValue), entities, tolerance, neighborEntities, farthestEntityDistance);
 
           return TraverseControl::Continue;
         },
-        [&](auto const& nodeValue) -> std::optional<TFloatScalar> {
-          auto wallDistance = GetNodeWallDistance(searchPoint, nodeValue, true);
+        [&](auto const pNodeValue) -> std::optional<TFloatScalar> {
+          auto wallDistance = GetNodeWallDistance(searchPoint, pNodeValue, true);
           if (wallDistance >= farthestEntityDistance.upper)
             return std::nullopt;
 
           return wallDistance;
         });
 
-      return ConvertEntityDistanceToList<SHOULD_SORT_ENTITIES_BY_DISTANCE>(neighborEntities, neighborNo);
+      return ConvertEntityDistanceToList<SHOULD_SORT_ENTITIES_BY_DISTANCE>(neighborEntities, neighborCount);
     }
 
     // Get K Nearest Neighbor sorted by distance
@@ -2651,19 +3163,19 @@ namespace OrthoTree
   private:
     // Collision detection: Returns all overlapping entities from the source trees.
     static void CollisionDetection(
-      OrthoTreeBase const& leftTree,
+      OrthoTreeQueryBase const& leftTree,
       EntityContainerView leftEntities,
-      NodeValueCR leftNodeValue,
-      OrthoTreeBase const& rightTree,
+      NodeValueCP leftNodeValue,
+      OrthoTreeQueryBase const& rightTree,
       EntityContainerView rightEntities,
-      NodeValueCR rightNodeValue,
+      NodeValueCP rightNodeValue,
       std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) noexcept
     {
       struct NodeValueAndStatus
       {
-        NodeValue const* pNodeValue;
+        NodeValueCP pNodeValue;
         bool IsTraversed;
       };
 
@@ -2677,17 +3189,17 @@ namespace OrthoTree
 
       auto const trees = std::array{ &leftTree, &rightTree };
 
-      auto entitiesInOrderCache = std::array<std::unordered_map<MortonNodeID, SweepAndPruneDatabase>, 2>{};
-      auto const GetOrCreateEntitiesInOrder = [&](bool side, NodeValueCR nodeValue, EntityContainerView entities) -> std::vector<EntityID> const& {
+      auto entitiesInOrderCache = std::array<std::unordered_map<NodeValueCP, SweepAndPruneDatabase>, 2>{};
+      auto const GetOrCreateEntitiesInOrder = [&](bool side, NodeValueCP pNodeValue, EntityContainerView entities) -> std::vector<EntityID> const& {
         if (isSameTree)
           side = Left;
 
-        auto itKeyAndSPD = entitiesInOrderCache[side].find(nodeValue.first);
+        auto itKeyAndSPD = entitiesInOrderCache[side].find(pNodeValue);
         if (itKeyAndSPD == entitiesInOrderCache[side].end())
         {
           bool isInserted = false;
           std::tie(itKeyAndSPD, isInserted) =
-            entitiesInOrderCache[side].emplace(nodeValue.first, SweepAndPruneDatabase(entities, trees[side]->GetNodeEntities(nodeValue)));
+            entitiesInOrderCache[side].emplace(pNodeValue, SweepAndPruneDatabase(entities, trees[side]->GetNodeEntities(pNodeValue)));
         }
 
         return itKeyAndSPD->second.GetEntities();
@@ -2696,8 +3208,8 @@ namespace OrthoTree
       auto nodePairToProceed = std::queue<std::array<NodeValueAndStatus, 2>>{};
       nodePairToProceed.push(
         {
-          NodeValueAndStatus{  &leftNodeValue, false },
-          NodeValueAndStatus{ &rightNodeValue, false }
+          NodeValueAndStatus{  leftNodeValue, false },
+          NodeValueAndStatus{ rightNodeValue, false }
       });
       while (!nodePairToProceed.empty())
       {
@@ -2706,8 +3218,8 @@ namespace OrthoTree
 
         // Check the current ascendant content
 
-        auto const& leftEntitiesInOrder = GetOrCreateEntitiesInOrder(Left, *parentNodePair[Left].pNodeValue, leftEntities);
-        auto const& rightEntitiesInOrder = GetOrCreateEntitiesInOrder(Right, *parentNodePair[Right].pNodeValue, rightEntities);
+        auto const& leftEntitiesInOrder = GetOrCreateEntitiesInOrder(Left, parentNodePair[Left].pNodeValue, leftEntities);
+        auto const& rightEntitiesInOrder = GetOrCreateEntitiesInOrder(Right, parentNodePair[Right].pNodeValue, rightEntities);
 
         auto const rightEntityNo = rightEntitiesInOrder.size();
         std::size_t iRightEntityBegin = 0;
@@ -2771,10 +3283,10 @@ namespace OrthoTree
           if (isTraversed)
             continue;
 
-          auto const& childIDs = trees[sideID]->GetNodeChildren(*pNodeValue);
+          auto const& childIDs = trees[sideID]->Core::GetNodeChildren(pNodeValue);
           childNodes[sideID].resize(childIDs.size());
-          std::transform(childIDs.begin(), childIDs.end(), childNodes[sideID].begin(), [&](MortonNodeIDCR childNodeID) -> NodeValueAndStatus {
-            return { &trees[sideID]->GetNodeValue(childNodeID), false };
+          std::transform(childIDs.begin(), childIDs.end(), childNodes[sideID].begin(), [&](NodeIDCR childNodeID) -> NodeValueAndStatus {
+            return { trees[sideID]->Core::GetNodeValueP(childNodeID), false };
           });
         }
 
@@ -2793,10 +3305,10 @@ namespace OrthoTree
           for (auto const& rightChildNode : childNodes[Right])
             if (!(leftChildNode.pNodeValue == parentNodePair[Left].pNodeValue && rightChildNode.pNodeValue == parentNodePair[Right].pNodeValue))
               if (IGM::AreBoxesOverlappingByCenter(
-                    trees[Left]->GetNodeCenter(*leftChildNode.pNodeValue),
-                    trees[Left]->GetNodeHalfSize(*leftChildNode.pNodeValue),
-                    trees[Right]->GetNodeCenter(*rightChildNode.pNodeValue),
-                    trees[Right]->GetNodeHalfSize(*rightChildNode.pNodeValue)))
+                    trees[Left]->Core::GetNodeCenter(leftChildNode.pNodeValue),
+                    trees[Left]->Core::GetNodeHalfSize(leftChildNode.pNodeValue),
+                    trees[Right]->Core::GetNodeCenter(rightChildNode.pNodeValue),
+                    trees[Right]->Core::GetNodeHalfSize(rightChildNode.pNodeValue)))
                 nodePairToProceed.emplace(std::array{ leftChildNode, rightChildNode });
       }
     }
@@ -2804,9 +3316,9 @@ namespace OrthoTree
   public:
     // Collision detection: Returns all overlapping entities from the source trees.
     static std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
-      OrthoTreeBase const& leftTree,
+      OrthoTreeQueryBase const& leftTree,
       EntityContainerView leftEntities,
-      OrthoTreeBase const& rightTree,
+      OrthoTreeQueryBase const& rightTree,
       EntityContainerView rightEntities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) noexcept
@@ -2817,10 +3329,10 @@ namespace OrthoTree
       CollisionDetection(
         leftTree,
         leftEntities,
-        leftTree.GetNodeValue(SI::GetRootKey()),
+        leftTree.Core::GetNodeValueP(SI::GetRootKey()),
         rightTree,
         rightEntities,
-        rightTree.GetNodeValue(SI::GetRootKey()),
+        rightTree.Core::GetNodeValueP(SI::GetRootKey()),
         collidedEntities,
         tolerance,
         collisionDetector);
@@ -2832,7 +3344,7 @@ namespace OrthoTree
     // Collision detection: Returns all overlapping boxes from the source trees.
     std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
       EntityContainerView const& boxes,
-      OrthoTreeBase const& otherTree,
+      OrthoTreeQueryBase const& otherTree,
       EntityContainerView const& otherBoxes,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
@@ -2843,21 +3355,21 @@ namespace OrthoTree
   private:
     struct NodeCollisionContext
     {
-      NodeValue const* pNodeValue;
+      NodeValueCP pNodeValue;
       IGM::Vector Center;
       IGM::Box Box;
       std::vector<EntityID> EntityIDs;
     };
 
-    constexpr void FillNodeCollisionContext(NodeValueCR nodeValue, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
+    constexpr void FillNodeCollisionContext(NodeValueCP nodeValue, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
     {
-      auto const& nodeEntities = GetNodeEntities(nodeValue);
+      auto const& nodeEntities = Core::GetNodeEntities(nodeValue);
 
-      nodeContext.pNodeValue = &nodeValue;
+      nodeContext.pNodeValue = nodeValue;
       nodeContext.EntityIDs.clear();
       nodeContext.EntityIDs.assign(nodeEntities.begin(), nodeEntities.end());
-      nodeContext.Center = GetNodeCenter(nodeValue);
-      nodeContext.Box = GetNodeBox(depthID, nodeContext.Center);
+      nodeContext.Center = Core::GetNodeCenter(nodeValue);
+      nodeContext.Box = Core::Base::GetNodeBox(depthID, nodeContext.Center);
     }
 
     constexpr void PrepareNodeCollisionContext(auto const& comparator, NodeCollisionContext& nodeContext) const noexcept
@@ -2921,7 +3433,7 @@ namespace OrthoTree
     {
       auto const& nodeContext = nodeContextStack[depthID];
       auto const& nodeCenter = nodeContext.Center;
-      auto const& nodeHalfSize = GetNodeHalfSize(*nodeContext.pNodeValue);
+      auto const& nodeHalfSize = Core::GetNodeHalfSize(nodeContext.pNodeValue);
       auto const& entityIDs = nodeContext.EntityIDs;
 
       auto const entityNo = entityIDs.size();
@@ -3009,7 +3521,7 @@ namespace OrthoTree
       EntityContainerView entities,
       auto const& comparator,
       depth_t depthID,
-      NodeValue const& nodeValue,
+      NodeValueCP nodeValue,
       std::vector<NodeCollisionContext>& nodeContextStack,
       std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
       TFloatScalar tolerance,
@@ -3019,8 +3531,9 @@ namespace OrthoTree
       PrepareNodeCollisionContext(comparator, nodeContextStack[depthID]);
 
       auto const childDepthID = depthID + 1;
-      for (MortonNodeIDCR childKey : GetNodeChildren(nodeValue))
-        InsertCollidedEntitiesInSubtree(entities, comparator, childDepthID, GetNodeValue(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+      for (NodeIDCR childKey : Core::GetNodeChildren(nodeValue))
+        InsertCollidedEntitiesInSubtree(
+          entities, comparator, childDepthID, Core::GetNodeValueP(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
       InsertCollidedEntitiesInsideNode(entities, nodeContextStack[depthID], collidedEntities, tolerance, collisionDetector);
       InsertCollidedEntitiesWithParents(entities, depthID, nodeContextStack, collidedEntities, tolerance, collisionDetector);
@@ -3028,12 +3541,13 @@ namespace OrthoTree
       // Pairwise sub-tree collision detection for loose octree
       if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
       {
-        auto const& childNodeIDs = GetNodeChildren(nodeValue);
+        auto const& childNodeIDs = Core::GetNodeChildren(nodeValue);
         for (auto it1 = childNodeIDs.begin(); it1 != childNodeIDs.end(); ++it1)
         {
           for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
           {
-            CollisionDetection(*this, entities, GetNodeValue(*it1), *this, entities, GetNodeValue(*it2), collidedEntities, tolerance, collisionDetector);
+            CollisionDetection(
+              *this, entities, Core::GetNodeValueP(*it1), *this, entities, Core::GetNodeValueP(*it2), collidedEntities, tolerance, collisionDetector);
           }
         }
       }
@@ -3072,28 +3586,25 @@ namespace OrthoTree
       {
         auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
         InsertCollidedEntitiesInSubtree(
-          entities, comparator, 0, GetNodeValue(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+          entities, comparator, 0, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
       }
       else
       {
-        auto const nodeNo = m_nodes.size();
         auto const threadNum = std::size_t(std::thread::hardware_concurrency());
-        auto const isSingleThreadMoreEffective = nodeNo < threadNum * 3;
+        auto const isSingleThreadMoreEffective = Core::GetNodeCount() < threadNum * 3;
         if (isSingleThreadMoreEffective)
         {
           auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
           InsertCollidedEntitiesInSubtree(
-            entities, comparator, 0, GetNodeValue(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+            entities, comparator, 0, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
         }
         else
         {
-          using NodeIterator = typename NodeContainer<Node>::const_iterator;
-
-          auto nodeQueue = std::vector<NodeValue const*>{};
+          auto nodeQueue = std::vector<NodeValueCP>{};
           nodeQueue.reserve(threadNum * 2);
-          nodeQueue.emplace_back(&GetNodeValue(SI::GetRootKey()));
+          nodeQueue.emplace_back(Core::GetNodeValueP(SI::GetRootKey()));
 
-          auto nodeContextMap = std::unordered_map<MortonNodeID, NodeCollisionContext>{};
+          auto nodeContextMap = std::unordered_map<NodeID, NodeCollisionContext>{};
 
           // TODO: Loose octree
           std::size_t nodeQueueNum = 1;
@@ -3101,16 +3612,16 @@ namespace OrthoTree
           for (std::size_t i = 0; 0 < nodeQueueNum && nodeQueueNum < threadNum - 2; --nodeQueueNum, ++i)
           {
             ++childNodeAddedParentNum;
-            for (MortonLocationIDCR childKey : GetNodeChildren(*nodeQueue[i]))
+            for (NodeIDCR childKey : Core::GetNodeChildren(nodeQueue[i]))
             {
-              nodeQueue.emplace_back(&GetNodeValue(childKey));
+              nodeQueue.emplace_back(Core::GetNodeValueP(childKey));
               ++nodeQueueNum;
             }
 
-            MortonNodeIDCR nodeKey = nodeQueue[i]->first;
+            NodeIDCR nodeKey = nodeQueue[i]->first;
             auto const depthID = SI::GetDepthID(nodeKey);
             auto& nodeContext = nodeContextMap[nodeKey];
-            FillNodeCollisionContext(*nodeQueue[i], depthID, nodeContext);
+            FillNodeCollisionContext(nodeQueue[i], depthID, nodeContext);
             PrepareNodeCollisionContext(comparator, nodeContext);
           }
 
@@ -3118,14 +3629,14 @@ namespace OrthoTree
           {
             auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
             InsertCollidedEntitiesInSubtree(
-              entities, comparator, 0, GetNodeValue(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+              entities, comparator, 0, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
           }
           else
           {
             struct TaskContext
             {
-              NodeValue const* nodeValue;
-              NodeValue const* nodeValueSecondary;
+              NodeValueCP nodeValue;
+              NodeValueCP nodeValueSecondary;
               std::vector<std::pair<EntityID, EntityID>> collidedEntities;
             };
 
@@ -3146,27 +3657,27 @@ namespace OrthoTree
                 nodeContextStack[--parentDepthID] = nodeContextMap.at(parentKey);
 
               InsertCollidedEntitiesInSubtree(
-                entities, comparator, depthID, *taskContext.nodeValue, nodeContextStack, taskContext.collidedEntities, tolerance, collisionDetector);
+                entities, comparator, depthID, taskContext.nodeValue, nodeContextStack, taskContext.collidedEntities, tolerance, collisionDetector);
             });
 
             if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
             {
               for (std::size_t i = 0; i < childNodeAddedParentNum; ++i)
               {
-                auto const& childNodeIDs = GetNodeChildren(*nodeQueue[i]);
+                auto const& childNodeIDs = Core::GetNodeChildren(nodeQueue[i]);
                 for (auto it1 = childNodeIDs.begin(); it1 != childNodeIDs.end(); ++it1)
                 {
                   for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
                   {
-                    taskContexts.push_back({ .nodeValue = &GetNodeValue(*it1), .nodeValueSecondary = &GetNodeValue(*it2) });
+                    taskContexts.push_back({ .nodeValue = Core::GetNodeValueP(*it1), .nodeValueSecondary = Core::GetNodeValueP(*it2) });
                   }
                 }
               }
 
-              EXEC_POL_DEF(epcd); // GCC 11.3
-              std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin() + nodeQueueNum, taskContexts.end(), [&](auto& taskContext) {
+              EXEC_POL_DEF(epst); // GCC 11.3
+              std::for_each(EXEC_POL_ADD(epst) taskContexts.begin() + nodeQueueNum, taskContexts.end(), [&](auto& taskContext) {
                 CollisionDetection(
-                  *this, entities, *taskContext.nodeValue, *this, entities, *taskContext.nodeValueSecondary, taskContext.collidedEntities, tolerance, collisionDetector);
+                  *this, entities, taskContext.nodeValue, *this, entities, taskContext.nodeValueSecondary, taskContext.collidedEntities, tolerance, collisionDetector);
               });
             }
 
@@ -3242,24 +3753,36 @@ namespace OrthoTree
       std::optional<std::function<std::optional<TScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
     {
       assert(
-        toleranceIncrement <= std::max<TFloatScalar>(tolerance * 10, 0.1) &&
+        toleranceIncrement <= std::max<TFloatScalar>(tolerance * 10, TFloatScalar(0.1)) &&
         "toleranceIncrement seems to be large. Probably maxExaminationDistance is used.");
 
       const auto rayHitTester = IGM::RayHitTester::Make(rayBasePoint, rayHeading, tolerance, toleranceIncrement);
       if (!rayHitTester)
         return {};
 
+      struct ItemDistance
+      {
+        IGM_Geometry Distance;
+        auto operator<=>(ItemDistance const& rhs) const = default;
+      };
+
+      struct EntityDistance : ItemDistance
+      {
+        EntityID EntityID;
+        auto operator<=>(EntityDistance const& rhs) const { return ItemDistance::operator<=>(rhs); }
+      };
+
       using EntityDistanceContainer = std::conditional_t<SHOULD_SORT_ENTITIES_BY_DISTANCE, std::vector<EntityDistance>, std::vector<EntityID>>;
 
       auto foundEntities = EntityDistanceContainer{};
       foundEntities.reserve(20);
 
-      TraverseNodesDepthFirst([&](auto const& nodeValue) {
-        auto const nodeHit = rayHitTester->Hit(GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue));
+      TraverseNodesDepthFirst([&](auto const pNodeValue) {
+        auto const nodeHit = rayHitTester->Hit(Core::GetNodeCenter(pNodeValue), Core::GetNodeHalfSize(pNodeValue));
         if (!nodeHit)
           return TraverseControl::SkipChildren;
 
-        for (auto const entityID : GetNodeEntities(nodeValue))
+        for (auto const entityID : Core::GetNodeEntities(pNodeValue))
         {
           auto const entityDistance = rayHitTester->Hit(EA::GetGeometry(entities, entityID));
           if (entityDistance && (maxExaminationDistance == 0 || entityDistance->enterDistance <= maxExaminationDistance))
@@ -3337,12 +3860,11 @@ namespace OrthoTree
       auto maxDistanceHeap = std::priority_queue<Candidate, std::vector<Candidate>>{};
       auto maxExaminationDistance = TFloatScalar(maxDistance);
       TraverseNodesByPriority(
-        [&, rayHitTester = *rayHitTester](const auto& nodeValue, TFloatScalar nodeEnterDistance) {
+        [&, rayHitTester = *rayHitTester](const auto pNodeValue, TFloatScalar nodeEnterDistance) {
           if (nodeEnterDistance > maxExaminationDistance)
             return TraverseControl::Terminate;
 
-          auto const& [nodeID, node] = nodeValue;
-          for (auto const entityID : GetNodeEntities(node))
+          for (auto const entityID : Core::GetNodeEntities(pNodeValue))
           {
             auto pickDomain = rayHitTester.Hit(EA::GetGeometry(entities, entityID));
             if (!pickDomain)
@@ -3380,8 +3902,8 @@ namespace OrthoTree
 
           return TraverseControl::Continue;
         },
-        [&, rayHitTester = *rayHitTester](auto const& nodeValue) -> std::optional<TFloatScalar> {
-          auto result = rayHitTester.Hit(GetNodeCenter(nodeValue), GetNodeHalfSize(nodeValue));
+        [&, rayHitTester = *rayHitTester](auto const pNodeValue) -> std::optional<TFloatScalar> {
+          auto result = rayHitTester.Hit(Core::GetNodeCenter(pNodeValue), Core::GetNodeHalfSize(pNodeValue));
           if (!result)
             return std::nullopt;
 
@@ -3407,52 +3929,18 @@ namespace OrthoTree
     {
       return RayIntersectedFirst(GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, toleranceIncrement, maxDistance, entityHitTester);
     }
+  }; // namespace OrthoTree
 
-  public: // Search functions
-    bool Contains(EA::Geometry const& geometry, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
-    {
-      auto const smallestNodeKey = this->FindSmallestNode(geometry);
-      if (!SI::IsValidKey(smallestNodeKey))
-        return false;
+  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  using DynamicOrthoTreeBase = OrthoTreeQueryBase<DynamicHashOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>>;
 
-      auto const& nodeEntityIDs = this->GetNodeEntities(smallestNodeKey);
-      return std::any_of(nodeEntityIDs.begin(), nodeEntityIDs.end(), [&](auto const& entityID) {
-        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
-        {
-          return GA::ArePointsEqual(geometry, EA::GetGeometry(entities, entityID), tolerance);
-        }
-        else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
-        {
-          return GA::AreBoxesEqual(geometry, EA::GetGeometry(entities, entityID), tolerance);
-        }
-        else
-        {
-          static_assert(false, "Unsupported geometry type!");
-        }
-        ORTHOTREE_UNREACHABLE();
-      });
-    }
+  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  using StaticOrthoTreeBase = OrthoTreeQueryBase<StaticLinearOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>>;
 
-    bool Contains(EntityID const& entityID, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
-    {
-      if constexpr (CONFIG::USE_REVERSE_MAPPING)
-      {
-        auto const it = this->m_reverseMap.find(entityID);
-        return it != this->m_reverseMap.end();
-      }
-      else
-      {
-        if (entities.size() == 0)
-          return false;
+  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  using OrthoTreeBase = DynamicOrthoTreeBase<TEntityAdapter, TGeometryAdapter, TConfiguration>;
 
-        auto const& entityGeometry = EA::GetGeometry(entities, entityID);
-        return Contains(entityGeometry, entities, tolerance);
-      }
-    }
-  };
 } // namespace OrthoTree
-
-
 #include "adapters/general.h"
 #include "octree_container.h"
 

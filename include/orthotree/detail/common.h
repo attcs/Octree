@@ -149,6 +149,15 @@ namespace OrthoTree
 #pragma warning(disable : 4715)
 #endif
 
+  // Type of the dimension
+  using dim_t = uint32_t;
+
+  // Type of depth
+  using depth_t = uint32_t;
+
+  // Grid id
+  using GridID = uint32_t;
+
   namespace detail
   {
     template<typename T>
@@ -459,17 +468,47 @@ namespace OrthoTree
       std::sort(middleIt, endIt, comparator);
       std::inplace_merge(beginIt, middleIt, endIt, comparator);
     }
+
+    template<dim_t DIMENSION_NO, depth_t MAX_THEORETICAL_DEPTH_ID>
+    static constexpr std::size_t EstimateNodeNumber(std::size_t elementNo, depth_t maxDepthID, std::size_t maxElementNo) noexcept
+    {
+      assert(maxElementNo > 0);
+      assert(maxDepthID > 0);
+
+      if (elementNo < 10)
+        return 10;
+
+      auto constexpr rMult = 1.5;
+      constexpr depth_t bitSize = sizeof(std::size_t) * CHAR_BIT;
+      if ((maxDepthID + 1) * DIMENSION_NO < bitSize)
+      {
+        auto const nMaxChild = detail::pow2(maxDepthID * DIMENSION_NO);
+        auto const nElementInNode = elementNo / nMaxChild;
+        if (nElementInNode > maxElementNo / 2)
+          return nMaxChild;
+      }
+
+      auto const nElementInNodeAvg = static_cast<float>(elementNo) / static_cast<float>(maxElementNo);
+      auto const nDepthEstimated = std::min(maxDepthID, static_cast<depth_t>(ceil((log2f(nElementInNodeAvg) + 1.0) / static_cast<float>(DIMENSION_NO))));
+      if (nDepthEstimated * DIMENSION_NO < 64)
+        return static_cast<std::size_t>(1.05 * detail::pow2(nDepthEstimated * std::min<depth_t>(6, DIMENSION_NO)));
+
+      return static_cast<std::size_t>(rMult * nElementInNodeAvg);
+    }
+
+    template<dim_t DIMENSION_NO, depth_t MAX_THEORETICAL_DEPTH_ID>
+    static depth_t EstimateMaxDepth(std::size_t elementNo, std::size_t maxElementNo) noexcept
+    {
+      if (elementNo <= maxElementNo)
+        return 2;
+
+      auto const nLeaf = elementNo / maxElementNo;
+      // nLeaf = (2^nDepth)^DIMENSION_NO
+      return std::clamp(static_cast<depth_t>(std::log2(nLeaf) / static_cast<double>(DIMENSION_NO)), depth_t(2), MAX_THEORETICAL_DEPTH_ID);
+    }
+
   } // namespace detail
 
-
-  // Type of the dimension
-  using dim_t = uint32_t;
-
-  // Type of depth
-  using depth_t = uint32_t;
-
-  // Grid id
-  using GridID = uint32_t;
 
   constexpr depth_t INVALID_DEPTH = 31;
   constexpr depth_t MAX_DEPTH_ID = 30;

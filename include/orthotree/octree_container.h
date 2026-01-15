@@ -489,15 +489,15 @@ namespace OrthoTree
     }
 
     // Collect all entity ID in breadth-first traverse order
-    std::vector<EntityID> CollectAllEntitiesInBFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
+    std::vector<EntityID> CollectAllEntitiesInBFS(OrthoTreeCore::Core::NodeID nodeID = OrthoTreeCore::Core::GetRootNodeID()) const noexcept
     {
-      return m_tree.CollectAllEntitiesInBFS(parentKey);
+      return m_tree.CollectAllEntitiesInBFS(nodeID);
     }
 
     // Collect all entity ID in depth-first traverse order
-    std::vector<EntityID> CollectAllEntitiesInDFS(OrthoTreeCore::MortonNodeIDCR parentKey = OrthoTreeCore::SI::GetRootKey()) const noexcept
+    std::vector<EntityID> CollectAllEntitiesInDFS(OrthoTreeCore::Core::NodeID nodeID = OrthoTreeCore::Core::GetRootNodeID()) const noexcept
     {
-      return m_tree.CollectAllEntitiesInDFS(parentKey);
+      return m_tree.CollectAllEntitiesInDFS(nodeID);
     }
 
     // Pick search
