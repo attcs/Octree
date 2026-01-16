@@ -2837,58 +2837,25 @@ namespace OrthoTree
       return value == 0 ? -tolerance : (value * (TFloatScalar(1.0) - tolerance));
     }
 
-    struct MinEntityDistance
-    {
-      EntityID entityID;
-      TFloatScalar optimisticDistance;
-      TFloatScalar pessimisticDistance;
-
-      constexpr auto operator<=>(MinEntityDistance const& other) const noexcept { return optimisticDistance <=> other.optimisticDistance; }
-    };
-
-    static bool AreOverflownNearestNeighborsDroppable(
-      std::size_t neighborNo, std::vector<MinEntityDistance> const& neighborEntities, TScalar farthestEntityDistance) noexcept
-    {
-      std::size_t tieCountOverK = neighborNo >= neighborEntities.size() ? 0 : (neighborEntities.size() - neighborNo + 1);
-      if (tieCountOverK == 0)
-        return false;
-
-      if (farthestEntityDistance > neighborEntities[0].optimisticDistance)
-        return false;
-
-      std::size_t tieCount = 1;
-      std::size_t nonTieCount = 0; // if the whole level is non-tie, all elements above can be excluded.
-      std::size_t levelEnd = 3;
-      std::size_t elementNoInLevel = 2;
-      for (std::size_t index = 1; index < neighborEntities.size(); ++index)
-      {
-        auto const& e = neighborEntities[index];
-        if (e.optimisticDistance >= farthestEntityDistance)
-          ++tieCount;
-        else
-          ++nonTieCount;
-
-        if (tieCount >= tieCountOverK)
-          return false;
-
-        if (index == levelEnd)
-        {
-          if (nonTieCount == elementNoInLevel)
-            return true;
-
-          nonTieCount = 0;
-          elementNoInLevel = levelEnd + 1;
-          levelEnd += elementNoInLevel;
-        }
-      }
-
-      return true;
-    }
-
     struct FarthestDistance
     {
       TFloatScalar lower;
       TFloatScalar upper;
+    };
+
+    struct EntityDistance
+    {
+      EntityID entityID;
+      TFloatScalar distance;
+
+      constexpr auto operator<=>(EntityDistance const& other) const noexcept { return distance <=> other.distance; }
+      constexpr bool operator==(EntityDistance const& other) const noexcept { return distance == other.distance; }
+    };
+
+    struct EntityDistances
+    {
+      std::vector<EntityDistance> optimistic;
+      std::vector<EntityDistance> pessimistic;
     };
 
     static void AddEntityDistance(
@@ -2898,7 +2865,7 @@ namespace OrthoTree
       auto const& nodeEntityIDs,
       EntityContainerView entities,
       TFloatScalar tolerance,
-      std::vector<MinEntityDistance>& neighborEntities,
+      EntityDistances& neighborEntities,
       FarthestDistance& farthestEntityDistance) noexcept
     {
       auto constexpr pessimisticCmp = [](auto const& lhs, auto const& rhs) {
@@ -2935,109 +2902,66 @@ namespace OrthoTree
           pbd.minMax = pbd.min;
         }
 
-        auto const shouldHeapify = neighborEntities.size() == neighborCount - 1;
-        neighborEntities.push_back({ entityID, pbd.min, pbd.minMax });
-        if (neighborEntities.size() < neighborCount)
+        auto const shouldHeapify = neighborEntities.optimistic.size() == neighborCount - 1;
+        neighborEntities.optimistic.push_back({ entityID, pbd.min });
+        neighborEntities.pessimistic.push_back({ entityID, pbd.minMax });
+        if (neighborEntities.pessimistic.size() < neighborCount)
           continue;
 
         if (shouldHeapify)
         {
-          std::make_heap(neighborEntities.begin(), neighborEntities.end());
-          TFloatScalar maxMinMax;
-          if constexpr (EA ::GEOMETRY_TYPE == GeometryType::Point)
-          {
-            maxMinMax = neighborEntities.front().optimisticDistance;
-          }
-          else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
-          {
-            maxMinMax = std::ranges::max_element(neighborEntities, pessimisticCmp)->pessimisticDistance;
-          }
-          else
-          {
-            static_assert(false);
-          }
+          std::ranges::make_heap(neighborEntities.optimistic);
+          std::ranges::make_heap(neighborEntities.pessimistic);
 
-          farthestEntityDistance.lower = GetValueWithToleranceLower(maxMinMax, tolerance);
-          farthestEntityDistance.upper = GetValueWithToleranceUpper(maxMinMax, tolerance);
+          farthestEntityDistance.upper = GetValueWithToleranceUpper(neighborEntities.pessimistic[0].distance, tolerance);
+          if constexpr (EA ::GEOMETRY_TYPE == GeometryType::Point)
+            farthestEntityDistance.lower = farthestEntityDistance.upper;
+          else
+            farthestEntityDistance.lower = GetValueWithToleranceLower(neighborEntities.pessimistic[0].distance, tolerance);
         }
         else
         {
-          std::push_heap(neighborEntities.begin(), neighborEntities.end());
+          std::ranges::push_heap(neighborEntities.optimistic);
+          
+          std::ranges::push_heap(neighborEntities.pessimistic);
+          std::ranges::pop_heap(neighborEntities.pessimistic);
+          neighborEntities.pessimistic.pop_back();
 
-          // TODO: Measure and maybe use neighborEntitiesPessimisticMaxHeap as an actively maintained cache.
-          auto nthFarthestEntityDistanceLimit = -std::numeric_limits<TFloatScalar>::max();
-          if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box || EA::GEOMETRY_TYPE == GeometryType::Point)
-          {
-            if (neighborEntitiesPessimisticMaxHeap.capacity() == 0)
-              neighborEntitiesPessimisticMaxHeap.reserve(neighborEntities.size() + 3);
-
-            neighborEntitiesPessimisticMaxHeap.clear();
-            for (auto const& [entityID, od, pessimisticDistance] : neighborEntities)
-            {
-              if (neighborEntitiesPessimisticMaxHeap.size() < neighborCount - 1)
-              {
-                neighborEntitiesPessimisticMaxHeap.push_back(pessimisticDistance);
-              }
-              else if (neighborEntitiesPessimisticMaxHeap.size() == neighborCount - 1)
-              {
-                neighborEntitiesPessimisticMaxHeap.push_back(pessimisticDistance);
-                std::ranges::make_heap(neighborEntitiesPessimisticMaxHeap);
-                nthFarthestEntityDistanceLimit = GetValueWithToleranceUpper(neighborEntitiesPessimisticMaxHeap.front(), tolerance);
-              }
-              else
-              {
-                if (pessimisticDistance >= nthFarthestEntityDistanceLimit)
-                  continue;
-
-                neighborEntitiesPessimisticMaxHeap.push_back(pessimisticDistance);
-                std::ranges::push_heap(neighborEntitiesPessimisticMaxHeap);
-                while (neighborEntitiesPessimisticMaxHeap.size() > neighborCount)
-                {
-                  TFloatScalar remainingMaxElement = {};
-                  switch (neighborEntitiesPessimisticMaxHeap.size())
-                  {
-                  case 1: assert(false); return;
-                  case 2: remainingMaxElement = neighborEntitiesPessimisticMaxHeap[1]; break;
-                  default:
-                    remainingMaxElement = std::max(neighborEntitiesPessimisticMaxHeap[1], neighborEntitiesPessimisticMaxHeap[2]);
-                    break;
-                  }
-
-                  // only removing the definitely larger elements
-                  auto remainingMaxElementLimit = GetValueWithToleranceUpper(remainingMaxElement, tolerance);
-                  if (remainingMaxElementLimit >= neighborEntitiesPessimisticMaxHeap[0])
-                    break;
-                  
-                  std::ranges::pop_heap(neighborEntitiesPessimisticMaxHeap);
-                  neighborEntitiesPessimisticMaxHeap.pop_back();
-                }
-
-                nthFarthestEntityDistanceLimit = GetValueWithToleranceUpper(neighborEntitiesPessimisticMaxHeap.front(), tolerance);
-              }
-            }
-          }
-          else
-          {
-            static_assert(false);
-          }
+          auto nthFarthestEntityDistanceLimit = GetValueWithToleranceUpper(neighborEntities.pessimistic.front().distance, tolerance);
 
           if (nthFarthestEntityDistanceLimit < farthestEntityDistance.upper)
           {
-            farthestEntityDistance.lower = GetValueWithToleranceLower(neighborEntitiesPessimisticMaxHeap.front(), tolerance);
             farthestEntityDistance.upper = nthFarthestEntityDistanceLimit;
+            if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+              farthestEntityDistance.lower = farthestEntityDistance.upper;
+            else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+              farthestEntityDistance.lower = GetValueWithToleranceLower(neighborEntities.pessimistic.front().distance, tolerance);
+            else
+              static_assert(false);
 
-            while (neighborEntities.front().optimisticDistance >= farthestEntityDistance.lower)
+            bool pessimisticRemoved = false;
+            while (neighborEntities.optimistic.front().distance > farthestEntityDistance.lower)
             {
-              std::pop_heap(neighborEntities.begin(), neighborEntities.end());
-              neighborEntities.pop_back();
+              auto const entityID = neighborEntities.optimistic.front().entityID;
+              auto const it = std::ranges::find_if(neighborEntities.pessimistic, [entityID](auto const& ed) { return ed.entityID == entityID; });
+              if (it != neighborEntities.pessimistic.end())
+              {
+                neighborEntities.pessimistic.erase(it);
+                pessimisticRemoved = true;
+              }
+              std::ranges::pop_heap(neighborEntities.optimistic);
+              neighborEntities.optimistic.pop_back();
             }
+
+            if (pessimisticRemoved)
+              std::ranges::make_heap(neighborEntities.pessimistic);
           }
         }
       }
     }
 
     template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
-    static constexpr std::vector<EntityID> ConvertEntityDistanceToList(std::vector<MinEntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
+    static constexpr std::vector<EntityID> ConvertEntityDistanceToList(std::vector<EntityDistance>& neighborEntities, std::size_t neighborNo) noexcept
     {
       auto entityIDs = std::vector<EntityID>();
       if (neighborEntities.empty())
@@ -3084,8 +3008,9 @@ namespace OrthoTree
       if (neighborCount == 0)
         return {};
 
-      auto neighborEntities = std::vector<MinEntityDistance>();
-      neighborEntities.reserve(neighborCount + 4);
+      auto neighborEntities = EntityDistances{};
+      neighborEntities.optimistic.reserve(neighborCount + 4);
+      neighborEntities.pessimistic.reserve(neighborCount);
 
       // farthestEntityDistance already contains the numerical tolerance
       auto farthestEntityDistance =
@@ -3110,7 +3035,7 @@ namespace OrthoTree
           return wallDistance;
         });
 
-      return ConvertEntityDistanceToList<SHOULD_SORT_ENTITIES_BY_DISTANCE>(neighborEntities, neighborCount);
+      return ConvertEntityDistanceToList<SHOULD_SORT_ENTITIES_BY_DISTANCE>(neighborEntities.optimistic, neighborCount);
     }
 
     // Get K Nearest Neighbor sorted by distance
