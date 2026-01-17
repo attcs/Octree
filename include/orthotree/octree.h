@@ -670,6 +670,8 @@ namespace OrthoTree
 
     constexpr decltype(auto) GetNodeHalfSize(NodeID nodeID) const noexcept { return Base::m_nodeLooseSizes[m_nodeDepthIDs[nodeID] + 1]; }
 
+    constexpr IGM::Box GetNodeBox(NodeID nodeID) const noexcept { return Base::GetNodeBox(m_nodeDepthIDs[nodeID], m_nodeCenters[nodeID]); }
+
   private: // Build
     constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
     {
@@ -1204,7 +1206,7 @@ namespace OrthoTree
 
     constexpr IGM::Box GetNodeBox(NodeValueCP pNodeValue) const noexcept
     {
-      return GetNodeBox(SI::GetDepthID(pNodeValue->first), GetNodeCenter(pNodeValue));
+      return Base::GetNodeBox(SI::GetDepthID(pNodeValue->first), GetNodeCenter(pNodeValue));
     }
 
   protected:
@@ -2345,7 +2347,7 @@ namespace OrthoTree
     static_assert(CONFIG::IS_HOMOGENEOUS_GEOMETRY, "Mixed geometry types are not supported yet!");
     static_assert(EA::GEOMETRY_TYPE == GeometryType::Point || EA::GEOMETRY_TYPE == GeometryType::Box, "Entity geometry type is not supported!");
     static_assert(CONFIG::MAX_ALLOWED_DEPTH_ID <= MAX_DEPTH_ID, "MAX_ALLOWED_DEPTH_ID of Configuration is too large.");
-    static_assert(CONFIG::LOOSE_FACTOR >= 1.0, "Wrong loose factor for Loose trees.");
+    static_assert(CONFIG::LOOSE_FACTOR >= 1.0 && CONFIG::LOOSE_FACTOR <= 2.0, "Wrong loose factor for Loose trees.");
 
     using TOrthoTreeCore::TOrthoTreeCore;
 
@@ -2922,7 +2924,7 @@ namespace OrthoTree
         else
         {
           std::ranges::push_heap(neighborEntities.optimistic);
-          
+
           std::ranges::push_heap(neighborEntities.pessimistic);
           std::ranges::pop_heap(neighborEntities.pessimistic);
           neighborEntities.pessimistic.pop_back();
@@ -3286,21 +3288,16 @@ namespace OrthoTree
       std::vector<EntityID> EntityIDs;
     };
 
-    constexpr void FillNodeCollisionContext(NodeValueCP nodeValue, depth_t depthID, NodeCollisionContext& nodeContext) const noexcept
+    constexpr void FillNodeCollisionContext(NodeValueCP nodeValue, NodeCollisionContext& nodeContext, auto const& comparator) const noexcept
     {
       auto const& nodeEntities = Core::GetNodeEntities(nodeValue);
 
       nodeContext.pNodeValue = nodeValue;
       nodeContext.EntityIDs.clear();
       nodeContext.EntityIDs.assign(nodeEntities.begin(), nodeEntities.end());
+      std::ranges::sort(nodeContext.EntityIDs, comparator);
       nodeContext.Center = Core::GetNodeCenter(nodeValue);
-      nodeContext.Box = Core::Base::GetNodeBox(depthID, nodeContext.Center);
-    }
-
-    constexpr void PrepareNodeCollisionContext(auto const& comparator, NodeCollisionContext& nodeContext) const noexcept
-    {
-      auto& entityIDs = nodeContext.EntityIDs;
-      std::sort(entityIDs.begin(), entityIDs.end(), comparator);
+      nodeContext.Box = Core::GetNodeBox(nodeValue);
     }
 
     constexpr void InsertCollidedEntitiesInsideNode(
@@ -3350,20 +3347,19 @@ namespace OrthoTree
 
     constexpr void InsertCollidedEntitiesWithParents(
       EntityContainerView entities,
-      depth_t depthID,
       std::vector<NodeCollisionContext> const& nodeContextStack,
       std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
-      auto const& nodeContext = nodeContextStack[depthID];
+      auto const& nodeContext = nodeContextStack.back();
       auto const& nodeCenter = nodeContext.Center;
       auto const& nodeHalfSize = Core::GetNodeHalfSize(nodeContext.pNodeValue);
       auto const& entityIDs = nodeContext.EntityIDs;
 
       auto const entityNo = entityIDs.size();
-
-      for (depth_t parentDepthID = 0; parentDepthID < depthID; ++parentDepthID)
+      auto const depthNo = nodeContextStack.size();
+      for (depth_t parentDepthID = 0; parentDepthID < depthNo; ++parentDepthID)
       {
         auto const& [pParentNodeValue, parentCenter, parentBox, parenEntityIDs] = nodeContextStack[parentDepthID];
 
@@ -3445,23 +3441,19 @@ namespace OrthoTree
     void InsertCollidedEntitiesInSubtree(
       EntityContainerView entities,
       auto const& comparator,
-      depth_t depthID,
       NodeValueCP nodeValue,
       std::vector<NodeCollisionContext>& nodeContextStack,
       std::vector<std::pair<EntityID, EntityID>>& collidedEntities,
       TFloatScalar tolerance,
       std::optional<FCollisionDetector> const& collisionDetector) const noexcept
     {
-      FillNodeCollisionContext(nodeValue, depthID, nodeContextStack[depthID]);
-      PrepareNodeCollisionContext(comparator, nodeContextStack[depthID]);
+      auto& nodeContext = nodeContextStack.emplace_back();
+      FillNodeCollisionContext(nodeValue, nodeContext, comparator);
+      InsertCollidedEntitiesInsideNode(entities, nodeContext, collidedEntities, tolerance, collisionDetector);
+      InsertCollidedEntitiesWithParents(entities, nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
-      auto const childDepthID = depthID + 1;
       for (NodeIDCR childKey : Core::GetNodeChildren(nodeValue))
-        InsertCollidedEntitiesInSubtree(
-          entities, comparator, childDepthID, Core::GetNodeValueP(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
-
-      InsertCollidedEntitiesInsideNode(entities, nodeContextStack[depthID], collidedEntities, tolerance, collisionDetector);
-      InsertCollidedEntitiesWithParents(entities, depthID, nodeContextStack, collidedEntities, tolerance, collisionDetector);
+        InsertCollidedEntitiesInSubtree(entities, comparator, Core::GetNodeValueP(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
       // Pairwise sub-tree collision detection for loose octree
       if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
@@ -3476,6 +3468,8 @@ namespace OrthoTree
           }
         }
       }
+
+      nodeContextStack.pop_back();
     }
 
     // Collision detection between the stored entities from bottom to top logic
@@ -3507,146 +3501,180 @@ namespace OrthoTree
       auto const entityNo = entities.size();
       auto collidedEntities = std::vector<std::pair<EntityID, EntityID>>{};
       collidedEntities.reserve(std::max<std::size_t>(100, entityNo / 10));
+
+      // non-parallel execution
       if constexpr (!IS_PARALLEL_EXEC)
       {
-        auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+        auto nodeContextStack = std::vector<NodeCollisionContext>{};
+        nodeContextStack.reserve(this->GetDepthNo());
         InsertCollidedEntitiesInSubtree(
-          entities, comparator, 0, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+          entities, comparator, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+
+        return collidedEntities;
       }
       else
       {
-        auto const threadNum = std::size_t(std::thread::hardware_concurrency());
+
+
+        // maybe parallel execution
+
+        auto const threadNum = uint32_t(std::thread::hardware_concurrency());
         auto const isSingleThreadMoreEffective = Core::GetNodeCount() < threadNum * 3;
         if (isSingleThreadMoreEffective)
         {
-          auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
+          auto nodeContextStack = std::vector<NodeCollisionContext>();
+          nodeContextStack.reserve(this->GetDepthNo());
           InsertCollidedEntitiesInSubtree(
-            entities, comparator, 0, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+            entities, comparator, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+
+          return collidedEntities;
         }
-        else
+
+        constexpr uint32_t INVALID_INDEX = -1;
+        struct NodeData
         {
-          auto nodeQueue = std::vector<NodeValueCP>{};
-          nodeQueue.reserve(threadNum * 2);
-          nodeQueue.emplace_back(Core::GetNodeValueP(SI::GetRootKey()));
+          NodeValueCP nodeValue;
+          uint32_t parentID = INVALID_INDEX;
+          uint32_t contextID = INVALID_INDEX;
+        };
 
-          auto nodeContextMap = std::unordered_map<NodeID, NodeCollisionContext>{};
+        auto nodeQueue = std::vector<NodeData>{};
+        nodeQueue.reserve(threadNum * 2);
+        nodeQueue.push_back(NodeData{ Core::GetNodeValueP(SI::GetRootKey()), INVALID_INDEX, INVALID_INDEX });
 
-          // TODO: Loose octree
-          std::size_t nodeQueueNum = 1;
-          std::size_t childNodeAddedParentNum = 0;
-          for (std::size_t i = 0; 0 < nodeQueueNum && nodeQueueNum < threadNum - 2; --nodeQueueNum, ++i)
+        auto nodeContextMap = std::vector<NodeCollisionContext>{};
+
+        uint32_t nodeQueueNum = 1;
+        uint32_t childNodeAddedParentNum = 0;
+        for (uint32_t i = 0; 0 < nodeQueueNum && nodeQueueNum < threadNum - 2; --nodeQueueNum, ++i)
+        {
+          ++childNodeAddedParentNum;
+          auto& [nodeValue, parentID, contextID] = nodeQueue[i];
+          contextID = static_cast<uint32_t>(nodeContextMap.size());
+          auto& nodeContext = nodeContextMap.emplace_back();
+          FillNodeCollisionContext(nodeValue, nodeContext, comparator);
+
+          for (NodeIDCR childNodeID : Core::GetNodeChildren(nodeValue))
           {
-            ++childNodeAddedParentNum;
-            for (NodeIDCR childKey : Core::GetNodeChildren(nodeQueue[i]))
-            {
-              nodeQueue.emplace_back(Core::GetNodeValueP(childKey));
-              ++nodeQueueNum;
-            }
-
-            NodeIDCR nodeKey = nodeQueue[i]->first;
-            auto const depthID = SI::GetDepthID(nodeKey);
-            auto& nodeContext = nodeContextMap[nodeKey];
-            FillNodeCollisionContext(nodeQueue[i], depthID, nodeContext);
-            PrepareNodeCollisionContext(comparator, nodeContext);
-          }
-
-          if (nodeQueueNum < threadNum)
-          {
-            auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
-            InsertCollidedEntitiesInSubtree(
-              entities, comparator, 0, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
-          }
-          else
-          {
-            struct TaskContext
-            {
-              NodeValueCP nodeValue;
-              NodeValueCP nodeValueSecondary;
-              std::vector<std::pair<EntityID, EntityID>> collidedEntities;
-            };
-
-            auto const nodeQueueAllNo = nodeQueue.size();
-            auto const nodeQueueBegin = nodeQueueAllNo - nodeQueueNum;
-            auto taskContexts = std::vector<TaskContext>(nodeQueueNum);
-            for (std::size_t taskID = 0; taskID < nodeQueueNum; ++taskID)
-              taskContexts[taskID].nodeValue = nodeQueue[nodeQueueBegin + taskID];
-
-            EXEC_POL_DEF(epcd); // GCC 11.3
-            std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin(), taskContexts.end(), [&](auto& taskContext) {
-              auto const depthID = SI::GetDepthID(taskContext.nodeValue->first);
-              auto parentDepthID = depthID;
-
-              auto nodeContextStack = std::vector<NodeCollisionContext>(this->GetDepthNo());
-              // TODO: remove backtrack
-              for (auto parentKey = SI::GetParentKey(taskContext.nodeValue->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
-                nodeContextStack[--parentDepthID] = nodeContextMap.at(parentKey);
-
-              InsertCollidedEntitiesInSubtree(
-                entities, comparator, depthID, taskContext.nodeValue, nodeContextStack, taskContext.collidedEntities, tolerance, collisionDetector);
-            });
-
-            if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
-            {
-              for (std::size_t i = 0; i < childNodeAddedParentNum; ++i)
-              {
-                auto const& childNodeIDs = Core::GetNodeChildren(nodeQueue[i]);
-                for (auto it1 = childNodeIDs.begin(); it1 != childNodeIDs.end(); ++it1)
-                {
-                  for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
-                  {
-                    taskContexts.push_back({ .nodeValue = Core::GetNodeValueP(*it1), .nodeValueSecondary = Core::GetNodeValueP(*it2) });
-                  }
-                }
-              }
-
-              EXEC_POL_DEF(epst); // GCC 11.3
-              std::for_each(EXEC_POL_ADD(epst) taskContexts.begin() + nodeQueueNum, taskContexts.end(), [&](auto& taskContext) {
-                CollisionDetection(
-                  *this, entities, taskContext.nodeValue, *this, entities, taskContext.nodeValueSecondary, taskContext.collidedEntities, tolerance, collisionDetector);
-              });
-            }
-
-            auto collidedEntitiesInParents = std::vector<std::pair<EntityID, EntityID>>{};
-            auto nodeContextStack = std::vector<NodeCollisionContext>();
-            auto usedContextsStack = std::vector<NodeCollisionContext*>{};
-            std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNum, [&](auto const* nodeValue) {
-              {
-                usedContextsStack.emplace_back(&nodeContextMap.at(nodeValue->first));
-                // TODO: remove backtrack
-                for (auto parentKey = SI::GetParentKey(nodeValue->first); SI::IsValidKey(parentKey); parentKey = SI::GetParentKey(parentKey))
-                  usedContextsStack.emplace_back(&nodeContextMap.at(parentKey));
-
-                for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it)
-                  nodeContextStack.emplace_back(std::move(*(*it)));
-              }
-
-              auto const depthID = depth_t(usedContextsStack.size()) - 1;
-              InsertCollidedEntitiesInsideNode(entities, nodeContextStack[depthID], collidedEntitiesInParents, tolerance, collisionDetector);
-              InsertCollidedEntitiesWithParents(entities, depthID, nodeContextStack, collidedEntitiesInParents, tolerance, collisionDetector);
-
-              {
-                auto i = 0;
-                for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it, ++i)
-                  *(*it) = std::move(nodeContextStack[i]);
-                usedContextsStack.clear();
-                nodeContextStack.clear();
-              }
-            });
-
-            auto const collisionNo =
-              std::transform_reduce(taskContexts.begin(), taskContexts.end(), collidedEntitiesInParents.size(), std::plus{}, [](auto const& taskContext) {
-                return taskContext.collidedEntities.size();
-              });
-
-            collidedEntities.reserve(collisionNo);
-            collidedEntities.insert(collidedEntities.end(), collidedEntitiesInParents.begin(), collidedEntitiesInParents.end());
-            for (auto const& taskContext : taskContexts)
-              collidedEntities.insert(collidedEntities.end(), taskContext.collidedEntities.begin(), taskContext.collidedEntities.end());
+            nodeQueue.push_back(NodeData{ Core::GetNodeValueP(childNodeID), i, INVALID_INDEX });
+            ++nodeQueueNum;
           }
         }
-      }
 
-      return collidedEntities;
+        if (nodeQueueNum < threadNum)
+        {
+          auto nodeContextStack = std::vector<NodeCollisionContext>();
+          nodeContextStack.reserve(this->GetDepthNo());
+          InsertCollidedEntitiesInSubtree(
+            entities, comparator, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+
+          return collidedEntities;
+        }
+
+        // parallel execution
+
+        struct TaskContext
+        {
+          NodeValueCP nodeValue;
+          NodeValueCP nodeValueSecondary;
+          uint32_t parentID;
+          uint32_t contextID;
+          std::vector<std::pair<EntityID, EntityID>> collidedEntities;
+        };
+
+        auto const nodeQueueAllNo = nodeQueue.size();
+        auto const nodeQueueBegin = nodeQueueAllNo - nodeQueueNum;
+        auto taskContexts = std::vector<TaskContext>(nodeQueueNum);
+        for (std::size_t taskID = 0; taskID < nodeQueueNum; ++taskID)
+        {
+          auto const& [nodeValue, parentID, contextID] = nodeQueue[nodeQueueBegin + taskID];
+          taskContexts[taskID].nodeValue = nodeValue;
+          taskContexts[taskID].parentID = parentID;
+          taskContexts[taskID].contextID = contextID;
+        }
+
+        EXEC_POL_DEF(epcd); // GCC 11.3
+        std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin(), taskContexts.end(), [&](auto& taskContext) {
+          auto const& [nodeValue, nvs_, parentID, contextID, ce_] = taskContext;
+
+          auto nodeContextStack = std::vector<NodeCollisionContext>();
+          nodeContextStack.reserve(this->GetDepthNo());
+
+          auto parentID_ = parentID;
+          while (parentID_ != INVALID_INDEX)
+          {
+            auto const& parentNodeData = nodeQueue[parentID_];
+            nodeContextStack.push_back(nodeContextMap[parentNodeData.contextID]);
+            parentID_ = parentNodeData.parentID;
+          }
+
+          std::ranges::reverse(nodeContextStack);
+          InsertCollidedEntitiesInSubtree(entities, comparator, nodeValue, nodeContextStack, taskContext.collidedEntities, tolerance, collisionDetector);
+        });
+        /*
+        if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
+        {
+          for (std::size_t i = 0; i < childNodeAddedParentNum; ++i)
+          {
+            auto const& childNodeIDs = Core::GetNodeChildren(nodeQueue[i].nodeValue);
+            for (auto it1 = childNodeIDs.begin(); it1 != childNodeIDs.end(); ++it1)
+            {
+              for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
+              {
+                taskContexts.push_back({ .nodeValue = Core::GetNodeValueP(*it1), .nodeValueSecondary = Core::GetNodeValueP(*it2) });
+              }
+            }
+          }
+
+          EXEC_POL_DEF(epst); // GCC 11.3
+          std::for_each(EXEC_POL_ADD(epst) taskContexts.begin() + nodeQueueNum, taskContexts.end(), [&](auto& taskContext) {
+            CollisionDetection(
+              *this, entities, taskContext.nodeValue, *this, entities, taskContext.nodeValueSecondary, taskContext.collidedEntities, tolerance, collisionDetector);
+          });
+        }
+        */
+        auto collidedEntitiesInParents = std::vector<std::pair<EntityID, EntityID>>{};
+        auto nodeContextStack = std::vector<NodeCollisionContext>();
+        auto usedContextsStack = std::vector<NodeCollisionContext*>{};
+        std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNum, [&](auto const& nodeData) {
+          {
+            usedContextsStack.emplace_back(&nodeContextMap[nodeData.contextID]);
+            auto parentID = nodeData.parentID;
+            while (parentID != INVALID_INDEX)
+            {
+              auto const& parentData = nodeQueue[parentID];
+              usedContextsStack.emplace_back(&nodeContextMap[parentData.contextID]);
+              parentID = parentData.parentID;
+            }
+
+            for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it)
+              nodeContextStack.emplace_back(std::move(*(*it)));
+          }
+
+          InsertCollidedEntitiesInsideNode(entities, nodeContextStack.back(), collidedEntitiesInParents, tolerance, collisionDetector);
+          InsertCollidedEntitiesWithParents(entities, nodeContextStack, collidedEntitiesInParents, tolerance, collisionDetector);
+
+          {
+            auto i = 0;
+            for (auto it = usedContextsStack.rbegin(); it != usedContextsStack.rend(); ++it, ++i)
+              *(*it) = std::move(nodeContextStack[i]);
+            usedContextsStack.clear();
+            nodeContextStack.clear();
+          }
+        });
+
+        auto const collisionNo =
+          std::transform_reduce(taskContexts.begin(), taskContexts.end(), collidedEntitiesInParents.size(), std::plus{}, [](auto const& taskContext) {
+            return taskContext.collidedEntities.size();
+          });
+
+        collidedEntities.reserve(collisionNo);
+        collidedEntities.insert(collidedEntities.end(), collidedEntitiesInParents.begin(), collidedEntitiesInParents.end());
+        for (auto const& taskContext : taskContexts)
+          collidedEntities.insert(collidedEntities.end(), taskContext.collidedEntities.begin(), taskContext.collidedEntities.end());
+
+        return collidedEntities;
+      }
     }
 
   public:
