@@ -259,7 +259,7 @@ namespace OrthoTree
       {
         if (
           IsLess(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) &&
-          IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
+          IsLess(Base::GetBoxMinC(e2, dimensionID), Base::GetBoxMaxC(e1, dimensionID), tolerance))
           rel |= EBoxRelationCandidate::OverlappedC;
         else if (
           IsAlmostEqual(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) ||

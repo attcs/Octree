@@ -483,6 +483,7 @@ namespace OrthoTree::detail
 
     static constexpr ChildID CastMortonIDToChildID(LinearLocationID morton) noexcept { return morton; }
 
+    // TODO: remove?
     static ChildID GetChildID(NodeIDCR key) noexcept
     {
       if constexpr (IS_LINEAR_TREE)
@@ -501,6 +502,7 @@ namespace OrthoTree::detail
         return CastMortonIDToChildID(childID);
       }
     }
+
     // TODO: rename
     static ChildID GetChildID2(NodeIDCR parentNodeID, NodeID childNodeID) noexcept
     {
@@ -537,11 +539,12 @@ namespace OrthoTree::detail
 
     static constexpr Location GetLocation(auto&& locationID, depth_t maxDepthID) noexcept { return Location{ maxDepthID, locationID }; }
 
-    static constexpr Location GetRangeLocation(auto&& locationIDRange, depth_t maxDepthID) noexcept
+    static constexpr Location GetRangeLocation(auto&& gridIDRange, depth_t maxDepthID) noexcept
     {
-      if (locationIDRange[0] == locationIDRange[1])
-        return Location{ locationIDRange[0], maxDepthID };
+      if (gridIDRange[0] == gridIDRange[1])
+        return Location{ maxDepthID, Encode(gridIDRange[0]) };
 
+      auto locationIDRange = std::array<LocationID, 2>{ Encode(gridIDRange[0]), Encode(gridIDRange[1]) };
       auto const locationDifference = locationIDRange[0] ^ locationIDRange[1];
 
       depth_t levelID = 0;
@@ -558,7 +561,7 @@ namespace OrthoTree::detail
 
       assert(0 < levelID && levelID <= maxDepthID);
 
-      LocationID const shift = levelID * DIMENSION_NO;
+      auto const shift = levelID * DIMENSION_NO;
       return Location{ maxDepthID - levelID, (locationIDRange[0] >> shift) << shift };
     }
 

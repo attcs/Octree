@@ -206,7 +206,14 @@ namespace OrthoTree::detail
         [&](auto dimensionID) noexcept { maxRelativeSize = std::max(maxRelativeSize, boxSize[dimensionID] * m_rasterizerFactors[dimensionID]); });
 
       GridID maxRelativeGridSize = GridID(std::ceil(maxRelativeSize));
-      auto levelID = std::bit_width(maxRelativeGridSize) - 1;
+      // TODO: enable it: 
+      // assert(maxRelativeGridSize > 0); // bounding box has no volume
+      if (maxRelativeGridSize == 0)
+        return { boxCenterGrid, 0 };
+
+      auto levelID = std::bit_width(maxRelativeGridSize - 1);
+      // TODO: remove:
+      assert(levelID == std::ceil(std::log2(maxRelativeSize)));
 
       // depth calculation
       if constexpr (LOOSE_FACTOR != 2.0)
