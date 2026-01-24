@@ -74,8 +74,12 @@ namespace OrthoTree::detail
 
     struct Location
     {
+      // TODO: make them private and packed
       depth_t depthID;
       LocationID locationID;
+
+      constexpr depth_t GetDepthID() const noexcept { return depthID; }
+      constexpr LocationID GetLocationID() const noexcept { return locationID; }
     };
 
     static constexpr Location GetRootLocation() noexcept { return Location{ 0, LocationID{} }; }
@@ -138,10 +142,10 @@ namespace OrthoTree::detail
     }
     */
 
-    static constexpr NodeID GetNodeID(LocationIDCR locationIDOnDepth, depth_t maxDepthID) noexcept
+    static constexpr NodeID GetNodeID(LocationIDCR locationIDOnDepth, depth_t depthID) noexcept
     {
-      assert(locationIDOnDepth < (NodeID(1) << (maxDepthID * DIMENSION_NO)));
-      return (NodeID{ 1 } << (maxDepthID * DIMENSION_NO)) | locationIDOnDepth;
+      assert(locationIDOnDepth < (NodeID(1) << (depthID * DIMENSION_NO)));
+      return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | locationIDOnDepth;
     }
 
     template<typename T>
@@ -157,7 +161,7 @@ namespace OrthoTree::detail
 
     static constexpr NodeID GetNodeID(LocationIDCR locationID, depth_t depthID, depth_t maxDepthID) noexcept
     {
-      assert(locationID < (NodeID(1) << (depthID * DIMENSION_NO)));
+      assert((locationID >> (maxDepthID * DIMENSION_NO)) == 0);
       return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | (locationID >> ((maxDepthID - depthID) * DIMENSION_NO));
     }
 
@@ -183,6 +187,7 @@ namespace OrthoTree::detail
       return (childKey >> shift) == possibleAncestorKey;
     }
 
+    // TODO: remove
     static constexpr LocationID GetParentGridID(LocationIDCR locationID) noexcept { return locationID >> DIMENSION_NO; }
 
     static constexpr depth_t GetDepthID(NodeID key) noexcept
@@ -254,6 +259,34 @@ namespace OrthoTree::detail
       auto const differentLevelNum = (differentBitWidth + DIMENSION_NO - 1) / DIMENSION_NO;
       return nodeID1 >> (differentLevelNum * DIMENSION_NO);
     }
+
+    class GetLowestCommonAncestorHelper
+    {
+    public:
+      constexpr explicit GetLowestCommonAncestorHelper(Location location) noexcept
+      : m_minDepthID(location.depthID)
+      , m_base(location.locationID)
+      {}
+
+      constexpr void Add(Location location) noexcept {
+        if (location.GetDepthID() < m_minDepthID)
+          m_minDepthID = location.GetDepthID();
+        
+        m_diff |= (m_base ^ location.GetLocationID());
+      }
+
+      constexpr NodeID GetNodeID(depth_t maxDepthID) const noexcept {
+        auto const levelIDDiff = (detail::bit_width(m_diff) + DIMENSION_NO - 1) / DIMENSION_NO;
+        auto const depthID = std::min(m_minDepthID, maxDepthID - levelIDDiff);
+
+        return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | (m_base >> ((maxDepthID - depthID) * DIMENSION_NO));
+      }
+
+    private:
+      depth_t m_minDepthID = std::numeric_limits<depth_t>::max();
+      LocationID m_base = {};
+      LocationID m_diff = {};
+    };
 
   private: // Morton aid functions
     // Separates low 16/32 bits of input by 1 bit
@@ -516,6 +549,18 @@ namespace OrthoTree::detail
     static constexpr ChildID GetChildID(LocationIDCR childNodeKey, depth_t examinationLevelID)
     {
       return GetChildID(childNodeKey >> (DIMENSION_NO * (examinationLevelID - 1)));
+    }
+
+    static constexpr NodeID GetDirectChildNodeID(NodeID parentNodeID, NodeID childNodeID) noexcept
+    {
+      auto const parentDepthID = GetDepthID(parentNodeID);
+      auto const childDepthID = GetDepthID(childNodeID);
+      assert(parentDepthID < childDepthID);
+      auto const depthDiff = childDepthID - parentDepthID;
+      if (depthDiff == 1)
+        return childNodeID;
+      else
+        return childNodeID >> (DIMENSION_NO * (depthDiff - 1));
     }
 
     static constexpr ChildID GetChildIDByDepth(depth_t parentDepth, depth_t childDepth, LocationIDCR childNodeKey)

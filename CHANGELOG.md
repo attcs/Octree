@@ -18,6 +18,9 @@ Interface changes
   Only one lambda is required which 
   * input is NodeValue (currently std::pair<const NodeID, Node>, but do not rely on in long term), other API function are available to ask node geometry data and entities (`GetNodeCenter()`, `GetNodeHalfSize()`, `GetNodeEntities()`).
   * must return TraverseControl enum to control the traverse.
+* Out of modelspace entities handling now is configurable. Default behavior is changed to allow.
+  * Allow = true [Default]: OoM entities will be placed in the Root. Root bounding box will be changed to enclose the new entity.
+  * Allow = false: OoM entity related operations will be failed, and no changes will be applied to the tree. (E.g. Insert/Update) Creation will be partial.
 
 Performance improvements
 * Loose octree has major performance advantage for picking

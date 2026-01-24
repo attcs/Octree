@@ -213,7 +213,7 @@ namespace OrthoTree::detail
 
       auto levelID = std::bit_width(maxRelativeGridSize - 1);
       // TODO: remove:
-      assert(levelID == std::ceil(std::log2(maxRelativeSize)));
+      assert(levelID == std::ceil(std::log2(maxRelativeGridSize)));
 
       // depth calculation
       if constexpr (LOOSE_FACTOR != 2.0)
