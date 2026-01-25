@@ -36,8 +36,6 @@ namespace OrthoTree
     // In 3D, 8: LocationID is an uint32_t, Location's size is 32bit. Resolution: for 1km model-space is 4m
     static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 19 };
 
-    // static constexpr bool USE_PMR = true;
-
     static constexpr NodeGeometryStorage NODE_GEOMETRY_STORAGE = USE_MBR_ ? NodeGeometryStorage::MBR : NodeGeometryStorage::MinPoint;
 
     // Target number of elements in nodes

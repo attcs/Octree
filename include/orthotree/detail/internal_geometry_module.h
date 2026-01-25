@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2021 Attila Csikï¿½s
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -291,14 +291,46 @@ namespace OrthoTree::detail
     static constexpr Box GetBoxAD(TBox const& box) noexcept
     {
       Box boxIGM;
-      ORTHOTREE_LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
+      detail::static_for<DIMENSION_NO>([&](auto dimensionID) {
         boxIGM.Min[dimensionID] = Geometry(GA::GetBoxMinC(box, dimensionID));
         boxIGM.Max[dimensionID] = Geometry(GA::GetBoxMaxC(box, dimensionID));
-      }
+      });
 
       return boxIGM;
+    }
+
+    static constexpr Box GetBoxAD(TVector const& point) noexcept
+    {
+      Box boxIGM;
+      detail::static_for<DIMENSION_NO>([&](auto dimensionID) {
+        auto const pointValue = Geometry(GA::GetPointC(point, dimensionID));
+        boxIGM.Min[dimensionID] = pointValue;
+        boxIGM.Max[dimensionID] = pointValue;
+      });
+
+      return boxIGM;
+    }
+
+    template<typename TEntityGeometry>
+    static constexpr void UniteInBoxAD(Box& box, TEntityGeometry const& entityGeometry) noexcept
+    {
+      detail::static_for<DIMENSION_NO>([&](auto dimensionID) {
+        if constexpr (std::is_same_v<TVector, TEntityGeometry>)
+        {
+          auto const point = GA::GetPointC(entityGeometry, dimensionID);
+          box.Min[dimensionID] = std::min(box.Min[dimensionID], point);
+          box.Max[dimensionID] = std::max(box.Max[dimensionID], point);
+        }
+        else if constexpr (std::is_same_v<TBox, TEntityGeometry>)
+        {
+          box.Min[dimensionID] = std::min(box.Min[dimensionID], GA::GetBoxMinC(entityGeometry, dimensionID));
+          box.Max[dimensionID] = std::max(box.Max[dimensionID], GA::GetBoxMaxC(entityGeometry, dimensionID));
+        }
+        else
+        {
+          static_assert(false);
+        }
+      });
     }
 
     template<typename TContainer>
@@ -307,6 +339,7 @@ namespace OrthoTree::detail
       auto ext = BoxInvertedInit();
       for (auto const& e : points)
       {
+        // TODO: EntityAdapter is required
         auto const& point = detail::getValuePart(e);
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
@@ -326,6 +359,8 @@ namespace OrthoTree::detail
       auto ext = BoxInvertedInit();
       for (auto const& e : boxes)
       {
+        // TODO: EntityAdapter is required
+
         auto const& box = detail::getValuePart(e);
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
