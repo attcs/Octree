@@ -116,6 +116,9 @@
     <ClInclude Include="compile_test.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\configuration.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

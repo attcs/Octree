@@ -184,6 +184,7 @@ namespace OrthoTree
       else
       {
         constexpr uint32_t uintN = static_cast<uint32_t>(N);
+        ORTHOTREE_LOOPIVDEP
         for (uint32_t i = 0; i < uintN; ++i)
           f(i);
       }

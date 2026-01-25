@@ -81,6 +81,27 @@ namespace OrthoTree::detail
       return center;
     }
 
+    static constexpr Vector Sub(Vector const& v1, Vector const& v2) noexcept
+    {
+      Vector v;
+      static_for<DIMENSION_NO>([&](auto dimensionID) { v[dimensionID] = v1[dimensionID] - v2[dimensionID]; });
+      return v;
+    }
+
+    static constexpr Vector Add(Vector const& v1, Vector const& v2) noexcept
+    {
+      Vector v;
+      static_for<DIMENSION_NO>([&](auto dimensionID) { v[dimensionID] = v1[dimensionID] + v2[dimensionID]; });
+      return v;
+    }
+
+    static constexpr Vector GetBoxMinPointAD(TBox const& box) noexcept
+    {
+      Vector center;
+      static_for<DIMENSION_NO>([&](auto dimensionID) { center[dimensionID] = Geometry(GA::GetBoxMinC(box, dimensionID)); });
+      return center;
+    }
+
     static constexpr Vector GetBoxCenterAD(TBox const& box) noexcept
     {
       Vector center;
@@ -92,10 +113,12 @@ namespace OrthoTree::detail
     static constexpr Vector GetBoxSizeAD(TBox const& box) noexcept
     {
       Vector sizes;
-      static_for<DIMENSION_NO>([&](auto dimensionID) { sizes[dimensionID] = Geometry((GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID))); });
+      static_for<DIMENSION_NO>(
+        [&](auto dimensionID) { sizes[dimensionID] = Geometry((GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID))); });
       return sizes;
     }
 
+    // TODO: remove?
     static constexpr Vector GetBoxHalfSizeAD(TBox const& box) noexcept
     {
       Vector halfSize;
@@ -106,6 +129,7 @@ namespace OrthoTree::detail
       return halfSize;
     }
 
+    // TODO: remove?
     static bool AreBoxesOverlappingByCenter(Vector const& centerLhs, Vector const& halfSizeLhs, Vector const& centerRhs, Vector const& halfSizeRhs) noexcept
     {
       Vector distance;
@@ -121,6 +145,20 @@ namespace OrthoTree::detail
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         if (sizeLimit[dimensionID] <= std::abs(distance[dimensionID]))
           return false;
+
+      return true;
+    }
+
+    static bool AreBoxesOverlappingByMinPoint(Vector const& minPointLhs, Vector const& sizeLhs, Vector const& minPointRhs, Vector const& sizeRhs) noexcept
+    {
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+      {
+        auto const maxLhs = minPointLhs[dimensionID] + sizeLhs[dimensionID];
+        auto const maxRhs = minPointRhs[dimensionID] + sizeRhs[dimensionID];
+
+        if (maxLhs <= minPointRhs[dimensionID] || maxRhs <= minPointLhs[dimensionID])
+          return false;
+      }
 
       return true;
     }
@@ -200,14 +238,13 @@ namespace OrthoTree::detail
       return true;
     }
 
-    static constexpr bool DoesRangeContainBoxAD(TBox const& range, Vector const& center, Vector const& halfSize) noexcept
+    static constexpr bool DoesRangeContainBoxAD(TBox const& range, Vector const& minPoint, Vector const& size) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        const auto boxMin = center[dimensionID] - halfSize[dimensionID];
-        const auto boxMax = center[dimensionID] + halfSize[dimensionID];
+        const auto boxMax = minPoint[dimensionID] + size[dimensionID];
 
-        if (!DoesRangeContainBox(GA::GetBoxMinC(range, dimensionID), GA::GetBoxMaxC(range, dimensionID), boxMin, boxMax))
+        if (!DoesRangeContainBox(GA::GetBoxMinC(range, dimensionID), GA::GetBoxMaxC(range, dimensionID), minPoint[dimensionID], boxMax))
         {
           return false;
         }
@@ -216,9 +253,17 @@ namespace OrthoTree::detail
     }
 
     static constexpr PlaneRelation GetBoxPlaneRelationAD(
-      Vector const& center, Vector const& halfSize, TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) noexcept
+      Vector const& minPoint, Vector const& size, TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
+
+      Vector center;
+      Vector halfSize;
+      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+      {
+        halfSize[dimensionID] = size[dimensionID] * Geometry(0.5);
+        center[dimensionID] = minPoint[dimensionID] + halfSize[dimensionID];
+      }
 
       auto radiusProjected = double(tolerance);
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
@@ -313,16 +358,16 @@ namespace OrthoTree::detail
       return true;
     }
 
-    static constexpr bool DoesBoxContainPointAD(Vector const& center, Vector const& halfSizes, TVector const& point, TScalar tolerance = 0) noexcept
+    static constexpr bool DoesBoxContainPointAD(Vector const& minPoint, Vector const& size, TVector const& point, TScalar tolerance = 0) noexcept
     {
       if (tolerance != 0.0)
       {
         assert(tolerance > 0);
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          auto const pointDistance = std::abs(Geometry(GA::GetPointC(point, dimensionID)) - center[dimensionID]);
-          auto const halfSize = halfSizes[dimensionID] + tolerance;
-          if (pointDistance >= halfSize)
+          auto const halfSize = size[dimensionID] * Geometry(0.5);
+          auto const pointDistance = std::abs(Geometry(GA::GetPointC(point, dimensionID)) - minPoint[dimensionID] - halfSize);
+          if (pointDistance >= halfSize + tolerance)
             return false;
         }
       }
@@ -330,21 +375,24 @@ namespace OrthoTree::detail
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
-          auto const pointDistance = std::abs(Geometry(GA::GetPointC(point, dimensionID)) - center[dimensionID]);
-          if (pointDistance > halfSizes[dimensionID])
+          auto const halfSize = size[dimensionID] * Geometry(0.5);
+          auto const pointDistance = std::abs(Geometry(GA::GetPointC(point, dimensionID)) - minPoint[dimensionID] - halfSize);
+          if (pointDistance > halfSize)
             return false;
         }
       }
       return true;
     }
 
-    static Geometry GetBoxWallDistanceAD(TVector const& searchPoint, Vector const& centerPoint, Vector const& halfSize, bool isInsideConsideredAsZero) noexcept
+    static Geometry GetBoxWallDistanceAD(TVector const& searchPoint, Vector const& minPoint, Vector const& size, bool isInsideConsideredAsZero) noexcept
     {
       Vector centerDistance;
+      Vector halfSize;
       bool isInside = true;
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        centerDistance[dimensionID] = std::abs(centerPoint[dimensionID] - Geometry(GA::GetPointC(searchPoint, dimensionID)));
+        halfSize[dimensionID] = size[dimensionID] * Geometry(0.5);
+        centerDistance[dimensionID] = std::abs(minPoint[dimensionID] + halfSize[dimensionID] - Geometry(GA::GetPointC(searchPoint, dimensionID)));
         isInside &= centerDistance[dimensionID] <= halfSize[dimensionID];
       }
 
@@ -357,8 +405,7 @@ namespace OrthoTree::detail
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
         {
           auto const wallDistance = halfSize[dimensionID] - centerDistance[dimensionID];
-          if (minWallDistance > wallDistance)
-            minWallDistance = wallDistance;
+          minWallDistance = std::min(minWallDistance, wallDistance);
         }
         return minWallDistance;
       }
@@ -371,58 +418,6 @@ namespace OrthoTree::detail
         }
         return Size(distance);
       }
-    }
-
-    static constexpr std::optional<Geometry> GetRayBoxDistanceAD(
-      Vector const& center, Vector const& halfSizes, TVector const& rayOrigin, TVector const& rayDirection, TScalar tolerance) noexcept
-    {
-      assert(tolerance >= 0 && "Tolerance cannot be negative!");
-      if (DoesBoxContainPointAD(center, halfSizes, rayOrigin, tolerance))
-        return Geometry{};
-
-      auto constexpr inf = std::numeric_limits<Geometry>::max();
-      auto minBoxDistance = -inf;
-      auto maxBoxDistance = +inf;
-      auto const tolerance_ = Geometry(tolerance);
-
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        auto const origin = Geometry(GA::GetPointC(rayOrigin, dimensionID));
-        auto const direction = Geometry(GA::GetPointC(rayDirection, dimensionID));
-        auto const boxMin = center[dimensionID] - halfSizes[dimensionID] - tolerance_;
-        auto const boxMax = center[dimensionID] + halfSizes[dimensionID] + tolerance_;
-        if (direction == 0)
-        {
-          if (tolerance != 0.0)
-          {
-            // Box should be within tolerance (<, not <=)
-            if (origin <= boxMin || boxMax <= origin)
-              return std::nullopt;
-          }
-          else
-          {
-            if (origin < boxMin || boxMax < origin)
-              return std::nullopt;
-          }
-        }
-        else
-        {
-          auto const directionReciprocal = Geometry(1) / direction;
-          auto t1 = (boxMin - origin) * directionReciprocal;
-          auto t2 = (boxMax - origin) * directionReciprocal;
-          if (t1 > t2)
-            std::swap(t1, t2);
-
-          minBoxDistance = std::max(minBoxDistance, t1);
-          maxBoxDistance = std::min(maxBoxDistance, t2);
-        }
-      }
-
-      assert(maxBoxDistance != inf && "rayDirection is a zero vector!");
-      if (minBoxDistance > maxBoxDistance || maxBoxDistance < 0.0)
-        return std::nullopt;
-      else
-        return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
     }
 
     static constexpr Geometry GetVolumeAD(Box const& range) noexcept

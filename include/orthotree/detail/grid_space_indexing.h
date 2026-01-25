@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <array>
 
+#include "common.h"
 #include "internal_geometry_module.h"
 
 namespace OrthoTree::detail
@@ -62,6 +63,7 @@ namespace OrthoTree::detail
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         m_sizeInDimensions[dimensionID] = m_boxSpace.Max[dimensionID] - m_boxSpace.Min[dimensionID];
+        m_derasterizerFactors[dimensionID] = m_sizeInDimensions[dimensionID] / subDivisionNoFactor;
         auto const isFlat = m_sizeInDimensions[dimensionID] == 0;
         m_rasterizerFactors[dimensionID] = isFlat ? IGM_Geometry(1.0) : (subDivisionNoFactor / m_sizeInDimensions[dimensionID]);
       }
@@ -79,6 +81,7 @@ namespace OrthoTree::detail
 
     constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
 
+    // TODO: remove?
     constexpr IGM::Vector CalculateGridCellCenter(DimArray<GridID>&& gridID, depth_t&& centerLevel) const noexcept
     {
       using IGM_Vector = typename IGM::Vector;
@@ -88,9 +91,21 @@ namespace OrthoTree::detail
       IGM_Vector center;
       ORTHOTREE_LOOPIVDEP
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        center[dimensionID] = (IGM_Geometry(gridID[dimensionID]) + halfGrid) / m_rasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
+        center[dimensionID] = (IGM_Geometry(gridID[dimensionID]) + halfGrid) * m_derasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
 
       return center;
+    }
+
+    constexpr IGM::Vector CalculateGridCellMinPoint(DimArray<GridID>&& gridID) const noexcept
+    {
+      using IGM_Vector = typename IGM::Vector;
+
+      IGM_Vector minPoint;
+      detail::static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
+        minPoint[dimensionID] = IGM_Geometry(gridID[dimensionID]) * m_derasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
+      });
+
+      return minPoint;
     }
 
     template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
@@ -191,7 +206,7 @@ namespace OrthoTree::detail
         else
           return { GridPosition{}, INVALID_DEPTH };
       }
-      
+
       auto const boxCenter = IGM::GetBoxCenterAD(box);
       auto const boxSize = IGM::GetBoxSizeAD(box);
 
@@ -206,7 +221,7 @@ namespace OrthoTree::detail
         [&](auto dimensionID) noexcept { maxRelativeSize = std::max(maxRelativeSize, boxSize[dimensionID] * m_rasterizerFactors[dimensionID]); });
 
       GridID maxRelativeGridSize = GridID(std::ceil(maxRelativeSize));
-      // TODO: enable it: 
+      // TODO: enable it:
       // assert(maxRelativeGridSize > 0); // bounding box has no volume
       if (maxRelativeGridSize == 0)
         return { boxCenterGrid, 0 };
@@ -251,6 +266,7 @@ namespace OrthoTree::detail
     IGM::Box m_boxSpace = {};
     IGM::Geometry m_volumeOfOverallSpace = {};
     IGM::Vector m_rasterizerFactors = {};
+    IGM::Vector m_derasterizerFactors = {};
     IGM::Vector m_sizeInDimensions = {};
   };
 } // namespace OrthoTree::detail
