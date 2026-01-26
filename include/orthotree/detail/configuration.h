@@ -13,7 +13,7 @@ namespace OrthoTree
     MBR,
   };
 
-  template<double IS_LOOSE_FACTOR_ = 1.0, bool USE_MBR_ = false>
+  template<double IS_LOOSE_FACTOR_ = 1.0, bool USE_MBR = false>
   struct Configuration
   {
     // Geometry type cannot be mixed within the same octree.
@@ -36,7 +36,7 @@ namespace OrthoTree
     // In 3D, 8: LocationID is an uint32_t, Location's size is 32bit. Resolution: for 1km model-space is 4m
     static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 19 };
 
-    static constexpr NodeGeometryStorage NODE_GEOMETRY_STORAGE = USE_MBR_ ? NodeGeometryStorage::MBR : NodeGeometryStorage::MinPoint;
+    static constexpr NodeGeometryStorage NODE_GEOMETRY_STORAGE = USE_MBR ? NodeGeometryStorage::MBR : NodeGeometryStorage::MinPoint;
 
     // Target number of elements in nodes
     static constexpr std::size_t DEFAULT_TARGET_ELEMENT_NUM_IN_NODES = 20; // TODO: set to 16
@@ -53,6 +53,6 @@ namespace OrthoTree
   using PointConfiguration = Configuration<1.0, false>;
 
   template<bool IS_LOOSE_TREE>
-  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, false>;
+  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, true>;
 
 } // namespace OrthoTree

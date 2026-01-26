@@ -157,6 +157,14 @@ namespace OrthoTree
 
   // Grid id
   using GridID = uint32_t;
+ 
+  enum class GeometryType
+  {
+    Point,
+    Box,
+    // Mixed // Not supported yet
+  };
+
 
   namespace detail
   {

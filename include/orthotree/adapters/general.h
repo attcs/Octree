@@ -238,6 +238,14 @@ namespace OrthoTree
 
     static constexpr bool IsAlmostEqual(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept { return std::abs(lhs - rhs) <= tolerance; }
     static constexpr bool IsLess(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept { return lhs + tolerance < rhs; }
+    static constexpr bool IsAlmostEqualS(Scalar lhs, Scalar rhs, FloatScalar tolerance) noexcept
+    {
+      return IsAlmostEqual(FloatScalar(lhs), FloatScalar(rhs), tolerance);
+    }
+    static constexpr bool IsLessS(Scalar lhs, Scalar rhs, FloatScalar tolerance) noexcept
+    {
+      return IsLess(FloatScalar(lhs), FloatScalar(rhs), tolerance);
+    }
 
     enum class EBoxRelation
     {
@@ -258,16 +266,16 @@ namespace OrthoTree
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         if (
-          IsLess(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) &&
-          IsLess(Base::GetBoxMinC(e2, dimensionID), Base::GetBoxMaxC(e1, dimensionID), tolerance))
+          IsLessS(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) &&
+          IsLessS(Base::GetBoxMinC(e2, dimensionID), Base::GetBoxMaxC(e1, dimensionID), tolerance))
           rel |= EBoxRelationCandidate::OverlappedC;
         else if (
-          IsAlmostEqual(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) ||
-          IsAlmostEqual(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
+          IsAlmostEqualS(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) ||
+          IsAlmostEqualS(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
           rel |= EBoxRelationCandidate::AdjecentC;
         else if (
-          IsLess(Base::GetBoxMaxC(e2, dimensionID), Base::GetBoxMinC(e1, dimensionID), tolerance) ||
-          IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
+          IsLessS(Base::GetBoxMaxC(e2, dimensionID), Base::GetBoxMinC(e1, dimensionID), tolerance) ||
+          IsLessS(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
           return EBoxRelation::Separated;
       }
 

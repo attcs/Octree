@@ -97,9 +97,9 @@ namespace OrthoTree::detail
 
     static constexpr Vector GetBoxMinPointAD(TBox const& box) noexcept
     {
-      Vector center;
-      static_for<DIMENSION_NO>([&](auto dimensionID) { center[dimensionID] = Geometry(GA::GetBoxMinC(box, dimensionID)); });
-      return center;
+      Vector minPoint;
+      static_for<DIMENSION_NO>([&](auto dimensionID) { minPoint[dimensionID] = Geometry(GA::GetBoxMinC(box, dimensionID)); });
+      return minPoint;
     }
 
     static constexpr Vector GetBoxCenterAD(TBox const& box) noexcept
@@ -116,37 +116,6 @@ namespace OrthoTree::detail
       static_for<DIMENSION_NO>(
         [&](auto dimensionID) { sizes[dimensionID] = Geometry((GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID))); });
       return sizes;
-    }
-
-    // TODO: remove?
-    static constexpr Vector GetBoxHalfSizeAD(TBox const& box) noexcept
-    {
-      Vector halfSize;
-      ORTHOTREE_LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        halfSize[dimensionID] = (GA::GetBoxMaxC(box, dimensionID) - GA::GetBoxMinC(box, dimensionID)) * Geometry(0.5);
-
-      return halfSize;
-    }
-
-    // TODO: remove?
-    static bool AreBoxesOverlappingByCenter(Vector const& centerLhs, Vector const& halfSizeLhs, Vector const& centerRhs, Vector const& halfSizeRhs) noexcept
-    {
-      Vector distance;
-      ORTHOTREE_LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        distance[dimensionID] = centerLhs[dimensionID] - centerRhs[dimensionID];
-
-      Vector sizeLimit;
-      ORTHOTREE_LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        sizeLimit[dimensionID] = halfSizeLhs[dimensionID] + halfSizeRhs[dimensionID];
-
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        if (sizeLimit[dimensionID] <= std::abs(distance[dimensionID]))
-          return false;
-
-      return true;
     }
 
     static bool AreBoxesOverlappingByMinPoint(Vector const& minPointLhs, Vector const& sizeLhs, Vector const& minPointRhs, Vector const& sizeRhs) noexcept
@@ -314,17 +283,24 @@ namespace OrthoTree::detail
     template<typename TEntityGeometry>
     static constexpr void UniteInBoxAD(Box& box, TEntityGeometry const& entityGeometry) noexcept
     {
+      using EntityGeometry = std::remove_cv_t<TEntityGeometry>;
+
       detail::static_for<DIMENSION_NO>([&](auto dimensionID) {
-        if constexpr (std::is_same_v<TVector, TEntityGeometry>)
+        if constexpr (std::is_same_v<TVector, EntityGeometry>)
         {
           auto const point = GA::GetPointC(entityGeometry, dimensionID);
           box.Min[dimensionID] = std::min(box.Min[dimensionID], point);
           box.Max[dimensionID] = std::max(box.Max[dimensionID], point);
         }
-        else if constexpr (std::is_same_v<TBox, TEntityGeometry>)
+        else if constexpr (std::is_same_v<TBox, EntityGeometry>)
         {
-          box.Min[dimensionID] = std::min(box.Min[dimensionID], GA::GetBoxMinC(entityGeometry, dimensionID));
-          box.Max[dimensionID] = std::max(box.Max[dimensionID], GA::GetBoxMaxC(entityGeometry, dimensionID));
+          box.Min[dimensionID] = std::min(box.Min[dimensionID], Geometry(GA::GetBoxMinC(entityGeometry, dimensionID)));
+          box.Max[dimensionID] = std::max(box.Max[dimensionID], Geometry(GA::GetBoxMaxC(entityGeometry, dimensionID)));
+        }
+        else if constexpr (std::is_same_v<Box, EntityGeometry>)
+        {
+          box.Min[dimensionID] = std::min(box.Min[dimensionID], entityGeometry.Min[dimensionID]);
+          box.Max[dimensionID] = std::max(box.Max[dimensionID], entityGeometry.Max[dimensionID]);
         }
         else
         {
@@ -333,42 +309,29 @@ namespace OrthoTree::detail
       });
     }
 
-    template<typename TContainer>
-    static constexpr Box GetBoxOfPointsAD(TContainer const& points) noexcept
+    template<typename EA>
+    static constexpr Box GetBoundingBoxAD(typename EA::EntityContainerView entities) noexcept
     {
       auto ext = BoxInvertedInit();
-      for (auto const& e : points)
+      for (auto const& entity : entities)
       {
-        // TODO: EntityAdapter is required
-        auto const& point = detail::getValuePart(e);
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          if (ext.Min[dimensionID] > GA::GetPointC(point, dimensionID))
-            ext.Min[dimensionID] = Geometry(GA::GetPointC(point, dimensionID));
-
-          if (ext.Max[dimensionID] < GA::GetPointC(point, dimensionID))
-            ext.Max[dimensionID] = Geometry(GA::GetPointC(point, dimensionID));
+        auto const& entityGeometry = EA::GetGeometry(entity);
+        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point) {
+          detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) {
+            auto const pointValue = Geometry(GA::GetPointC(entityGeometry, dimensionID));
+            ext.Min[dimensionID] = std::min(ext.Min[dimensionID], pointValue);
+            ext.Max[dimensionID] = std::max(ext.Max[dimensionID], pointValue);
+          });
         }
-      }
-      return ext;
-    }
-
-    template<typename TContainer>
-    static constexpr Box GetBoxOfBoxesAD(TContainer const& boxes) noexcept
-    {
-      auto ext = BoxInvertedInit();
-      for (auto const& e : boxes)
-      {
-        // TODO: EntityAdapter is required
-
-        auto const& box = detail::getValuePart(e);
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+        else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
         {
-          if (ext.Min[dimensionID] > GA::GetBoxMinC(box, dimensionID))
-            ext.Min[dimensionID] = Geometry(GA::GetBoxMinC(box, dimensionID));
-
-          if (ext.Max[dimensionID] < GA::GetBoxMaxC(box, dimensionID))
-            ext.Max[dimensionID] = Geometry(GA::GetBoxMaxC(box, dimensionID));
+          detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) {
+            ext.Min[dimensionID] = std::min(ext.Min[dimensionID], Geometry(GA::GetBoxMinC(entityGeometry, dimensionID)));
+            ext.Max[dimensionID] = std::max(ext.Max[dimensionID], Geometry(GA::GetBoxMaxC(entityGeometry, dimensionID)));
+          });
+        }
+        else {
+          static_assert(false);
         }
       }
       return ext;
@@ -515,13 +478,13 @@ namespace OrthoTree::detail
       };
 
       template<bool isConeToleranceConsidered = true>
-      constexpr std::optional<PickResult> Hit(const Vector& center, const Vector& halfSize) const noexcept
+      constexpr std::optional<PickResult> Hit(const Vector& minPoint, const Vector& size) const noexcept
       {
         Vector minDifference, maxDifference;
         detail::static_for<DIMENSION_NO>(
-          [&](dim_t dimensionID) noexcept { minDifference[dimensionID] = center[dimensionID] - halfSize[dimensionID] - m_origin[dimensionID]; });
+          [&](dim_t dimensionID) noexcept { minDifference[dimensionID] = minPoint[dimensionID] - m_origin[dimensionID]; });
         detail::static_for<DIMENSION_NO>(
-          [&](dim_t dimensionID) noexcept { maxDifference[dimensionID] = center[dimensionID] + halfSize[dimensionID] - m_origin[dimensionID]; });
+          [&](dim_t dimensionID) noexcept { maxDifference[dimensionID] = minPoint[dimensionID] + size[dimensionID] - m_origin[dimensionID]; });
 
         return BoxHitTest<isConeToleranceConsidered>(minDifference, maxDifference);
       }

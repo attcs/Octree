@@ -268,16 +268,18 @@ namespace OrthoTree::detail
       , m_base(location.locationID)
       {}
 
-      constexpr void Add(Location location) noexcept {
-        if (location.GetDepthID() < m_minDepthID)
-          m_minDepthID = location.GetDepthID();
-        
+      constexpr void Add(Location location) noexcept
+      {
+        m_minDepthID = std::min(m_minDepthID, location.GetDepthID());
         m_diff |= (m_base ^ location.GetLocationID());
       }
 
-      constexpr NodeID GetNodeID(depth_t maxDepthID) const noexcept {
+      constexpr NodeID GetNodeID(depth_t maxDepthID) const noexcept
+      {
         auto const levelIDDiff = (detail::bit_width(m_diff) + DIMENSION_NO - 1) / DIMENSION_NO;
         auto const depthID = std::min(m_minDepthID, maxDepthID - levelIDDiff);
+        assert(levelIDDiff <= maxDepthID);
+        assert(depthID <= m_minDepthID);
 
         return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | (m_base >> ((maxDepthID - depthID) * DIMENSION_NO));
       }
