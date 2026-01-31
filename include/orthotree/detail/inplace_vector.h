@@ -70,18 +70,46 @@ namespace OrthoTree::detail
     constexpr bool empty() const noexcept { return m_size == 0; }
 
     constexpr iterator insert(iterator whereIt, T const& val)
+      requires(std::is_trivially_copyable_v<T>)
     {
       assert(m_size < N);
-      for (auto it = m_stack.begin() + m_size; it != whereIt; --it)
-      {
-        *it = std::move(*(it - 1));
-      }
-      *whereIt = std::move(val);
+
+      auto* dst = std::to_address(whereIt);
+      auto* src = dst;
+      std::size_t count = m_size - (whereIt - begin());
+
+      std::memmove(dst + 1, src, count * sizeof(T));
+      *dst = val;
+      ++m_size;
+      return whereIt;
+    }
+
+    constexpr iterator insert(iterator whereIt, T const& val)
+      requires(!std::is_trivially_copyable_v<T>)
+    {
+      assert(m_size < N);
+      std::move_backward(whereIt, end(), end() + 1);
+      *whereIt = val;
       ++m_size;
       return whereIt;
     }
 
     constexpr bool erase(iterator it)
+      requires(std::is_trivially_copyable_v<T>)
+    {
+      if (it < begin() || it >= end())
+        return false;
+
+      auto* dst = std::to_address(it);
+      std::size_t count = end() - it - 1;
+
+      std::memmove(dst, dst + 1, count * sizeof(T));
+      --m_size;
+      return true;
+    }
+
+    constexpr bool erase(iterator it)
+      requires(!std::is_trivially_copyable_v<T>)
     {
       assert(m_size > 0);
 
@@ -90,11 +118,7 @@ namespace OrthoTree::detail
         return false;
       }
 
-      for (auto it2 = it; it2 != end() - 1; ++it2)
-      {
-        *it2 = std::move(*(it2 + 1));
-      }
-
+      std::move(it + 1, end(), it);
       --m_size;
       return true;
     }
