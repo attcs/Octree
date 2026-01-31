@@ -76,6 +76,7 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <variant>
 #include <version>
 
 #include "detail/bitset_arithmetic.h"
@@ -542,11 +543,51 @@ namespace OrthoTree
   private:
     std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, std::monostate, std::vector<typename Base::NodeGeometry>> m_nodeGeometry;
     std::vector<uint8_t> m_nodeDepthIDs;
+    std::vector<EntityID> m_entityStorage;
+
+    template<typename TBegin, typename TEnd>
+    struct Segment
+    {
+      TBegin begin;
+      TEnd length;
+    };
+    struct NodeStorage256
+    {
+      using NodeID = uint8_t;
+      using ChildNodeSegment = Segment<uint8_t, uint8_t>;
+      using EntitySegment = Segment<uint8_t, uint8_t>;
+
+      std::vector<ChildNodeSegment> nodeChildSegments;
+      std::vector<NodeID> nodeChildIDs;
+      std::vector<EntitySegment> nodeEntities;
+    };
+    struct NodeStorage65536
+    {
+      using NodeID = uint16_t;
+      using ChildNodeSegment = Segment<uint16_t, uint8_t>;
+      using EntitySegment = Segment<uint16_t, uint16_t>;
+
+      std::vector<ChildNodeSegment> nodeChildSegments;
+      std::vector<NodeID> nodeChildIDs;
+      std::vector<EntitySegment> nodeEntities;
+    };
+
+    struct NodeStorageGeneral
+    {
+      using NodeID = uint32_t;
+      using ChildNodeSegment = Segment<uint32_t, uint16_t>;
+      using EntitySegment = Segment<uint32_t, uint32_t>;
+
+      std::vector<ChildNodeSegment> nodeChildSegments;
+      std::vector<NodeID> nodeChildIDs;
+      std::vector<EntitySegment> nodeEntities;
+    };
+
+    std::variant<NodeStorage256, NodeStorage65536, NodeStorageGeneral> m_nodes;
+    // TODO: remove these members
     std::vector<ChildNodeSegment> m_nodeChildSegments;
     std::vector<NodeID> m_nodeChildIDs;
     std::vector<EntitySegment> m_nodeEntities;
-    std::vector<EntityID> m_entityStorage;
-
 
   public: // Constructors
     // Default constructor. Requires Create call before usage.
@@ -592,18 +633,29 @@ namespace OrthoTree
 
     constexpr std::span<NodeID> GetNodeChildren(NodeID nodeID) noexcept
     {
+      return std::visit(m_nodes, [nodeID](auto const& nodes) {
+        auto const& [begin, length] = nodes.nodeChildIDs[nodeID];
+        return std::span<NodeID>(&nodes.nodeChildSegments[begin], length);
+      });
+      /*
       constexpr ChildNodeSegment shift = GA::DIMENSION_NO <= 6 ? 26 : (64 - GA::DIMENSION_NO);
       constexpr ChildNodeSegment beginMask = GA::DIMENSION_NO <= 6 ? ChildNodeSegment(0x02FFFFFF) : ChildNodeSegment((1ull << shift) - 1ull);
 
       uint32_t begin = m_nodeChildIDs[nodeID] & beginMask;
       uint32_t length = m_nodeChildIDs[nodeID] >> shift;
       return std::span<NodeID>(&m_nodeChildSegments[begin], length);
+      */
     }
 
     constexpr std::span<EntityID const> GetNodeEntities(NodeID nodeID) noexcept
     {
-      auto const& segment = m_nodeEntities[nodeID];
-      return { &m_entityStorage[segment.first], segment.second - segment.first };
+      return std::visit(m_nodes, [nodeID](auto const& nodes) {
+        auto const& [begin, length] = nodes.nodeEntities[nodeID];
+        return std::span<EntityID const>(&m_entityStorage[begin], length);
+      });
+
+      //auto const& segment = m_nodeEntities[nodeID];
+      //return { &m_entityStorage[segment.first], segment.second - segment.first };
     }
 
     constexpr decltype(auto) GetNodeMinPoint(NodeID nodeID) const noexcept
