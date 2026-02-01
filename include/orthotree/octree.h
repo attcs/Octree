@@ -2855,6 +2855,26 @@ namespace OrthoTree
         std::forward<decltype(procedure)>(procedure), std::forward<decltype(priorityCalculator)>(priorityCalculator), Core::GetRootNodeValue());
     }
 
+    // Visit entities in breadth first order
+    constexpr void TraverseEntitiesBreadthFirst(auto&& procedure) const noexcept
+    {
+      TraverseNodesBreadthFirst([&](auto const nodeValue) { return procedure(GetNodeEntities(nodeValue), GetNodeBox(nodeValue)); });
+    }
+
+    // Visit entities in depth first order
+    constexpr void TraverseEntitiesDepthFirst(auto&& procedure) const noexcept
+    {
+      TraverseNodesDepthFirst([&](auto const nodeValue) { return procedure(GetNodeEntities(nodeValue), GetNodeBox(nodeValue)); });
+    }
+
+    // Visit entities in priority order
+    constexpr void TraverseEntitiesByPriority(auto&& procedure, auto&& priorityCalculator) const noexcept
+    {
+      TraverseNodesByPriority(
+        [&](auto const nodeValue, auto const& priority) { return procedure(GetNodeEntities(nodeValue), GetNodeBox(nodeValue), priority); },
+        [&](auto const nodeValue) { return priorityCalculator(GetNodeBox(nodeValue)); });
+    }
+
     // Collect all item id, traversing the tree in breadth-first search order
     std::vector<EntityID> GetEntitiesBreadthFirst(NodeIDCR rootKey = Core::GetRootNodeID(), bool shouldSortInsideNodes = false) const noexcept
     {
