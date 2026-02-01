@@ -154,10 +154,13 @@ namespace OrthoTree
 
   // Type of depth
   using depth_t = uint32_t;
+  constexpr depth_t INVALID_DEPTH = 31;
+  constexpr depth_t MAX_DEPTH_ID = 30;
 
   // Grid id
   using GridID = uint32_t;
- 
+  constexpr GridID INVALID_GRIDID = std::numeric_limits<GridID>::max();
+
   enum class GeometryType
   {
     Point,
@@ -518,9 +521,6 @@ namespace OrthoTree
 
   } // namespace detail
 
-
-  constexpr depth_t INVALID_DEPTH = 31;
-  constexpr depth_t MAX_DEPTH_ID = 30;
 
 #ifdef _MSC_VER
 #pragma warning(default : 4715)

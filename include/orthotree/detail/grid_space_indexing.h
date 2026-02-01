@@ -108,86 +108,56 @@ namespace OrthoTree::detail
       return minPoint;
     }
 
-    template<bool HANDLE_OUT_OF_TREE_GEOMETRY = false>
     constexpr DimArray<GridID> GetPointGridID(GA::Vector const& point) const noexcept
     {
       auto gridIDs = DimArray<GridID>{};
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         auto pointComponent = IGM_Geometry(GA::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID];
-        if constexpr (HANDLE_OUT_OF_TREE_GEOMETRY)
+        if (pointComponent < -GA::BASE_TOLERANCE || pointComponent > m_sizeInDimensions[dimensionID] + GA::BASE_TOLERANCE)
         {
-          if (pointComponent < 0.0)
-            pointComponent = 0.0;
-        }
-        else
-        {
-          assert(pointComponent >= 0.0);
+          gridIDs[0] = INVALID_GRIDID;
+          return gridIDs;
         }
 
-        auto const rasterID = GridID(pointComponent * m_rasterizerFactors[dimensionID]);
-        gridIDs[dimensionID] = std::min<GridID>(m_maxRasterID, rasterID);
+        if (pointComponent <= 0)
+          gridIDs[dimensionID] = 0;
+        else
+        {
+          auto const rasterID = GridID(pointComponent * m_rasterizerFactors[dimensionID]);
+          gridIDs[dimensionID] = std::min<GridID>(m_maxRasterID, rasterID);
+        }
       }
       return gridIDs;
     }
 
-    constexpr std::array<DimArray<GridID>, 2> GetEdgePointGridID(GA::Vector const& point) const noexcept
-    {
-      auto constexpr minRasterID = IGM_Geometry{};
-      auto const maxRasterID = static_cast<IGM_Geometry>(m_maxRasterResolution - 1);
-
-      auto pointMinMaxGridID = std::array<DimArray<GridID>, 2>{};
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        auto const rasterID = std::clamp(
-          (IGM_Geometry(GA::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID], minRasterID, maxRasterID);
-        pointMinMaxGridID[0][dimensionID] = pointMinMaxGridID[1][dimensionID] = static_cast<GridID>(rasterID);
-
-        if (0 < pointMinMaxGridID[0][dimensionID] && pointMinMaxGridID[0][dimensionID] < m_maxRasterResolution)
-          pointMinMaxGridID[0][dimensionID] -= std::floor(rasterID) == rasterID;
-      }
-      return pointMinMaxGridID;
-    }
-
-    template<bool DO_POINT_LIKE_CLASSIFICATION = false, typename TBox_ = GA::Box>
-    constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(TBox_ const& box) const noexcept
+    constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(GA::Box const& box) const noexcept
     {
       std::array<DimArray<GridID>, 2> gridID;
-      constexpr IGM_Geometry zero = IGM_Geometry{};
+
+      auto constexpr zero = IGM_Geometry{};
+      auto const maxRasterID = IGM_Geometry(m_maxRasterResolution);
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        IGM_Geometry boxMin, boxMax;
-        if constexpr (std::is_same_v<TBox_, typename GA::Box>)
+        auto const boxMin = IGM_Geometry(GA::GetBoxMinC(box, dimensionID)) - m_boxSpace.Min[dimensionID];
+        auto const boxMax = IGM_Geometry(GA::GetBoxMaxC(box, dimensionID)) - m_boxSpace.Min[dimensionID];
+
+        if (boxMin < GA::BASE_TOLERANCE || boxMax > m_sizeInDimensions[dimensionID] + GA::BASE_TOLERANCE)
         {
-          boxMin = IGM_Geometry(GA::GetBoxMinC(box, dimensionID));
-          boxMax = IGM_Geometry(GA::GetBoxMaxC(box, dimensionID));
-        }
-        else
-        {
-          boxMin = box.Min[dimensionID];
-          boxMax = box.Max[dimensionID];
+          gridID[0][0] = INVALID_GRIDID;
+          return gridID;
         }
 
         assert(boxMin <= boxMax && "Wrong bounding box. Input error.");
-        auto const minComponentRasterID = (boxMin - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
-        auto const maxComponentRasterID = (boxMax - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID];
+        auto const minComponentRasterID = boxMin * m_rasterizerFactors[dimensionID];
+        auto const maxComponentRasterID = boxMax * m_rasterizerFactors[dimensionID];
 
-        if constexpr (DO_POINT_LIKE_CLASSIFICATION)
+        gridID[0][dimensionID] = static_cast<GridID>(std::clamp(minComponentRasterID, zero, maxRasterID));
+        gridID[1][dimensionID] = static_cast<GridID>(std::clamp(maxComponentRasterID, zero, maxRasterID));
+
+        if ((gridID[0][dimensionID] != gridID[1][dimensionID] && std::floor(maxComponentRasterID) == maxComponentRasterID) || gridID[1][dimensionID] >= m_maxRasterResolution)
         {
-          gridID[0][dimensionID] = std::min(m_maxRasterID, static_cast<GridID>(minComponentRasterID));
-          gridID[1][dimensionID] = std::min(m_maxRasterID, static_cast<GridID>(maxComponentRasterID));
-        }
-        else
-        {
-          auto const maxRasterID = IGM_Geometry(m_maxRasterResolution);
-
-          gridID[0][dimensionID] = static_cast<GridID>(std::clamp(minComponentRasterID, zero, maxRasterID));
-          gridID[1][dimensionID] = static_cast<GridID>(std::clamp(maxComponentRasterID, zero, maxRasterID));
-
-          if ((gridID[0][dimensionID] != gridID[1][dimensionID] && std::floor(maxComponentRasterID) == maxComponentRasterID) || gridID[1][dimensionID] >= m_maxRasterResolution)
-          {
-            --gridID[1][dimensionID];
-          }
+          --gridID[1][dimensionID];
         }
 
         assert(gridID[0][dimensionID] < m_maxRasterResolution);
@@ -196,16 +166,11 @@ namespace OrthoTree::detail
       return gridID;
     }
 
-    template<double LOOSE_FACTOR, bool ALLOW_OUT_OF_SPACE_INSERTION = false, typename TBox_ = GA::Box>
-    constexpr std::pair<GridPosition, depth_t> GetLooseBoxGridData(TBox_ const& box) const noexcept
+    template<double LOOSE_FACTOR>
+    constexpr std::pair<GridPosition, depth_t> GetLooseBoxGridData(GA::Box const& box) const noexcept
     {
-      if (!IGM::DoesRangeContainBoxAD(m_boxSpace, box))
-      {
-        if constexpr (ALLOW_OUT_OF_SPACE_INSERTION)
-          return { GridPosition{}, 0 };
-        else
-          return { GridPosition{}, INVALID_DEPTH };
-      }
+      if (!IGM::DoesRangeContainBoxAD(m_boxSpace, box, GA::BASE_TOLERANCE))
+        return { GridPosition{ INVALID_GRIDID }, 0 };
 
       auto const boxCenter = IGM::GetBoxCenterAD(box);
       auto const boxSize = IGM::GetBoxSizeAD(box);

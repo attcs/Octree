@@ -118,14 +118,14 @@ namespace OrthoTree::detail
       return sizes;
     }
 
-    static bool AreBoxesOverlappingByMinPoint(Vector const& minPointLhs, Vector const& sizeLhs, Vector const& minPointRhs, Vector const& sizeRhs) noexcept
+    static bool AreBoxesOverlappingByMinPoint(Vector const& minPointLhs, Vector const& sizeLhs, Vector const& minPointRhs, Vector const& sizeRhs, Geometry tolerance) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         auto const maxLhs = minPointLhs[dimensionID] + sizeLhs[dimensionID];
         auto const maxRhs = minPointRhs[dimensionID] + sizeRhs[dimensionID];
 
-        if (maxLhs <= minPointRhs[dimensionID] || maxRhs <= minPointLhs[dimensionID])
+        if (maxLhs <= minPointRhs[dimensionID] - tolerance || maxRhs <= minPointLhs[dimensionID] - tolerance)
           return false;
       }
 
@@ -159,23 +159,23 @@ namespace OrthoTree::detail
       return value;
     }
 
-    template<typename TGeometryRange, typename TGeometryBox>
-    static constexpr bool DoesRangeContainBox(TGeometryRange rangeMin, TGeometryRange rangeMax, TGeometryBox boxMin, TGeometryBox boxMax) noexcept
+    static constexpr bool DoesRangeContainBox(Geometry rangeMin, Geometry rangeMax, Geometry boxMin, Geometry boxMax, Geometry tolerance) noexcept
     {
-      if (rangeMin > boxMin || boxMin > rangeMax)
+      if (rangeMin - tolerance > boxMin || boxMin > rangeMax + tolerance)
         return false;
 
-      if (rangeMin > boxMax || boxMax > rangeMax)
+      if (rangeMin - tolerance > boxMax || boxMax > rangeMax + tolerance)
         return false;
 
       return true;
     }
 
-    static constexpr bool DoesRangeContainBoxAD(TBox const& range, Box const& box) noexcept
+    static constexpr bool DoesRangeContainBoxAD(TBox const& range, Box const& box, GA::FloatScalar tolerance) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        if (!DoesRangeContainBox(GA::GetBoxMinC(range, dimensionID), GA::GetBoxMaxC(range, dimensionID), box.Min[dimensionID], box.Max[dimensionID]))
+        if (!DoesRangeContainBox(
+              Geometry(GA::GetBoxMinC(range, dimensionID)), Geometry(GA::GetBoxMaxC(range, dimensionID)), box.Min[dimensionID], box.Max[dimensionID], tolerance))
         {
           return false;
         }
@@ -183,11 +183,12 @@ namespace OrthoTree::detail
       return true;
     }
 
-    static constexpr bool DoesRangeContainBoxAD(Box const& range, TBox const& box) noexcept
+    static constexpr bool DoesRangeContainBoxAD(Box const& range, TBox const& box, GA::FloatScalar tolerance) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        if (!DoesRangeContainBox(range.Min[dimensionID], range.Max[dimensionID], GA::GetBoxMinC(box, dimensionID), GA::GetBoxMaxC(box, dimensionID)))
+        if (!DoesRangeContainBox(
+              range.Min[dimensionID], range.Max[dimensionID], Geometry(GA::GetBoxMinC(box, dimensionID)), Geometry(GA::GetBoxMaxC(box, dimensionID)), tolerance))
         {
           return false;
         }
@@ -195,11 +196,11 @@ namespace OrthoTree::detail
       return true;
     }
 
-    static constexpr bool DoesRangeContainBoxAD(Box const& range, Box const& box) noexcept
+    static constexpr bool DoesRangeContainBoxAD(Box const& range, Box const& box, GA::FloatScalar tolerance) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
-        if (!DoesRangeContainBox(range.Min[dimensionID], range.Max[dimensionID], box.Min[dimensionID], box.Max[dimensionID]))
+        if (!DoesRangeContainBox(range.Min[dimensionID], range.Max[dimensionID], box.Min[dimensionID], box.Max[dimensionID], tolerance))
         {
           return false;
         }
@@ -207,13 +208,13 @@ namespace OrthoTree::detail
       return true;
     }
 
-    static constexpr bool DoesRangeContainBoxAD(TBox const& range, Vector const& minPoint, Vector const& size) noexcept
+    static constexpr bool DoesRangeContainBoxAD(TBox const& range, Vector const& minPoint, Vector const& size, GA::FloatScalar tolerance) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
         const auto boxMax = minPoint[dimensionID] + size[dimensionID];
 
-        if (!DoesRangeContainBox(GA::GetBoxMinC(range, dimensionID), GA::GetBoxMaxC(range, dimensionID), minPoint[dimensionID], boxMax))
+        if (!DoesRangeContainBox(Geometry(GA::GetBoxMinC(range, dimensionID)), Geometry(GA::GetBoxMaxC(range, dimensionID)), minPoint[dimensionID], boxMax, tolerance))
         {
           return false;
         }
@@ -316,7 +317,8 @@ namespace OrthoTree::detail
       for (auto const& entity : entities)
       {
         auto const& entityGeometry = EA::GetGeometry(entity);
-        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point) {
+        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+        {
           detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) {
             auto const pointValue = Geometry(GA::GetPointC(entityGeometry, dimensionID));
             ext.Min[dimensionID] = std::min(ext.Min[dimensionID], pointValue);
@@ -330,7 +332,8 @@ namespace OrthoTree::detail
             ext.Max[dimensionID] = std::max(ext.Max[dimensionID], Geometry(GA::GetBoxMaxC(entityGeometry, dimensionID)));
           });
         }
-        else {
+        else
+        {
           static_assert(false);
         }
       }
