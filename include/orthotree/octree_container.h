@@ -218,9 +218,9 @@ namespace OrthoTree
     // Get entity by ID
     Entity const& Get(EntityID entityID) const noexcept { return detail::at(m_entities, entityID); }
 
-    // Add entity without tree rebalancing
+    // Add entity with tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(EA::Entity const& newEntity, bool doInsertToLeaf = false) noexcept
+    bool Add(EA::Entity const& newEntity) noexcept
       requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
@@ -230,20 +230,20 @@ namespace OrthoTree
           return false;
       }
 
-      if (!m_tree.Insert(newEntityID, EA::GetGeometry(newEntity), doInsertToLeaf))
+      if (!m_tree.Insert(newEntityID, EA::GetGeometry(newEntity), m_entities))
         return false;
 
       detail::emplace(m_entities, newEntity);
       return true;
     }
 
-    // Add entity without tree rebalancing
+    // Add entity with tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
+    bool Add(EA::Geometry const& newEntityGeometry) noexcept
       requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto const newEntityID = EntityID(m_entities.size());
-      if (!m_tree.Insert(newEntityID, newEntityGeometry, doInsertToLeaf))
+      if (!m_tree.Insert(newEntityID, newEntityGeometry, m_entities))
         return false;
 
       detail::emplace(m_entities, newEntityGeometry);
@@ -251,9 +251,9 @@ namespace OrthoTree
     }
 
 
-    // Add entity without tree rebalancing for Entities that represents only the Geometry
+    // Add entity with tree rebalancing for Entities that represents only the Geometry
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(EntityID newEntityID, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
+    bool Add(EntityID newEntityID, EA::Geometry const& newEntityGeometry) noexcept
     {
       if constexpr (CHECK_ID_FOR_CONTAINMENT)
       {
@@ -261,7 +261,7 @@ namespace OrthoTree
           return false;
       }
 
-      if (!m_tree.Insert(newEntityID, newEntityGeometry, doInsertToLeaf))
+      if (!m_tree.Insert(newEntityID, newEntityGeometry, m_entities))
         return false;
 
       detail::emplace(m_entities, newEntityID, newEntityGeometry);
@@ -270,7 +270,7 @@ namespace OrthoTree
 
     // Add entity with tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddAndRebalance(EA::Entity const& newEntity) noexcept
+    bool AddIntoLeaf(EA::Entity const& newEntity, bool allowLeafCreation = false) noexcept
       requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
@@ -280,29 +280,29 @@ namespace OrthoTree
           return false;
       }
 
-      if (!m_tree.InsertWithRebalance(newEntityID, EA::GetGeometry(newEntity)))
+      if (!m_tree.InsertIntoLeaf(newEntityID, EA::GetGeometry(newEntity), allowLeafCreation))
         return false;
 
       detail::emplace(m_entities, newEntity);
       return true;
     }
 
-    // Add entity with tree rebalancing
+    // Add entity without tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddAndRebalance(EA::Geometry const& newEntityGeometry) noexcept
+    bool AddIntoLeaf(EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
       requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto const newEntityID = EntityID(m_entities.size());
-      if (!m_tree.InsertWithRebalance(*newEntityID, newEntityGeometry))
+      if (!m_tree.InsertIntoLeaf(newEntityID, newEntityGeometry, allowLeafCreation))
         return false;
 
       detail::emplace(m_entities, newEntityGeometry);
       return true;
     }
 
-    // Add entity with tree rebalancing
+    // Add entity without tree rebalancing
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddAndRebalance(EntityID newEntityID, EA::Geometry const& newEntityGeometry) noexcept
+    bool AddIntoLeaf(EntityID newEntityID, EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
       requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       if constexpr (CHECK_ID_FOR_CONTAINMENT)
@@ -311,7 +311,7 @@ namespace OrthoTree
           return false;
       }
 
-      if (!m_tree.InsertWithRebalance(newEntityID, newEntityGeometry))
+      if (!m_tree.InsertIntoLeaf(newEntityID, newEntityGeometry, allowLeafCreation))
         return false;
 
       detail::emplace(m_entities, newEntityID, newEntityGeometry);

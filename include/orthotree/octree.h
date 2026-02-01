@@ -2134,8 +2134,8 @@ namespace OrthoTree
     }
 
   public:
-    // Insert entity into the tree. If doInsertToLeaf is true: The smallest node will be chosen by the max depth. If doInsertToLeaf is false: The smallest existing level on the branch will be chosen.
-    bool Insert(EntityID entityID, EA::Geometry const& entityGeometry, bool doInsertToLeaf = false) noexcept
+    // Insert entity into the tree. If allowLeafCreation is true: The smallest node will be chosen by the max depth. If allowLeafCreation is false: The smallest existing level on the branch will be chosen.
+    bool InsertIntoLeaf(EntityID entityID, EA::Geometry const& entityGeometry, bool allowLeafCreation = false) noexcept
     {
       auto const oosResult = HandleOutOfSpaceInsertion(entityID, entityGeometry);
       if (oosResult != OutOfSpaceInsertionResult::NotHandled)
@@ -2146,7 +2146,7 @@ namespace OrthoTree
       bool isNodeAdded = false;
       if (nodeIt == m_nodes.end())
       {
-        if (doInsertToLeaf)
+        if (allowLeafCreation)
         {
           nodeIt = AddNode(entityNodeID);
           isNodeAdded = true;
@@ -2177,7 +2177,7 @@ namespace OrthoTree
     }
 
     // Insert entity into the tree with node rebalancing
-    bool InsertWithRebalancing(EntityID entityID, EA::Geometry const& entityGeometry, EntityContainerView entities) noexcept
+    bool Insert(EntityID entityID, EA::Geometry const& entityGeometry, EntityContainerView entities) noexcept
     {
       auto const oosResult = HandleOutOfSpaceInsertion(entityID, entityGeometry);
       if (oosResult != OutOfSpaceInsertionResult::NotHandled)
@@ -2338,7 +2338,7 @@ namespace OrthoTree
 
 
     // Update id by the new bounding box information
-    bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
+    bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
     {
       if constexpr (!CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
       {
@@ -2349,15 +2349,15 @@ namespace OrthoTree
       if (!EraseBase<false>(entityID))
         return false;
 
-      return Insert(entityID, newEntityGeometry, doInsertToLeaf);
+      return InsertIntoLeaf(entityID, newEntityGeometry, allowLeafCreation);
     }
 
     // Update id by the new bounding box information and the erase part is aided by the old bounding box geometry data
-    bool Update(EntityID entityID, EA::Geometry const& oldEntityGeometry, EA::Geometry const& newEntityGeometry, bool doInsertToLeaf = false) noexcept
+    bool Update(EntityID entityID, EA::Geometry const& oldEntityGeometry, EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
-        return Update(entityID, newEntityGeometry, doInsertToLeaf);
+        return Update(entityID, newEntityGeometry, allowLeafCreation);
       }
       else
       {
@@ -2375,7 +2375,7 @@ namespace OrthoTree
         if (newNodeIt == m_nodes.end())
           return false;
 
-        return Insert(entityID, newEntityGeometry, doInsertToLeaf);
+        return InsertIntoLeaf(entityID, newEntityGeometry, allowLeafCreation);
       }
     }
 
@@ -2385,7 +2385,7 @@ namespace OrthoTree
       if (!EraseBase<false>(entityID))
         return false;
 
-      return InsertWithRebalancing(entityID, newEntityGeometry, entities);
+      return Insert(entityID, newEntityGeometry, entities);
     }
 
     // Update id with rebalancing by the new bounding box information and the erase part is aided by the old bounding box geometry data
@@ -2411,7 +2411,7 @@ namespace OrthoTree
         if (newNodeIt == m_nodes.end())
           return false;
 
-        return InsertWithRebalancing(entityID, newEntityGeometry, entities);
+        return Insert(entityID, newEntityGeometry, entities);
       }
     }
 
@@ -2693,7 +2693,7 @@ namespace OrthoTree
         return false;
 
       auto const entityID = EntityID(entities.size());
-      return doInsertToLeaf ? Core::Insert(entityID, entityGeometry, true) : Core::InsertWithRebalancing(entityID, entityGeometry, entities);
+      return doInsertToLeaf ? Core::InsertIntoLeaf(entityID, entityGeometry, true) : Core::Insert(entityID, entityGeometry, entities);
     }
 
     // Insert entity into the tree, if there is no entity within the same location by tolerance.
@@ -2709,7 +2709,7 @@ namespace OrthoTree
       if (!nearestEntityList.empty())
         return false;
 
-      return doInsertToLeaf ? Core::Insert(entityID, entityGeometry, true) : Core::InsertWithRebalancing(entityID, entityGeometry, entities);
+      return doInsertToLeaf ? Core::InsertIntoLeaf(entityID, entityGeometry, true) : Core::Insert(entityID, entityGeometry, entities);
     }
 
 
