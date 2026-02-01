@@ -2008,8 +2008,9 @@ namespace OrthoTree
         auto nodeBox = GetNodeBox(nodeValue);
         IGM::UniteInBoxAD(nodeBox, box);
 
-        nodeValue->second.GetGeometry() = nodeBox.Min;
         Base::m_nodeSizes[0] = IGM::Sub(nodeBox.Max, nodeBox.Min);
+        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+          nodeValue->second.GetGeometry() = nodeBox.Min;
       }
     }
 
