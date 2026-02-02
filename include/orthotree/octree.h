@@ -2417,17 +2417,16 @@ namespace OrthoTree
 
     // Update all element which are in the given hash-table.
     template<bool IS_PARALLEL_EXEC = false, bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
-    void UpdateIndexes(std::unordered_map<EntityID, std::optional<EntityID>> const& updateMap) noexcept
+    void UpdateIndexes(std::unordered_map<EntityID, std::optional<EntityID>> updateMap) noexcept
     {
       auto const updateMapEndIterator = updateMap.end();
 
-      EXEC_POL_DEF(ep);
-      std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), [&](auto& node) {
+      auto const UpdateNodes = [&](auto& node) {
         auto& entityIDs = node.second.GetEntities();
         auto entityNo = entityIDs.size();
         for (std::size_t i = 0; i < entityNo; ++i)
         {
-          auto const it = updateMap.find(entityIDs[i]);
+          auto it = updateMap.find(entityIDs[i]);
           if (it == updateMapEndIterator)
             continue;
 
@@ -2439,10 +2438,33 @@ namespace OrthoTree
             entityIDs[i] = entityIDs[entityNo];
             --i;
           }
+
+          if constexpr (!IS_PARALLEL_EXEC)
+            updateMap.erase(it);
         }
-        // TODO: reverse map update
+
         ResizeNodeEntities(node.second, entityNo);
-      });
+      };
+
+      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+      {
+        auto nodes = std::unordered_set<NodeID>{};
+        for (auto const [oldEntityID, newEntityID] : updateMap)
+        {
+          nodes.emplace(m_reverseMap.at(oldEntityID));
+
+          if (!newEntityID)
+            m_reverseMap.erase(oldEntityID);
+        }
+
+        EXEC_POL_DEF(ep);
+        std::for_each(EXEC_POL_ADD(ep) nodes.begin(), nodes.end(), UpdateNodes);
+      }
+      else
+      {
+        EXEC_POL_DEF(ep);
+        std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), UpdateNodes);
+      }
 
       if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
         assert(IsEveryEntityUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
