@@ -317,6 +317,7 @@ namespace OrthoTree
     static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return detail::getValuePart(entity); }
     static constexpr void SetGeometry(Entity& entity, Geometry const& geometry) noexcept { return detail::setValuePart(entity, geometry); }
 
+    static constexpr Entity const& GetEntity(EntityContainerView entities, EntityID entityID) noexcept { return detail::get(entities, entityID); }
     static constexpr Entity& GetEntity(EntityContainer& entities, EntityID entityID) noexcept { return detail::get(entities, entityID); }
   };
 
@@ -2938,37 +2939,77 @@ namespace OrthoTree
       return entityIDs;
     }
 
+
+    template<typename TAgainst, typename TTester>
+    constexpr bool TestEntity(TTester const& tester, EntityID entityID, EntityContainerView entities, TAgainst const& against) const noexcept
+    {
+      if constexpr (std::is_same_v<TTester, std::monostate>)
+      {
+        return true;
+      }
+      else if constexpr (std::is_invocable_r_v<bool, TTester, EntityID>)
+      {
+        return tester(entityID);
+      }
+      else if constexpr (std::is_invocable_r_v<bool, TTester, typename EA::Entity>)
+      {
+        return tester(EA::GetEntity(entities, entityID));
+      }
+      else if constexpr (std::is_invocable_r_v<bool, TTester, EntityID, TAgainst&>)
+      {
+        return tester(entityID, against);
+      }
+      else if constexpr (std::is_invocable_r_v<bool, TTester, typename EA::Entity, TAgainst&>)
+      {
+        return tester(EA::GetEntity(entities, entityID), against);
+      }
+      else
+      {
+        static_assert(sizeof(TTester) == 0, "Unsupported tester signature");
+      }
+    }
+
   public: // Search functions
     // Pick search
-    std::vector<EntityID> PickSearch(TVector const& pickPoint, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID) / bool(EntityID, TVector&)
+    // * bool(Entity) / bool(Entity, TVector&)
+    template<typename TTester = std::monostate>
+    std::vector<EntityID> PickSearch(
+      TVector const& pickPoint, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester tester = {}) const noexcept
     {
-      // TODO: entity tester
       auto foundEntitiyIDs = std::vector<EntityID>();
-      if (!IGM::DoesBoxContainPointAD(Core::GetNodeBox(Core::GetRootNodeValue()), pickPoint))
+      if (!IGM::DoesBoxContainPointAD(Core::GetNodeBox(Core::GetRootNodeValue()), pickPoint, tolerance))
         return foundEntitiyIDs;
 
       foundEntitiyIDs.reserve(100);
 
       TraverseNodesDepthFirst([&](auto const nodeValue) {
-        // TODO: use tolerance here also ?
-        if (!IGM::DoesBoxContainPointAD(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue), pickPoint))
+        if (!IGM::DoesBoxContainPointAD(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue), pickPoint, tolerance))
           return TraverseControl::SkipChildren;
 
-        auto const& nodeEntityIDs = Core::GetNodeEntities(nodeValue);
-        std::ranges::copy_if(nodeEntityIDs, std::back_inserter(foundEntitiyIDs), [&](auto const entityID) {
+        auto const pointTest = [&](auto const entityID) {
           if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
           {
             return GA::ArePointsEqual(EA::GetGeometry(entities, entityID), pickPoint, tolerance);
           }
           else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
           {
-            return GA::DoesBoxContainPoint(EA::GetGeometry(entities, entityID), pickPoint);
+            return GA::DoesBoxContainPoint(EA::GetGeometry(entities, entityID), pickPoint, tolerance);
           }
           else
           {
             static_assert(false, "Unsupported geometry type!");
           }
           ORTHOTREE_UNREACHABLE();
+        };
+
+        std::ranges::copy_if(Core::GetNodeEntities(nodeValue), std::back_inserter(foundEntitiyIDs), [&](auto const entityID) {
+          if (!pointTest(entityID))
+            return false;
+
+          return TestEntity(tester, entityID, entities, pickPoint);
         });
 
         return TraverseControl::Continue;
@@ -2978,11 +3019,14 @@ namespace OrthoTree
     }
 
   public:
-    template<bool DO_RANGE_MUST_FULLY_CONTAIN = true>
-    std::vector<EntityID> RangeSearch(TBox const& range, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    // Range search
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID) / bool(EntityID, TVector&)
+    // * bool(Entity) / bool(Entity, TVector&)
+    template<bool DO_RANGE_MUST_FULLY_CONTAIN = true, typename TTester = std::monostate>
+    std::vector<EntityID> RangeSearch(TBox const& range, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester tester = {}) const noexcept
     {
-      // TODO: entity tester
-
       auto foundEntities = std::vector<EntityID>{};
 
       auto const entityNo = entities.size();
@@ -3007,17 +3051,17 @@ namespace OrthoTree
         return foundEntities;
       }
 
-      auto const entityFilter = [&](auto const entityID) {
+      auto const boxTest = [&](auto const entityID) {
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
         {
-          return GA::DoesBoxContainPoint(range, EA::GetGeometry(entities, entityID));
+          return GA::DoesBoxContainPoint(range, EA::GetGeometry(entities, entityID), tolerance);
         }
         else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
         {
           if constexpr (DO_RANGE_MUST_FULLY_CONTAIN)
-            return GA::AreBoxesOverlapped(range, EA::GetGeometry(entities, entityID), DO_RANGE_MUST_FULLY_CONTAIN);
+            return GA::AreBoxesOverlapped(range, EA::GetGeometry(entities, entityID), DO_RANGE_MUST_FULLY_CONTAIN, false, tolerance);
           else
-            return GA::AreBoxesOverlappedStrict(range, EA::GetGeometry(entities, entityID));
+            return GA::AreBoxesOverlappedStrict(range, EA::GetGeometry(entities, entityID), tolerance);
         }
         else
         {
@@ -3038,15 +3082,31 @@ namespace OrthoTree
         {
           TraverseNodesDepthFirst(
             [&](auto const pChildNodeValue) {
-              std::ranges::copy(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(foundEntities));
+              if constexpr (std::is_same_v<TTester, std::monostate>)
+              {
+                std::ranges::copy(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(foundEntities));
+              }
+              else
+              {
+                std::ranges::copy_if(Core::GetNodeEntities(pNodeValue), std::back_inserter(foundEntities), [&](auto const entityID) {
+                  return TestEntity(tester, entityID, entities, range);
+                });
+              }
               return TraverseControl::Continue;
             },
             pNodeValue);
 
           return TraverseControl::SkipChildren;
         }
+        else
+        {
+          std::ranges::copy_if(Core::GetNodeEntities(pNodeValue), std::back_inserter(foundEntities), [&](auto const entityID) {
+            if (boxTest(entityID))
+              return true;
 
-        std::ranges::copy_if(Core::GetNodeEntities(pNodeValue), std::back_inserter(foundEntities), entityFilter);
+            return TestEntity(tester, entityID, entities, range);
+          });
+        }
 
         return TraverseControl::Continue;
       });
