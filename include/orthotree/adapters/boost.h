@@ -69,6 +69,9 @@ namespace OrthoTree
       static constexpr dim_t DIMENSION_NO = DIMENSION_NO_;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * 10.0;
 
+      static constexpr Vector MakePoint() noexcept { return {}; };
+      static constexpr Box MakeBox() noexcept { return {}; };
+
       static constexpr Scalar GetPointC(Vector const& point, dim_t dimensionID) noexcept
       {
         static_assert(DIMENSION_NO < 6, "For this dimension, the adaptor is not implemented. Supplement the function!");

@@ -82,6 +82,9 @@ namespace OrthoTree
       static constexpr dim_t DIMENSION_NO = DIMENSION_NO_;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
+      static constexpr Vector MakePoint() noexcept { return {}; };
+      static constexpr Box MakeBox() noexcept { return {}; };
+
       static constexpr TScalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
       static constexpr void SetPointC(Vector& point, dim_t dimensionID, TScalar value) noexcept { point[dimensionID] = value; }
 

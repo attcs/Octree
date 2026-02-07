@@ -24,6 +24,7 @@ SOFTWARE.
 */
 
 #include "../octree.h"
+#include "general.h"
 
 // #define UNREAL_DUMMY_TYPES
 // #define UNREAL_DUMMY_TYPES__SUPPRESS_ASSERTS
@@ -346,6 +347,7 @@ namespace OrthoTree
       static constexpr dim_t DIMENSION_NO = 3;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
+      static constexpr FVector MakePoint() { return {}; }
       static constexpr FGeometry_ GetPointC(FVector_ const& v, dim_t dimensionID)
       {
         switch (dimensionID)
@@ -368,6 +370,7 @@ namespace OrthoTree
         }
       }
 
+      static constexpr FBox_ MakeBox() { return {}; }
       static constexpr FGeometry_ GetBoxMinC(FBox_ const& box, dim_t dimensionID) { return GetPointC(box.Min, dimensionID); }
       static constexpr FGeometry_ GetBoxMaxC(FBox_ const& box, dim_t dimensionID) { return GetPointC(box.Max, dimensionID); }
       static constexpr void SetBoxMinC(FBox_& box, dim_t dimensionID, FGeometry_ value) { SetPointC(box.Min, dimensionID, value); }

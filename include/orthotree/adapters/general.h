@@ -51,11 +51,13 @@ namespace OrthoTree
     using Plane = TPlane;
 
     static constexpr dim_t DIMENSION_NO = DIMENSION_NO_;
-    static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+    static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(100);
 
+    static constexpr Vector MakePoint() noexcept { return {}; };
     static constexpr Scalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
     static constexpr void SetPointC(Vector& point, dim_t dimensionID, TScalar value) noexcept { point[dimensionID] = value; }
 
+    static constexpr Box MakeBox() noexcept { return {}; };
     static constexpr Scalar GetBoxMinC(Box const& box, dim_t dimensionID) noexcept { return box.Min[dimensionID]; }
     static constexpr Scalar GetBoxMaxC(Box const& box, dim_t dimensionID) noexcept { return box.Max[dimensionID]; }
     static constexpr void SetBoxMinC(Box& box, dim_t dimensionID, TScalar value) noexcept { box.Min[dimensionID] = value; }

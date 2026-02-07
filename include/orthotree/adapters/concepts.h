@@ -100,17 +100,13 @@ namespace OrthoTree
   template<class TAdapter, dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TScalar, typename TFloatScalar>
   concept GeometryAdapterConcept = requires {
     requires BaseGeometryAdapterConcept<TAdapter, DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, TFloatScalar>;
-  } && requires(TBox const& box, TVector const& point) {
-    { TAdapter::DoesBoxContainPoint(box, point) } -> std::convertible_to<bool>;
-  } && requires(TBox const& e1, TBox const& e2, bool e1_must_contain_e2) {
-    { TAdapter::AreBoxesOverlapped(e1, e2, e1_must_contain_e2) } -> std::convertible_to<bool>;
-  } && requires(TBox const& e1, TBox const& e2) {
-    { TAdapter::AreBoxesOverlappedStrict(e1, e2) } -> std::convertible_to<bool>;
-  } && requires(TVector const& box, TScalar distanceOfOrigo, TVector const& planeNormal, TScalar tolerance) {
+  } && requires(TBox const& box, TVector const& point, TFloatScalar tolerance) {
+    { TAdapter::DoesBoxContainPoint(box, point, tolerance) } -> std::convertible_to<bool>;
+  } && requires(TBox const& e1, TBox const& e2, bool e1_must_contain_e2, bool fOverlapPtTouchAllowed, TFloatScalar tolerance) {
+    { TAdapter::AreBoxesOverlapped(e1, e2, e1_must_contain_e2, fOverlapPtTouchAllowed, tolerance) } -> std::convertible_to<bool>;
+  } && requires(TBox const& e1, TBox const& e2, TFloatScalar tolerance) {
+    { TAdapter::AreBoxesOverlappedStrict(e1, e2, tolerance) } -> std::convertible_to<bool>;
+  } && requires(TVector const& box, TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance) {
     { TAdapter::GetPointPlaneRelation(box, distanceOfOrigo, planeNormal, tolerance) } -> std::convertible_to<PlaneRelation>;
-  } && requires(TBox const& box, TVector const& rayBasePoint, TVector const& rayHeading, TScalar tolerance) {
-    { TAdapter::GetRayBoxDistance(box, rayBasePoint, rayHeading, tolerance) } -> std::convertible_to<std::optional<double>>;
-  } && requires(TBox const& box, TRay const& ray, TScalar tolerance) {
-    { TAdapter::GetRayBoxDistance(box, ray, tolerance) } -> std::convertible_to<std::optional<double>>;
   };
 } // namespace OrthoTree

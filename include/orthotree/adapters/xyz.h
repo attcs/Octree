@@ -103,6 +103,9 @@ namespace OrthoTree
       static constexpr dim_t DIMENSION_NO = 2;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
+      static constexpr XYPoint2D MakePoint() noexcept { return {}; };
+      static constexpr XYBoundingBox2D MakeBox() noexcept { return {}; };
+
       static constexpr xy_geometry_type GetPointC(XYPoint2D const& pt, dim_t dimensionID)
       {
         switch (dimensionID)
@@ -159,6 +162,9 @@ namespace OrthoTree
 
       static constexpr dim_t DIMENSION_NO = 3;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
+      static constexpr XYZPoint3D MakePoint() noexcept { return {}; };
+      static constexpr XYZBoundingBox3D MakeBox() noexcept { return {}; };
 
       static constexpr xyz_geometry_type GetPointC(XYZPoint3D const& pt, dim_t dimensionID) noexcept
       {
