@@ -82,14 +82,14 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include "detail/bitset_arithmetic.h"
 #include "detail/common.h"
 #include "detail/configuration.h"
-#include "detail/grid_space_indexing.h"
 #include "detail/inplace_vector.h"
 #include "detail/internal_geometry_module.h"
 #include "detail/memory_resource.h"
-#include "detail/morton_space_indexing.h"
 #include "detail/partitioning.h"
+#include "detail/si_mortongrid.h"
 #include "detail/utils.h"
 #include "detail/zip_view.h"
+
 
 namespace OrthoTree
 {
@@ -247,28 +247,6 @@ namespace OrthoTree
     };
   } // namespace detail
 
-  namespace ExecutionTags
-  {
-    // Sequential execution tag
-    struct Sequential
-    {};
-
-    // Parallel execution tag
-    struct Parallel
-    {};
-  } // namespace ExecutionTags
-
-  auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
-  auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
-
-
-  // TraverseControl is the result type of node-visitor functions' procedure.
-  enum class TraverseControl
-  {
-    Terminate,    // Terminates the traverse
-    SkipChildren, // Skips children nodes
-    Continue      // Continues the traverse
-  };
 
   // TODO: TEntityContainer should be removed from here. It is only required by OctreeContainer to avoid data conversion.
   template<GeometryType GEOMETRY_TYPE_, typename TEntity, typename TEntityID, typename TEntityContainer, typename TEntityContainerView, typename TGeometry, typename TEntityIDHash = std::hash<TEntityID>>
@@ -365,13 +343,19 @@ namespace OrthoTree
 
     using NodeGeometry = std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint, IGM_Vector, NodeBox>;
 
-  protected:
+  private:
     std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
-    depth_t m_maxDepthID = {};
+    depth_t m_maxDepthID = INVALID_DEPTH;
 
-    std::vector<typename IGM::Vector> m_nodeSizes;
+    struct TreeBox
+    {
+      IGM::Vector minPoint;
+      IGM::Vector size;
+    };
 
-    detail::GridSpaceIndexing<GA> m_grid;
+    std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, TreeBox, std::monostate> m_nominalTreeBox;
+    std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, TreeBox, std::monostate> m_realTreeBox;
+    std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint, std::vector<typename IGM::Vector>, std::monostate> m_nodeSize;
 
   public:
     using EntityContainerView = EA::EntityContainerView;
@@ -381,138 +365,111 @@ namespace OrthoTree
     constexpr OrthoTreeCoreBase() = default;
 
   protected:
-    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo) noexcept
+    constexpr void InitBase(IGM::Vector const& treeMinPoint, IGM::Vector const& treeSize, depth_t maxDepthID, std::size_t maxElementNo) noexcept
     {
-      ORTHOTREE_CRASH_IF(maxDepthID < 1, "maxDepthID must be largar than 0!");
+      ORTHOTREE_CRASH_IF(maxDepthID < 1, "maxDepthID must be larger than 0!");
       ORTHOTREE_CRASH_IF(maxDepthID > SI::MAX_THEORETICAL_DEPTH_ID, "maxDepthID is larger than the applicable with the current GA::DIMENSION_NO!");
       ORTHOTREE_CRASH_IF(maxDepthID >= std::numeric_limits<uint8_t>::max(), "maxDepthID is too large.");
       ORTHOTREE_CRASH_IF(maxElementNo == 0, "maxElementNo must be larger than 0. It is allowed max entity number for one node.");
       ORTHOTREE_CRASH_IF(CHAR_BIT * sizeof(GridID) < maxDepthID, "GridID and maxDepthID are not compatible.");
 
-      m_grid = detail::GridSpaceIndexing<GA>(maxDepthID, boxSpace);
       m_maxDepthID = maxDepthID;
       m_maxElementNum = maxElementNo;
 
-      // the 0-based depth size of the tree is m_maxDepthID+1, and a fictive childnode halfsize (+2) could be asked prematurely.
-      depth_t constexpr additionalDepth = 2;
-      auto const examinedDepthSize = m_maxDepthID + additionalDepth;
-      auto const boxSize = m_grid.GetSizes();
-
-      auto constexpr multiplier = IGM_Geometry(0.5);
-      auto looseFactor = IGM_Geometry(CONFIG::LOOSE_FACTOR);
-
-      m_nodeSizes.resize(examinedDepthSize);
-      for (depth_t depthID = 0; depthID < examinedDepthSize; ++depthID, looseFactor *= multiplier)
-        detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) noexcept { m_nodeSizes[depthID][dimensionID] = boxSize[dimensionID] * looseFactor; });
-    }
-
-  protected:
-    constexpr SI::Location GetInvalidLocation() const noexcept
-    {
-      if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
       {
-        return SI::GetLocation(SI::LocationID(), 0);
+        m_nodeSize = TreeBox{ .minPoint = treeMinPoint, .size = treeSize };
+        if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+        {
+          m_nodeSize = TreeBox{ .minPoint = treeMinPoint, .size = treeSize };
+        }
       }
-      else
+      else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
       {
-        return SI::GetLocation(SI::LocationID(), INVALID_DEPTH);
-      }
-    }
+        // the 0-based depth size of the tree is m_maxDepthID+1, and a fictive childnode halfsize (+1) could be asked prematurely.
+        depth_t constexpr additionalDepth = 2;
+        auto const examinedDepthSize = m_maxDepthID + additionalDepth;
 
-    constexpr SI::Location GetLocation(TVector const& point) const noexcept
-    {
-      auto gridID = m_grid.GetPointGridID(point);
-      if (gridID[0] == INVALID_GRIDID) [[unlikely]]
-        return GetInvalidLocation();
+        auto constexpr multiplier = IGM_Geometry(0.5);
+        auto looseFactor = IGM_Geometry(CONFIG::LOOSE_FACTOR);
 
-      return SI::GetLocation(SI::Encode(gridID), m_maxDepthID);
-    }
-
-    constexpr SI::Location GetLocation(TBox const& box) const noexcept
-    {
-      if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
-      {
-        auto [centerGridID, levelID] = m_grid.template GetLooseBoxGridData<CONFIG::LOOSE_FACTOR>(box);
-        if (centerGridID[0] == INVALID_GRIDID) [[unlikely]]
-          return GetInvalidLocation();
-
-        return SI::GetLocation(SI::Encode(centerGridID), m_maxDepthID - levelID);
-      }
-      else
-      {
-        auto boxGrid = m_grid.GetBoxGridID(box);
-        if (boxGrid[0][0] == INVALID_GRIDID) [[unlikely]]
-          return GetInvalidLocation();
-
-        return SI::GetRangeLocation(boxGrid, m_maxDepthID);
+        m_nodeSize.resize(examinedDepthSize);
+        for (depth_t depthID = 0; depthID < examinedDepthSize; ++depthID, looseFactor *= multiplier)
+          detail::static_for<GA::DIMENSION_NO>(
+            [&](auto dimensionID) noexcept { m_nodeSize[depthID][dimensionID] = treeSize[dimensionID] * looseFactor; });
       }
     }
 
   public:
-    constexpr SI::NodeID GetNodeID(TVector const& point) const noexcept
-    {
-      auto gridID = m_grid.GetPointGridID(point);
-      if (gridID[0] == INVALID_GRIDID) [[unlikely]]
-        return {};
-
-      return SI::GetNodeID(SI::Encode(gridID), m_maxDepthID);
-    }
-
-    constexpr SI::NodeID GetNodeID(TBox const& box) const noexcept
-    {
-      auto location = GetLocation(box);
-      if (location.GetDepthID() == INVALID_DEPTH) [[unlikely]]
-        return {};
-
-      return SI::GetNodeID(location, m_maxDepthID);
-    }
-
     constexpr depth_t GetExaminationLevelID(depth_t depthID) const { return m_maxDepthID - depthID; }
 
 
-    constexpr IGM::Vector CalculateNodeSize(depth_t depthID) const noexcept { return IGM::Multiply(m_grid.GetSizes(), detail::pow2(depthID)); }
+    constexpr typename IGM::Vector CalculateNodeSize(depth_t depthID) const noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+    {
+      return IGM::Multiply(m_nodeSize.nominalSize, detail::pow2(depthID));
+    }
 
     // TODO: remove?
-    constexpr IGM::Box GetNodeBox(depth_t depthID, auto const& geometry) const noexcept
+    constexpr IGM::Box GetNodeBox(depth_t depthID, auto const& nodeGeometry) const noexcept
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
       {
-        return { geometry.minPoint, IGM::Add(geometry.minPoint, geometry.size) };
+        return { nodeGeometry.minPoint, IGM::Add(nodeGeometry.minPoint, nodeGeometry.size) };
       }
       else
       {
-        typename IGM::Vector size;
-        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
-          size = CalculateNodeSize(depthID);
-        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
-          size = m_nodeSizes[depthID];
-        else
-          static_assert(false, "Unsupported NodeGeometryStorage type!");
-
-        return { .Min = geometry, .Max = IGM::Add(geometry, geometry.size) };
+        auto const& size = GetNodeSize(depthID);
+        return { .Min = nodeGeometry, .Max = IGM::Add(nodeGeometry, size) };
       }
     }
 
   public:
     constexpr auto GetMaxDepthID() const noexcept { return m_maxDepthID; }
+    constexpr auto GetMaxElementNum() const noexcept { return m_maxElementNum; }
     constexpr auto GetDepthNo() const noexcept { return m_maxDepthID + 1; }
-    constexpr auto GetResolutionMax() const noexcept { return m_grid.GetResolution(); }
-    constexpr auto const& GetBox() const noexcept { return m_grid.GetBoxSpace(); }
 
   protected:
-    bool IsGeometryInTree(EA::Geometry const& entityGeometry, TFloatScalar tolerance) const noexcept
+    constexpr decltype(auto) GetNodeSize(depth_t depthID) const
     {
-      if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
       {
-        return IGM::DoesBoxContainPointAD(m_grid.GetBoxSpace(), entityGeometry, tolerance);
-      }
-      else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
-      {
-        return IGM::DoesRangeContainBoxAD(m_grid.GetBoxSpace(), entityGeometry, tolerance);
+        return CalculateNodeSize(depthID);
       }
       else
       {
-        static_assert(false, "Unsupported geometry type!");
+        return m_nodeSize[depthID];
+      }
+    }
+
+    constexpr typename IGM::Vector const& GetTreeMinPoint() const noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+    {
+      return m_nominalTreeBox.minPoint;
+    }
+
+    constexpr typename IGM::Vector const& GetRealTreeMinPoint() const noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+    {
+      return m_realTreeBox.minPoint;
+    }
+
+    constexpr typename IGM::Vector const& GetRealTreeSize() const noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+    {
+      return m_realTreeBox.size;
+    }
+
+    constexpr void SetTreeSize(IGM::Vector const& treeSize) noexcept
+      requires(CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+    {
+      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+      {
+        m_realTreeBox.size = treeSize;
+      }
+      else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+      {
+        m_nodeSize[0] = treeSize;
       }
     }
   };
@@ -644,6 +601,46 @@ namespace OrthoTree
     }
 
   public:
+    constexpr TBox GetBox() const noexcept
+    {
+      auto box = GA::MakeBox();
+
+      auto const& minPoint = [&]() -> decltype(auto) {
+        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+          return m_nodeGeometry[GetRootNodeID()].minPoint;
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+          return m_nodeGeometry[GetRootNodeID()];
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+        {
+          if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+            return Base::GetRealTreeMinPoint();
+          else
+            return Base::GetTreeMinPoint();
+        }
+      }();
+
+      auto const& size = [&]() -> decltype(auto) {
+        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+          return m_nodeGeometry[GetRootNodeID()].size;
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+          return GetNodeSize(GetRootNodeID());
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+        {
+          if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+            return Base::GetRealTreeSize();
+          else
+            return Base::GetTreeSize();
+        }
+      }();
+
+      detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) {
+        GA::SetBoxMinC(box, dimensionID, minPoint[dimensionID]);
+        GA::SetBoxMaxC(box, dimensionID, minPoint[dimensionID] + size[dimensionID]);
+      });
+
+      return box;
+    }
+
     static NodeID GetRootNodeID() noexcept { return 0; }
 
     constexpr std::size_t GetNodeCount() const noexcept { return m_nodeDepthIDs.size(); }
@@ -698,7 +695,7 @@ namespace OrthoTree
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint || CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
       {
-        return Base::m_nodeSizes[m_nodeDepthIDs[nodeID]];
+        return Base::GetNodeSize(m_nodeDepthIDs[nodeID]);
       }
       else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
       {
@@ -816,7 +813,8 @@ namespace OrthoTree
     constexpr IGM::Vector CalculateNodeMinPoint(SI::Location location) const noexcept
     {
       // TODO: finish SI::Decode(location...
-      return Base::m_grid.CalculateGridCellMinPoint(SI::Decode(location.GetLocationID(), Base::m_maxDepthID));
+      return {};
+      // Base::m_grid.CalculateGridCellMinPoint(SI::Decode(location.GetLocationID(), Base::m_maxDepthID));
     }
 
     constexpr void InitNodeGeometry(NodeID nodeID, SI::Location location) const noexcept
@@ -1008,6 +1006,8 @@ namespace OrthoTree
       if (entityNum == 0)
         return true;
 
+      auto spaceIndexing = MortonSpaceIndexing<GA>(maxDepthID, boxSpace);
+
       auto mortonIDs = std::vector<typename SI::Location>(entityNum);
       m_entityStorage.resize(entityNum);
 
@@ -1016,7 +1016,7 @@ namespace OrthoTree
 
       EXEC_POL_DEF(epf); // GCC 11.3
       std::transform(EXEC_POL_ADD(epf) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> Location {
-        return { Base::GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+        return { spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
       });
 
       // TODO: out-of-space handling //!ATT
@@ -1025,9 +1025,7 @@ namespace OrthoTree
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), locationsZip.end(), [](Location const& l, Location const& r) {
-          return SI::IsLess(l.first, r.first);
-        });
+        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), locationsZip.end(), [](Location const& l, Location const& r) { return l.first < r.first; });
       }
 
       auto const estimatedNodeNum =
@@ -1103,6 +1101,7 @@ namespace OrthoTree
     using ReverseMap = std::conditional_t<CONFIG::USE_REVERSE_MAPPING, ReverseMapType, std::monostate>;
     ReverseMap m_reverseMap;
 
+    detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR> m_spaceIndexing;
     detail::MemoryResource<EntityID> m_memoryResource;
 
   public: // Constructors
@@ -1159,6 +1158,7 @@ namespace OrthoTree
     , m_nodes(&m_umrNodes)
 #else
     : m_nodes(other.m_nodes)
+    , m_spaceIndexing(other.m_spaceIndexing)
 #endif
     {
 #ifdef ORTHOTREE_IS_PMR_USED
@@ -1196,6 +1196,46 @@ namespace OrthoTree
       return *this;
     }
 
+  public:
+    constexpr TBox GetBox() const noexcept
+    {
+      auto box = GA::MakeBox();
+
+      auto const& minPoint = [&]() -> decltype(auto) {
+        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+          return m_nodes.at(GetRootNodeID()).GetGeometry().minPoint;
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+          return m_nodes.at(GetRootNodeID()).GetGeometry();
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+        {
+          if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+            return Base::GetRealTreeMinPoint();
+          else
+            return Base::GetTreeMinPoint();
+        }
+      }();
+
+      auto const& size = [&]() -> decltype(auto) {
+        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+          return m_nodes.at(GetRootNodeID()).GetGeometry().size;
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+          return m_nodes.at(GetRootNodeID()).GetGeometry();
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+        {
+          if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+            return Base::GetRealTreeSize();
+          else
+            return Base::GetTreeSize();
+        }
+      }();
+
+      detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) {
+        GA::SetBoxMinC(box, dimensionID, minPoint[dimensionID]);
+        GA::SetBoxMaxC(box, dimensionID, minPoint[dimensionID] + size[dimensionID]);
+      });
+
+      return box;
+    }
 
   public: // Node helpers
     constexpr auto const& GetNodes() const noexcept { return m_nodes; }
@@ -1220,9 +1260,9 @@ namespace OrthoTree
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
       {
-        auto const nodeCenter = CalculateNodeCenter(pNodeValue->first);
+        auto const nodeCenter = m_spaceIndexing.CalculateNodeCenter(pNodeValue->first);
         auto const depthID = SI::GetDepthID(pNodeValue->first);
-        auto const& nodeHalfSize = Base::m_nodeSizes[depthID + 1];
+        auto const& nodeHalfSize = Base::GetNodeSize(depthID + 1);
 
         return IGM::Sub(nodeCenter, nodeHalfSize);
       }
@@ -1238,10 +1278,8 @@ namespace OrthoTree
     constexpr decltype(auto) GetNodeSize(NodeValueCP pNodeValue) const noexcept
     {
       auto const depthID = SI::GetDepthID(pNodeValue->first);
-      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
-        return CalculateNodeSize(depthID);
-      else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
-        return Base::m_nodeSizes[depthID];
+      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None || CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+        return Base::GetNodeSize(depthID);
       else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
         return pNodeValue->second.GetGeometry().size;
       else
@@ -1256,12 +1294,6 @@ namespace OrthoTree
     {
       auto const& minPoint = GetNodeMinPoint(pNodeValue);
       return { .Min = minPoint, .Max = IGM::Add(minPoint, GetNodeSize(pNodeValue)) };
-    }
-
-    // Calculate Node min-point
-    constexpr IGM::Vector CalculateNodeMinPoint(NodeIDCR nodeID) const noexcept
-    {
-      return Base::m_grid.CalculateGridCellMinPoint(SI::Decode(nodeID, Base::m_maxDepthID));
     }
 
     // Is the node has any entity
@@ -1282,12 +1314,6 @@ namespace OrthoTree
 
     // Obsolete: Is the node has any entity
     constexpr bool IsNodeEntitiesEmpty(NodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNodeValueP(nodeKey)); }
-
-    // Obsolete: Calculate extent by box of the tree and the nodeID of the node
-    constexpr IGM::Vector CalculateNodeCenter(NodeIDCR nodeID) const noexcept
-    {
-      return Base::m_grid.CalculateGridCellCenter(SI::Decode(nodeID, Base::m_maxDepthID), Base::m_maxDepthID - SI::GetDepthID(nodeID));
-    }
 
     // Obsolete
     constexpr decltype(auto) GetNodeMinPoint(NodeIDCR nodeID) const noexcept { return GetNodeMinPoint(&*m_nodes.find(nodeID)); }
@@ -1328,9 +1354,9 @@ namespace OrthoTree
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
       {
-        auto const nodeCenter = CalculateNodeCenter(nodeValue->first);
+        auto const nodeCenter = m_spaceIndexing.CalculateNodeCenter(nodeValue->first);
         auto const depthID = SI::GetDepthID(nodeValue->first);
-        auto const& nodeHalfSize = Base::m_nodeSizes[depthID + 1];
+        auto const& nodeHalfSize = Base::GetNodeSize(depthID + 1);
 
         nodeValue->second.GetGeometry() = IGM::Sub(nodeCenter, nodeHalfSize);
       }
@@ -1374,7 +1400,8 @@ namespace OrthoTree
   private:
     constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
     {
-      Base::InitBase(boxSpace, maxDepthID, maxElementNo);
+      m_spaceIndexing = detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR>(maxDepthID, boxSpace);
+      Base::InitBase(m_spaceIndexing.GetMinPoint(), m_spaceIndexing.GetSize(), maxDepthID, maxElementNo);
 
       ORTHOTREE_CRASH_IF(
         !m_nodes.empty(), "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
@@ -1413,7 +1440,7 @@ namespace OrthoTree
 
       auto nodeEntityNo = subtreeEntityNo;
       auto stuckedEndLocationIt = endLocationIt;
-      if (subtreeEntityNo > this->Base::m_maxElementNum && depthID < Base::m_maxDepthID)
+      if (subtreeEntityNo > this->Base::GetMaxElementNum() && depthID < Base::GetMaxDepthID())
       {
         if constexpr (ARE_LOCATIONS_SORTED)
         {
@@ -1496,7 +1523,7 @@ namespace OrthoTree
 
         auto const isEntitesProcessed = locationIt == nodeStack[depthID].EndLocationIt;
 
-        if (isEntitesProcessed || depthID == Base::m_maxDepthID)
+        if (isEntitesProcessed || depthID == Base::GetMaxDepthID())
         {
           detail::emplace(nodes, std::move(nodeStack[depthID].NodeInstance));
           --depthID;
@@ -1538,7 +1565,7 @@ namespace OrthoTree
 
       EXEC_POL_DEF(epf); // GCC 11.3
       std::transform(EXEC_POL_ADD(epf) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> Location {
-        return { Base::GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+        return { m_spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
       });
 
       auto endIt = locationsZip.end();
@@ -1551,7 +1578,7 @@ namespace OrthoTree
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), endIt, [](Location const& l, Location const& r) { return SI::IsLess(l.first, r.first); });
+        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), endIt, [](Location const& l, Location const& r) { return l.first < r.first; });
       }
 
       auto const rootNode = *m_nodes.begin();
@@ -1590,7 +1617,7 @@ namespace OrthoTree
       auto mortonIDs = std::vector<typename SI::Location>(entityNo);
       auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
       auto locationsZip = detail::zip_view(mortonIDs, mainMemorySegment.segment);
-      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, Base::m_maxDepthID, Base::m_maxElementNum));
+      detail::reserve(m_nodes, EstimateNodeNumber(entityNo, Base::GetMaxDepthID(), Base::GetMaxElementNum()));
 
 
       using EntityLocation = decltype(locationsZip)::iterator::value_type;
@@ -1603,15 +1630,16 @@ namespace OrthoTree
         locationsZip.begin(),
         locationsZip.end(),
         [](EntityLocation const& e) -> NodeID { return e.first.locationID; },
-        Base::m_maxElementNum,
-        Base::m_maxDepthID* GA::DIMENSION_NO);
+        Base::GetMaxElementNum(),
+        Base::GetMaxDepthID(),
+        GA::DIMENSION_NO);
 
       auto orphanNodes = std::vector<NodeID>{};
       auto partitionIt = partitions.begin();
       for (auto beginIt = locationsZip.begin(); beginIt != locationsZip.end();)
       {
         /*
-        auto const possibleEndIt = beginIt + std::min(detail::size(beginIt, locationsZip.end()), Base::m_maxElementNum);
+        auto const possibleEndIt = beginIt + std::min(detail::size(beginIt, locationsZip.end()), Base::GetMaxElementNum());
         partitionIt =
           std::partition_point(partitionIt, partitions.end(), [possibleEndIt](auto partitionEndIt) { return partitionEndIt <= possibleEndIt; });
 
@@ -1622,9 +1650,9 @@ namespace OrthoTree
         auto endIt = *partitionIt++;
         // auto const [minIt, maxIt] =
         //   std::minmax_element(beginIt, endIt, [](EntityLocation const& l, EntityLocation const& r) { return SI::Less(l.first, r.first); });
-        auto const [minIt, maxIt] = std::minmax_element(beginIt.GetFirst(), endIt.GetFirst(), SI::IsLess);
-        auto const minNodeID = SI::GetNodeID(*minIt, Base::m_maxDepthID);
-        auto const maxNodeID = SI::GetNodeID(*maxIt, Base::m_maxDepthID);
+        auto const [minIt, maxIt] = std::minmax_element(beginIt.GetFirst(), endIt.GetFirst());
+        auto const minNodeID = m_spaceIndexing.GetNodeID(*minIt);
+        auto const maxNodeID = m_spaceIndexing.GetNodeID(*maxIt);
 
         auto nodeID = SI::GetLowestCommonAncestor(minNodeID, maxNodeID);
         auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
@@ -1685,7 +1713,7 @@ namespace OrthoTree
       auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
       auto locationsZip = detail::zip_view(mortonIDs, mainMemorySegment.segment);
       detail::reserve(
-        m_nodes, detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, Base::m_maxDepthID, Base::m_maxElementNum));
+        m_nodes, detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, Base::GetMaxDepthID(), Base::GetMaxElementNum()));
 
 
       using EntityLocation = decltype(locationsZip)::iterator::value_type;
@@ -1695,23 +1723,23 @@ namespace OrthoTree
       });
 
       auto orphanNodes = std::vector<NodeID>{};
-      auto const maxElementNo = static_cast<uint32_t>(Base::m_maxElementNum);
+      auto const maxElementNo = static_cast<uint32_t>(Base::GetMaxElementNum());
       Partitioning::DepthFirstPartition<GA::DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
         EXEC_TAG,
         locationsZip.begin(),
         locationsZip.end(),
         SI::GetRootLocation(),
-        Base::m_maxDepthID,
+        Base::GetMaxDepthID(),
         maxElementNo,
         [&](auto beginIt, auto endIt, auto location, bool isForcedToFinish) {
           auto const elementNum = detail::size(beginIt, endIt);
           if (elementNum == 0)
             return true;
 
-          if (!isForcedToFinish && elementNum > Base::m_maxElementNum && location.depthID < Base::m_maxDepthID)
+          if (!isForcedToFinish && elementNum > Base::GetMaxElementNum() && location.depthID < Base::GetMaxDepthID())
             return false;
 
-          auto nodeID = SI::GetNodeID(location, Base::m_maxDepthID);
+          auto nodeID = m_spaceIndexing.GetNodeID(location);
           auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
           if (isInserted)
           {
@@ -1770,13 +1798,14 @@ namespace OrthoTree
 
       auto mortonIDs = std::vector<typename SI::Location>(entityNo);
       auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
-      detail::reserve(m_nodes, EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, Base::m_maxDepthID, Base::m_maxElementNum));
+      detail::reserve(
+        m_nodes, EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, Base::GetMaxDepthID(), Base::GetMaxElementNum()));
 
       auto orphanNodes = std::vector<NodeID>{};
       for (auto const& entity : entities)
       {
-        auto nodeID = this->GetNodeID(EA::GetGeometry(entity));
-        auto [it, isInserted] = this->m_nodes.try_emplace(nodeID);
+        auto nodeID = m_spaceIndexing.GetNodeID(EA::GetGeometry(entity));
+        auto [it, isInserted] = m_nodes.try_emplace(nodeID);
         if (isInserted)
         {
           orphanNodes.push_back(nodeID);
@@ -1893,8 +1922,8 @@ namespace OrthoTree
 
     auto GetParentIt(NodeID nodeID) const noexcept { return GetParentIt(m_nodes, nodeID); }
     auto GetParentIt(NodeID nodeID) noexcept { return GetParentIt(m_nodes, nodeID); }
-    auto GetNodeIt(auto const& searchGeometry) const noexcept { return GetNodeIt(m_nodes, Base::GetNodeID(searchGeometry)); }
-    auto GetNodeIt(auto const& searchGeometry) { return GetNodeIt(m_nodes, Base::GetNodeID(searchGeometry)); }
+    auto GetNodeIt(auto const& searchGeometry) const noexcept { return GetNodeIt(m_nodes, m_spaceIndexing.GetNodeID(searchGeometry)); }
+    auto GetNodeIt(auto const& searchGeometry) { return GetNodeIt(m_nodes, m_spaceIndexing.GetNodeID(searchGeometry)); }
 
 
     // TODO: delete?
@@ -2002,9 +2031,11 @@ namespace OrthoTree
         auto nodeBox = GetNodeBox(nodeValue);
         IGM::UniteInBoxAD(nodeBox, box);
 
-        Base::m_nodeSizes[0] = IGM::Sub(nodeBox.Max, nodeBox.Min);
+        Base::SetTreeSize(IGM::Sub(nodeBox.Max, nodeBox.Min));
         if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
           nodeValue->second.GetGeometry() = nodeBox.Min;
+        else
+          Base::SetRealTreeMinPoint(nodeBox.Min);
       }
     }
 
@@ -2076,10 +2107,15 @@ namespace OrthoTree
         for (auto const& entityID : entityIDs)
           IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, entityID));
 
-        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
+        if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+        {
+          Base::SetRealTreeMinPoint(nodeBox.Min);
+          Base::SetTreeSize(IGM::Sub(nodeBox.Max, nodeBox.Min));
+        }
+        else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
         {
           rootNodeValue->second.GetGeometry() = nodeBox.Min;
-          Base::m_nodeSizes[0] = IGM::Sub(nodeBox.Max, nodeBox.Min);
+          Base::SetTreeSize(IGM::Sub(nodeBox.Max, nodeBox.Min));
         }
       }
     }
@@ -2103,22 +2139,39 @@ namespace OrthoTree
     }
 
   private:
+    bool IsGeometryInTree(EA::Geometry const& entityGeometry, TFloatScalar tolerance) const noexcept
+    {
+      const auto treeBox = GetBox();
+      if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+      {
+        return GA::DoesBoxContainPoint(treeBox, entityGeometry, tolerance);
+      }
+      else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+      {
+        return GA::AreBoxesOverlapped(treeBox, entityGeometry, true, false, tolerance);
+      }
+      else
+      {
+        static_assert(false, "Unsupported geometry type!");
+      }
+    }
+
     enum class OutOfSpaceInsertionResult
     {
       NotHandled,
-      InsertedToRoot,
+      InsertedIntoRoot,
       Denied
     };
     OutOfSpaceInsertionResult HandleOutOfSpaceInsertion(EntityID entityID, EA::Geometry const& entityGeometry)
     {
-      if (!Base::IsGeometryInTree(entityGeometry, GA::BASE_TOLERANCE))
+      if (!IsGeometryInTree(entityGeometry, GA::BASE_TOLERANCE))
       {
         if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
         {
           auto nodeValue = &*m_nodes.find(SI::GetRootKey());
           AddNodeEntity(nodeValue, entityID);
           UpdateMinimalNodeGeometry<true>(nodeValue, IGM::GetBoxAD(entityGeometry));
-          return OutOfSpaceInsertionResult::InsertedToRoot;
+          return OutOfSpaceInsertionResult::InsertedIntoRoot;
         }
         else
         {
@@ -2137,7 +2190,7 @@ namespace OrthoTree
       if (oosResult != OutOfSpaceInsertionResult::NotHandled)
         return oosResult != OutOfSpaceInsertionResult::Denied;
 
-      auto const entityNodeID = Base::GetNodeID(entityGeometry);
+      auto const entityNodeID = m_spaceIndexing.GetNodeID(entityGeometry);
       auto nodeIt = m_nodes.find(entityNodeID);
       bool isNodeAdded = false;
       if (nodeIt == m_nodes.end())
@@ -2186,7 +2239,7 @@ namespace OrthoTree
       // has any child node, the new element should be inserted into a child.
       // 3. Rebalance push elements downward only once.
 
-      auto const entityNodeID = Base::GetNodeID(entityGeometry);
+      auto const entityNodeID = m_spaceIndexing.GetNodeID(entityGeometry);
       auto nodeIt = m_nodes.find(entityNodeID);
       auto const isNonRefinable = nodeIt != m_nodes.end();
       if (nodeIt == m_nodes.end())
@@ -2194,7 +2247,7 @@ namespace OrthoTree
 
       auto const nodeValue = &*nodeIt;
       auto const entityCount = GetNodeEntityCount(nodeValue) + 1;
-      auto const isOverflowed = entityCount > Base::m_maxElementNum;
+      auto const isOverflowed = entityCount > Base::GetMaxElementNum();
       auto const isPreviouslyOverflowed = nodeValue->second.IsAnyChildExist();
       auto const depthID = SI::GetDepthID(nodeValue->first);
 
@@ -2202,7 +2255,7 @@ namespace OrthoTree
         UpdateMinimalNodeGeometry(nodeValue, IGM::GetBoxAD(entityGeometry));
 
       // No overflow or non-refinable or max depth reached
-      if ((!isPreviouslyOverflowed && !isOverflowed) || (isPreviouslyOverflowed && isNonRefinable) || depthID == Base::m_maxDepthID)
+      if ((!isPreviouslyOverflowed && !isOverflowed) || (isPreviouslyOverflowed && isNonRefinable) || depthID == Base::GetMaxDepthID())
       {
         AddNodeEntity(nodeValue, entityID);
         return true;
@@ -2235,12 +2288,12 @@ namespace OrthoTree
       auto locationsZip = detail::zip_view(mortonIDs, entityIDs);
       using ZipValue = decltype(locationsZip)::iterator::value_type;
       std::transform(entityIDs.begin(), entityIDs.end() - 1, locationsZip.begin(), [&](auto const& storedEntityID) -> ZipValue {
-        return { Base::GetLocation(EA::GetGeometry(entities, storedEntityID)), storedEntityID };
+        return { m_spaceIndexing.GetLocation(EA::GetGeometry(entities, storedEntityID)), storedEntityID };
       });
 
       // new entity is may not added to the geometry container
       auto lastIt = locationsZip.end() - 1;
-      *lastIt = { Base::GetLocation(entityGeometry), entityID };
+      *lastIt = { m_spaceIndexing.GetLocation(entityGeometry), entityID };
 
       auto beginIt = locationsZip.begin();
 
@@ -2274,7 +2327,7 @@ namespace OrthoTree
       }
 
       // Child nodes
-      auto const childNodeLevelID = Base::m_maxDepthID - depthID - 1;
+      auto const childNodeLevelID = Base::GetMaxDepthID() - depthID - 1;
       while (beginIt != locationsZip.end())
       {
         auto const nodeChecker = typename SI::ChildCheckerFixedDepth(childNodeLevelID, beginIt.GetFirst()->GetLocationID());
@@ -2283,19 +2336,19 @@ namespace OrthoTree
 
         // Create child node deeper if possible and worth it
         NodeValue* childNodeValue = nullptr;
-        if (detail::size(beginIt, nextIt) >= Base::m_maxElementNum / 2)
+        if (detail::size(beginIt, nextIt) >= Base::GetMaxElementNum() / 2)
         {
           auto lcaHelper = SI::GetLowestCommonAncestorHelper(*beginIt.GetFirst());
           for (auto it = beginIt.GetFirst(); it != nextIt.GetFirst(); ++it)
             lcaHelper.Add(*it);
 
-          auto childNodeIt = AddNode(lcaHelper.GetNodeID(Base::m_maxDepthID));
+          auto childNodeIt = AddNode(lcaHelper.GetNodeID(Base::GetMaxDepthID()));
           childNodeValue = &*childNodeIt;
         }
         else
         {
-          auto const partitionChildNodeID = SI::GetNodeID(*beginIt.GetFirst(), Base::m_maxDepthID);
-          auto childNodeIt = AddNode(SI::GetDirectChildNodeID(nodeValue->first, partitionChildNodeID));
+          auto const partitionChildNodeID = m_spaceIndexing.GetNodeID(*beginIt.GetFirst());
+          auto childNodeIt = AddNode(m_spaceIndexing.GetDirectChildNodeID(nodeValue->first, partitionChildNodeID));
           childNodeValue = &*childNodeIt;
         }
 
@@ -2338,7 +2391,7 @@ namespace OrthoTree
     {
       if constexpr (!CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
       {
-        if (!Base::IsGeometryInTree(newEntityGeometry, GA::BASE_TOLERANCE))
+        if (!IsGeometryInTree(newEntityGeometry, GA::BASE_TOLERANCE))
           return false;
       }
 
@@ -2471,7 +2524,7 @@ namespace OrthoTree
     {
       m_nodes.clear();
       m_memoryResource.Reset();
-      Base::m_grid = {};
+      m_spaceIndexing = {};
     }
 
 
@@ -2512,7 +2565,7 @@ namespace OrthoTree
         static_assert(false, "Unsupported NODE_GEOMETRY_STORAGE value!");
       }
 
-      Base::m_grid.Move(moveVector);
+      m_spaceIndexing.Move(moveVector);
     }
 
   private:
@@ -2670,6 +2723,15 @@ namespace OrthoTree
         return Contains(entityGeometry, entities, tolerance);
       }
     }
+  };
+
+
+  // TraverseControl is the result type of node-visitor functions' procedure.
+  enum class TraverseControl
+  {
+    Terminate,    // Terminates the traverse
+    SkipChildren, // Skips children nodes
+    Continue      // Continues the traverse
   };
 
   // OrthoTree: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.

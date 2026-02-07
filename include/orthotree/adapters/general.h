@@ -70,7 +70,7 @@ namespace OrthoTree
     static constexpr Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return plane.OrigoDistance; }
   };
 
-  // Provides general vector/box/ray/plane operations based on a basic adapter interface. If the geometric types are connected to an BLAS, it is recommended to implement a custom AdaptorGeneral.
+  // Provides general vector/box/ray/plane operations based on a basic adapter interface. If the geometric types are connected to an BLAS, it is recommended to implement a custom GeneralGeometryAdapterTemplate.
   template<typename TBaseGeometryAdapter>
   struct GeneralGeometryAdapter : TBaseGeometryAdapter
   {
@@ -218,7 +218,7 @@ namespace OrthoTree
 
     static constexpr bool IsNormalizedVector(Vector const& normal) noexcept { return std::abs(Size2(normal) - 1.0) < 0.000001; }
 
-    static constexpr bool DoesBoxContainPoint(Box const& box, Vector const& point, FloatScalar tolerance = 0) noexcept
+    static constexpr bool DoesBoxContainPoint(Box const& box, Vector const& point, FloatScalar tolerance) noexcept
     {
       if (tolerance != 0.0)
       {
@@ -255,7 +255,7 @@ namespace OrthoTree
       Adjecent = 0,
       Separated = 1
     };
-    static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2, FloatScalar tolerance = {}) noexcept
+    static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2, FloatScalar tolerance) noexcept
     {
       enum EBoxRelationCandidate : uint8_t
       {
@@ -284,13 +284,13 @@ namespace OrthoTree
       return (rel & EBoxRelationCandidate::AdjecentC) ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
     }
 
-    static constexpr bool AreBoxesOverlappedStrict(Box const& e1, Box const& e2) noexcept
+    static constexpr bool AreBoxesOverlappedStrict(Box const& e1, Box const& e2, FloatScalar tolerance) noexcept
     {
-      return GetBoxRelation(e1, e2, 0) == EBoxRelation::Overlapped;
+      return GetBoxRelation(e1, e2, tolerance) == EBoxRelation::Overlapped;
     }
 
     static constexpr bool AreBoxesOverlapped(
-      Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false, FloatScalar tolerance = {}) noexcept
+      Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false, FloatScalar tolerance = Base::BASE_TOLERANCE) noexcept
     {
       if (e1_must_contain_e2)
       {
@@ -314,63 +314,6 @@ namespace OrthoTree
       }
     }
 
-    static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Vector const& rayOrigin, Vector const& rayDirection, FloatScalar tolerance) noexcept
-    {
-      assert(tolerance >= 0 && "Tolerance cannot be negative!");
-
-      if (DoesBoxContainPoint(box, rayOrigin, tolerance))
-        return 0.0;
-
-      auto constexpr inf = std::numeric_limits<double>::max();
-
-      double minBoxDistance = -inf;
-      double maxBoxDistance = +inf;
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        auto const origin = Base::GetPointC(rayOrigin, dimensionID);
-        auto const direction = Base::GetPointC(rayDirection, dimensionID);
-        auto const boxMin = Base::GetBoxMinC(box, dimensionID) - tolerance;
-        auto const boxMax = Base::GetBoxMaxC(box, dimensionID) + tolerance;
-
-        if (direction == 0)
-        {
-          if (tolerance != 0.0)
-          {
-            // Box should be within tolerance (<, not <=)
-            if (origin <= boxMin || boxMax <= origin)
-              return std::nullopt;
-          }
-          else
-          {
-            if (origin < boxMin || boxMax < origin)
-              return std::nullopt;
-          }
-        }
-        else
-        {
-          double const directionReciprocal = 1.0 / direction;
-          double t1 = (boxMin - origin) * directionReciprocal;
-          double t2 = (boxMax - origin) * directionReciprocal;
-          if (t1 > t2)
-            std::swap(t1, t2);
-
-          minBoxDistance = std::max(minBoxDistance, t1);
-          maxBoxDistance = std::min(maxBoxDistance, t2);
-        }
-      }
-
-      assert(maxBoxDistance != inf && "rayDirection is a zero vector!");
-      if (minBoxDistance > maxBoxDistance || maxBoxDistance < 0.0)
-        return std::nullopt;
-      else
-        return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
-    }
-
-    static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Ray const& ray, FloatScalar tolerance) noexcept
-    {
-      return GetRayBoxDistance(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
-    }
-
     // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
     static constexpr PlaneRelation GetPointPlaneRelation(Vector const& point, Scalar distanceOfOrigo, Vector const& planeNormal, FloatScalar tolerance) noexcept
     {
@@ -390,7 +333,7 @@ namespace OrthoTree
 
 
   template<dim_t DIMENSION_NO, typename TVector, typename TBox, typename TRay, typename TPlane, typename TScalar = double>
-  using AdaptorGeneral = GeneralGeometryAdapter<
+  using GeneralGeometryAdapterTemplate = GeneralGeometryAdapter<
     GeneralBaseGeometryAdapter<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, std::conditional_t<std::is_integral_v<TScalar>, float, TScalar>>>;
 
   template<dim_t DIMENSION_NO, typename TScalar = double>
@@ -438,7 +381,7 @@ namespace OrthoTree
   using Plane3D = OrthoTree::PlaneND<3, BaseGeometryType>;
 
   template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType>
-  using GeneralGeometryAdapterND = AdaptorGeneral<
+  using GeneralGeometryAdapterND = GeneralGeometryAdapterTemplate<
     DIMENSION_NO,
     OrthoTree::VectorND<DIMENSION_NO, TScalar>,
     OrthoTree::BoundingBoxND<DIMENSION_NO, TScalar>,

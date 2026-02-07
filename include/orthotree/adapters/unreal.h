@@ -384,7 +384,7 @@ namespace OrthoTree
     };
 
     template<typename TUnrealBaseGeometryAdapter>
-    struct UnrealGeometryAdapter : TUnrealBaseGeometryAdapter
+    struct UnrealGeometryAdapter : GeneralGeometryAdapter<TUnrealBaseGeometryAdapter>
     {
       using Base = TUnrealBaseGeometryAdapter;
 
@@ -402,76 +402,6 @@ namespace OrthoTree
       static constexpr Scalar Size2(Vector const& v) noexcept { return v.SizeSquared(); }
 
       static constexpr Scalar Size(Vector const& point) noexcept { return point.Size(); }
-
-      struct PointBoxMinMaxDistance
-      {
-        // Minimum possible distance from the query point to any object contained in the box.
-        // If the point lies inside the box, this value is zero.
-        double min = {};
-
-        // Maximum possible nearest-distance in the worst case.
-        // Assumes an object inside the box is placed adversarially so as to maximize
-        // its minimum distance to the query point (i.e. the worst-case nearest object).
-        double minMax = {};
-      };
-      static constexpr PointBoxMinMaxDistance MinMaxDistance2(Vector const& pt, Box const& box, FloatScalar tolerance) noexcept
-      {
-        // N. Roussopoulos, S. Kelley, F. Vincent - Nearest Neighbor Queries (1995) DOI.10.1145 / 223784.223794
-        // MINMAXDIST
-
-        auto dist2 = PointBoxMinMaxDistance{};
-
-        double farthestInsideDistance2 = std::numeric_limits<double>::max();
-        double largestMinMax2Difference = {};
-        auto isInside = true;
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          const auto v = Base::GetPointC(pt, dimensionID);
-          const auto minC = Base::GetBoxMinC(box, dimensionID);
-          const auto maxC = Base::GetBoxMaxC(box, dimensionID);
-
-          const auto minDist = v - minC;
-          const auto maxDist = maxC - v;
-
-          bool isInsideInComponent = (-tolerance <= minDist && -tolerance <= maxDist);
-          isInside &= isInsideInComponent;
-
-          auto minDist2 = minDist * minDist;
-          auto maxDist2 = maxDist * maxDist;
-
-          if (maxDist2 < minDist2)
-            std::swap(minDist2, maxDist2);
-
-          if (isInside)
-            farthestInsideDistance2 = std::min(farthestInsideDistance2, maxDist2);
-
-          if (!isInsideInComponent)
-            dist2.min += minDist2;
-
-          largestMinMax2Difference = std::max(largestMinMax2Difference, maxDist2 - minDist2);
-          dist2.minMax += maxDist2;
-        }
-
-        if (isInside)
-        {
-          dist2.min = {};
-          dist2.minMax = farthestInsideDistance2;
-        }
-        else
-        {
-          dist2.minMax -= largestMinMax2Difference;
-        }
-
-        return dist2;
-      }
-
-      static constexpr PointBoxMinMaxDistance MinMaxDistance(Vector const& pt, Box const& box, FloatScalar tolerance) noexcept
-      {
-        auto dist = MinMaxDistance2(pt, box, tolerance);
-        dist.min = std::sqrt(dist.min);
-        dist.minMax = std::sqrt(dist.minMax);
-        return dist;
-      }
 
       static constexpr Vector Add(Vector const& v1, Vector const& v2) noexcept { return v1 + v2; }
 
@@ -492,76 +422,9 @@ namespace OrthoTree
 
       static constexpr bool IsNormalizedVector(Vector const& normal) noexcept { return normal.IsUnit(0.000001f); }
 
-      static constexpr bool DoesBoxContainPoint(Box const& box, Vector const& point) noexcept { return box.IsInsideOrOn(point); }
-
-      static constexpr bool DoesBoxContainPointStrict(Box const& box, Vector const& point) noexcept { return box.IsInside(point); }
-
-      static constexpr bool AreBoxesOverlappedStrict(Box const& e1, Box const& e2) noexcept { return e1.Intersect(e2); }
-
       static constexpr bool IsAlmostEqual(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept
       {
         return std::abs(lhs - rhs) <= tolerance;
-      }
-      static constexpr bool IsLess(FloatScalar lhs, FloatScalar rhs, FloatScalar tolerance) noexcept { return lhs + tolerance < rhs; }
-
-      enum class EBoxRelation
-      {
-        Overlapped = -1,
-        Adjecent = 0,
-        Separated = 1
-      };
-      static constexpr EBoxRelation GetBoxRelation(Box const& e1, Box const& e2, FloatScalar tolerance = {}) noexcept
-      {
-        enum EBoxRelationCandidate : uint8_t
-        {
-          OverlappedC = 0x1,
-          AdjecentC = 0x2,
-          SeparatedC = 0x4
-        };
-        uint8_t rel = 0;
-
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          if (
-            IsLess(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) &&
-            IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
-            rel |= EBoxRelationCandidate::OverlappedC;
-          else if (
-            IsAlmostEqual(Base::GetBoxMinC(e1, dimensionID), Base::GetBoxMaxC(e2, dimensionID), tolerance) ||
-            IsAlmostEqual(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
-            rel |= EBoxRelationCandidate::AdjecentC;
-          else if (
-            IsLess(Base::GetBoxMaxC(e2, dimensionID), Base::GetBoxMinC(e1, dimensionID), tolerance) ||
-            IsLess(Base::GetBoxMaxC(e1, dimensionID), Base::GetBoxMinC(e2, dimensionID), tolerance))
-            return EBoxRelation::Separated;
-        }
-
-        return (rel & EBoxRelationCandidate::AdjecentC) == EBoxRelationCandidate::AdjecentC ? EBoxRelation::Adjecent : EBoxRelation::Overlapped;
-      }
-
-      static constexpr bool AreBoxesOverlapped(
-        Box const& e1, Box const& e2, bool e1_must_contain_e2 = true, bool fOverlapPtTouchAllowed = false, FloatScalar tolerance = {}) noexcept
-      {
-        if (e1_must_contain_e2)
-        {
-          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          {
-            if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMinC(e2, dimensionID) || Base::GetBoxMinC(e2, dimensionID) > Base::GetBoxMaxC(e1, dimensionID))
-              return false;
-
-            if (Base::GetBoxMinC(e1, dimensionID) > Base::GetBoxMaxC(e2, dimensionID) || Base::GetBoxMaxC(e2, dimensionID) > Base::GetBoxMaxC(e1, dimensionID))
-              return false;
-          }
-          return true;
-        }
-        else
-        {
-          auto const rel = GetBoxRelation(e1, e2, tolerance);
-          if (fOverlapPtTouchAllowed)
-            return rel == EBoxRelation::Adjecent || rel == EBoxRelation::Overlapped;
-          else
-            return rel == EBoxRelation::Overlapped;
-        }
       }
 
       static Box GetBoxOfPoints(std::span<Vector const> const& points) noexcept
@@ -603,116 +466,6 @@ namespace OrthoTree
       }
 
       static void MoveBox(Box& box, Vector const& moveVector) noexcept { box = box.ShiftBy(moveVector); }
-
-      static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Vector const& rayOrigin, Vector const& rayDirection, FloatScalar tolerance) noexcept
-      {
-        assert(tolerance >= 0 && "Tolerance cannot be negative!");
-
-        auto rayBasePointBox = Box();
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          Base::SetBoxMinC(rayBasePointBox, dimensionID, Base::GetPointC(rayOrigin, dimensionID) - tolerance);
-          Base::SetBoxMaxC(rayBasePointBox, dimensionID, Base::GetPointC(rayOrigin, dimensionID) + tolerance);
-        }
-
-        if (box.Intersect(rayBasePointBox))
-          return 0.0;
-
-        auto constexpr inf = std::numeric_limits<double>::max();
-
-        double minBoxDistance = -inf;
-        double maxBoxDistance = +inf;
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          auto const origin = Base::GetPointC(rayOrigin, dimensionID);
-          auto const direction = Base::GetPointC(rayDirection, dimensionID);
-          auto const boxMin = Base::GetBoxMinC(box, dimensionID) - tolerance;
-          auto const boxMax = Base::GetBoxMaxC(box, dimensionID) + tolerance;
-
-          if (direction == 0)
-          {
-            if (tolerance != 0.0)
-            {
-              // Box should be within tolerance (<, not <=)
-              if (origin <= boxMin || boxMax <= origin)
-                return std::nullopt;
-            }
-            else
-            {
-              if (origin < boxMin || boxMax < origin)
-                return std::nullopt;
-            }
-          }
-          else
-          {
-            double const directionReciprocal = 1.0 / direction;
-            double t1 = (boxMin - origin) * directionReciprocal;
-            double t2 = (boxMax - origin) * directionReciprocal;
-            if (t1 > t2)
-              std::swap(t1, t2);
-
-            minBoxDistance = std::max(minBoxDistance, t1);
-            maxBoxDistance = std::min(maxBoxDistance, t2);
-          }
-        }
-
-        assert(maxBoxDistance != inf && "rayDirection is a zero vector!");
-        if (minBoxDistance > maxBoxDistance || maxBoxDistance < 0.0)
-          return std::nullopt;
-        else
-          return minBoxDistance < 0 ? maxBoxDistance : minBoxDistance;
-      }
-
-      static constexpr std::optional<double> GetRayBoxDistance(Box const& box, Ray const& ray, FloatScalar tolerance) noexcept
-      {
-        return GetRayBoxDistance(box, Base::GetRayOrigin(ray), Base::GetRayDirection(ray), tolerance);
-      }
-
-      // Get point-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr PlaneRelation GetPointPlaneRelation(Vector const& point, Scalar distanceOfOrigo, Vector const& planeNormal, FloatScalar tolerance) noexcept
-      {
-        assert(IsNormalizedVector(planeNormal));
-
-        auto const pointProjected = Dot(planeNormal, point);
-
-        if (pointProjected < distanceOfOrigo - tolerance)
-          return PlaneRelation::Negative;
-
-        if (pointProjected > distanceOfOrigo + tolerance)
-          return PlaneRelation::Positive;
-
-        return PlaneRelation::Hit;
-      }
-
-      // Get box-Hyperplane relation (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-      static constexpr PlaneRelation GetBoxPlaneRelation(Box const& box, Scalar distanceOfOrigo, Vector const& planeNormal, FloatScalar tolerance) noexcept
-      {
-        assert(IsNormalizedVector(planeNormal));
-
-        Vector center, radius;
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          auto const minComponent = Base::GetBoxMinC(box, dimensionID);
-          auto const maxComponent = Base::GetBoxMaxC(box, dimensionID);
-          auto const centerComponent = static_cast<Scalar>((minComponent + maxComponent) * 0.5);
-          Base::SetPointC(center, dimensionID, centerComponent);
-          Base::SetPointC(radius, dimensionID, centerComponent - minComponent);
-        }
-
-        double radiusProjected = 0.0;
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          radiusProjected += Base::GetPointC(radius, dimensionID) * std::abs(Base::GetPointC(planeNormal, dimensionID));
-
-        auto const centerProjected = Dot(planeNormal, center);
-
-        if (centerProjected - radiusProjected < distanceOfOrigo - tolerance)
-          return PlaneRelation::Negative;
-
-        if (centerProjected + radiusProjected > distanceOfOrigo + tolerance)
-          return PlaneRelation::Positive;
-
-        return PlaneRelation::Hit;
-      }
     };
 
 

@@ -71,7 +71,9 @@ namespace OrthoTree::detail
       m_volumeOfOverallSpace = IGM::GetVolumeAD(m_boxSpace);
     }
 
-    constexpr IGM::Vector const& GetSizes() const noexcept { return m_sizeInDimensions; }
+    constexpr IGM::Vector const& GetMinPoint() const noexcept { return m_boxSpace.Min; }
+
+    constexpr IGM::Vector const& GetSize() const noexcept { return m_sizeInDimensions; }
 
     constexpr IGM::Geometry GetVolume() const noexcept { return m_volumeOfOverallSpace; }
 

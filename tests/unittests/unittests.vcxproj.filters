@@ -101,10 +101,10 @@
     <ClInclude Include="..\..\include\orthotree\detail\internal_geometry_module.h">
       <Filter>Header Files\include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\orthotree\detail\morton_space_indexing.h">
+    <ClInclude Include="..\..\include\orthotree\detail\si_morton.h">
       <Filter>Header Files\include\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\orthotree\detail\grid_space_indexing.h">
+    <ClInclude Include="..\..\include\orthotree\detail\si_grid.h">
       <Filter>Header Files\include\detail</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\orthotree\detail\partitioning.h">
@@ -117,6 +117,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\orthotree\detail\configuration.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\utils.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\si_mortongrid.h">
       <Filter>Header Files\include\detail</Filter>
     </ClInclude>
   </ItemGroup>

@@ -153,4 +153,20 @@ namespace OrthoTree
     Box,
     // Mixed // Not supported yet
   };
+
+   namespace ExecutionTags
+  {
+    // Sequential execution tag
+    struct Sequential
+    {};
+
+    // Parallel execution tag
+    struct Parallel
+    {};
+  } // namespace ExecutionTags
+
+  auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
+  auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
+
+
 } // namespace OrthoTree

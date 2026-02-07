@@ -204,13 +204,15 @@
     <ClInclude Include="..\..\include\orthotree\detail\bitset_arithmetic.h" />
     <ClInclude Include="..\..\include\orthotree\detail\common.h" />
     <ClInclude Include="..\..\include\orthotree\detail\configuration.h" />
-    <ClInclude Include="..\..\include\orthotree\detail\grid_space_indexing.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\si_grid.h" />
     <ClInclude Include="..\..\include\orthotree\detail\inplace_vector.h" />
     <ClInclude Include="..\..\include\orthotree\detail\internal_geometry_module.h" />
     <ClInclude Include="..\..\include\orthotree\detail\memory_resource.h" />
-    <ClInclude Include="..\..\include\orthotree\detail\morton_space_indexing.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\si_morton.h" />
     <ClInclude Include="..\..\include\orthotree\detail\partitioning.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\si_mortongrid.h" />
     <ClInclude Include="..\..\include\orthotree\detail\undefs.h" />
+    <ClInclude Include="..\..\include\orthotree\detail\utils.h" />
     <ClInclude Include="..\..\include\orthotree\detail\zip_view.h" />
     <ClInclude Include="..\..\include\orthotree\octree.h" />
     <ClInclude Include="..\..\include\orthotree\octree_container.h" />
