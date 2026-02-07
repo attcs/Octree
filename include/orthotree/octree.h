@@ -88,6 +88,7 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include "detail/memory_resource.h"
 #include "detail/morton_space_indexing.h"
 #include "detail/partitioning.h"
+#include "detail/utils.h"
 #include "detail/zip_view.h"
 
 namespace OrthoTree
@@ -519,7 +520,7 @@ namespace OrthoTree
 #define ORTHOTREE_DEPENDENT_TYPES(Base)                \
   using EA = Base::EA;                                 \
   using GA = Base::GA;                                 \
-  using CONFIG = typename Base::CONFIG;                \
+  using CONFIG = Base::CONFIG;                         \
   using IGM = Base::IGM;                               \
   using SI = Base::SI;                                 \
   using IGM_Geometry = IGM::Geometry;                  \
@@ -1068,16 +1069,10 @@ namespace OrthoTree
     using NodeID = typename SI::NodeID;
     using NodeIDCR = typename SI::NodeIDCR;
 
-    // TODO: remove
-    // using MortonLocationID = typename SI::LocationID;
-    // using MortonLocationIDCR = typename SI::LocationIDCR;
-    // using MortonChildID = typename SI::ChildID;
-
     using NodeGeometry = std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, std::monostate, typename Base::NodeGeometry>;
     using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, NodeID, typename SI::ChildID, EntityID, NodeGeometry>;
     using NodeValue = std::pair<NodeID const, Node>;
     using NodeValueCP = std::pair<NodeID const, Node> const*;
-
 
 #ifdef ORTHOTREE_IS_PMR_USED
     template<typename TData>
@@ -1104,9 +1099,7 @@ namespace OrthoTree
     NodeContainer<Node> m_nodes;
 #endif
 
-    // TODO: add element indexing in nodes
-    // TODO: using ReverseMapType = typename CONFIG::ReverseMap<EntityID, NodeID, typename EA::Hash>;
-    using ReverseMapType = typename std::unordered_map<EntityID, NodeID, typename EA::Hash>;
+    using ReverseMapType = typename CONFIG::template ReverseMap<EntityID, NodeID, typename EA::Hash>;
     using ReverseMap = std::conditional_t<CONFIG::USE_REVERSE_MAPPING, ReverseMapType, std::monostate>;
     ReverseMap m_reverseMap;
 
@@ -2069,13 +2062,15 @@ namespace OrthoTree
     void InitializeRootNodeBox(EntityContainerView entities)
     {
       auto rootNodeValue = GetRootNodeValue();
-      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE != NodeGeometryStorage::MBR)
+      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
       {
         InitializeSubtreeMinimalNodeGeometry(rootNodeValue, entities);
       }
       else if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
       {
         auto nodeBox = GetNodeBox(GetRootNodeValue());
+        if (!IsNodeGeometryInitialized(GetRootNodeValue()->second.GetGeometry()))
+          nodeBox = IGM::BoxInvertedInit();
 
         auto const& entityIDs = GetNodeEntities(rootNodeValue);
         for (auto const& entityID : entityIDs)
@@ -3088,7 +3083,7 @@ namespace OrthoTree
               }
               else
               {
-                std::ranges::copy_if(Core::GetNodeEntities(pNodeValue), std::back_inserter(foundEntities), [&](auto const entityID) {
+                std::ranges::copy_if(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(foundEntities), [&](auto const entityID) {
                   return TestEntity(tester, entityID, entities, range);
                 });
               }
@@ -3114,6 +3109,7 @@ namespace OrthoTree
       return foundEntities;
     }
 
+  private:
     static constexpr PlaneRelation GetEntityPlaneRelation(
       EA::Geometry const& entityGeometry, TScalar distanceOfOrigo, TVector const& planeNormal, TFloatScalar tolerance = GA::BASE_TOLERANCE) noexcept
     {
@@ -3132,6 +3128,7 @@ namespace OrthoTree
       ORTHOTREE_UNREACHABLE();
     }
 
+  public:
     // Hyperplane intersection
     std::vector<EntityID> PlaneSearch(
       TScalar distanceOfOrigo, TVector const& planeNormal, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
@@ -3787,7 +3784,7 @@ namespace OrthoTree
             if (GA::GetBoxMaxC(entityBoxI, 0) < GA::GetBoxMinC(entityBoxJ, 0))
               break; // sweep and prune optimization
 
-            if (GA::AreBoxesOverlappedStrict(entityBoxI, entityBoxJ))
+            if (GA::AreBoxesOverlappedStrict(entityBoxI, entityBoxJ, tolerance))
               if (!collisionDetector || (*collisionDetector)(entityIDI, entityIDJ))
                 collidedEntities.emplace_back(entityIDI, entityIDJ);
           }
@@ -3878,8 +3875,7 @@ namespace OrthoTree
               if (GA::GetBoxMaxC(parentEntityGeometry, 0) < GA::GetBoxMinC(entityGeometry, 0))
                 break; // sweep and prune optimization
 
-              // TODO: Add tolerance-based box-box overlap check
-              if (GA::AreBoxesOverlappedStrict(entityGeometry, parentEntityGeometry))
+              if (GA::AreBoxesOverlappedStrict(entityGeometry, parentEntityGeometry, tolerance))
                 if (!collisionDetector || (*collisionDetector)(entityID, parenEntityID))
                   collidedEntities.emplace_back(entityID, parenEntityID);
             }

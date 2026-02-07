@@ -319,7 +319,7 @@ namespace OrthoTree
     }
 
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddUnique(EA::Entity const& newEntity, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool doInsertToLeaf = false) noexcept
+    bool AddUnique(EA::Entity const& newEntity, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool allowLeafCreation = false) noexcept
       requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
@@ -329,7 +329,7 @@ namespace OrthoTree
           return false;
       }
 
-      if (!m_tree.InsertUnique(*newEntityID, EA::GetGeometry(newEntity), m_entities, tolerance, doInsertToLeaf))
+      if (!m_tree.InsertUnique(*newEntityID, EA::GetGeometry(newEntity), m_entities, tolerance, allowLeafCreation))
         return false;
 
       detail::emplace(m_entities, newEntity);
@@ -337,12 +337,12 @@ namespace OrthoTree
     }
 
     template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddUnique(EA::Geometry const& newEntityGeometry, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool doInsertToLeaf = false) noexcept
+    bool AddUnique(EA::Geometry const& newEntityGeometry, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool allowLeafCreation = false) noexcept
       requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
     {
       auto const newEntityID = EntityID(this->m_entities.size());
 
-      if (!m_tree.InsertUnique(*newEntityID, newEntityGeometry, m_entities, tolerance, doInsertToLeaf))
+      if (!m_tree.InsertUnique(*newEntityID, newEntityGeometry, m_entities, tolerance, allowLeafCreation))
         return false;
 
       detail::emplace(m_entities, newEntityGeometry);
@@ -501,13 +501,16 @@ namespace OrthoTree
     }
 
     // Pick search
-    std::vector<EntityID> PickSearch(TVector const& pickPoint) const noexcept { return this->m_tree.PickSearch(pickPoint, this->m_entities); }
+    std::vector<EntityID> PickSearch(TVector const& pickPoint, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      return this->m_tree.PickSearch(pickPoint, this->m_entities, tolerance);
+    }
 
     // Range search
     template<bool isFullyContained = true>
-    std::vector<EntityID> RangeSearch(TBox const& range) const noexcept
+    std::vector<EntityID> RangeSearch(TBox const& range, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_entities);
+      return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_entities, tolerance);
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)

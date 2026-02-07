@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../adapters/concepts.h"
 #include "common.h"
+#include "utils.h"
 
 namespace OrthoTree::detail
 {
@@ -118,7 +119,8 @@ namespace OrthoTree::detail
       return sizes;
     }
 
-    static bool AreBoxesOverlappingByMinPoint(Vector const& minPointLhs, Vector const& sizeLhs, Vector const& minPointRhs, Vector const& sizeRhs, Geometry tolerance) noexcept
+    static bool AreBoxesOverlappingByMinPoint(
+      Vector const& minPointLhs, Vector const& sizeLhs, Vector const& minPointRhs, Vector const& sizeRhs, Geometry tolerance) noexcept
     {
       for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
       {
@@ -214,7 +216,8 @@ namespace OrthoTree::detail
       {
         const auto boxMax = minPoint[dimensionID] + size[dimensionID];
 
-        if (!DoesRangeContainBox(Geometry(GA::GetBoxMinC(range, dimensionID)), Geometry(GA::GetBoxMaxC(range, dimensionID)), minPoint[dimensionID], boxMax, tolerance))
+        if (!DoesRangeContainBox(
+              Geometry(GA::GetBoxMinC(range, dimensionID)), Geometry(GA::GetBoxMaxC(range, dimensionID)), minPoint[dimensionID], boxMax, tolerance))
         {
           return false;
         }
@@ -289,7 +292,7 @@ namespace OrthoTree::detail
       detail::static_for<DIMENSION_NO>([&](auto dimensionID) {
         if constexpr (std::is_same_v<TVector, EntityGeometry>)
         {
-          auto const point = GA::GetPointC(entityGeometry, dimensionID);
+          auto const point = Geometry(GA::GetPointC(entityGeometry, dimensionID));
           box.Min[dimensionID] = std::min(box.Min[dimensionID], point);
           box.Max[dimensionID] = std::max(box.Max[dimensionID], point);
         }
@@ -340,26 +343,33 @@ namespace OrthoTree::detail
       return ext;
     }
 
-    static constexpr bool DoesBoxContainPointAD(Box const& box, TVector const& point, TScalar tolerance = 0) noexcept
+    static constexpr bool DoesBoxContainPointAD(Box const& box, TVector const& point, TFloatScalar tolerance = GA::Tolerance) noexcept
     {
       if (tolerance != 0.0)
       {
         assert(tolerance > 0);
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          if (!(box.Min[dimensionID] - tolerance < GA::GetPointC(point, dimensionID) &&
-                GA::GetPointC(point, dimensionID) < box.Max[dimensionID] + tolerance))
+        {
+          auto const pointValue = Geometry(GA::GetPointC(point, dimensionID));
+
+          if (!(box.Min[dimensionID] - tolerance < pointValue && pointValue < box.Max[dimensionID] + tolerance))
             return false;
+        }
       }
       else
       {
         for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-          if (!(box.Min[dimensionID] <= GA::GetPointC(point, dimensionID) && GA::GetPointC(point, dimensionID) <= box.Max[dimensionID]))
+        {
+          auto const pointValue = Geometry(GA::GetPointC(point, dimensionID));
+
+          if (!(box.Min[dimensionID] <= pointValue && pointValue <= box.Max[dimensionID]))
             return false;
+        }
       }
       return true;
     }
 
-    static constexpr bool DoesBoxContainPointAD(Vector const& minPoint, Vector const& size, TVector const& point, TScalar tolerance = 0) noexcept
+    static constexpr bool DoesBoxContainPointAD(Vector const& minPoint, Vector const& size, TVector const& point, TFloatScalar tolerance = GA::Tolerance) noexcept
     {
       if (tolerance != 0.0)
       {

@@ -8,9 +8,10 @@ namespace OrthoTree
 {
   enum class NodeGeometryStorage
   {
-    None,
-    MinPoint,
-    MBR,
+    None,     // Node does not contain geometry information, every geometry queries requires its calculation.
+    MinPoint, // Node contains only the min-point. Node sizes are stored level-wise.
+    MBR,      // Node contains the min-point and the size of the minimal bounding rectangle. It requires calculation on every insertion.
+              //   Entity removal does not effect. Recommended for Loose trees, where the node overlapping would be large.
   };
 
   template<double IS_LOOSE_FACTOR_ = 1.0, bool USE_MBR = false>
@@ -26,7 +27,7 @@ namespace OrthoTree
     static constexpr bool ALLOW_OUT_OF_SPACE_INSERTION = true;
 
     // If tree, Reverse mapping (entityID -> nodeID) will be stored to speed up removal and update operations. (Dynamic datasets)
-    static constexpr bool USE_REVERSE_MAPPING = true;
+    static constexpr bool USE_REVERSE_MAPPING = false;
 
     // TODO: rethink Location
     // It determines the internal location data type sizes.
@@ -53,6 +54,6 @@ namespace OrthoTree
   using PointConfiguration = Configuration<1.0, false>;
 
   template<bool IS_LOOSE_TREE>
-  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, true>;
+  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, false>;
 
 } // namespace OrthoTree
