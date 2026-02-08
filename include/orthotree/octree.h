@@ -2735,7 +2735,39 @@ namespace OrthoTree
   };
 
   // OrthoTree: Non-owning Base container which spatially organize data ids in N dimension space into a hash-table by Morton Z order.
-  template<typename TOrthoTreeCore>
+  template<typename T>
+  concept OrthoTreeCoreView = requires(
+    const T ct,
+    typename T::NodeIDCR nodeID,
+    typename T::NodeValueCP nodeValue,
+    typename T::EA::Geometry const& geometry,
+    typename T::EA::EntityContainerView entities,
+    typename T::EntityID entityID) {
+    typename T::NodeID;
+    typename T::NodeIDCR;
+    typename T::NodeValueCP;
+    typename T::EA;
+    typename T::GA;
+    typename T::CONFIG;
+    typename T::IGM;
+
+    { T::GetRootNodeID() } -> std::convertible_to<typename T::NodeID>;
+    { ct.GetRootNodeValue() } -> std::convertible_to<typename T::NodeValueCP>;
+    { ct.GetNodeValueP(nodeID) } -> std::convertible_to<typename T::NodeValueCP>;
+
+    { ct.GetNodeChildren(nodeValue) };
+    { ct.GetNodeEntities(nodeValue) };
+
+    { ct.GetNodeBox(nodeValue) };
+    { ct.GetNodeMinPoint(nodeValue) };
+    { ct.GetNodeSize(nodeValue) };
+
+    { ct.IsNodeEntitiesEmpty(nodeValue) } -> std::convertible_to<bool>;
+
+    { ct.GetNodeCount() } -> std::convertible_to<std::size_t>;
+  };
+
+  template<OrthoTreeCoreView TOrthoTreeCore>
   class OrthoTreeQueryBase : public TOrthoTreeCore
   {
   public:
@@ -2989,7 +3021,7 @@ namespace OrthoTree
 
   public:
     // Collect all entity id, traversing the tree in depth-first search pre-order
-    std::vector<EntityID> GetEntitiesDepthFirst(NodeIDCR parentKey = SI::GetRootKey(), bool shouldSortInsideNodes = false) const noexcept
+    std::vector<EntityID> GetEntitiesDepthFirst(NodeIDCR parentKey = Core::GetRootNodeID(), bool shouldSortInsideNodes = false) const noexcept
     {
       auto entityIDs = std::vector<EntityID>{};
       CollectAllEntitiesInDFSRecursive(Core::GetNodeValueP(parentKey), entityIDs, shouldSortInsideNodes);
@@ -3771,10 +3803,10 @@ namespace OrthoTree
       CollisionDetection(
         leftTree,
         leftEntities,
-        leftTree.Core::GetNodeValueP(SI::GetRootKey()),
+        leftTree.Core::GetNodeValueP(Core::GetRootNodeID()),
         rightTree,
         rightEntities,
-        rightTree.Core::GetNodeValueP(SI::GetRootKey()),
+        rightTree.Core::GetNodeValueP(Core::GetRootNodeID()),
         collidedEntities,
         tolerance,
         collisionDetector);
@@ -4020,7 +4052,7 @@ namespace OrthoTree
         auto nodeContextStack = std::vector<NodeCollisionContext>{};
         nodeContextStack.reserve(this->GetDepthNo());
         InsertCollidedEntitiesInSubtree(
-          entities, comparator, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+          entities, comparator, Core::GetNodeValueP(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
         return collidedEntities;
       }
@@ -4035,7 +4067,7 @@ namespace OrthoTree
           auto nodeContextStack = std::vector<NodeCollisionContext>();
           nodeContextStack.reserve(this->GetDepthNo());
           InsertCollidedEntitiesInSubtree(
-            entities, comparator, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+            entities, comparator, Core::GetNodeValueP(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
           return collidedEntities;
         }
@@ -4050,7 +4082,7 @@ namespace OrthoTree
 
         auto nodeQueue = std::vector<NodeData>{};
         nodeQueue.reserve(threadNum * 2);
-        nodeQueue.push_back(NodeData{ Core::GetNodeValueP(SI::GetRootKey()), INVALID_INDEX, INVALID_INDEX });
+        nodeQueue.push_back(NodeData{ Core::GetNodeValueP(Core::GetRootNodeID()), INVALID_INDEX, INVALID_INDEX });
 
         auto nodeContextMap = std::vector<NodeCollisionContext>{};
 
@@ -4076,7 +4108,7 @@ namespace OrthoTree
           auto nodeContextStack = std::vector<NodeCollisionContext>();
           nodeContextStack.reserve(this->GetDepthNo());
           InsertCollidedEntitiesInSubtree(
-            entities, comparator, Core::GetNodeValueP(SI::GetRootKey()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+            entities, comparator, Core::GetNodeValueP(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
           return collidedEntities;
         }
