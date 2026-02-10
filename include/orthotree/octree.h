@@ -512,19 +512,15 @@ namespace OrthoTree
     static_assert(GA::DIMENSION_NO <= 16);
     static_assert(SI::IS_LINEAR_TREE);
 
-    using ChildNodeSegment = std::conditional_t<GA::DIMENSION_NO <= 6, uint32_t, uint64_t>;
-    using EntitySegment = std::pair<uint32_t, uint32_t>; // begin, end
-
   private:
-    std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, std::monostate, std::vector<typename Base::NodeGeometry>> m_nodeGeometry;
-    std::vector<uint8_t> m_nodeDepthIDs;
-    std::vector<EntityID> m_entityStorage;
-
-    template<typename TBegin, typename TEnd>
+    template<typename TBegin, typename TLength>
     struct Segment
     {
+      using Begin = TBegin;
+      using Length = TLength;
+
       TBegin begin;
-      TEnd length;
+      TLength length;
     };
     struct NodeStorage256
     {
@@ -557,12 +553,14 @@ namespace OrthoTree
       std::vector<NodeID> nodeChildIDs;
       std::vector<EntitySegment> nodeEntities;
     };
+    using NodeGeometry =
+      std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, std::monostate, std::vector<typename Base::NodeGeometry>>;
 
+  private: // Data
     std::variant<NodeStorage256, NodeStorage65536, NodeStorageGeneral> m_nodes;
-    // TODO: remove these members
-    std::vector<ChildNodeSegment> m_nodeChildSegments;
-    std::vector<NodeID> m_nodeChildIDs;
-    std::vector<EntitySegment> m_nodeEntities;
+    NodeGeometry m_nodeGeometry;
+    std::vector<uint8_t> m_nodeDepthIDs;
+    std::vector<EntityID> m_entityStorage;
 
   public: // Constructors
     // Default constructor. Requires Create call before usage.
@@ -643,34 +641,39 @@ namespace OrthoTree
 
     static NodeID GetRootNodeID() noexcept { return 0; }
 
-    constexpr std::size_t GetNodeCount() const noexcept { return m_nodeDepthIDs.size(); }
-    constexpr std::size_t GetNodeEntityCount(NodeID nodeID) const noexcept { return m_nodeEntities[nodeID].second; }
+    constexpr NodeID GetRootNodeValue() const noexcept { return GetRootNodeID(); }
 
-    constexpr std::span<NodeID> GetNodeChildren(NodeID nodeID) noexcept
+    constexpr NodeID GetNodeValueP(NodeID nodeID) const noexcept { return nodeID; }
+
+    constexpr std::size_t GetNodeCount() const noexcept { return m_nodeDepthIDs.size(); }
+
+    constexpr std::size_t GetNodeEntityCount(NodeID nodeID) const noexcept
+    {
+      return std::visit([](auto const& nodes) { return nodes.nodeEntities[nodeID].length; }, m_nodes);
+    }
+
+    constexpr std::span<NodeID> GetNodeChildren(NodeID nodeID) const noexcept
     {
       return std::visit(m_nodes, [nodeID](auto const& nodes) {
         auto const& [begin, length] = nodes.nodeChildIDs[nodeID];
         return std::span<NodeID>(&nodes.nodeChildSegments[begin], length);
       });
-      /*
-      constexpr ChildNodeSegment shift = GA::DIMENSION_NO <= 6 ? 26 : (64 - GA::DIMENSION_NO);
-      constexpr ChildNodeSegment beginMask = GA::DIMENSION_NO <= 6 ? ChildNodeSegment(0x02FFFFFF) : ChildNodeSegment((1ull << shift) - 1ull);
-
-      uint32_t begin = m_nodeChildIDs[nodeID] & beginMask;
-      uint32_t length = m_nodeChildIDs[nodeID] >> shift;
-      return std::span<NodeID>(&m_nodeChildSegments[begin], length);
-      */
     }
 
-    constexpr std::span<EntityID const> GetNodeEntities(NodeID nodeID) noexcept
+    constexpr std::span<EntityID const> GetNodeEntities(NodeID nodeID) const noexcept
     {
       return std::visit(m_nodes, [nodeID](auto const& nodes) {
         auto const& [begin, length] = nodes.nodeEntities[nodeID];
         return std::span<EntityID const>(&m_entityStorage[begin], length);
       });
+    }
 
-      // auto const& segment = m_nodeEntities[nodeID];
-      // return { &m_entityStorage[segment.first], segment.second - segment.first };
+    constexpr bool IsNodeEntitiesEmpty(NodeID nodeID) const noexcept
+    {
+      return std::visit(m_nodes, [nodeID](auto const& nodes) {
+        auto const& [_, length] = nodes.nodeEntities[nodeID];
+        return length == 0;
+      });
     }
 
     constexpr decltype(auto) GetNodeMinPoint(NodeID nodeID) const noexcept
@@ -725,91 +728,31 @@ namespace OrthoTree
     }
 
   private: // Build
-    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
+    constexpr void InitBase(IGM::Vector const& boxSpaceMinPoint, IGM::Vector const& boxSpaceSize, depth_t maxDepthID, std::size_t maxElementNo) noexcept
     {
-      Base::InitBase(boxSpace, maxDepthID, maxElementNo);
+      Base::InitBase(boxSpaceMinPoint, boxSpaceSize, maxDepthID, maxElementNo);
 
       ORTHOTREE_CRASH_IF(
-        !m_nodeDepthIDs.empty(), "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
-
-      InitNodeGeometry(0, { 0, 0 });
-      m_nodeDepthIDs.emplace_back();
-      m_nodeChildSegments.emplace_back({});
-      m_nodeEntities.emplace_back();
+        GetNodeCount() > 0, "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
     }
-    /*
-    using LocationIterator = typename detail::zip_view<std::vector<typename SI::Location>, std::span<EntityID>>::iterator;
-
-    struct NodeProcessingData
-    {
-      std::pair<NodeID, Node> NodeInstance;
-      LocationIterator EndLocationIt;
-    };
-    template<bool ARE_LOCATIONS_SORTED>
-    constexpr void ProcessNode(depth_t depthID, LocationIterator& locationIt, NodeProcessingData& nodeProcessingData)
-    {
-      auto& [node, endLocationIt] = nodeProcessingData;
-
-      auto const subtreeEntityNum = detail::size(locationIt, endLocationIt);
-      if (subtreeEntityNum == 0)
-        return;
-
-      auto nodeEntityNum = subtreeEntityNum;
-      auto stuckedEndLocationIt = endLocationIt;
-      if (subtreeEntityNum > Base::m_maxElementNum && depthID < Base::m_maxDepthID)
-      {
-        if constexpr (ARE_LOCATIONS_SORTED)
-        {
-          stuckedEndLocationIt =
-            std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
-        }
-        else
-        {
-          stuckedEndLocationIt =
-            std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
-        }
-
-        nodeEntityNum = std::size_t(std::distance(locationIt, stuckedEndLocationIt));
-      }
-
-      if (nodeEntityNum == 0)
-        return;
-
-      node.second.ReplaceEntities(std::span(locationIt.GetSecond(), stuckedEndLocationIt.GetSecond()));
-      locationIt += nodeEntityNum;
-    }
-
-    template<bool ARE_LOCATIONS_SORTED>
-    constexpr void CreateProcessingData(
-      depth_t examinedLevelID,
-      SI::ChildKeyGenerator const& keyGenerator,
-      LocationIterator const& locationIt,
-      NodeProcessingData& parentNodeProcessingData,
-      NodeProcessingData& nodeProcessingData) const noexcept
-    {
-      auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, (*locationIt).GetFirst().locationID);
-      auto const childID = childChecker.GetChildID(examinedLevelID);
-      auto childKey = keyGenerator.GetChildNodeKey(childID);
-
-      parentNodeProcessingData.NodeInstance.second.AddChild(childID, childKey);
-      if constexpr (ARE_LOCATIONS_SORTED)
-      {
-        nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
-          return childChecker.Test(location.GetFirst().locationID);
-        });
-      }
-      else
-      {
-        nodeProcessingData.EndLocationIt = std::partition(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
-          return childChecker.Test(location.GetFirst().locationID);
-        });
-      }
-
-      nodeProcessingData.NodeInstance = CreateNode(childKey);
-    }
-    */
 
   private:
+    constexpr std::size_t GetMaxPossibleNodeCount(std::size_t entityCount) const noexcept
+    {
+      // Assuming perfect tree
+      // - All entities are in a leaf node as a single entity
+
+      auto const calculateNodeNum = [](depth_t depthID) {
+        return (detail::pow2(GA::DIMENSION_NO * depthID) - 1) / (SI::CHILD_NO - 1);
+      };
+
+      auto const maxNodeNumByMaxDepth = calculateNodeNum(Base::GetMaxDepthID());
+      auto const possiblyFullLevels = std::min(Base::GetMaxDepthID(), std::bit_width(entityCount - 1) / GA::DIMENSION_NO);
+      auto const maxNodeNumByEntities = calculateNodeNum(possiblyFullLevels) + (Base::GetMaxDepthID() - possiblyFullLevels) * entityCount;
+
+      return std::min(maxNodeNumByEntities, maxNodeNumByMaxDepth);
+    }
+
     constexpr IGM::Vector CalculateNodeMinPoint(SI::Location location) const noexcept
     {
       // TODO: finish SI::Decode(location...
@@ -817,7 +760,7 @@ namespace OrthoTree
       // Base::m_grid.CalculateGridCellMinPoint(SI::Decode(location.GetLocationID(), Base::m_maxDepthID));
     }
 
-    constexpr void InitNodeGeometry(NodeID nodeID, SI::Location location) const noexcept
+    constexpr void InitNodeGeometry(NodeID nodeID, SI::Location location) noexcept
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
       {
@@ -829,7 +772,6 @@ namespace OrthoTree
       }
       else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
       {
-        // TODO: inside-out box?
         return;
       }
       else
@@ -838,146 +780,163 @@ namespace OrthoTree
       }
     }
 
-    static constexpr void IncreaseChildSegmentLength(NodeID nodeID) noexcept
+    template<typename TNodeStorage>
+    static constexpr bool IsFit(std::size_t entityCount, std::size_t maxNodeCount) noexcept
     {
-      constexpr ChildNodeSegment shift = GA::DIMENSION_NO <= 6 ? 26 : (64 - GA::DIMENSION_NO);
-      constexpr ChildNodeSegment beginMask = GA::DIMENSION_NO <= 6 ? ChildNodeSegment(0x02FFFFFF) : ChildNodeSegment((1ull << shift) - 1ull);
-
-      uint32_t begin = m_nodeChildSegments[nodeID] & beginMask;
-      m_nodeChildSegments[nodeID] = (++(m_nodeChildSegments[nodeID] >> shift)) << shift | begin;
+      return maxNodeCount < std::numeric_limits<typename TNodeStorage::NodeID>::max() &&
+             entityCount < std::numeric_limits<typename TNodeStorage::EntitySegment::Begin>::max() &&
+             SI::CHILD_NO < std::numeric_limits<typename TNodeStorage::ChildNodeSegment::Length>::max();
     }
 
-    template<bool IS_ROOT>
-    constexpr NodeID AttachNode(SI::Location location, uint32_t beginID, uint32_t length, NodeID parentNodeID)
+    constexpr NodeID CreateNode(SI::Location location, uint32_t nodeEntityBeginID, uint32_t nodeEntityCount)
     {
-      auto const nodeID = static_cast<NodeID>(m_nodeChildSegments.size());
+      auto const nodeID = static_cast<NodeID>(m_nodeDepthIDs.size());
+
       m_nodeDepthIDs.emplace_back(location.GetDepthID());
-      m_nodeEntities.emplace_back(beginID, length);
-      m_nodeGeometry.emplace_back();
+      std::visit(
+        [&](auto& nodes) {
+          using NodeStorage = std::decay_t<decltype(nodes)>;
+          using EntitySegment = typename NodeStorage::EntitySegment;
+
+          nodes.nodeEntities.emplace_back(
+            EntitySegment{ static_cast<EntitySegment::Begin>(nodeEntityBeginID), static_cast<EntitySegment::Length>(nodeEntityCount) });
+          nodes.nodeChildIDs.emplace_back(nodeID);
+          nodes.nodeChildSegments.emplace_back();
+        },
+        m_nodes);
+
+      if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
+      {
+        m_nodeGeometry.emplace_back();
+      }
       InitNodeGeometry(nodeID, location);
       return nodeID;
     }
 
     // Build the tree in depth-first order
-    template<bool ARE_LOCATIONS_SORTED, typename TResulEntityContainerView>
-    constexpr void BuildSubtree(auto const& rootBeginLocationIt, auto const& rootEndLocationIt, NodeID rootNodeID) noexcept
-    { /*
-      using LocationIterator = typename detail::zip_view<std::vector<typename SI::Location>, std::span<EntityID>>::iterator;
+    template<bool ARE_LOCATIONS_SORTED>
+    constexpr void Build(auto const& rootBeginLocationIt, auto const& rootEndLocationIt) noexcept
+    {
+      // Breadth-first build is required to ensure continuous addition of child nodes in nodeChildIDs
 
       struct NodeProcessingData
       {
-        SI::Location location;
-        NodeID parentNodeID;
+        typename SI::Location location = {};
         uint32_t beginID = 0, length = 0;
       };
 
-      uint32_t nonLeafNodeCount = 0;
-      std::array<std::vector<NodeID>, SI::MAX_THEORETICAL_DEPTH> childNodeIDOnLevels;
-      std::vector<uint8_t> childSegmentLengths;
-
-      constexpr NodeID kInvalidNodeID = -1;
-      auto nodeQueue = std::vector<NodeProcessingData>(64);
-      nodeQueue[0] = NodeProcessingData{, kInvalidNodeID, 0 };
+      auto nodeQueue = std::queue<NodeProcessingData>();
+      nodeQueue.push(NodeProcessingData{ {}, 0, detail::size<uint32_t>(rootBeginLocationIt.GetSecond(), rootEndLocationIt.GetSecond()) });
 
       auto locationIt = rootBeginLocationIt;
       while (!nodeQueue.empty())
       {
-        auto& [location, parentNodeID, beginID, nodeEntityCount] = nodeQueue.back();
-        nodeQueue.pop_back();
+        auto [location, beginID, nodeEntityCount] = nodeQueue.front();
+        nodeQueue.pop();
 
-        auto const depthID = location.GetDepthID();
-        if (nodeEntityCount <= Base::m_maxElementNum || depthID < Base::m_maxDepthID)
+        auto depthID = location.GetDepthID();
+        auto nodeID = CreateNode(location, beginID, nodeEntityCount);
+
+        if (nodeEntityCount <= Base::GetMaxElementNum() || depthID >= Base::GetMaxDepthID())
         {
-          auto nodeID = AttachNode(location, beginID, nodeEntityCount);
-          childNodeIDOnLevels[m_nodeDepthIDs[parentNodeID]].push_back(nodeID);
-          ++childSegmentLengths[parentNodeID];
-          // TODO: CalculateGeometry(location)
+          std::visit(
+            [&](auto& nodes) {
+              using NodeStorage = std::decay_t<decltype(nodes)>;
+              using EntitySegment = typename NodeStorage::EntitySegment;
+
+              nodes.nodeEntities[nodeID] = { static_cast<EntitySegment::Begin>(beginID), static_cast<EntitySegment::Length>(nodeEntityCount) };
+            },
+            m_nodes);
+
           continue;
         }
 
-        auto nodeEntityNum = subtreeEntityNum;
-        auto stuckedEndLocationIt = endLocationIt;
+        auto beginIt = rootBeginLocationIt + beginID;
+        auto endIt = beginIt + nodeEntityCount;
+
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
         {
+          auto nonRefinableEndIt = beginIt;
           if constexpr (ARE_LOCATIONS_SORTED)
           {
-            stuckedEndLocationIt =
-              std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+            nonRefinableEndIt = std::partition_point(beginIt, endIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
           }
           else
           {
-            stuckedEndLocationIt =
-              std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+            nonRefinableEndIt = std::partition(beginIt, endIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
           }
 
-          nodeEntityNum = detail::size<uint32_t>(locationIt, stuckedEndLocationIt));
-
-          if (nodeEntityNum > 0)
+          if (beginIt != nonRefinableEndIt)
           {
-            // TODO: create node
-            m_nodeEntities.push_back({ detail::size<uint32_t>(rootBeginLocationIt.GetSecond(), locationIt.GetSecond()), nodeEntityNum });
+            auto nonRefinableEntityCount = detail::size<uint32_t>(beginIt.GetSecond(), nonRefinableEndIt.GetSecond());
+
+            std::visit(
+              [&](auto& nodes) {
+                using NodeStorage = std::decay_t<decltype(nodes)>;
+                using EntitySegment = typename NodeStorage::EntitySegment;
+
+                nodes.nodeEntities[nodeID] = { static_cast<EntitySegment::Begin>(beginID), static_cast<EntitySegment::Length>(nonRefinableEntityCount) };
+              },
+              m_nodes);
+
+            beginID += nonRefinableEntityCount;
+            if (beginID == nodeEntityCount)
+              continue;
+
+            beginIt = nonRefinableEndIt;
           }
         }
 
-        if (nodeEntityNum == 0)
-          return;
-
-        node.second.ReplaceEntities(std::span(locationIt.GetSecond(), stuckedEndLocationIt.GetSecond()));
-        locationIt += nodeEntityNum;
-
-        auto const isEntitesProcessed = locationIt == nodeStack[depthID].EndLocationIt;
-
-        if (isEntitesProcessed || depthID == Base::m_maxDepthID)
-        {
-          detail::emplace(nodes, std::move(nodeStack[depthID].NodeInstance));
-          --depthID;
-          continue;
-        }
-
+        auto const childNodeSegmentBeginID = nodeID + nodeQueue.size();
         ++depthID;
-        auto const examinedLevelID = GetExaminationLevelID(depthID);
-        auto const keyGenerator = typename SI::ChildKeyGenerator(nodeStack[depthID - 1].NodeInstance.first);
-        auto pivotLocationIt = locationIt;
-        while ()
+        auto const examinedLevelID = Base::GetExaminationLevelID(depthID);
+        auto const keyGenerator = typename SI::ChildKeyGenerator(location.GetLocationID());
+
+        uint32_t childNodeCount = 0;
+        while (beginID < nodeEntityCount)
         {
-          auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, (*locationIt).GetFirst().locationID);
+          auto const& pivot = (*beginIt).GetFirst();
+          auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, pivot.GetLocationID());
           auto const childID = childChecker.GetChildID(examinedLevelID);
-          auto childKey = keyGenerator.GetChildNodeKey(childID);
 
-          if constexpr (ARE_LOCATIONS_SORTED)
-          {
-            nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
-              return childChecker.Test(location.GetFirst().locationID);
-            });
-          }
-          else
-          {
-            nodeProcessingData.EndLocationIt = std::partition(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
-              return childChecker.Test(location.GetFirst().locationID);
-            });
-          }
+          auto lcah = SI::GetLowestCommonAncestorHelper(pivot);
+          auto endChildIt = [&] {
+            if constexpr (ARE_LOCATIONS_SORTED)
+            {
+              // TODO: LCA
+              return std::partition_point(beginIt, endIt, [&](auto const& location) { return childChecker.Test(location.GetFirst().GetLocationID()); });
+            }
+            else
+            {
+              // TODO: remove
+              // return std::partition(beginIt, endIt, [&](auto const& location) { return childChecker.Test(location.GetFirst().locationID); });
+              return Partitioning::partition(
+                beginIt,
+                endIt,
+                [&](auto const& location) { return childChecker.Test(location.GetFirst().GetLocationID()); },
+                [&](auto const& loc) { lcah.Add(loc.GetFirst()); });
+            }
+          }();
 
-          nodeProcessingData.NodeInstance.second = CreateNode(parentNodeProcessingData.NodeInstance.second, childKey);
-          nodeProcessingData.NodeInstance.first = std::move(childKey);
+          auto entityCount = detail::size<uint32_t>(beginIt.GetSecond(), endChildIt.GetSecond());
+          nodeQueue.push({ lcah.GetLocation(Base::GetMaxDepthID()), beginID, entityCount });
+
+          ++childNodeCount;
+          beginID += entityCount;
+          beginIt = endChildIt;
         }
-      }
 
-      // flattening child segment lengths into m_nodeChildIDs
-      m_nodeChildSegments.resize(nonLeafNodeCount);
-      m_nodeChildIDs.resize(0);
-      for (auto depthID = depth_t{ 0 }; depthID < childNodeIDOnLevels.size(); ++depthID)
-      {
-        auto& childNodeIDs = childNodeIDOnLevels[depthID];
-        auto it = childNodeIDOnLevels[depthID].begin();
+        // Child node registration
+        std::visit(
+          [&](auto& nodes) {
+            using NodeStorage = std::decay_t<decltype(nodes)>;
+            using ChildNodeSegment = typename NodeStorage::ChildNodeSegment;
 
-        std::copy()
-        for (auto const childNodeID : childNodeIDs)
-        {
-          auto const parentNodeID = m_nodeDepthIDs[childNodeID] - 1;
-          IncreaseChildSegmentLength(parentNodeID);
-        }
+            nodes.nodeChildSegments[nodeID] = { static_cast<ChildNodeSegment::Begin>(childNodeSegmentBeginID),
+                                                static_cast<ChildNodeSegment::Length>(childNodeCount) };
+          },
+          m_nodes);
       }
-      */
     }
 
   public: // Create
@@ -989,27 +948,20 @@ namespace OrthoTree
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNumInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
-      typename IGM::Box boxSpace;
-      if (boxSpaceOptional)
-        boxSpace = IGM::GetBoxAD(*boxSpaceOptional);
-      else
-      {
-        boxSpace = IGM::template GetBoundingBoxAD<EA>(entities);
-      }
-
-      auto const entityNum = entities.size();
+      auto const boxSpace = boxSpaceOptional ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::template GetBoundingBoxAD<EA>(entities);
+      auto const entityCount = entities.size();
       auto const maxDepthID = (!maxDepthIn || maxDepthIn == depth_t{})
-                              ? detail::EstimateMaxDepth<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNum, maxElementNumInNode)
+                              ? detail::EstimateMaxDepth<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityCount, maxElementNumInNode)
                               : *maxDepthIn;
-      InitBase(boxSpace, maxDepthID, maxElementNumInNode, entityNum);
+      auto const spaceIndexing = detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR>(maxDepthID, boxSpace);
+      InitBase(spaceIndexing.GetMinPoint(), spaceIndexing.GetSize(), maxDepthID, maxElementNumInNode);
 
-      if (entityNum == 0)
+      if (entityCount == 0)
         return true;
 
-      auto spaceIndexing = MortonSpaceIndexing<GA>(maxDepthID, boxSpace);
 
-      auto mortonIDs = std::vector<typename SI::Location>(entityNum);
-      m_entityStorage.resize(entityNum);
+      auto mortonIDs = std::vector<typename SI::Location>(entityCount);
+      m_entityStorage.resize(entityCount);
 
       auto locationsZip = detail::zip_view(mortonIDs, m_entityStorage);
       using Location = decltype(locationsZip)::iterator::value_type;
@@ -1019,24 +971,43 @@ namespace OrthoTree
         return { spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
       });
 
-      // TODO: out-of-space handling //!ATT
+      auto endIt = locationsZip.end();
+      if constexpr (!ARE_ENTITIES_SURELY_IN_MODELSPACE && !CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+      {
+        endIt = std::partition(locationsZip.begin(), endIt, [](auto const& element) { return element.GetFirst().GetDepthID() != INVALID_DEPTH; });
+      }
 
       constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), locationsZip.end(), [](Location const& l, Location const& r) { return l.first < r.first; });
+        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), endIt, [](Location const& l, Location const& r) { return l.first < r.first; });
       }
 
-      auto const estimatedNodeNum =
-        detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNum, maxDepthID, maxElementNumInNode);
-      m_nodeChildSegments.reserve(estimatedNodeNum);
-      m_nodeChildIDs.reserve(estimatedNodeNum);
-      m_nodeDepthIDs.reserve(estimatedNodeNum);
-      m_nodeGeometry.reserve(estimatedNodeNum);
-      m_nodeEntities.reserve(estimatedNodeNum);
+      auto const maxNodeCount = GetMaxPossibleNodeCount(entityCount);
+      if (IsFit<NodeStorage256>(entityCount, maxNodeCount))
+        m_nodes = NodeStorage256{};
+      else if (IsFit<NodeStorage65536>(entityCount, maxNodeCount))
+        m_nodes = NodeStorage65536{};
+      else
+        m_nodes = NodeStorageGeneral{};
 
-      BuildSubtree<ARE_LOCATIONS_SORTED>(locationsZip.begin(), locationsZip.end(), GetRootNodeID());
+      auto const estimatedNodeNum =
+        detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityCount, maxDepthID, maxElementNumInNode);
+
+      std::visit(
+        [&](auto& nodes) {
+          nodes.nodeChildSegments.reserve(estimatedNodeNum);
+          nodes.nodeChildIDs.reserve(estimatedNodeNum);
+          nodes.nodeEntities.reserve(estimatedNodeNum);
+        },
+        m_nodes);
+
+      m_nodeDepthIDs.reserve(estimatedNodeNum);
+      if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
+        m_nodeGeometry.reserve(estimatedNodeNum);
+
+      Build<ARE_LOCATIONS_SORTED>(locationsZip.begin(), endIt);
       return true;
     }
 
@@ -2767,7 +2738,7 @@ namespace OrthoTree
     { ct.GetNodeCount() } -> std::convertible_to<std::size_t>;
   };
 
-  template<OrthoTreeCoreView TOrthoTreeCore>
+  template<typename TOrthoTreeCore>
   class OrthoTreeQueryBase : public TOrthoTreeCore
   {
   public:
@@ -2776,6 +2747,7 @@ namespace OrthoTree
 
 
   public:
+    static_assert(OrthoTreeCoreView<TOrthoTreeCore>);
     static_assert(GeometryAdapterConcept<GA, GA::DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, TFloatScalar>);
     static_assert(0 < GA::DIMENSION_NO && GA::DIMENSION_NO < 64);
 

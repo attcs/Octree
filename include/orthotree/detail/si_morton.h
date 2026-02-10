@@ -281,6 +281,14 @@ namespace OrthoTree::detail
         m_diff |= (m_base ^ location.GetLocationID());
       }
 
+      constexpr Location GetLocation(depth_t maxDepthID) const noexcept
+      {
+        auto const levelIDDiff = (detail::bit_width(m_diff) + DIMENSION_NO - 1) / DIMENSION_NO;
+        auto const depthID = std::min(m_minDepthID, maxDepthID - levelIDDiff);
+
+        return MortonSpaceIndexing::GetLocation(m_base, depthID);
+      }
+
       constexpr NodeID GetNodeID(depth_t maxDepthID) const noexcept
       {
         auto const levelIDDiff = (detail::bit_width(m_diff) + DIMENSION_NO - 1) / DIMENSION_NO;
