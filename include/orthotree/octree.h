@@ -736,6 +736,31 @@ namespace OrthoTree
         GetNodeCount() > 0, "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
     }
 
+    IGM::Box InitializeSubtreeMinimalNodeGeometry(NodeID nodeID, EntityContainerView entities)
+    {
+      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+      {
+        auto nodeBox = IGM::BoxInvertedInit();
+
+        // Union with all children
+        for (auto const& childNodeID : GetNodeChildren(nodeID))
+        {
+          auto childNodeBox = InitializeSubtreeMinimalNodeGeometry(childNodeID, entities);
+          IGM::UniteInBoxAD(nodeBox, childNodeBox);
+        }
+
+        // Union with all entities
+        for (auto const& entityID : GetNodeEntities(nodeID))
+          IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, entityID));
+
+        m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+        return nodeBox;
+      }
+      else
+      {
+        return {};
+      }
+    }
   private:
     constexpr std::size_t GetMaxPossibleNodeCount(std::size_t entityCount) const noexcept
     {
@@ -1008,6 +1033,7 @@ namespace OrthoTree
         m_nodeGeometry.reserve(estimatedNodeNum);
 
       Build<ARE_LOCATIONS_SORTED>(locationsZip.begin(), endIt);
+      InitializeSubtreeMinimalNodeGeometry(GetRootNodeID(), entities);
       return true;
     }
 
