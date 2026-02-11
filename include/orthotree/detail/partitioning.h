@@ -822,68 +822,65 @@ namespace OrthoTree::Partitioning
 
   constexpr auto partition(auto first, auto last, auto&& p, auto&& spectate) noexcept
   {
-    auto find_if_not = [&](auto first, auto last, const auto& p) noexcept {
-      for (; first != last; ++first)
+    while (true)
+    {
+      while (first != last && p(*first))
       {
-        if (!p(*first))
-          return first;
-
         spectate(*first);
+        ++first;
       }
 
-      return last;
-    };
+      if (first == last)
+        return first;
 
-    first = find_if_not(first, last, p);
-    if (first == last)
-      return first;
+      while (true)
+      {
+        if (first == --last)
+          return first;
 
-    for (auto i = std::next(first); i != last; ++i)
-    {
-      if (!p(*i))
-        continue;
+        if (p(*last))
+          break;
+      }
 
-      spectate(*i);
-      std::iter_swap(i, first);
+      spectate(*last);
+      std::iter_swap(first, last);
       ++first;
     }
-    return first;
   }
 
 
   constexpr auto partition(auto first, auto last, auto&& p, auto&& spectateTrue, auto&& spectateFalse) noexcept
   {
-    auto find_if_not = [&](auto first, auto last, const auto& p) noexcept {
-      for (; first != last; ++first)
-      {
-        if (!p(*first))
-          return first;
-
-        spectateTrue(*first);
-      }
-
-      return last;
-    };
-
-    first = find_if_not(first, last, p);
-    if (first == last)
-      return first;
-
-    spectateFalse(*first);
-
-    for (auto i = std::next(first); i != last; ++i)
+    while (true)
     {
-      if (!p(*i))
+      while (first != last && p(*first))
       {
-        spectateFalse(*i);
-        continue;
+        spectateTrue(*first);
+        ++first;
       }
 
-      spectateTrue(*i);
-      std::iter_swap(i, first);
+      if (first == last)
+        return first;
+
+      while (true)
+      {
+        if (first == --last)
+        {
+          spectateFalse(*first);
+          return first;
+        }
+
+        if (p(*last))
+          break;
+
+        spectateFalse(*last);
+      }
+
+      spectateTrue(*last);
+      spectateFalse(*first);
+      std::iter_swap(first, last);
       ++first;
     }
-    return first;
   }
 
   template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
