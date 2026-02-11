@@ -825,7 +825,7 @@ namespace OrthoTree::Partitioning
     auto find_if_not = [&](auto first, auto last, const auto& p) noexcept {
       for (; first != last; ++first)
       {
-        if (p(*first))
+        if (!p(*first))
           return first;
 
         spectate(*first);
@@ -841,11 +841,9 @@ namespace OrthoTree::Partitioning
     for (auto i = std::next(first); i != last; ++i)
     {
       if (!p(*i))
-      {
-        spectate(*i);
         continue;
-      }
 
+      spectate(*i);
       std::iter_swap(i, first);
       ++first;
     }
@@ -858,13 +856,10 @@ namespace OrthoTree::Partitioning
     auto find_if_not = [&](auto first, auto last, const auto& p) noexcept {
       for (; first != last; ++first)
       {
-        if (p(*first))
-        {
-          spectateTrue(*first);
+        if (!p(*first))
           return first;
-        }
 
-        spectateFalse(*first);
+        spectateTrue(*first);
       }
 
       return last;
@@ -873,6 +868,8 @@ namespace OrthoTree::Partitioning
     first = find_if_not(first, last, p);
     if (first == last)
       return first;
+
+    spectateFalse(*first);
 
     for (auto i = std::next(first); i != last; ++i)
     {
