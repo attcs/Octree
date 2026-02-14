@@ -643,7 +643,7 @@ namespace OrthoTree
 
     constexpr NodeID GetRootNodeValue() const noexcept { return GetRootNodeID(); }
 
-    constexpr NodeID GetNodeValueP(NodeID nodeID) const noexcept { return nodeID; }
+    constexpr NodeID GetNodeValue(NodeID nodeID) const noexcept { return nodeID; }
 
     constexpr std::size_t GetNodeCount() const noexcept { return m_nodeDepthIDs.size(); }
 
@@ -1215,10 +1215,10 @@ namespace OrthoTree
     static NodeID GetRootNodeID() noexcept { return SI::GetRootKey(); }
     auto const& GetNode(NodeIDCR key) const noexcept { return m_nodes.at(key); }
 
-    NodeValueCP GetNodeValueP(NodeIDCR nodeID) const noexcept { return &(*m_nodes.find(nodeID)); }
-    NodeValueCP GetRootNodeValue() const noexcept { return GetNodeValueP(SI::GetRootKey()); }
-    NodeValue* GetNodeValueP(NodeIDCR nodeID) noexcept { return &(*m_nodes.find(nodeID)); }
-    NodeValue* GetRootNodeValue() noexcept { return GetNodeValueP(SI::GetRootKey()); }
+    NodeValueCP GetNodeValue(NodeIDCR nodeID) const noexcept { return &(*m_nodes.find(nodeID)); }
+    NodeValueCP GetRootNodeValue() const noexcept { return GetNodeValue(SI::GetRootKey()); }
+    NodeValue* GetNodeValue(NodeIDCR nodeID) noexcept { return &(*m_nodes.find(nodeID)); }
+    NodeValue* GetRootNodeValue() noexcept { return GetNodeValue(SI::GetRootKey()); }
 
     // Get EntityIDs of the node
     constexpr auto const& GetNodeEntities(NodeValueCP pNodeValue) const noexcept { return pNodeValue->second.GetEntities(); }
@@ -1284,7 +1284,7 @@ namespace OrthoTree
     constexpr std::size_t GetNodeEntityCount(Node const& node) const noexcept { return node.GetEntitiesSize(); }
 
     // Obsolete: Is the node has any entity
-    constexpr bool IsNodeEntitiesEmpty(NodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNodeValueP(nodeKey)); }
+    constexpr bool IsNodeEntitiesEmpty(NodeIDCR nodeKey) const noexcept { return IsNodeEntitiesEmpty(GetNodeValue(nodeKey)); }
 
     // Obsolete
     constexpr decltype(auto) GetNodeMinPoint(NodeIDCR nodeID) const noexcept { return GetNodeMinPoint(&*m_nodes.find(nodeID)); }
@@ -1930,7 +1930,7 @@ namespace OrthoTree
         // Union with all children
         for (auto const& childNodeID : GetNodeChildren(nodeValue))
         {
-          auto childNodeValue = GetNodeValueP(childNodeID);
+          auto childNodeValue = GetNodeValue(childNodeID);
           auto childNodeBox = InitializeSubtreeMinimalNodeGeometry(childNodeValue, entities);
           IGM::UniteInBoxAD(nodeBox, childNodeBox);
         }
@@ -2023,7 +2023,7 @@ namespace OrthoTree
         auto const& children = GetNodeChildren(nodeValue);
         for (auto const& childNodeID : children)
         {
-          auto const childNodeValue = GetNodeValueP(childNodeID);
+          auto const childNodeValue = GetNodeValue(childNodeID);
           if (IsNodeEntitiesEmpty(childNodeValue))
             continue;
 
@@ -2732,7 +2732,7 @@ namespace OrthoTree
 
     { T::GetRootNodeID() } -> std::convertible_to<typename T::NodeID>;
     { ct.GetRootNodeValue() } -> std::convertible_to<typename T::NodeValueCP>;
-    { ct.GetNodeValueP(nodeID) } -> std::convertible_to<typename T::NodeValueCP>;
+    { ct.GetNodeValue(nodeID) } -> std::convertible_to<typename T::NodeValueCP>;
 
     { ct.GetNodeChildren(nodeValue) };
     { ct.GetNodeEntities(nodeValue) };
@@ -2835,7 +2835,7 @@ namespace OrthoTree
         case TraverseControl::SkipChildren: continue;
         case TraverseControl::Continue:
           for (NodeIDCR childNodeID : Core::GetNodeChildren(pNodeValue))
-            queue.push(Core::GetNodeValueP(childNodeID));
+            queue.push(Core::GetNodeValue(childNodeID));
 
           break;
         }
@@ -2868,7 +2868,7 @@ namespace OrthoTree
         case TraverseControl::Continue: {
           for (auto const& childNodeID : Core::GetNodeChildren(currentNodeValue))
           {
-            nodeStack.push_back(Core::GetNodeValueP(childNodeID));
+            nodeStack.push_back(Core::GetNodeValue(childNodeID));
           }
           break;
         }
@@ -2927,7 +2927,7 @@ namespace OrthoTree
 
         for (NodeIDCR childNodeID : Core::GetNodeChildren(pNodeValue))
         {
-          auto const& childNodeValue = Core::GetNodeValueP(childNodeID);
+          auto const& childNodeValue = Core::GetNodeValue(childNodeID);
           auto childNodePriority = priorityCalculator(childNodeValue);
 
           if constexpr (detail::IsStdOptionalV<TPriorityResult>)
@@ -2982,7 +2982,7 @@ namespace OrthoTree
 
           return TraverseControl::Continue;
         },
-        Core::GetNodeValueP(rootKey));
+        Core::GetNodeValue(rootKey));
       return entityIDs;
     }
 
@@ -2996,7 +2996,7 @@ namespace OrthoTree
         std::sort(foundEntities.begin() + entityIDsSize, foundEntities.end());
 
       for (NodeIDCR childKey : Core::GetNodeChildren(parentNode))
-        CollectAllEntitiesInDFSRecursive(Core::GetNodeValueP(childKey), foundEntities, shouldSortInsideNodes);
+        CollectAllEntitiesInDFSRecursive(Core::GetNodeValue(childKey), foundEntities, shouldSortInsideNodes);
     }
 
   public:
@@ -3004,7 +3004,7 @@ namespace OrthoTree
     std::vector<EntityID> GetEntitiesDepthFirst(NodeIDCR parentKey = Core::GetRootNodeID(), bool shouldSortInsideNodes = false) const noexcept
     {
       auto entityIDs = std::vector<EntityID>{};
-      CollectAllEntitiesInDFSRecursive(Core::GetNodeValueP(parentKey), entityIDs, shouldSortInsideNodes);
+      CollectAllEntitiesInDFSRecursive(Core::GetNodeValue(parentKey), entityIDs, shouldSortInsideNodes);
       return entityIDs;
     }
 
@@ -3739,7 +3739,7 @@ namespace OrthoTree
           auto const& childIDs = trees[sideID]->Core::GetNodeChildren(pNodeValue);
           childNodes[sideID].resize(childIDs.size());
           std::transform(childIDs.begin(), childIDs.end(), childNodes[sideID].begin(), [&](NodeIDCR childNodeID) -> NodeValueAndStatus {
-            return { trees[sideID]->Core::GetNodeValueP(childNodeID), false };
+            return { trees[sideID]->Core::GetNodeValue(childNodeID), false };
           });
         }
 
@@ -3783,10 +3783,10 @@ namespace OrthoTree
       CollisionDetection(
         leftTree,
         leftEntities,
-        leftTree.Core::GetNodeValueP(Core::GetRootNodeID()),
+        leftTree.Core::GetNodeValue(Core::GetRootNodeID()),
         rightTree,
         rightEntities,
-        rightTree.Core::GetNodeValueP(Core::GetRootNodeID()),
+        rightTree.Core::GetNodeValue(Core::GetRootNodeID()),
         collidedEntities,
         tolerance,
         collisionDetector);
@@ -3977,7 +3977,7 @@ namespace OrthoTree
       InsertCollidedEntitiesWithParents(entities, nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
       for (NodeIDCR childKey : Core::GetNodeChildren(nodeValue))
-        InsertCollidedEntitiesInSubtree(entities, comparator, Core::GetNodeValueP(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+        InsertCollidedEntitiesInSubtree(entities, comparator, Core::GetNodeValue(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
       // Pairwise sub-tree collision detection for loose octree
       if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
@@ -3988,7 +3988,7 @@ namespace OrthoTree
           for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
           {
             CollisionDetection(
-              *this, entities, Core::GetNodeValueP(*it1), *this, entities, Core::GetNodeValueP(*it2), collidedEntities, tolerance, collisionDetector);
+              *this, entities, Core::GetNodeValue(*it1), *this, entities, Core::GetNodeValue(*it2), collidedEntities, tolerance, collisionDetector);
           }
         }
       }
@@ -4032,7 +4032,7 @@ namespace OrthoTree
         auto nodeContextStack = std::vector<NodeCollisionContext>{};
         nodeContextStack.reserve(this->GetDepthNo());
         InsertCollidedEntitiesInSubtree(
-          entities, comparator, Core::GetNodeValueP(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+          entities, comparator, Core::GetNodeValue(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
         return collidedEntities;
       }
@@ -4047,7 +4047,7 @@ namespace OrthoTree
           auto nodeContextStack = std::vector<NodeCollisionContext>();
           nodeContextStack.reserve(this->GetDepthNo());
           InsertCollidedEntitiesInSubtree(
-            entities, comparator, Core::GetNodeValueP(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+            entities, comparator, Core::GetNodeValue(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
           return collidedEntities;
         }
@@ -4062,7 +4062,7 @@ namespace OrthoTree
 
         auto nodeQueue = std::vector<NodeData>{};
         nodeQueue.reserve(threadNum * 2);
-        nodeQueue.push_back(NodeData{ Core::GetNodeValueP(Core::GetRootNodeID()), INVALID_INDEX, INVALID_INDEX });
+        nodeQueue.push_back(NodeData{ Core::GetNodeValue(Core::GetRootNodeID()), INVALID_INDEX, INVALID_INDEX });
 
         auto nodeContextMap = std::vector<NodeCollisionContext>{};
 
@@ -4078,7 +4078,7 @@ namespace OrthoTree
 
           for (NodeIDCR childNodeID : Core::GetNodeChildren(nodeValue))
           {
-            nodeQueue.push_back(NodeData{ Core::GetNodeValueP(childNodeID), i, INVALID_INDEX });
+            nodeQueue.push_back(NodeData{ Core::GetNodeValue(childNodeID), i, INVALID_INDEX });
             ++nodeQueueNum;
           }
         }
@@ -4088,7 +4088,7 @@ namespace OrthoTree
           auto nodeContextStack = std::vector<NodeCollisionContext>();
           nodeContextStack.reserve(this->GetDepthNo());
           InsertCollidedEntitiesInSubtree(
-            entities, comparator, Core::GetNodeValueP(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
+            entities, comparator, Core::GetNodeValue(Core::GetRootNodeID()), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
           return collidedEntities;
         }
@@ -4143,7 +4143,7 @@ namespace OrthoTree
             {
               for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
               {
-                taskContexts.push_back({ .nodeValue = Core::GetNodeValueP(*it1), .nodeValueSecondary = Core::GetNodeValueP(*it2) });
+                taskContexts.push_back({ .nodeValue = Core::GetNodeValue(*it1), .nodeValueSecondary = Core::GetNodeValue(*it2) });
               }
             }
           }
