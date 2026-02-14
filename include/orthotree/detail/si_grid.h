@@ -54,19 +54,42 @@ namespace OrthoTree::detail
   public:
     constexpr GridSpaceIndexing() = default;
 
-    constexpr GridSpaceIndexing(depth_t maxDepthID, IGM::Box const& boxSpace) noexcept
+    constexpr GridSpaceIndexing(depth_t maxDepthID, typename IGM::Box const& boxSpace) noexcept
     : m_maxRasterResolution(detail::pow2<depth_t, GridID>(maxDepthID))
     , m_maxRasterID(m_maxRasterResolution - 1)
     , m_boxSpace(boxSpace)
     {
-      auto const subDivisionNoFactor = IGM_Geometry(m_maxRasterResolution);
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+      if constexpr (std::is_same_v<IGM_Geometry, float>)
       {
-        m_sizeInDimensions[dimensionID] = m_boxSpace.Max[dimensionID] - m_boxSpace.Min[dimensionID];
-        m_derasterizerFactors[dimensionID] = m_sizeInDimensions[dimensionID] / subDivisionNoFactor;
-        auto const isFlat = m_sizeInDimensions[dimensionID] == 0;
-        m_rasterizerFactors[dimensionID] = isFlat ? IGM_Geometry(1.0) : (subDivisionNoFactor / m_sizeInDimensions[dimensionID]);
+        if (maxDepthID >= 16)
+          m_rasterization = ForcedDoubleRasterizationFactors{};
+        else
+          m_rasterization = NativeRasterizationFactors{};
       }
+      else
+      {
+        m_rasterization = NativeRasterizationFactors{};
+      }
+
+      std::visit(
+        [&](auto& rasterization) {
+          using RasterizationType = std::decay_t<decltype(rasterization)>;
+          using RasterizationFloat = typename RasterizationType::Float;
+
+          auto& [sizeInDimensions, rasterizerFactors, derasterizerFactors] = rasterization;
+
+          auto const subDivisionNoFactor = RasterizationFloat(m_maxRasterResolution);
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          {
+            m_sizeInDimensions[dimensionID] = m_boxSpace.Max[dimensionID] - m_boxSpace.Min[dimensionID];
+            sizeInDimensions[dimensionID] = RasterizationFloat(m_sizeInDimensions[dimensionID]);
+
+            derasterizerFactors[dimensionID] = sizeInDimensions[dimensionID] / subDivisionNoFactor;
+            auto const isFlat = sizeInDimensions[dimensionID] == 0;
+            rasterizerFactors[dimensionID] = isFlat ? RasterizationFloat(1) : (subDivisionNoFactor / sizeInDimensions[dimensionID]);
+          }
+        },
+        m_rasterization);
 
       m_volumeOfOverallSpace = IGM::GetVolumeAD(m_boxSpace);
     }
@@ -83,89 +106,101 @@ namespace OrthoTree::detail
 
     constexpr GridID GetResolution() const noexcept { return m_maxRasterResolution; }
 
-    // TODO: remove?
     constexpr IGM::Vector CalculateGridCellCenter(DimArray<GridID>&& gridID, depth_t&& centerLevel) const noexcept
     {
-      using IGM_Vector = typename IGM::Vector;
+      return std::visit(
+        [&](auto& rasterization) {
+          using RasterizationType = std::decay_t<decltype(rasterization)>;
+          using RasterizationFloat = typename RasterizationType::Float;
+          auto& [sizeInDimensions, rasterizerFactors, derasterizerFactors] = rasterization;
 
-      auto const halfGrid = IGM_Geometry(detail::pow2(centerLevel)) * IGM_Geometry(0.5);
+          auto const halfGrid = RasterizationFloat(detail::pow2(centerLevel)) * RasterizationFloat(0.5);
 
-      IGM_Vector center;
-      ORTHOTREE_LOOPIVDEP
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        center[dimensionID] = (IGM_Geometry(gridID[dimensionID]) + halfGrid) * m_derasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
+          typename IGM::Vector center;
+          detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) {
+            center[dimensionID] =
+              IGM_Geometry((RasterizationFloat(gridID[dimensionID]) + halfGrid) * derasterizerFactors[dimensionID]) + m_boxSpace.Min[dimensionID];
+          });
 
-      return center;
-    }
-
-    constexpr IGM::Vector CalculateGridCellMinPoint(DimArray<GridID>&& gridID) const noexcept
-    {
-      using IGM_Vector = typename IGM::Vector;
-
-      IGM_Vector minPoint;
-      detail::static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
-        minPoint[dimensionID] = IGM_Geometry(gridID[dimensionID]) * m_derasterizerFactors[dimensionID] + m_boxSpace.Min[dimensionID];
-      });
-
-      return minPoint;
+          return center;
+        },
+        m_rasterization);
     }
 
     constexpr DimArray<GridID> GetPointGridID(GA::Vector const& point) const noexcept
     {
-      auto gridIDs = DimArray<GridID>{};
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        auto pointComponent = IGM_Geometry(GA::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID];
-        if (pointComponent < -GA::BASE_TOLERANCE || pointComponent > m_sizeInDimensions[dimensionID] + GA::BASE_TOLERANCE)
-        {
-          gridIDs[0] = INVALID_GRIDID;
-          return gridIDs;
-        }
+      return std::visit(
+        [&](auto& rasterization) {
+          using RasterizationType = std::decay_t<decltype(rasterization)>;
+          using RasterizationFloat = typename RasterizationType::Float;
 
-        if (pointComponent <= 0)
-          gridIDs[dimensionID] = 0;
-        else
-        {
-          auto const rasterID = GridID(pointComponent * m_rasterizerFactors[dimensionID]);
-          gridIDs[dimensionID] = std::min<GridID>(m_maxRasterID, rasterID);
-        }
-      }
-      return gridIDs;
+          auto& [sizeInDimensions, rasterizerFactors, derasterizerFactors] = rasterization;
+
+          auto gridIDs = DimArray<GridID>{};
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          {
+            auto pointComponent = IGM_Geometry(GA::GetPointC(point, dimensionID)) - m_boxSpace.Min[dimensionID];
+            if (pointComponent < -GA::BASE_TOLERANCE || pointComponent > sizeInDimensions[dimensionID] + GA::BASE_TOLERANCE)
+            {
+              gridIDs[0] = INVALID_GRIDID;
+              return gridIDs;
+            }
+
+            if (pointComponent <= 0)
+              gridIDs[dimensionID] = 0;
+            else
+            {
+              auto const rasterID = GridID(RasterizationFloat(pointComponent) * rasterizerFactors[dimensionID]);
+              gridIDs[dimensionID] = std::min<GridID>(m_maxRasterID, rasterID);
+            }
+          }
+          return gridIDs;
+        },
+        m_rasterization);
     }
 
     constexpr std::array<DimArray<GridID>, 2> GetBoxGridID(GA::Box const& box) const noexcept
     {
-      std::array<DimArray<GridID>, 2> gridID;
+      return std::visit(
+        [&](auto& rasterization) {
+          using RasterizationType = std::decay_t<decltype(rasterization)>;
+          using RasterizationFloat = typename RasterizationType::Float;
 
-      auto constexpr zero = IGM_Geometry{};
-      auto const maxRasterID = IGM_Geometry(m_maxRasterResolution);
-      for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-      {
-        auto const boxMin = IGM_Geometry(GA::GetBoxMinC(box, dimensionID)) - m_boxSpace.Min[dimensionID];
-        auto const boxMax = IGM_Geometry(GA::GetBoxMaxC(box, dimensionID)) - m_boxSpace.Min[dimensionID];
+          auto constexpr zero = RasterizationFloat{};
+          auto const maxRasterID = RasterizationFloat(m_maxRasterResolution);
 
-        if (boxMin < GA::BASE_TOLERANCE || boxMax > m_sizeInDimensions[dimensionID] + GA::BASE_TOLERANCE)
-        {
-          gridID[0][0] = INVALID_GRIDID;
+          auto& [sizeInDimensions, rasterizerFactors, derasterizerFactors] = rasterization;
+
+          std::array<DimArray<GridID>, 2> gridID;
+          for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+          {
+            auto const boxMin = IGM_Geometry(GA::GetBoxMinC(box, dimensionID)) - m_boxSpace.Min[dimensionID];
+            auto const boxMax = IGM_Geometry(GA::GetBoxMaxC(box, dimensionID)) - m_boxSpace.Min[dimensionID];
+
+            if (boxMin < -GA::BASE_TOLERANCE || boxMax > m_sizeInDimensions[dimensionID] + GA::BASE_TOLERANCE)
+            {
+              gridID[0][0] = INVALID_GRIDID;
+              return gridID;
+            }
+
+            assert(boxMin <= boxMax && "Wrong bounding box. Input error.");
+            auto const minComponentRasterID = RasterizationFloat(boxMin) * rasterizerFactors[dimensionID];
+            auto const maxComponentRasterID = RasterizationFloat(boxMax) * rasterizerFactors[dimensionID];
+
+            gridID[0][dimensionID] = static_cast<GridID>(std::clamp(minComponentRasterID, zero, maxRasterID));
+            gridID[1][dimensionID] = static_cast<GridID>(std::clamp(maxComponentRasterID, zero, maxRasterID));
+
+            if ((gridID[0][dimensionID] != gridID[1][dimensionID] && std::floor(maxComponentRasterID) == maxComponentRasterID) || gridID[1][dimensionID] >= m_maxRasterResolution)
+            {
+              --gridID[1][dimensionID];
+            }
+
+            assert(gridID[0][dimensionID] < m_maxRasterResolution);
+            assert(gridID[1][dimensionID] < m_maxRasterResolution);
+          }
           return gridID;
-        }
-
-        assert(boxMin <= boxMax && "Wrong bounding box. Input error.");
-        auto const minComponentRasterID = boxMin * m_rasterizerFactors[dimensionID];
-        auto const maxComponentRasterID = boxMax * m_rasterizerFactors[dimensionID];
-
-        gridID[0][dimensionID] = static_cast<GridID>(std::clamp(minComponentRasterID, zero, maxRasterID));
-        gridID[1][dimensionID] = static_cast<GridID>(std::clamp(maxComponentRasterID, zero, maxRasterID));
-
-        if ((gridID[0][dimensionID] != gridID[1][dimensionID] && std::floor(maxComponentRasterID) == maxComponentRasterID) || gridID[1][dimensionID] >= m_maxRasterResolution)
-        {
-          --gridID[1][dimensionID];
-        }
-
-        assert(gridID[0][dimensionID] < m_maxRasterResolution);
-        assert(gridID[1][dimensionID] < m_maxRasterResolution);
-      }
-      return gridID;
+        },
+        m_rasterization);
     }
 
     template<double LOOSE_FACTOR>
@@ -176,64 +211,93 @@ namespace OrthoTree::detail
 
       auto const boxCenter = IGM::GetBoxCenterAD(box);
       auto const boxSize = IGM::GetBoxSizeAD(box);
+      return std::visit(
+        [&](auto& rasterization) -> std::pair<GridPosition, depth_t> {
+          using RasterizationType = std::decay_t<decltype(rasterization)>;
+          using RasterizationFloat = typename RasterizationType::Float;
 
-      GridPosition boxCenterGrid;
-      static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
-        // box is withing the space, so center must be also within, no need to clamp
-        boxCenterGrid[dimensionID] = GridID((boxCenter[dimensionID] - m_boxSpace.Min[dimensionID]) * m_rasterizerFactors[dimensionID]);
-      });
+          auto& [sizeInDimensions, rasterizerFactors, derasterizerFactors] = rasterization;
 
-      auto maxRelativeSize = IGM_Geometry{};
-      static_for<DIMENSION_NO>(
-        [&](auto dimensionID) noexcept { maxRelativeSize = std::max(maxRelativeSize, boxSize[dimensionID] * m_rasterizerFactors[dimensionID]); });
-
-      GridID maxRelativeGridSize = GridID(std::ceil(maxRelativeSize));
-      // TODO: enable it:
-      // assert(maxRelativeGridSize > 0); // bounding box has no volume
-      if (maxRelativeGridSize == 0)
-        return { boxCenterGrid, 0 };
-
-      auto levelID = std::bit_width(maxRelativeGridSize - 1);
-      // TODO: remove:
-      assert(levelID == std::ceil(std::log2(maxRelativeGridSize)));
-
-      // depth calculation
-      if constexpr (LOOSE_FACTOR != 2.0)
-      {
-        while (true)
-        {
-          typename IGM::Box looseCellBox;
-
-          auto const cellGridSize = GridID(1) << levelID;
+          GridPosition boxCenterGrid;
           static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
-            auto const cellGridMin = (boxCenterGrid[dimensionID] / cellGridSize) * cellGridSize;
-
-            auto const cellGridCenter = cellGridMin + cellGridSize / GridID(2);
-            auto const cellCenterWorld = IGM_Geometry(cellGridCenter) / m_rasterizerFactors[dimensionID];
-            auto const halfLooseCellSizeWorld = IGM_Geometry(cellGridSize) * IGM_Geometry(LOOSE_FACTOR * 0.5) / m_rasterizerFactors[dimensionID];
-
-            looseCellBox.Min[dimensionID] = cellCenterWorld - halfLooseCellSizeWorld;
-            looseCellBox.Max[dimensionID] = cellCenterWorld + halfLooseCellSizeWorld;
+            // box is withing the space, so center must be also within, no need to clamp
+            boxCenterGrid[dimensionID] =
+              GridID(RasterizationFloat(boxCenter[dimensionID] - m_boxSpace.Min[dimensionID]) * rasterizerFactors[dimensionID]);
           });
 
-          if (IGM::DoesRangeContainBoxAD(looseCellBox, box))
-            break;
+          auto maxRelativeSize = RasterizationFloat{};
+          static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
+            maxRelativeSize = std::max(maxRelativeSize, RasterizationFloat(boxSize[dimensionID]) * rasterizerFactors[dimensionID]);
+          });
 
-          ++levelID;
-        }
-      }
+          GridID maxRelativeGridSize = GridID(std::ceil(maxRelativeSize));
+          if (maxRelativeGridSize == 0)
+            return { boxCenterGrid, 0 };
 
-      return { boxCenterGrid, levelID };
+          auto levelID = std::bit_width(maxRelativeGridSize - 1);
+          assert(levelID == std::ceil(std::log2(maxRelativeGridSize)));
+
+          // depth calculation
+          if constexpr (LOOSE_FACTOR != 2.0)
+          {
+            while (true)
+            {
+              typename IGM::Box looseCellBox;
+
+              auto const cellGridSize = GridID(1) << levelID;
+              static_for<DIMENSION_NO>([&](auto dimensionID) noexcept {
+                auto const cellGridMin = (boxCenterGrid[dimensionID] / cellGridSize) * cellGridSize;
+
+                auto const cellGridCenter = cellGridMin + cellGridSize / GridID(2);
+                auto const cellCenterWorld = RasterizationFloat(cellGridCenter) / rasterizerFactors[dimensionID];
+                auto const halfLooseCellSizeWorld =
+                  RasterizationFloat(cellGridSize) * RasterizationFloat(LOOSE_FACTOR * 0.5) / rasterizerFactors[dimensionID];
+
+                looseCellBox.Min[dimensionID] = IGM_Geometry(cellCenterWorld - halfLooseCellSizeWorld);
+                looseCellBox.Max[dimensionID] = IGM_Geometry(cellCenterWorld + halfLooseCellSizeWorld);
+              });
+
+              if (IGM::DoesRangeContainBoxAD(looseCellBox, box))
+                break;
+
+              ++levelID;
+            }
+          }
+
+          return { boxCenterGrid, levelID };
+        },
+        m_rasterization);
     }
+
+  private:
+    struct NativeRasterizationFactors
+    {
+      using Float = IGM::Geometry;
+
+      IGM::Vector sizeInDimensions = {};
+      IGM::Vector rasterizerFactors = {};
+      IGM::Vector derasterizerFactors = {};
+    };
+
+    // float32_t with large maxDepthID would lead to precision issues, increase double precision is required.
+    struct ForcedDoubleRasterizationFactors
+    {
+      using Float = double;
+
+      std::array<double, GA::DIMENSION_NO> sizeInDimensions = {};
+      std::array<double, GA::DIMENSION_NO> rasterizerFactors = {};
+      std::array<double, GA::DIMENSION_NO> derasterizerFactors = {};
+    };
 
   private:
     GridID m_maxRasterResolution = {};
     GridID m_maxRasterID = {};
 
-    IGM::Box m_boxSpace = {};
     IGM::Geometry m_volumeOfOverallSpace = {};
-    IGM::Vector m_rasterizerFactors = {};
-    IGM::Vector m_derasterizerFactors = {};
+    IGM::Box m_boxSpace = {};
     IGM::Vector m_sizeInDimensions = {};
+
+    std::variant<NativeRasterizationFactors, ForcedDoubleRasterizationFactors> m_rasterization = {};
+
   };
 } // namespace OrthoTree::detail
