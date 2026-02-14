@@ -364,7 +364,7 @@ namespace OrthoTree
   };
 
 
-  // Aliases
+  // Geometry aliases
   using BaseGeometryType = double;
   using Vector1D = OrthoTree::VectorND<1, BaseGeometryType>;
   using Vector2D = OrthoTree::VectorND<2, BaseGeometryType>;
@@ -389,6 +389,8 @@ namespace OrthoTree
     OrthoTree::PlaneND<DIMENSION_NO, TScalar>,
     TScalar>;
 
+  // Tree aliases
+
   template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
   using TreePointND = OrthoTree::OrthoTreeBase<
     std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>, PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>>>,
@@ -410,6 +412,29 @@ namespace OrthoTree
     BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>, TEntityContainer>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
     BoxConfiguration<IS_LOOSE_TREE>>;
+
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using StaticTreePointND = OrthoTree::StaticOrthoTreeBase<
+    std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>, PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>>>,
+    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
+    PointConfiguration>;
+
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using StaticTreeBoxND = OrthoTree::StaticOrthoTreeBase<
+    std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>,
+    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
+    BoxConfiguration<IS_LOOSE_TREE>>;
+
+  template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer>
+  using StaticTreePointNDUD =
+    OrthoTree::StaticOrthoTreeBase<PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>, TEntityContainer>, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration>;
+
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer>
+  using StaticTreeBoxNDUD = OrthoTree::StaticOrthoTreeBase<
+    BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>, TEntityContainer>,
+    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
+    BoxConfiguration<IS_LOOSE_TREE>>;
+
 
   // Dualtree for points
   using DualtreePoint = TreePointND<1, BaseGeometryType>;
@@ -516,5 +541,108 @@ namespace OrthoTree
   // User-defined container-based Octree for bounding boxes with split-depth settings
   template<bool IS_LOOSE_TREE, typename EntityAdapter>
   using OctreeBoxsUDMap = TreeBoxEAND<3, IS_LOOSE_TREE, BaseGeometryType, EntityAdapter>;
+
+
+
+
+
+
+  // Dualtree for points
+  using StaticDualtreePoint = StaticTreePointND<1, BaseGeometryType>;
+
+  // Dualtree for bounding boxes
+  using StaticDualtreeBox = StaticTreeBoxND<1, true, BaseGeometryType>;
+
+  // Quadtree for points
+  using StaticQuadtreePoint = StaticTreePointND<2, BaseGeometryType>;
+
+  // Quadtree for bounding boxes
+  using StaticQuadtreeBox = StaticTreeBoxND<2, true, BaseGeometryType>;
+
+  // Octree for points
+  using StaticOctreePoint = StaticTreePointND<3, BaseGeometryType>;
+
+  // Octree for bounding boxes
+  using StaticOctreeBox = StaticTreeBoxND<3, true, BaseGeometryType>;
+
+  // Hexatree for points
+  using StaticHexatreePoint = StaticTreePointND<4, BaseGeometryType>;
+
+  // Hexatree for bounding boxes
+  using StaticHexatreeBox = StaticTreeBoxND<4, true, BaseGeometryType>;
+
+
+  // Dualtree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE>
+  using StaticDualtreeBoxs = StaticTreeBoxND<1, IS_LOOSE_TREE, BaseGeometryType>;
+
+  // Quadtree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE>
+  using StaticQuadtreeBoxs = StaticTreeBoxND<2, IS_LOOSE_TREE, BaseGeometryType>;
+
+  // Octree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE>
+  using StaticOctreeBoxs = StaticTreeBoxND<3, IS_LOOSE_TREE, BaseGeometryType>;
+
+  // Hexatree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE>
+  using StaticHexatreeBoxs = StaticTreeBoxND<4, IS_LOOSE_TREE, BaseGeometryType>;
+
+
+  // OrthoTrees with std::unordered_map
+
+  // std::unordered_map-based Quadtree for points
+  using StaticQuadtreePointMap = StaticTreePointND<2, BaseGeometryType, false>;
+
+  // std::unordered_map-based Octree for points
+  using StaticOctreePointMap = StaticTreePointND<3, BaseGeometryType, false>;
+
+  // std::unordered_map-based Octree for bounding boxes
+  using StaticQuadreeBoxMap = StaticTreeBoxND<2, true, BaseGeometryType, false>;
+
+  // std::unordered_map-based Octree for bounding boxes
+  using StaticOctreeBoxMap = StaticTreeBoxND<3, true, BaseGeometryType, false>;
+
+  // std::unordered_map-based Quadtree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE>
+  using StaticQuadtreeBoxsMap = StaticTreeBoxND<2, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using StaticQuadtreeBoxMap = StaticTreeBoxND<2, true, BaseGeometryType, false>;
+
+  // std::unordered_map-based Octree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE>
+  using StaticOctreeBoxsMap = StaticTreeBoxND<3, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using StaticOctreeBoxMap = StaticTreeBoxND<3, true, BaseGeometryType, false>;
+
+
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, typename TEntityAdapter = PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>>
+  using StaticTreePointEAND = OrthoTree::StaticOrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration>;
+
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, typename TEntityAdapter = BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>
+  using StaticTreeBoxEAND = OrthoTree::StaticOrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE>>;
+
+
+  // User-defined container-based Quadtree for points
+  template<typename EntityAdapter>
+  using StaticQuadtreePointUDMap = StaticTreePointEAND<2, BaseGeometryType, EntityAdapter>;
+
+  // User-defined container-based Octree for points
+  template<typename EntityAdapter>
+  using StaticOctreePointUDMap = StaticTreePointEAND<3, BaseGeometryType, EntityAdapter>;
+
+  // User-defined container-based Octree for bounding boxes
+  template<typename EntityAdapter>
+  using StaticQuadreeBoxUDMap = StaticTreeBoxEAND<2, true, BaseGeometryType, EntityAdapter>;
+
+  // User-defined container-based Octree for bounding boxes
+  template<typename EntityAdapter>
+  using StaticOctreeBoxUDMap = StaticTreeBoxEAND<3, true, BaseGeometryType, EntityAdapter>;
+
+  // User-defined container-based Quadtree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE, typename EntityAdapter>
+  using StaticQuadtreeBoxsUDMap = StaticTreeBoxEAND<2, IS_LOOSE_TREE, BaseGeometryType, EntityAdapter>;
+
+  // User-defined container-based Octree for bounding boxes with split-depth settings
+  template<bool IS_LOOSE_TREE, typename EntityAdapter>
+  using StaticOctreeBoxsUDMap = StaticTreeBoxEAND<3, IS_LOOSE_TREE, BaseGeometryType, EntityAdapter>;
 
 } // namespace OrthoTree
