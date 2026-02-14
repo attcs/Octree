@@ -501,16 +501,17 @@ namespace OrthoTree
     }
 
     // Pick search
-    std::vector<EntityID> PickSearch(TVector const& pickPoint, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    template<typename TTester = std::monostate>
+    std::vector<EntityID> PickSearch(TVector const& pickPoint, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
-      return this->m_tree.PickSearch(pickPoint, this->m_entities, tolerance);
+      return this->m_tree.PickSearch(pickPoint, this->m_entities, tolerance, std::forward<TTester>(tester));
     }
 
     // Range search
-    template<bool isFullyContained = true>
-    std::vector<EntityID> RangeSearch(TBox const& range, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    template<bool isFullyContained = true, typename TTester = std::monostate>
+    std::vector<EntityID> RangeSearch(TBox const& range, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
-      return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_entities, tolerance);
+      return this->m_tree.template RangeSearch<isFullyContained>(range, this->m_entities, tolerance, std::forward<TTester>(tester));
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
@@ -529,6 +530,12 @@ namespace OrthoTree
     std::vector<EntityID> FrustumCulling(std::span<TPlane const> const& boundaryPlanes, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
       return this->m_tree.FrustumCulling(boundaryPlanes, this->m_entities, tolerance);
+    }
+
+    template<bool IS_LOGICAL_OR_FILTERING = false>
+    std::vector<EntityID> Query(auto const& conditions, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      return this->m_tree.Query<IS_LOGICAL_OR_FILTERING>(conditions, this->m_entities, tolerance); 
     }
 
     // K Nearest Neighbor

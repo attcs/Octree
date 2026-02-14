@@ -3046,7 +3046,7 @@ namespace OrthoTree
     // * bool(Entity) / bool(Entity, TVector&)
     template<typename TTester = std::monostate>
     std::vector<EntityID> PickSearch(
-      TVector const& pickPoint, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester tester = {}) const noexcept
+      TVector const& pickPoint, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
       auto foundEntitiyIDs = std::vector<EntityID>();
       if (!IGM::DoesBoxContainPointAD(Core::GetNodeBox(Core::GetRootNodeValue()), pickPoint, tolerance))
@@ -3094,7 +3094,8 @@ namespace OrthoTree
     // * bool(EntityID) / bool(EntityID, TVector&)
     // * bool(Entity) / bool(Entity, TVector&)
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = true, typename TTester = std::monostate>
-    std::vector<EntityID> RangeSearch(TBox const& range, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester tester = {}) const noexcept
+    std::vector<EntityID> RangeSearch(
+      TBox const& range, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
       auto foundEntities = std::vector<EntityID>{};
 
@@ -3310,11 +3311,12 @@ namespace OrthoTree
         {
           auto const relation =
             IGM::GetBoxPlaneRelationAD(nodeMinPoint, nodeSize, GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance);
-          if (relation == PlaneRelation::Hit)
-            return true;
-
-          if (relation == PlaneRelation::Negative)
-            return false;
+          switch (relation)
+          {
+          case PlaneRelation::Hit: return true;
+          case PlaneRelation::Negative: return false;
+          case PlaneRelation::Positive: break;
+          }
         }
         return true;
       };
@@ -3344,6 +3346,173 @@ namespace OrthoTree
       };
 
       TraverseNodesDepthFirst(procedure);
+
+      return results;
+    }
+
+    struct FrustumCondition
+    {
+      std::vector<std::pair<TPlane, bool>> boundaryPlanes; // pair<plane, isCrossingAllowed>
+    };
+
+    struct RangeCondition
+    {
+      TBox range;
+      bool isFullyContainRequired = false;
+    };
+
+    struct PlaneIntersectionCondition
+    {
+      TPlane plane;
+      TFloatScalar tolerance = GA::BASE_TOLERANCE;
+    };
+    using EntityIDCondition = std::function<bool(EntityID)>;
+    using EntityCondition = std::function<bool(typename EA::Entity)>;
+    using QueryCondition = std::variant<FrustumCondition, RangeCondition, PlaneIntersectionCondition, EntityIDCondition, EntityCondition>;
+    template<bool IS_LOGICAL_OR_FILTERING = false>
+    constexpr std::vector<EntityID> Query(auto const& conditions, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      auto results = std::vector<EntityID>{};
+
+      TraverseNodesDepthFirst([&](auto const nodeValue) {
+        // Node selection
+
+        auto const& nodeMinPoint = Core::GetNodeMinPoint(nodeValue);
+        auto const& nodeSize = Core::GetNodeSize(nodeValue);
+
+        bool isNodePassed = false;
+        for (auto const& condition : conditions)
+        {
+          auto const isNodePassedCondition = detail::VisitVariant(
+            condition,
+            [&](FrustumCondition const& frustumCondition) {
+              for (auto const& [plane, isCrossingAllowed] : frustumCondition.boundaryPlanes)
+              {
+                auto const relation =
+                  IGM::GetBoxPlaneRelationAD(nodeMinPoint, nodeSize, GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance);
+                switch (relation)
+                {
+                case PlaneRelation::Hit: return true;
+                case PlaneRelation::Negative: return false;
+                case PlaneRelation::Positive: break;
+                }
+              }
+              return true;
+            },
+            [&](RangeCondition const& rangeCondition) {
+              auto const& [range, shouldFullyContained] = rangeCondition;
+
+              auto const searchRangeMinPoint = IGM::GetBoxMinPointAD(range);
+              auto const searchRangeSize = IGM::GetBoxSizeAD(range);
+
+              return IGM::AreBoxesOverlappingByMinPoint(searchRangeMinPoint, searchRangeSize, nodeMinPoint, nodeSize, tolerance);
+            },
+            [&](PlaneIntersectionCondition const& planeCondition) {
+              auto const& [plane, planeTolerance] = planeCondition;
+
+              return IGM::GetBoxPlaneRelationAD(nodeMinPoint, nodeSize, GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), planeTolerance) ==
+                     PlaneRelation::Hit;
+            },
+            [&](EntityIDCondition const&) { return true; },
+            [&](EntityCondition const&) { return true; });
+
+          if constexpr (IS_LOGICAL_OR_FILTERING)
+          {
+            isNodePassed |= isNodePassedCondition;
+            if (isNodePassed)
+              break;
+          }
+          else
+          {
+            if (!isNodePassedCondition)
+              return TraverseControl::SkipChildren;
+          }
+        }
+
+        if constexpr (IS_LOGICAL_OR_FILTERING)
+        {
+          if (!isNodePassed)
+            return TraverseControl::SkipChildren;
+        }
+
+
+        // Entity selection
+
+        for (auto const entityID : Core::GetNodeEntities(nodeValue))
+        {
+          bool isPassed = !IS_LOGICAL_OR_FILTERING;
+          for (auto const& condition : conditions)
+          {
+            auto const isConditionPassed = detail::VisitVariant(
+              condition,
+              [&](FrustumCondition const& frustumCondition) {
+                for (auto const& [plane, isCrossingAllowed] : frustumCondition.boundaryPlanes)
+                {
+                  auto relation =
+                    GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance);
+                  switch (relation)
+                  {
+                  case PlaneRelation::Hit:
+                    if (!isCrossingAllowed)
+                      return false;
+                    break;
+                  case PlaneRelation::Negative: return false;
+                  case PlaneRelation::Positive: break;
+                  }
+                }
+                return true;
+              },
+              [&](RangeCondition const& rangeCondition) {
+                auto const& [range, shouldFullyContained] = rangeCondition;
+
+                if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+                {
+                  return GA::DoesBoxContainPoint(range, EA::GetGeometry(entities, entityID), tolerance);
+                }
+                else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+                {
+                  if (shouldFullyContained)
+                    return GA::AreBoxesOverlapped(range, EA::GetGeometry(entities, entityID), shouldFullyContained, false, tolerance);
+                  else
+                    return GA::AreBoxesOverlappedStrict(range, EA::GetGeometry(entities, entityID), tolerance);
+                }
+                else
+                {
+                  static_assert(false, "Unsupported geometry type!");
+                  return false;
+                }
+              },
+              [&](PlaneIntersectionCondition const& planeCondition) {
+                auto const& [plane, planeTolerance] = planeCondition;
+
+                return GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), planeTolerance) ==
+                       PlaneRelation::Hit;
+              },
+              [&](EntityIDCondition const& entityIDTester) { return entityIDTester(entityID); },
+              [&](EntityCondition const& entityTester) { return entityTester(EA::GetEntity(entities, entityID)); });
+
+            if constexpr (IS_LOGICAL_OR_FILTERING)
+            {
+              isPassed |= isConditionPassed;
+              if (isPassed)
+                break;
+            }
+            else
+            {
+              if (!isConditionPassed)
+              {
+                isPassed = false;
+                break;
+              }
+            }
+          }
+
+          if (isPassed)
+            results.emplace_back(entityID);
+        }
+
+        return TraverseControl::Continue;
+      });
 
       return results;
     }
