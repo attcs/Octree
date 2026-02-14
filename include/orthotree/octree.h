@@ -1062,33 +1062,20 @@ namespace OrthoTree
     using NodeValue = std::pair<NodeID const, Node>;
     using NodeValueCP = std::pair<NodeID const, Node> const*;
 
-#ifdef ORTHOTREE_IS_PMR_USED
     template<typename TData>
-    using LinearNodeContainer = std::pmr::unordered_map<NodeID, TData>;
+    using LinearNodeContainer = typename CONFIG::template UMapNodeContainer<NodeID, TData, std::hash<NodeID>>;
 
     template<typename TData>
-    using NonLinearNodeContainer = std::pmr::map<NodeID, TData, bitset_arithmetic_compare>;
-#else
-    template<typename TData>
-    using LinearNodeContainer = typename CONFIG::LinearNodeContainer<NodeID, TData, std::hash<NodeID>>;
-
-    template<typename TData>
-    using NonLinearNodeContainer = std::map<NodeID, TData, bitset_arithmetic_compare>;
-#endif // ORTHOTREE_IS_PMR_USED
+    using NonLinearNodeContainer = typename CONFIG::template MapNodeContainer<NodeID, TData, bitset_arithmetic_compare>;
 
     template<typename TData>
     using NodeContainer = typename std::conditional_t<SI::IS_LINEAR_TREE, LinearNodeContainer<TData>, NonLinearNodeContainer<TData>>;
 
-  protected: // Member variables
-#ifdef ORTHOTREE_IS_PMR_USED
-    std::pmr::unsynchronized_pool_resource m_umrNodes;
-    NodeContainer<Node> m_nodes = NodeContainer<Node>(&m_umrNodes);
-#else
-    NodeContainer<Node> m_nodes;
-#endif
-
     using ReverseMapType = typename CONFIG::template ReverseMap<EntityID, NodeID, typename EA::Hash>;
     using ReverseMap = std::conditional_t<CONFIG::USE_REVERSE_MAPPING, ReverseMapType, std::monostate>;
+
+  private: // Member variables
+    NodeContainer<Node> m_nodes;
     ReverseMap m_reverseMap;
 
     detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR> m_spaceIndexing;
@@ -1143,18 +1130,10 @@ namespace OrthoTree
 
     DynamicHashOrthoTreeCore(DynamicHashOrthoTreeCore const& other)
     : Base(other)
-#ifdef ORTHOTREE_IS_PMR_USED
-    , m_umrNodes()
-    , m_nodes(&m_umrNodes)
-#else
-    : m_nodes(other.m_nodes)
+    , m_nodes(other.m_nodes)
+    , m_reverseMap(other.m_reverseMap)
     , m_spaceIndexing(other.m_spaceIndexing)
-#endif
     {
-#ifdef ORTHOTREE_IS_PMR_USED
-      m_nodes = other.m_nodes;
-#endif
-
       auto segments = std::vector<typename detail::MemoryResource<EntityID>::MemorySegment*>(m_nodes.size());
       int i = 0;
       for (auto& [key, node] : m_nodes)
@@ -1173,6 +1152,8 @@ namespace OrthoTree
       Base::operator=(other);
 
       m_nodes = other.m_nodes;
+      m_reverseMap = other.m_reverseMap;
+      m_spaceIndexing = other.m_spaceIndexing;
 
       // using MR = detail::MemoryResource<EntityID>;
       auto segments = std::vector<typename detail::MemoryResource<EntityID>::MemorySegment*>(m_nodes.size());
@@ -2513,6 +2494,10 @@ namespace OrthoTree
     void Reset() noexcept
     {
       m_nodes.clear();
+      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+      {
+        m_reverseMap.clear();
+      }
       m_memoryResource.Reset();
       m_spaceIndexing = {};
     }
@@ -2521,8 +2506,12 @@ namespace OrthoTree
     // Remove all elements and ids, except Root
     void Clear() noexcept
     {
-      std::erase_if(m_nodes, [](auto const& p) { return p.first != SI::GetRootKey(); });
-      detail::at(m_nodes, SI::GetRootKey()).Clear();
+      auto& rootNode = m_nodes.at(GetRootNodeID());
+      rootNode.Clear();
+      auto rootNodeCopy = rootNode;
+
+      m_nodes.clear();
+      m_nodes.emplace(GetRootNodeID(), std::move(rootNodeCopy));
     }
 
 

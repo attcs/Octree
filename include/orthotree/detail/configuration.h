@@ -2,7 +2,20 @@
 
 #include "common.h"
 
+#include "embedded_resource_pmr_map.h"
+
+#include <map>
 #include <unordered_map>
+
+namespace OrthoTree::detail
+{
+#ifdef ORTHOTREE_IS_PMR_USED
+  constexpr bool USE_PMR = true;
+#else
+  constexpr bool USE_PMR = false;
+#endif
+} // namespace OrthoTree::detail
+
 
 namespace OrthoTree
 {
@@ -14,7 +27,7 @@ namespace OrthoTree
               //   Entity removal does not effect. Recommended for Loose trees, where the node overlapping would be large.
   };
 
-  template<double IS_LOOSE_FACTOR_ = 1.0, bool USE_MBR = false>
+  template<double IS_LOOSE_FACTOR_ = 1.0, bool USE_MBR = false, bool USE_PMR = detail::USE_PMR>
   struct Configuration
   {
     // Geometry type cannot be mixed within the same octree.
@@ -44,7 +57,11 @@ namespace OrthoTree
 
     // Associative container used for node storage (default: std::unordered_map)
     template<typename TKey, typename TValue, typename THash>
-    using LinearNodeContainer = std::unordered_map<TKey, TValue, THash>;
+    using UMapNodeContainer =
+      std::conditional_t<USE_PMR, detail::EmbeddedResourcePmrMap<std::pmr::unordered_map<TKey, TValue, THash>>, std::unordered_map<TKey, TValue, THash>>;
+
+    template<typename TKey, typename TValue, typename TComp>
+    using MapNodeContainer = std::conditional_t<USE_PMR, detail::EmbeddedResourcePmrMap<std::pmr::map<TKey, TValue, TComp>>, std::map<TKey, TValue, TComp>>;
 
     // Associative container used for reverse mapping storage (default: std::unordered_map)
     template<typename TKey, typename TValue, typename THash>
@@ -54,6 +71,6 @@ namespace OrthoTree
   using PointConfiguration = Configuration<1.0, false>;
 
   template<bool IS_LOOSE_TREE>
-  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, false>;
+  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, true>;
 
 } // namespace OrthoTree
