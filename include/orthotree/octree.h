@@ -3009,28 +3009,36 @@ namespace OrthoTree
     }
 
 
-    template<typename TAgainst, typename TTester>
-    constexpr bool TestEntity(TTester const& tester, EntityID entityID, EntityContainerView entities, TAgainst const& against) const noexcept
+    template<typename TTester, typename... TAgainst>
+    static constexpr auto TestEntity(TTester const& tester, EntityID entityID, EntityContainerView entities, [[maybe_unused]] TAgainst&&... against) noexcept
     {
       if constexpr (std::is_same_v<TTester, std::monostate>)
       {
         return true;
       }
-      else if constexpr (std::is_invocable_r_v<bool, TTester, EntityID>)
+      else if constexpr (sizeof...(against) > 0 && std::is_invocable_v<TTester, EntityID, TAgainst...>)
+      {
+        return tester(entityID, std::forward<TAgainst>(against)...);
+      }
+      else if constexpr (sizeof...(against) > 0 && std::is_invocable_v<TTester, typename EA::Entity, TAgainst...>)
+      {
+        return tester(EA::GetEntity(entities, entityID), std::forward<TAgainst>(against)...);
+      }
+      else if constexpr (sizeof...(against) == 1 && std::is_invocable_v<TTester, TAgainst..., EntityID>)
+      {
+        return tester(std::forward<TAgainst>(against)..., entityID);
+      }
+      else if constexpr (sizeof...(against) == 1 && std::is_invocable_v<TTester, TAgainst..., typename EA::Entity>)
+      {
+        return tester(std::forward<TAgainst>(against)..., EA::GetEntity(entities, entityID));
+      }
+      else if constexpr (std::is_invocable_v<TTester, EntityID>)
       {
         return tester(entityID);
       }
-      else if constexpr (std::is_invocable_r_v<bool, TTester, typename EA::Entity>)
+      else if constexpr (std::is_invocable_v<TTester, typename EA::Entity>)
       {
         return tester(EA::GetEntity(entities, entityID));
-      }
-      else if constexpr (std::is_invocable_r_v<bool, TTester, EntityID, TAgainst&>)
-      {
-        return tester(entityID, against);
-      }
-      else if constexpr (std::is_invocable_r_v<bool, TTester, typename EA::Entity, TAgainst&>)
-      {
-        return tester(EA::GetEntity(entities, entityID), against);
       }
       else
       {
@@ -3091,8 +3099,10 @@ namespace OrthoTree
     // Range search
     //
     // Accepted tester signatures:
-    // * bool(EntityID) / bool(EntityID, TVector&)
-    // * bool(Entity) / bool(Entity, TVector&)
+    // * bool(EntityID)
+    // * bool(EntityID, TVector&)
+    // * bool(Entity)
+    // * bool(Entity, TVector&)
     template<bool DO_RANGE_MUST_FULLY_CONTAIN = true, typename TTester = std::monostate>
     std::vector<EntityID> RangeSearch(
       TBox const& range, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
@@ -3205,19 +3215,31 @@ namespace OrthoTree
 
   public:
     // Hyperplane intersection
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TScalar, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TScalar, TVector)
+    template<typename TTester = std::monostate>
     std::vector<EntityID> PlaneSearch(
-      TScalar distanceOfOrigo, TVector const& planeNormal, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+      TScalar distanceOfOrigo,
+      TVector const& planeNormal,
+      EntityContainerView entities,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TTester&& tester = {}) const noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<EntityID>{};
-      TraverseNodesDepthFirst([&](auto const pNodeValue) {
-        if (IGM::GetBoxPlaneRelationAD(Core::GetNodeMinPoint(pNodeValue), Core::GetNodeSize(pNodeValue), distanceOfOrigo, planeNormal, tolerance) != PlaneRelation::Hit)
+      TraverseNodesDepthFirst([&](auto const nodeValue) {
+        if (IGM::GetBoxPlaneRelationAD(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue), distanceOfOrigo, planeNormal, tolerance) != PlaneRelation::Hit)
           return TraverseControl::SkipChildren;
 
-        for (auto const entityID : Core::GetNodeEntities(pNodeValue))
+        for (auto const entityID : Core::GetNodeEntities(nodeValue))
           if (GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), distanceOfOrigo, planeNormal, tolerance) == PlaneRelation::Hit)
-            results.emplace_back(entityID);
+            if (TestEntity(tester, entityID, entities, distanceOfOrigo, planeNormal))
+              results.emplace_back(entityID);
 
         return TraverseControl::Continue;
       });
@@ -3226,27 +3248,65 @@ namespace OrthoTree
     }
 
     // Hyperplane intersection using built-in plane
-    std::vector<EntityID> PlaneSearch(TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TScalar, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TScalar, TVector)
+    template<typename TTester = std::monostate>
+    std::vector<EntityID> PlaneSearch(
+      TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
-      return PlaneSearch(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), entities, tolerance);
+      return PlaneSearch(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), entities, tolerance, std::forward<TTester>(tester));
     }
 
     // Hyperplane intersection using built-in plane (same as PlaneSearch())
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TScalar, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TScalar, TVector)
+    template<typename TTester = std::monostate>
     std::vector<EntityID> PlaneIntersection(
-      TScalar distanceOfOrigo, TVector const& planeNormal, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+      TScalar distanceOfOrigo,
+      TVector const& planeNormal,
+      EntityContainerView entities,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TTester&& tester = {}) const noexcept
     {
-      return PlaneSearch(distanceOfOrigo, planeNormal, entities, tolerance);
+      return PlaneSearch(distanceOfOrigo, planeNormal, entities, tolerance, std::forward<TTester>(tester));
     }
 
     // Hyperplane intersection using built-in plane (same as PlaneSearch())
-    std::vector<EntityID> PlaneIntersection(TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TScalar, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TScalar, TVector)
+    template<typename TTester = std::monostate>
+    std::vector<EntityID> PlaneIntersection(
+      TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
-      return PlaneSearch(plane, entities, tolerance);
+      return PlaneSearch(plane, entities, tolerance, std::forward<TTester>(tester));
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TScalar, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TScalar, TVector)
+    template<typename TTester = std::monostate>
     std::vector<EntityID> PlanePositiveSegmentation(
-      TScalar distanceOfOrigo, TVector const& planeNormal, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+      TScalar distanceOfOrigo,
+      TVector const& planeNormal,
+      EntityContainerView entities,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TTester&& tester = {}) const noexcept
     {
       assert(GA::IsNormalizedVector(planeNormal));
 
@@ -3261,7 +3321,16 @@ namespace OrthoTree
         case PlaneRelation::Positive:
           TraverseNodesDepthFirst(
             [&](auto const pChildNodeValue) {
-              std::ranges::copy(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(results));
+              if constexpr (std::is_same_v<std::monostate, TTester>)
+              {
+                std::ranges::copy(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(results));
+              }
+              else
+              {
+                std::ranges::copy_if(Core::GetNodeEntities(pChildNodeValue), std::back_inserter(results), [&](auto const entityID) {
+                  return TestEntity(tester, entityID, entities, distanceOfOrigo, planeNormal);
+                });
+              }
               return TraverseControl::Continue;
             },
             pNodeValue);
@@ -3274,7 +3343,8 @@ namespace OrthoTree
             if (entityRelation == PlaneRelation::Negative)
               continue;
 
-            results.emplace_back(entityID);
+            if (TestEntity(tester, entityID, entities, distanceOfOrigo, planeNormal))
+              results.emplace_back(entityID);
           }
           return TraverseControl::Continue;
         }
@@ -3286,14 +3356,29 @@ namespace OrthoTree
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
-    std::vector<EntityID> PlanePositiveSegmentation(TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TScalar, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TScalar, TVector)
+    template<typename TTester = std::monostate>
+    std::vector<EntityID> PlanePositiveSegmentation(
+      TPlane const& plane, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
-      return PlanePositiveSegmentation(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), entities, tolerance);
+      return PlanePositiveSegmentation(GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), entities, tolerance, std::forward<TTester>(tester));
     }
 
     // Get all entities which relation is positive or intersected by the given space boundary planes
+    //
+    // Accepted tester signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TPlane)
+    // * bool(Entity)
+    // * bool(Entity, TPlane)
+    template<typename TTester = std::monostate>
     std::vector<EntityID> FrustumCulling(
-      std::span<TPlane const> const& boundaryPlanes, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+      std::span<TPlane const> const& boundaryPlanes, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
       auto results = std::vector<EntityID>{};
       if (boundaryPlanes.empty())
@@ -3327,19 +3412,28 @@ namespace OrthoTree
 
         for (auto const entityID : Core::GetNodeEntities(pNodeValue))
         {
-          auto relation = PlaneRelation::Negative;
+          bool isAnyOnNegativeSide = false;
           for (auto const& plane : boundaryPlanes)
           {
-            relation =
+            auto const relation =
               GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance);
-            if (relation != PlaneRelation::Positive)
+            auto const isOnNegativeSide = [&](auto const planeRelation) {
+              switch (planeRelation)
+              {
+              case PlaneRelation::Hit: return TestEntity(tester, entityID, entities, plane);
+              case PlaneRelation::Negative: return false;
+              case PlaneRelation::Positive: return true;
+              }
+              return false;
+            }(relation);
+
+            isAnyOnNegativeSide |= isOnNegativeSide;
+            if (isOnNegativeSide)
               break;
           }
 
-          if (relation == PlaneRelation::Negative)
-            continue;
-
-          results.emplace_back(entityID);
+          if (!isAnyOnNegativeSide)
+            results.emplace_back(entityID);
         }
 
         return TraverseControl::Continue;
@@ -3369,6 +3463,8 @@ namespace OrthoTree
     using EntityIDCondition = std::function<bool(EntityID)>;
     using EntityCondition = std::function<bool(typename EA::Entity)>;
     using QueryCondition = std::variant<FrustumCondition, RangeCondition, PlaneIntersectionCondition, EntityIDCondition, EntityCondition>;
+
+    // Complex query with multiple conditions. The conditions are combined with logical AND by default, but can be switched to OR by template parameter.
     template<bool IS_LOGICAL_OR_FILTERING = false>
     constexpr std::vector<EntityID> Query(auto const& conditions, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
@@ -3554,10 +3650,11 @@ namespace OrthoTree
       std::vector<EntityDistance> pessimistic;
     };
 
+    template<typename TEntityDistanceFn = std::monostate>
     static void AddEntityDistance(
       std::size_t neighborCount,
       TVector const& searchPoint,
-      std::optional<EntityDistanceFn> const& entityDistanceFn,
+      TEntityDistanceFn const& entityDistanceFn,
       auto const& nodeEntityIDs,
       EntityContainerView entities,
       TFloatScalar tolerance,
@@ -3589,13 +3686,20 @@ namespace OrthoTree
         if (pbd.min >= farthestEntityDistance.upper)
           continue;
 
-        if (entityDistanceFn)
+        if constexpr (!std::is_same_v<TEntityDistanceFn, std::monostate>)
         {
-          pbd.min = (*entityDistanceFn)(searchPoint, entityID);
-          if (pbd.min >= farthestEntityDistance.upper)
+          auto const entityDistanceResult = TestEntity(entityDistanceFn, entityID, entities, searchPoint);
+          if (!entityDistanceResult)
             continue;
 
-          pbd.minMax = pbd.min;
+          if constexpr (detail::IsStdOptionalV<decltype(entityDistanceResult)>)
+          {
+            pbd.min = *entityDistanceResult;
+            if (pbd.min >= farthestEntityDistance.upper)
+              continue;
+
+            pbd.minMax = pbd.min;
+          }
         }
 
         auto const shouldHeapify = neighborEntities.optimistic.size() == neighborCount - 1;
@@ -3692,14 +3796,24 @@ namespace OrthoTree
   public:
     // Get K Nearest Neighbor sorted by distance (point distance should be less than maxDistanceWithin, it is used as a Tolerance check). It may
     // results more element than neighborCount, if those are in equal distance (point-like) or possible hit (box-like).
-    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
+    //
+    // Accepted entityDistanceFn signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TVector)
+    // * std::optional<TScalar>(EntityID)
+    // * std::optional<TScalar>(EntityID, TVector)
+    // * std::optional<TScalar>(Entity)
+    // * std::optional<TScalar>(Entity, TVector)
+    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true, typename TEntityDistanceFn = std::monostate>
     std::vector<EntityID> GetNearestNeighbors(
       TVector const& searchPoint,
       std::size_t neighborCount,
       TScalar maxDistanceWithin,
       EntityContainerView entities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
-      std::optional<EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
+      TEntityDistanceFn&& entityDistanceFn = {}) const noexcept
     {
       assert(neighborCount > 0 && "At least one neighbor must be requested!");
       if (neighborCount == 0)
@@ -3736,16 +3850,26 @@ namespace OrthoTree
     }
 
     // Get K Nearest Neighbor sorted by distance
-    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
+    //
+    // Accepted entityDistanceFn signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TVector)
+    // * std::optional<TScalar>(EntityID)
+    // * std::optional<TScalar>(EntityID, TVector)
+    // * std::optional<TScalar>(Entity)
+    // * std::optional<TScalar>(Entity, TVector)
+    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true, typename TEntityDistanceFn = std::monostate>
     std::vector<EntityID> GetNearestNeighbors(
       TVector const& searchPoint,
       std::size_t neighborNo,
       EntityContainerView entities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
-      std::optional<EntityDistanceFn> const& entityDistanceFn = std::nullopt) const noexcept
+      TEntityDistanceFn&& entityDistanceFn = {}) const noexcept
     {
       return this->GetNearestNeighbors<SHOULD_SORT_ENTITIES_BY_DISTANCE>(
-        searchPoint, neighborNo, std::numeric_limits<TScalar>::max(), entities, tolerance, entityDistanceFn);
+        searchPoint, neighborNo, std::numeric_limits<TScalar>::max(), entities, tolerance, std::forward<TEntityDistanceFn>(entityDistanceFn));
     }
 
 
@@ -4385,7 +4509,17 @@ namespace OrthoTree
 
   public:
     // Get all entities that are intersected by the ray in order
-    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true>
+    //
+    // Accepted entityDistanceFn signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TVector rayBasePoint, TVector rayHeading)
+    // * bool(Entity)
+    // * bool(Entity, TVector rayBasePoint, TVector rayHeading)
+    // * std::optional<TFloatScalar>(EntityID)
+    // * std::optional<TFloatScalar>(EntityID, TVector rayBasePoint, TVector rayHeading)
+    // * std::optional<TFloatScalar>(Entity)
+    // * std::optional<TFloatScalar>(Entity, TVector rayBasePoint, TVector rayHeading)
+    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true, typename TEntityRayHitTester = std::monostate>
     std::vector<EntityID> RayIntersectedAll(
       TVector const& rayBasePoint,
       TVector const& rayHeading,
@@ -4393,7 +4527,7 @@ namespace OrthoTree
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxExaminationDistance = std::numeric_limits<TScalar>::max(),
-      std::optional<std::function<std::optional<TScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
+      TEntityRayHitTester&& entityRayHitTester = {}) const noexcept
     {
       assert(
         toleranceIncrement <= std::max<TFloatScalar>(tolerance * 10, TFloatScalar(0.1)) &&
@@ -4428,23 +4562,29 @@ namespace OrthoTree
         for (auto const entityID : Core::GetNodeEntities(pNodeValue))
         {
           auto const entityDistance = rayHitTester->Hit(EA::GetGeometry(entities, entityID));
-          if (entityDistance && (maxExaminationDistance == 0 || entityDistance->enterDistance <= maxExaminationDistance))
-          {
-            auto closestEntityDistance = entityDistance->enterDistance;
-            if (entityRayHitTester)
-            {
-              const auto result = (*entityRayHitTester)(entityID);
-              if (!result)
-                continue;
+          if (!entityDistance)
+            continue;
 
+          if (!((maxExaminationDistance == 0 || entityDistance->enterDistance <= maxExaminationDistance)))
+            continue;
+
+          auto closestEntityDistance = entityDistance->enterDistance;
+          if constexpr (!std::is_same_v<std::monostate, TEntityRayHitTester>)
+          {
+            auto result = TestEntity(entityRayHitTester, entityID, entities, rayBasePoint, rayHeading);
+            if (!result)
+              continue;
+
+            if constexpr (SHOULD_SORT_ENTITIES_BY_DISTANCE && detail::IsStdOptionalV<decltype(result)>)
+            {
               closestEntityDistance = *result;
             }
-
-            if constexpr (SHOULD_SORT_ENTITIES_BY_DISTANCE)
-              detail::insert(foundEntities, EntityDistance{ { closestEntityDistance }, entityID });
-            else
-              detail::insert(foundEntities, entityID);
           }
+
+          if constexpr (SHOULD_SORT_ENTITIES_BY_DISTANCE)
+            detail::insert(foundEntities, EntityDistance{ { closestEntityDistance }, entityID });
+          else
+            detail::insert(foundEntities, entityID);
         }
 
         return TraverseControl::Continue;
@@ -4476,6 +4616,17 @@ namespace OrthoTree
     }
 
     // Get first entities that hit by the ray
+    //
+    // Accepted entityDistanceFn signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TVector rayBasePoint, TVector rayHeading)
+    // * bool(Entity)
+    // * bool(Entity, TVector rayBasePoint, TVector rayHeading)
+    // * std::optional<TFloatScalar>(EntityID)
+    // * std::optional<TFloatScalar>(EntityID, TVector rayBasePoint, TVector rayHeading)
+    // * std::optional<TFloatScalar>(Entity)
+    // * std::optional<TFloatScalar>(Entity, TVector rayBasePoint, TVector rayHeading)
+    template<typename TEntityRayHitTester = std::monostate>
     std::vector<EntityID> RayIntersectedFirst(
       TVector const& rayBasePoint,
       TVector const& rayHeading,
@@ -4483,7 +4634,7 @@ namespace OrthoTree
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
-      std::optional<std::function<std::optional<TFloatScalar>(EntityID)>> entityRayHitTester = std::nullopt) const noexcept
+      TEntityRayHitTester&& entityRayHitTester = {}) const noexcept
     {
       const auto rayHitTester = IGM::RayHitTester::Make(rayBasePoint, rayHeading, tolerance, toleranceIncrement);
       if (!rayHitTester)
@@ -4518,15 +4669,18 @@ namespace OrthoTree
 
             // furthest possible hit distance
             auto& [closestHitDistance, furthestPossibleHitDistance] = *pickDomain;
-            if (entityRayHitTester)
+            if constexpr (!std::is_same_v<std::monostate, TEntityRayHitTester>)
             {
-              auto const result = (*entityRayHitTester)(entityID);
+              auto result = TestEntity(entityRayHitTester, entityID, entities, rayBasePoint, rayHeading);
               if (!result)
                 continue;
 
-              assert(*result <= furthestPossibleHitDistance && "entityRayHitTester returned out of box result.");
-              assert(*result >= closestHitDistance && "entityRayHitTester returned out of box result.");
-              closestHitDistance = furthestPossibleHitDistance = *result;
+              if constexpr (detail::IsStdOptionalV<decltype(result)>)
+              {
+                assert(*result <= furthestPossibleHitDistance && "entityRayHitTester returned out of box result.");
+                assert(*result >= closestHitDistance && "entityRayHitTester returned out of box result.");
+                closestHitDistance = furthestPossibleHitDistance = *result;
+              }
             }
 
             // push candidate
@@ -4562,15 +4716,27 @@ namespace OrthoTree
     }
 
     // Get first entities that hit by the ray
+    //
+    // Accepted entityDistanceFn signatures:
+    // * bool(EntityID)
+    // * bool(EntityID, TVector)
+    // * bool(Entity)
+    // * bool(Entity, TVector)
+    // * std::optional<TScalar>(EntityID)
+    // * std::optional<TScalar>(EntityID, TVector)
+    // * std::optional<TScalar>(Entity)
+    // * std::optional<TScalar>(Entity, TVector)
+    template<typename TEntityRayHitTester = std::monostate>
     std::vector<EntityID> RayIntersectedFirst(
       TRay const& ray,
       EntityContainerView entities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TFloatScalar toleranceIncrement = {},
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
-      std::optional<std::function<std::optional<TScalar>(EntityID)>> entityHitTester = std::nullopt) const noexcept
+      TEntityRayHitTester&& entityHitTester = {}) const noexcept
     {
-      return RayIntersectedFirst(GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, toleranceIncrement, maxDistance, entityHitTester);
+      return RayIntersectedFirst(
+        GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
     }
   }; // namespace OrthoTree
 
