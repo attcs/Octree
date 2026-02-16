@@ -621,7 +621,7 @@ namespace OrthoTree
         if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
           return m_nodeGeometry[GetRootNodeID()].size;
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
-          return GetNodeSize(GetRootNodeID());
+          return Base::GetNodeSize(0);
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
         {
           if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
@@ -1190,7 +1190,7 @@ namespace OrthoTree
         if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
           return m_nodes.at(GetRootNodeID()).GetGeometry().size;
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
-          return m_nodes.at(GetRootNodeID()).GetGeometry();
+          return Base::GetNodeSize(0);
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
         {
           if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
@@ -3112,15 +3112,19 @@ namespace OrthoTree
       auto const entityNo = entities.size();
       if (IGM::DoesRangeContainBoxAD(range, Core::GetNodeBox(Core::GetRootNodeValue()), tolerance))
       {
-        foundEntities.resize(entityNo);
+        foundEntities.reserve(entityNo);
 
         if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+        {
+          foundEntities.resize(entityNo);
           std::iota(foundEntities.begin(), foundEntities.end(), 0);
+        }
         else
-          std::transform(entities.begin(), entities.end(), foundEntities.begin(), [&entities](auto const& item) {
+        {
+          std::transform(entities.begin(), entities.end(), std::back_inserter(foundEntities), [&entities](auto const& item) {
             return EA::GetEntityID(entities, item);
           });
-
+        }
         return foundEntities;
       }
 
@@ -3181,8 +3185,8 @@ namespace OrthoTree
         else
         {
           std::ranges::copy_if(Core::GetNodeEntities(pNodeValue), std::back_inserter(foundEntities), [&](auto const entityID) {
-            if (boxTest(entityID))
-              return true;
+            if (!boxTest(entityID))
+              return false;
 
             return TestEntity(tester, entityID, entities, range);
           });
