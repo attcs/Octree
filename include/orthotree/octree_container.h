@@ -504,6 +504,27 @@ namespace OrthoTree
       return m_tree.GetEntitiesDepthFirst();
     }
 
+    // Visit entities in breadth first order
+    template<typename TProcedure>
+    constexpr void TraverseEntitiesBreadthFirst(TProcedure&& procedure) const noexcept
+    {
+      m_tree.TraverseEntitiesBreadthFirst(std::forward<TProcedure>(procedure));
+    }
+
+    // Visit entities in depth first order
+    template<typename TProcedure>
+    constexpr void TraverseEntitiesDepthFirst(TProcedure&& procedure) const noexcept
+    {
+      m_tree.TraverseEntitiesDepthFirst(std::forward<TProcedure>(procedure));
+    }
+
+    // Visit entities in priority order
+    template<typename TProcedure, typename TPriorityCalculator>
+    constexpr void TraverseEntitiesByPriority(TProcedure&& procedure, TPriorityCalculator&& priorityCalculator) const noexcept
+    {
+      m_tree.TraverseEntitiesByPriority(std::forward<TProcedure>(procedure), std::forward<TPriorityCalculator>(priorityCalculator));
+    }
+
     // Pick search
     //
     // Accepted tester signatures (same as OrthoTreeQueryBase::PickSearch):
@@ -596,7 +617,7 @@ namespace OrthoTree
     // * std::optional<TScalar>(EntityID, TVector)
     // * std::optional<TScalar>(Entity)
     // * std::optional<TScalar>(Entity, TVector)
-    template<typename TTester = std::monostate>
+    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true, typename TTester = std::monostate>
     std::vector<EntityID> GetNearestNeighbors(
       TVector const& pt,
       std::size_t k,
@@ -604,7 +625,7 @@ namespace OrthoTree
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TTester&& entityDistanceFn = {}) const noexcept
     {
-      return m_tree.GetNearestNeighbors(pt, k, maxDistanceWithin, m_entities, tolerance, std::forward<TTester>(entityDistanceFn));
+      return m_tree.template GetNearestNeighbors<SHOULD_SORT_ENTITIES_BY_DISTANCE>(pt, k, maxDistanceWithin, m_entities, tolerance, std::forward<TTester>(entityDistanceFn));
     }
 
   public: // Collision detection
@@ -653,7 +674,7 @@ namespace OrthoTree
     // * std::optional<TFloatScalar>(EntityID, TVector rayBasePoint, TVector rayHeading)
     // * std::optional<TFloatScalar>(Entity)
     // * std::optional<TFloatScalar>(Entity, TVector rayBasePoint, TVector rayHeading)
-    template<typename TEntityRayHitTester = std::monostate>
+    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true, typename TEntityRayHitTester = std::monostate>
     std::vector<EntityID> RayIntersectedAll(
       TVector const& rayBasePoint,
       TVector const& rayHeading,
@@ -662,7 +683,7 @@ namespace OrthoTree
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       TEntityRayHitTester&& entityHitTester = {}) const noexcept
     {
-      return m_tree.RayIntersectedAll(
+      return m_tree.template RayIntersectedAll<SHOULD_SORT_ENTITIES_BY_DISTANCE>(
         rayBasePoint, rayHeading, m_entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
     }
 
@@ -677,7 +698,7 @@ namespace OrthoTree
     // * std::optional<TFloatScalar>(EntityID, TVector rayBasePoint, TVector rayHeading)
     // * std::optional<TFloatScalar>(Entity)
     // * std::optional<TFloatScalar>(Entity, TVector rayBasePoint, TVector rayHeading)
-    template<typename TEntityRayHitTester = std::monostate>
+    template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true, typename TEntityRayHitTester = std::monostate>
     std::vector<EntityID> RayIntersectedAll(
       TRay const& ray,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
@@ -685,7 +706,7 @@ namespace OrthoTree
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       TEntityRayHitTester&& entityHitTester = {}) const noexcept
     {
-      return m_tree.RayIntersectedAll(
+      return m_tree.template RayIntersectedAll<SHOULD_SORT_ENTITIES_BY_DISTANCE>(
         ray, m_entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
     }
 
