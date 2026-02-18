@@ -41,6 +41,9 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 
 // By default, the node interface is not available. Use this macro to make node-related functions public.
 #define ORTHOTREE_PUBLIC_NODE_INTERFACE
+
+// Enable debug checks
+#define ORTHOTREE_DEBUG_CHECKS
 */
 
 #if defined(ORTHOTREE__USE_PMR) || defined(_MSC_VER)
@@ -152,6 +155,7 @@ namespace OrthoTree
         if (endIteratorAfterRemove == m_entities.segment.end())
           return false; // id was not registered previously.
 
+        // segment size decrease is handled by the memory resource
         return true;
       }
 
@@ -1232,6 +1236,7 @@ namespace OrthoTree
 #endif
 
     static NodeID GetRootNodeID() noexcept { return SI::GetRootKey(); }
+    static NodeID GetNoneNodeID() noexcept { return SI::GetNoneKey(); }
 
     constexpr auto const& GetNodes() const noexcept { return m_nodes; }
     constexpr std::size_t GetNodeCount() const noexcept { return m_nodes.size(); }
@@ -1899,7 +1904,10 @@ namespace OrthoTree
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
         auto const it = m_reverseMap.find(entityID);
-        return it != m_reverseMap.end();
+        if (it == m_reverseMap.end())
+          return GetNoneNodeID();
+
+        return it->second;
       }
       else
       {
@@ -1907,7 +1915,7 @@ namespace OrthoTree
           auto const& entities = GetNodeEntities(&keyAndValue);
           return std::ranges::find(entities, entityID) != entities.end();
         });
-        return it == m_nodes.end() ? NodeID{} : it->first;
+        return it == m_nodes.end() ? GetNoneNodeID() : it->first;
       }
     }
 
@@ -2097,6 +2105,7 @@ namespace OrthoTree
 
     bool IsEveryEntityUnique() const noexcept
     {
+#ifdef ORTHOTREE_DEBUG_CHECKS
       auto ids = std::vector<EntityID>();
       ids.reserve(100);
       std::for_each(m_nodes.begin(), m_nodes.end(), [&](auto& nodeValue) {
@@ -2107,6 +2116,9 @@ namespace OrthoTree
       auto const idsSizeBeforeUnique = ids.size();
       detail::sortAndUnique(ids);
       return idsSizeBeforeUnique == ids.size();
+#else
+      return true;
+#endif
     }
 
   private:
@@ -2189,9 +2201,9 @@ namespace OrthoTree
       AddNodeEntity(&*nodeIt, entityID);
       UpdateMinimalNodeGeometry(&*nodeIt, IGM::GetBoxAD(entityGeometry));
 
-      auto constexpr DO_UNIQUENESS_CHECK_TO_INDICIES = true;
-      if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-        assert(IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
+#ifdef ORTHOTREE_DEBUG_CHECKS
+      assert(IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
+#endif
 
       return true;
     }
@@ -2349,9 +2361,9 @@ namespace OrthoTree
         beginIt = nextIt;
       }
 
-      auto constexpr DO_UNIQUENESS_CHECK_TO_INDICIES = true;
-      if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-        assert(IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
+#ifdef ORTHOTREE_DEBUG_CHECKS
+      assert(IsEveryEntityUnique()); // Assert means: index is already added. Wrong input!
+#endif
 
       return true;
     }
@@ -2435,8 +2447,8 @@ namespace OrthoTree
       }
     }
 
-    // Update all element which are in the given hash-table.
-    template<bool IS_PARALLEL_EXEC = false, bool DO_UNIQUENESS_CHECK_TO_INDICIES = false>
+    // Update all element which are in the given hash-table. Use with std::move
+    template<bool IS_PARALLEL_EXEC = false>
     void UpdateIndexes(std::unordered_map<EntityID, std::optional<EntityID>> updateMap) noexcept
     {
       auto const updateMapEndIterator = updateMap.end();
@@ -2486,8 +2498,9 @@ namespace OrthoTree
         std::for_each(EXEC_POL_ADD(ep) m_nodes.begin(), m_nodes.end(), UpdateNodes);
       }
 
-      if constexpr (DO_UNIQUENESS_CHECK_TO_INDICIES)
-        assert(IsEveryEntityUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
+#ifdef ORTHOTREE_DEBUG_CHECKS
+      assert(IsEveryEntityUnique()); // Assert means: index replacements causes that multiple object has the same id. Wrong input!
+#endif
     }
 
     // Reset the tree
@@ -2675,7 +2688,7 @@ namespace OrthoTree
         {
           return GA::ArePointsEqual(geometry, EA::GetGeometry(entities, entityID), tolerance);
         }
-        else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
+        else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
         {
           return GA::AreBoxesEqual(geometry, EA::GetGeometry(entities, entityID), tolerance);
         }
@@ -3431,7 +3444,7 @@ namespace OrthoTree
           {
             auto const relation =
               GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance);
-            auto const isOnNegativeSide = [&](auto const planeRelation) {
+            auto const isOnPositiveSideOrHit = [&](auto const planeRelation) {
               switch (planeRelation)
               {
               case PlaneRelation::Hit: return TestEntity(tester, entityID, entities, plane);
@@ -3441,8 +3454,8 @@ namespace OrthoTree
               return false;
             }(relation);
 
-            isAnyOnNegativeSide |= isOnNegativeSide;
-            if (isOnNegativeSide)
+            isAnyOnNegativeSide |= !isOnPositiveSideOrHit;
+            if (isAnyOnNegativeSide)
               break;
           }
 
@@ -4007,17 +4020,17 @@ namespace OrthoTree
 
           for (std::size_t iRightEntity = iRightEntityBegin; iRightEntity < rightEntityNo; ++iRightEntity)
           {
-            auto const righEntityID = rightEntitiesInOrder[iRightEntity];
+            auto const rightEntityID = rightEntitiesInOrder[iRightEntity];
 
-            auto const& rightEntityGeometry = EA::GetGeometry(rightEntities, righEntityID);
+            auto const& rightEntityGeometry = EA::GetGeometry(rightEntities, rightEntityID);
             if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
             {
               if (GA::GetPointC(leftEntityGeometry, 0) < GA::GetPointC(rightEntityGeometry, 0))
                 break; // sweep and prune optimization
 
               if (GA::ArePointEqual(leftEntityGeometry, rightEntityGeometry, tolerance))
-                if (!collisionDetector || (*collisionDetector)(leftEntityID, righEntityID))
-                  collidedEntities.emplace_back(leftEntityID, righEntityID);
+                if (!collisionDetector || (*collisionDetector)(leftEntityID, rightEntityID))
+                  collidedEntities.emplace_back(leftEntityID, rightEntityID);
             }
             else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
             {
@@ -4025,8 +4038,8 @@ namespace OrthoTree
                 break; // sweep and prune optimization
 
               if (GA::AreBoxesOverlapped(leftEntityGeometry, rightEntityGeometry, false, false, tolerance))
-                if (!collisionDetector || (*collisionDetector)(leftEntityID, righEntityID))
-                  collidedEntities.emplace_back(leftEntityID, righEntityID);
+                if (!collisionDetector || (*collisionDetector)(leftEntityID, rightEntityID))
+                  collidedEntities.emplace_back(leftEntityID, rightEntityID);
             }
             else
             {
