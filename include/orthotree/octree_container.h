@@ -30,15 +30,16 @@ SOFTWARE.
 //////////////////////////////////////////////////////////////////////////
 
 
+#include "detail/common.h"
 namespace OrthoTree
 {
-  template<typename OrthoTreeCore>
+  template<typename TOrthoTreeCore>
   class OrthoTreeContainer
   {
   public:
-    using CONFIG = typename OrthoTreeCore::CONFIG;
+    using CONFIG = typename TOrthoTreeCore::CONFIG;
 
-    using GA = typename OrthoTreeCore::GA;
+    using GA = typename TOrthoTreeCore::GA;
     using TScalar = typename GA::Scalar;
     using TFloatScalar = typename GA::FloatScalar;
     using TVector = typename GA::Vector;
@@ -46,17 +47,17 @@ namespace OrthoTree
     using TRay = typename GA::Ray;
     using TPlane = typename GA::Plane;
 
-    using EA = typename OrthoTreeCore::EA;
+    using EA = typename TOrthoTreeCore::EA;
     using Entity = typename EA::Entity;
     using EntityID = typename EA::EntityID;
     using EntityContainer = EA::EntityContainer;
 
   protected:
-    OrthoTreeCore m_tree;
+    TOrthoTreeCore m_tree;
     EntityContainer m_entities;
 
   public: // Constructors
-    OrthoTreeContainer() noexcept = default;
+    constexpr explicit OrthoTreeContainer() noexcept = default;
 
     // Constructor for any contiguous container with runtime parallel parameter
     explicit OrthoTreeContainer(
@@ -72,9 +73,9 @@ namespace OrthoTree
       assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
 #endif
       if (isParallelCreation)
-        OrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+        TOrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       else
-        OrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
+        TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
     }
 
     // Constructor for any copyable container with runtime parallel parameter
@@ -90,9 +91,9 @@ namespace OrthoTree
       assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
 #endif
       if (isParallelCreation)
-        OrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+        TOrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       else
-        OrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
+        TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
     }
 
     // Constructor for any movable container with runtime parallel parameter
@@ -108,9 +109,9 @@ namespace OrthoTree
       assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
 #endif
       if (isParallelCreation)
-        OrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+        TOrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       else
-        OrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
+        TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
     }
 
     // Constructor for any contiguous container with compile-time parallel parameter
@@ -128,7 +129,8 @@ namespace OrthoTree
 #else
       static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
+        m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
     }
 
     // Constructor for any copyable container compile-time parallel parameter
@@ -145,7 +147,8 @@ namespace OrthoTree
 #else
       static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
+        m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
     }
 
     // Constructor for any movable container with compile-time parallel parameter
@@ -162,7 +165,8 @@ namespace OrthoTree
 #else
       static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      OrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
+        m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
     }
 
     // Point
@@ -176,7 +180,7 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = std::vector(entities.begin(), entities.end());
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
 
@@ -189,7 +193,7 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = entities;
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
 
@@ -202,15 +206,15 @@ namespace OrthoTree
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = std::move(entities);
-      OrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
       return otc;
     }
 
   public: // Member functions
-    constexpr OrthoTreeCore const& GetCore() const noexcept { return m_tree; }
+    constexpr TOrthoTreeCore const& GetCore() const noexcept { return m_tree; }
     constexpr EntityContainer const& GetData() const noexcept { return m_entities; }
 
-    constexpr void Init(TBox const& boxSpace, depth_t maxDepthID, std::size_t maxElementNoInNode = OrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+    constexpr void Init(TBox const& boxSpace, depth_t maxDepthID, std::size_t maxElementNoInNode = TOrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       m_tree.Init(boxSpace, maxDepthID, maxElementNoInNode);
     }
@@ -438,9 +442,9 @@ namespace OrthoTree
     // Erase entity by ID
     bool Erase(EntityID entityID) noexcept
     {
-      if (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+      if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
       {
-        if (EntityID(m_entities.size()) <= entityID)
+        if (m_entities.size() <= static_cast<size_t>(entityID))
           return false;
       }
 
@@ -489,15 +493,15 @@ namespace OrthoTree
     }
 
     // Collect all entity ID in breadth-first traverse order
-    std::vector<EntityID> GetEntitiesBreadthFirst(OrthoTreeCore::Core::NodeID nodeID = OrthoTreeCore::Core::GetRootNodeID()) const noexcept
+    std::vector<EntityID> GetEntitiesBreadthFirst() const noexcept
     {
-      return m_tree.GetEntitiesBreadthFirst(nodeID);
+      return m_tree.GetEntitiesBreadthFirst();
     }
 
     // Collect all entity ID in depth-first traverse order
-    std::vector<EntityID> GetEntitiesDepthFirst(OrthoTreeCore::Core::NodeID nodeID = OrthoTreeCore::Core::GetRootNodeID()) const noexcept
+    std::vector<EntityID> GetEntitiesDepthFirst() const noexcept
     {
-      return m_tree.GetEntitiesDepthFirst(nodeID);
+      return m_tree.GetEntitiesDepthFirst();
     }
 
     // Pick search
@@ -567,11 +571,11 @@ namespace OrthoTree
       return this->m_tree.FrustumCulling(boundaryPlanes, this->m_entities, tolerance, std::forward<TTester>(tester));
     }
 
-    using FrustumCondition = OrthoTreeCore::FrustumCondition;
-    using RangeCondition = OrthoTreeCore::RangeCondition;
-    using PlaneIntersectionCondition = OrthoTreeCore::PlaneIntersectionCondition;
-    using EntityIDCondition = OrthoTreeCore::EntityIDCondition;
-    using EntityCondition = OrthoTreeCore::EntityCondition;
+    using FrustumCondition = TOrthoTreeCore::FrustumCondition;
+    using RangeCondition = TOrthoTreeCore::RangeCondition;
+    using PlaneIntersectionCondition = TOrthoTreeCore::PlaneIntersectionCondition;
+    using EntityIDCondition = TOrthoTreeCore::EntityIDCondition;
+    using EntityCondition = TOrthoTreeCore::EntityCondition;
 
     // Complex query with multiple conditions. The conditions are combined with logical AND by default, but can be switched to OR by template parameter.
     // See `FrustumCondition`/ `RangeCondition` / `PlaneIntersectionCondition`/ `EntityIDCondition`/ `EntityCondition` for the accepted condition signatures.
@@ -604,7 +608,7 @@ namespace OrthoTree
     }
 
   public: // Collision detection
-    using FCollisionDetector = typename OrthoTreeCore::FCollisionDetector;
+    using FCollisionDetector = typename TOrthoTreeCore::FCollisionDetector;
 
     // Collision detection between the contained elements
     template<bool IS_PARALLEL_EXEC = false>
