@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2021 Attila Csikï¿½s
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,10 +24,20 @@ SOFTWARE.
 
 #pragma once
 
+#ifdef __cpp_lib_constexpr_inplace_vector
+#include <inplace_vector>
+#else
 #include <array>
+#endif
 
 namespace OrthoTree::detail
 {
+#ifdef __cpp_lib_constexpr_inplace_vector
+  template<typename T, std::size_t N>
+  using inplace_vector = std::inplace_vector<T, N>;
+
+#else
+
   template<typename T, std::size_t N>
   class inplace_vector
   {
@@ -46,7 +56,7 @@ namespace OrthoTree::detail
     constexpr inplace_vector() = default;
 
     template<typename... TVals>
-    constexpr T& emplace_back(TVals&&... value)
+    constexpr T& emplace_back(TVals&&... value) noexcept
     {
       assert(m_size < N);
       m_stack[m_size] = T(std::forward<TVals>(value)...);
@@ -54,22 +64,29 @@ namespace OrthoTree::detail
     }
 
 
-    constexpr void push_back(const T& value)
+    constexpr void push_back(const T& value) noexcept
     {
       assert(m_size < N);
       m_stack[m_size] = value;
       ++m_size;
     }
 
-    constexpr T& operator[](std::size_t index) { return m_stack[index]; }
+    constexpr void push_back(T&& value) noexcept
+    {
+      assert(m_size < N);
+      m_stack[m_size] = std::move(value);
+      ++m_size;
+    }
 
-    constexpr T const& operator[](std::size_t index) const { return m_stack[index]; }
+    constexpr T& operator[](std::size_t index) noexcept { return m_stack[index]; }
 
-    constexpr std::size_t size() const { return m_size; }
+    constexpr T const& operator[](std::size_t index) const noexcept { return m_stack[index]; }
+
+    constexpr std::size_t size() const noexcept { return m_size; }
 
     constexpr bool empty() const noexcept { return m_size == 0; }
 
-    constexpr iterator insert(iterator whereIt, T const& val)
+    constexpr iterator insert(iterator whereIt, T const& val) noexcept
       requires(std::is_trivially_copyable_v<T>)
     {
       assert(m_size < N);
@@ -84,7 +101,7 @@ namespace OrthoTree::detail
       return whereIt;
     }
 
-    constexpr iterator insert(iterator whereIt, T const& val)
+    constexpr iterator insert(iterator whereIt, T const& val) noexcept
       requires(!std::is_trivially_copyable_v<T>)
     {
       assert(m_size < N);
@@ -94,7 +111,7 @@ namespace OrthoTree::detail
       return whereIt;
     }
 
-    constexpr bool erase(iterator it)
+    constexpr bool erase(iterator it) noexcept
       requires(std::is_trivially_copyable_v<T>)
     {
       if (it < begin() || it >= end())
@@ -108,7 +125,7 @@ namespace OrthoTree::detail
       return true;
     }
 
-    constexpr bool erase(iterator it)
+    constexpr bool erase(iterator it) noexcept
       requires(!std::is_trivially_copyable_v<T>)
     {
       assert(m_size > 0);
@@ -123,18 +140,19 @@ namespace OrthoTree::detail
       return true;
     }
 
-    constexpr void clear() { m_size = 0; }
+    constexpr void clear() noexcept { m_size = 0; }
 
-    constexpr iterator begin() { return m_stack.begin(); }
+    constexpr iterator begin() noexcept { return m_stack.begin(); }
 
-    constexpr iterator end() { return m_stack.begin() + m_size; }
+    constexpr iterator end() noexcept { return m_stack.begin() + m_size; }
 
-    constexpr const_iterator begin() const { return m_stack.begin(); }
+    constexpr const_iterator begin() const noexcept { return m_stack.begin(); }
 
-    constexpr const_iterator end() const { return m_stack.begin() + m_size; }
+    constexpr const_iterator end() const noexcept { return m_stack.begin() + m_size; }
 
   private:
     container m_stack;
     std::size_t m_size = 0;
   };
+#endif
 } // namespace OrthoTree::detail
