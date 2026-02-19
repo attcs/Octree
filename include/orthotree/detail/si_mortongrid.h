@@ -11,12 +11,12 @@ namespace OrthoTree::detail
   class MortonGridSpaceIndexing : public MortonSpaceIndexing<TGeometryAdapter::DIMENSION_NO>
   {
     static constexpr dim_t DIMENSION_NO = TGeometryAdapter::DIMENSION_NO;
-    using SI = MortonSpaceIndexing<DIMENSION_NO>;
+    using SI = typename MortonSpaceIndexing<DIMENSION_NO>;
 
   public:
     using TVector = typename TGeometryAdapter::Vector;
     using TBox = typename TGeometryAdapter::Box;
-    using IGM = typename InternalGeometryModule<TGeometryAdapter>;
+    using IGM = InternalGeometryModule<TGeometryAdapter>;
 
   public:
     constexpr MortonGridSpaceIndexing() = default;

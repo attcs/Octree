@@ -85,20 +85,17 @@ public:
     ValueType m_value = {};
   };
 
-  constexpr SequenceView(ValueType beginValue, SizeType length) noexcept
+  constexpr SequenceView(ValueType beginValue, ValueType endValue) noexcept
   : m_beginValue(beginValue)
-  , m_length(length)
+  , m_endValue(endValue)
   {}
 
   constexpr Iterator begin() const noexcept { return Iterator(m_beginValue); }
-
-  // end iterator points one past the last generated value
-  constexpr Iterator end() const noexcept { return Iterator(m_beginValue + static_cast<ValueType>(m_length)); }
-
-  constexpr SizeType size() const noexcept { return m_length; }
-  constexpr bool empty() const noexcept { return m_length == 0; }
+  constexpr Iterator end() const noexcept { return Iterator(m_endValue); }
+  constexpr SizeType size() const noexcept { return m_endValue - m_beginValue; }
+  constexpr bool empty() const noexcept { return size() == 0; }
 
 private:
   ValueType m_beginValue = {};
-  SizeType m_length = 0;
+  ValueType m_endValue = {};
 };
