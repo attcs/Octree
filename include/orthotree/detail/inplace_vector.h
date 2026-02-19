@@ -24,6 +24,13 @@ SOFTWARE.
 
 #pragma once
 
+#include <cassert>
+#include <type_traits>
+#include <algorithm>
+#include <memory>
+#include <iterator>
+
+
 #ifdef __cpp_lib_constexpr_inplace_vector
 #include <inplace_vector>
 #else

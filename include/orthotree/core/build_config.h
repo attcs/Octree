@@ -24,12 +24,24 @@ SOFTWARE.
 
 #pragma once
 
-#undef ORTHOTREE_LOOPIVDEP
-#ifdef CRASH_UNDEF
-#undef CRASH_UNDEF
-#undef CRASH
-#endif // CRASH_UNDEF
-#ifdef CRASH_IF_UNDEF
-#undef CRASH_IF_UNDEF
-#undef ORTHOTREE_CRASH_IF
-#endif // CRASH_IF_UNDEF
+/* Settings
+* Use the following define-s before the header include
+
+// PMR is used with MSVC only by default. To use PMR anyway
+#define ORTHOTREE__USE_PMR
+
+// To disable PMR on all platforms use:
+#define ORTHOTREE__DISABLE_PMR
+
+// If the depth is less than 10, 32bit location code is enough (otherwise 64bit will be used)
+#define ORTHOTREE__LOCATIONCODE_32
+
+// Contiguous container of geometry data does not have specified index type. Octree lib uses index_t for it, it can specified to int or std::size_t.
+ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAST32_T
+
+// By default, the node interface is not available. Use this macro to make node-related functions public.
+#define ORTHOTREE_PUBLIC_NODE_INTERFACE
+
+// Enable debug checks
+#define ORTHOTREE_DEBUG_CHECKS
+*/

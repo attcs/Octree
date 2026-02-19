@@ -24,6 +24,31 @@ SOFTWARE.
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <cassert>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <algorithm>
+#include <bit>
+#include <compare>
+#include <concepts>
+#include <span>
+#include <optional>
+#include <memory>
+#include <limits>
+#include <string>
+#include <functional>
+#include <iterator>
+#include <numeric>
+#include <set>
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
+#include <variant>
+#include <ranges>
+
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -32,6 +57,7 @@ SOFTWARE.
 #include <type_traits>
 
 #include "../adapters/concepts.h"
+#include "../core/types.h"
 #include "common.h"
 #include "utils.h"
 

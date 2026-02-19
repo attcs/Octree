@@ -24,27 +24,6 @@ SOFTWARE.
 
 #pragma once
 
-/* Settings
-* Use the following define-s before the header include
-
-// PMR is used with MSVC only by default. To use PMR anyway
-#define ORTHOTREE__USE_PMR
-
-// To disable PMR on all platforms use:
-#define ORTHOTREE__DISABLE_PMR
-
-// If the depth is less than 10, 32bit location code is enough (otherwise 64bit will be used)
-#define ORTHOTREE__LOCATIONCODE_32
-
-// Contiguous container of geometry data does not have specified index type. Octree lib uses index_t for it, it can specified to int or std::size_t.
-ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAST32_T
-
-// By default, the node interface is not available. Use this macro to make node-related functions public.
-#define ORTHOTREE_PUBLIC_NODE_INTERFACE
-
-// Enable debug checks
-#define ORTHOTREE_DEBUG_CHECKS
-*/
 
 #if defined(ORTHOTREE__USE_PMR) || defined(_MSC_VER)
 #ifndef ORTHOTREE__DISABLE_PMR
@@ -85,7 +64,6 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 
 #include "detail/bitset_arithmetic.h"
 #include "detail/common.h"
-#include "detail/configuration.h"
 #include "detail/inplace_vector.h"
 #include "detail/internal_geometry_module.h"
 #include "detail/memory_resource.h"
@@ -95,26 +73,19 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 #include "detail/utils.h"
 #include "detail/zip_view.h"
 
+#include "core/types.h"
+#include "core/build_config.h"
+#include "core/configuration.h"
 #include "core/entity_adapter.h"
 #include "core/ot_dynamic_hash_core.h"
 #include "core/ot_static_linear_core.h"
 
 #include "core/ot_query.h"
 
-namespace OrthoTree
-{
-
-  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-  using DynamicOrthoTreeBase = OrthoTreeQueryBase<DynamicHashOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>>;
-
-  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-  using StaticOrthoTreeBase = OrthoTreeQueryBase<StaticLinearOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>>;
-
-  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-  using OrthoTreeBase = DynamicOrthoTreeBase<TEntityAdapter, TGeometryAdapter, TConfiguration>;
-
-} // namespace OrthoTree
 #include "adapters/general.h"
+
+#include "core/aliases.h"
 #include "octree_container.h"
+
 
 #include "detail/undefs.h"

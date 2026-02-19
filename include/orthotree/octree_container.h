@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef ORTHOTREE_CONTAINER_GUARD
-#define ORTHOTREE_CONTAINER_GUARD
+#pragma once
 
 //////////////////////////////////////////////////////////////////////////
 // Container type to make easier the OrthoTree usage
@@ -894,4 +893,3 @@ namespace OrthoTree
   template<typename EntityContainer>
   using OctreeBoxUDMapC = TreeBoxContainerNDUD<3, true, BaseGeometryType, EntityContainer>;
 } // namespace OrthoTree
-#endif // ORTHOTREE_CONTAINER_GUARD

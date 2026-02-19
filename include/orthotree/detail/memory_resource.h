@@ -24,6 +24,20 @@ SOFTWARE.
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <cassert>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <algorithm>
+#include <bit>
+#include <concepts>
+#include <span>
+#include <memory>
+#include <limits>
+#include <iterator>
+
 namespace OrthoTree::detail
 {
 
