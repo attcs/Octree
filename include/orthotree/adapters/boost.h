@@ -2,7 +2,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2021 Attila CsikÃ³s
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -67,7 +67,7 @@ namespace OrthoTree
       using Plane = boost::geometry::model::planeNd_t<DIMENSION_NO_, TScalar>;
 
       static constexpr dim_t DIMENSION_NO = DIMENSION_NO_;
-      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * 10.0;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10.0);
 
       static constexpr Vector MakePoint() noexcept { return {}; };
       static constexpr Box MakeBox() noexcept { return {}; };

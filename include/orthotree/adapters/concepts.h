@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2021 Attila CsikÃ³s
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,21 +24,14 @@ SOFTWARE.
 
 #pragma once
 
+#include "../core/types.h"
+
 #include <concepts>
 #include <optional>
 #include <type_traits>
 
 namespace OrthoTree
 {
-
-  // Enum of relation with Planes
-  enum class PlaneRelation : char
-  {
-    Negative,
-    Hit,
-    Positive
-  };
-
   // Adapter concepts
 
   template<class TAdapter, dim_t DIMENSION_NO_, typename TVector, typename TBox, typename TRay, typename TPlane, typename TScalar, typename TFloatScalar>

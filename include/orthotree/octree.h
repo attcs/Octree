@@ -62,6 +62,7 @@ SOFTWARE.
 #include <vector>
 #include <version>
 
+
 #include "detail/bitset_arithmetic.h"
 #include "detail/common.h"
 #include "detail/inplace_vector.h"
