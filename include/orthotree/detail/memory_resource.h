@@ -1,7 +1,7 @@
-/*
+ï»¿/*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2021 Attila Csikï¿½s
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,20 @@ SOFTWARE.
 
 #pragma once
 
+#include <algorithm>
+#include <bit>
+#include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <cassert>
+#include <iterator>
+#include <limits>
+#include <memory>
+#include <span>
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <algorithm>
-#include <bit>
-#include <concepts>
-#include <span>
-#include <memory>
-#include <limits>
-#include <iterator>
+
 
 namespace OrthoTree::detail
 {
@@ -312,8 +313,19 @@ namespace OrthoTree::detail
       }
       else
       {
-        auto& page = m_pages[ms.pageID];
-        page.resize(page.size - sizeDecrease);
+        if (ms.segment.size() == sizeDecrease)
+        {
+          Deallocate(ms);
+        }
+        else
+        {
+          auto& page = m_pages[ms.pageID];
+          T* segmentEnd = ms.segment.data() + ms.segment.size();
+          T* pageUsedEnd = page.data + page.size;
+
+          if (segmentEnd == pageUsedEnd)
+            page.resize(page.size - sizeDecrease);
+        }
       }
 
       ms.segment = ms.segment.first(ms.segment.size() - sizeDecrease);
@@ -443,9 +455,12 @@ namespace OrthoTree::detail
           }
           else
           {
-            auto const& last = m_freeMainSegments.back();
-            auto const& newSegment = m_freeMainSegments.emplace_back(IndexedSegment{ GetMainPageIndexOfBegin(ms.segment), last.capacity });
-            HandleFreeSegmentChange(m_freeMainSegments.end() - 1, newSegment.begin, segmentSize);
+            // Insert new free segment for the freed range. The capacity of the
+            // newly freed segment is the segmentSize, not the last free segment's
+            // capacity. Use emplace_back and then handle the inserted element.
+            auto const begin = GetMainPageIndexOfBegin(ms.segment);
+            m_freeMainSegments.emplace_back(IndexedSegment{ begin, segmentSize });
+            HandleFreeSegmentChange(m_freeMainSegments.end() - 1, begin, segmentSize);
           }
         }
       }
