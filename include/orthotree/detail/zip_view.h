@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2021 Attila CsikÃ³s
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -57,8 +57,8 @@ namespace OrthoTree::detail
 
     constexpr proxy_reference& operator=(const proxy_reference& right) noexcept
     {
-      m_it1 = right.m_it1;
-      m_it2 = right.m_it2;
+      *m_it1 = *right.m_it1;
+      *m_it2 = *right.m_it2;
       return *this;
     }
 
@@ -101,7 +101,7 @@ namespace OrthoTree::detail
       *left.m_it2 = std::move(*right.m_it2);
       *right.m_it2 = std::move(val2);
     }
-    
+
   private:
     It1 m_it1;
     It2 m_it2;
@@ -130,11 +130,7 @@ namespace OrthoTree::detail
     {}
 
     // constexpr reference operator*() noexcept { return reference(it1_, it2_); }
-    constexpr auto operator*() const noexcept
-    {
-      // const this, de a visszaadott proxy referencia írható
-      return proxy_reference<It1, It2>{ it1_, it2_ };
-    }
+    constexpr auto operator*() const noexcept { return proxy_reference<It1, It2>{ it1_, it2_ }; }
     // constexpr reference operator*() const noexcept { return reference(it1_, it2_); }
     constexpr It1 GetFirst() const noexcept { return it1_; }
     constexpr It2 GetSecond() const noexcept { return it2_; }
@@ -211,10 +207,15 @@ namespace OrthoTree::detail
     using const_iterator = iterator;
 
     constexpr zip_view(T1& data1, T2& data2) noexcept
+      requires(std::ranges::contiguous_range<T1> && std::ranges::contiguous_range<T2>)
     : m_data1(data1)
     , m_data2(data2)
     {
       assert(m_data1.size() == m_data2.size());
+      assert(m_data1.data() == m_data2.data());
+
+      // overlap is not allowed
+      assert(m_data1.data() + m_data1.size() <= m_data2.data() || m_data2.data() + m_data2.size() <= m_data1.data());
     }
 
     zip_view(const zip_view& other) noexcept
@@ -269,4 +270,4 @@ namespace OrthoTree::detail
   static_assert(std::ranges::random_access_range<zip_view<std::vector<int>, std::vector<int>>>);
   static_assert(std::ranges::sized_range<zip_view<std::vector<int>, std::vector<int>>>);
 
-} // namespace detail
+} // namespace OrthoTree::detail
