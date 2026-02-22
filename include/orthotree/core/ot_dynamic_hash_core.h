@@ -29,6 +29,11 @@ SOFTWARE.
 #include "../detail/inplace_vector.h"
 #include "../detail/internal_geometry_module.h"
 #include "../detail/memory_resource.h"
+#include "../detail/partitioning.h"
+#include "../detail/si_morton.h"
+#include "../detail/si_mortongrid.h"
+#include "../detail/zip_view.h"
+
 #include "configuration.h"
 #include "ot_base.h"
 #include "types.h"
@@ -1195,8 +1200,11 @@ namespace OrthoTree
         for (auto const& childNodeID : children)
         {
           auto const childNodeValue = GetNodeValue(childNodeID);
-          if (IsNodeEntitiesEmpty(childNodeValue))
+          if (!IsNodeGeometryInitialized(childNodeValue->second.GetGeometry()))
+          {
+            assert(false);
             continue;
+          }
 
           const auto childBox = GetNodeBox(childNodeValue);
           IGM::UniteInBoxAD(nodeBox, childBox);

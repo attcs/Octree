@@ -24,8 +24,16 @@ SOFTWARE.
 
 #pragma once
 
+#include "configuration.h"
 #include "ot_base.h"
 #include "types.h"
+
+
+#include "../detail/si_mortongrid.h"
+#include "../detail/zip_view.h"
+
+#include <variant>
+#include <vector>
 
 
 namespace OrthoTree
@@ -65,28 +73,28 @@ namespace OrthoTree
     struct NodeStorage256
     {
       using NodeSegmentIndex = uint8_t;
-      using EntitySegmentIndex = uint8_t;
+      using EntitySegment = Segment<uint8_t, uint8_t>;
 
       std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegmentIndex> nodeEntityBegins;
+      std::vector<EntitySegment> nodeEntitySegment;
     };
 
     struct NodeStorage65536
     {
       using NodeSegmentIndex = uint16_t;
-      using EntitySegmentIndex = uint16_t;
+      using EntitySegment = Segment<uint16_t, uint16_t>;
 
       std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegmentIndex> nodeEntityBegins;
+      std::vector<EntitySegment> nodeEntitySegment;
     };
 
     struct NodeStorageGeneral
     {
       using NodeSegmentIndex = uint32_t;
-      using EntitySegmentIndex = uint32_t;
+      using EntitySegment = Segment<uint32_t, uint32_t>;
 
       std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegmentIndex> nodeEntityBegins;
+      std::vector<EntitySegment> nodeEntitySegment;
     };
 
     using NodeGeometry =
@@ -188,7 +196,7 @@ namespace OrthoTree
 
     constexpr std::size_t GetNodeEntityCount(NodeValue nodeID) const noexcept
     {
-      return std::visit([&](auto const& nodes) { return nodes.nodeEntities[nodeID].length; }, m_nodes);
+      return std::visit([&](auto const& nodes) { return nodes.nodeEntitySegment[nodeID].length; }, m_nodes);
     }
 
     constexpr SequenceView<NodeID> GetNodeChildren(NodeValue nodeID) const noexcept
@@ -208,20 +216,15 @@ namespace OrthoTree
     {
       return std::visit(
         [this, nodeID](auto const& nodes) {
-          return std::span<EntityID const>(
-            &m_entityStorage[nodes.nodeEntityBegins[nodeID]], nodes.nodeEntityBegins[nodeID + 1] - nodes.nodeEntityBegins[nodeID]);
+          auto const [beginID, length] = nodes.nodeEntitySegment[nodeID];
+          return std::span<EntityID const>(&m_entityStorage[beginID], length);
         },
         m_nodes);
     }
 
     constexpr bool IsNodeEntitiesEmpty(NodeValue nodeID) const noexcept
     {
-      return std::visit(
-        [nodeID](auto const& nodes) {
-          nodes.nodeEntityBegins[nodeID];
-          return nodes.nodeEntityBegins[nodeID] == nodes.nodeEntityBegins[nodeID + 1];
-        },
-        m_nodes);
+      return std::visit([nodeID](auto const& nodes) { return nodes.nodeEntitySegment[nodeID].length == 0; }, m_nodes);
     }
 
     constexpr decltype(auto) GetNodeMinPoint(NodeValue nodeID) const noexcept
@@ -355,10 +358,11 @@ namespace OrthoTree
     static constexpr bool IsFit(std::size_t entityCount, std::size_t maxNodeCount) noexcept
     {
       return maxNodeCount < std::numeric_limits<typename TNodeStorage::NodeSegmentIndex>::max() &&
-             entityCount < std::numeric_limits<typename TNodeStorage::EntitySegmentIndex>::max();
+             entityCount < std::numeric_limits<typename TNodeStorage::EntitySegment::Begin>::max() &&
+             entityCount < std::numeric_limits<typename TNodeStorage::EntitySegment::Length>::max();
     }
 
-    constexpr NodeID CreateNode(SI::Location location, uint32_t nodeEntityCount, uint32_t childNodeCount, MGSI const& spaceIndexing)
+    constexpr NodeID CreateNode(SI::Location location, uint32_t nodeEntityBeginID, uint32_t nodeEntityCount, uint32_t childNodeCount, MGSI const& spaceIndexing)
     {
       auto const nodeID = static_cast<NodeID>(m_nodeDepthIDs.size());
 
@@ -366,10 +370,11 @@ namespace OrthoTree
       std::visit(
         [&](auto& nodes) {
           using NodeStorage = std::decay_t<decltype(nodes)>;
-          using EntitySegmentIndex = typename NodeStorage::EntitySegmentIndex;
+          using EntitySegment = typename NodeStorage::EntitySegment;
           using NodeSegmentIndex = typename NodeStorage::NodeSegmentIndex;
 
-          nodes.nodeEntityBegins.emplace_back(static_cast<EntitySegmentIndex>(nodes.nodeEntityBegins.back() + nodeEntityCount));
+          nodes.nodeEntitySegment.emplace_back(
+            EntitySegment{ static_cast<typename EntitySegment::Begin>(nodeEntityBeginID), static_cast<typename EntitySegment::Length>(nodeEntityCount) });
 
           // Child node segment is filled if there are child nodes. Leaf nodes' segments are not created to save space, and GetNodeChildren() returns empty view for them.
           if (childNodeCount > 0)
@@ -401,25 +406,24 @@ namespace OrthoTree
       };
 
       auto nodeQueue = std::queue<NodeProcessingData>();
-      nodeQueue.push(NodeProcessingData{ {}, 0, detail::size<uint32_t>(rootBeginLocationIt.GetSecond(), rootEndLocationIt.GetSecond()) });
+      nodeQueue.push(NodeProcessingData{ {}, 0, detail::size<uint32_t>(rootBeginLocationIt, rootEndLocationIt) });
 
-      auto locationIt = rootBeginLocationIt;
       while (!nodeQueue.empty())
       {
-        auto [location, beginID, nodeEntityCount] = nodeQueue.front();
+        auto [location, nodeEntityBeginID, nodeEntityCount] = nodeQueue.front();
         nodeQueue.pop();
 
         auto depthID = location.GetDepthID();
 
         if (nodeEntityCount <= Base::GetMaxElementNum() || depthID >= Base::GetMaxDepthID())
         {
-          CreateNode(location, nodeEntityCount, 0, spaceIndexing);
+          CreateNode(location, nodeEntityBeginID, nodeEntityCount, 0, spaceIndexing);
           continue;
         }
 
-        auto beginIt = rootBeginLocationIt + beginID;
+        auto beginIt = rootBeginLocationIt + nodeEntityBeginID;
         auto endIt = beginIt + nodeEntityCount;
-        auto const endID = beginID + nodeEntityCount;
+        auto const endID = nodeEntityBeginID + nodeEntityCount;
 
         uint32_t nonRefinableEntityCount = 0;
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
@@ -436,18 +440,17 @@ namespace OrthoTree
 
           if (beginIt != nonRefinableEndIt)
           {
-            nonRefinableEntityCount = detail::size<uint32_t>(beginIt.GetSecond(), nonRefinableEndIt.GetSecond());
+            nonRefinableEntityCount = detail::size<uint32_t>(beginIt, nonRefinableEndIt);
             if (nonRefinableEntityCount == nodeEntityCount)
             {
-              CreateNode(location, nodeEntityCount, 0, spaceIndexing);
+              CreateNode(location, nodeEntityBeginID, nodeEntityCount, 0, spaceIndexing);
               continue;
             }
 
             beginIt = nonRefinableEndIt;
           }
         }
-
-        beginID += nonRefinableEntityCount;
+        auto beginID = nodeEntityBeginID + nonRefinableEntityCount;
 
         ++depthID;
         auto const examinedLevelID = Base::GetExaminationLevelID(depthID);
@@ -465,8 +468,8 @@ namespace OrthoTree
             {
               auto childEndIt =
                 std::partition_point(beginIt, endIt, [&](auto const& location) { return childChecker.Test(location.GetFirst().GetLocationID()); });
-              for (auto it = beginIt.GetFirst(); it != childEndIt.GetFirst(); ++it)
-                lcah.Add(*it);
+              for (auto it = beginIt; it != childEndIt; ++it)
+                lcah.Add((*it).GetFirst());
 
               return childEndIt;
             }
@@ -480,7 +483,7 @@ namespace OrthoTree
             }
           }();
 
-          auto childEntityCount = detail::size<uint32_t>(beginIt.GetSecond(), childEndIt.GetSecond());
+          auto childEntityCount = detail::size<uint32_t>(beginIt, childEndIt);
           nodeQueue.push({ lcah.GetLocation(Base::GetMaxDepthID()), beginID, childEntityCount });
 
           ++childNodeCount;
@@ -488,7 +491,7 @@ namespace OrthoTree
           beginIt = childEndIt;
         }
 
-        CreateNode(location, nonRefinableEntityCount, childNodeCount, spaceIndexing);
+        CreateNode(location, nodeEntityBeginID, nonRefinableEntityCount, childNodeCount, spaceIndexing);
       }
     }
 
@@ -540,11 +543,11 @@ namespace OrthoTree
 
       auto const maxNodeCount = GetMaxPossibleNodeCount(entityCount);
       if (IsFit<NodeStorage256>(entityCount, maxNodeCount))
-        m_nodes = NodeStorage256{ .nodeChildSegmentBegins = { 1 }, .nodeEntityBegins = { 0 } };
+        m_nodes = NodeStorage256{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
       else if (IsFit<NodeStorage65536>(entityCount, maxNodeCount))
-        m_nodes = NodeStorage65536{ .nodeChildSegmentBegins = { 1 }, .nodeEntityBegins = { 0 } };
+        m_nodes = NodeStorage65536{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
       else
-        m_nodes = NodeStorageGeneral{ .nodeChildSegmentBegins = { 1 }, .nodeEntityBegins = { 0 } };
+        m_nodes = NodeStorageGeneral{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
 
       auto const estimatedNodeNum =
         detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityCount, maxDepthID, maxElementNumInNode);
@@ -552,7 +555,7 @@ namespace OrthoTree
       std::visit(
         [&](auto& nodes) {
           nodes.nodeChildSegmentBegins.reserve(estimatedNodeNum);
-          nodes.nodeEntityBegins.reserve(estimatedNodeNum);
+          nodes.nodeEntitySegment.reserve(estimatedNodeNum);
         },
         m_nodes);
 
@@ -567,15 +570,16 @@ namespace OrthoTree
 
   public: // Create
     // Create
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec>
     static bool Create(
       StaticLinearOrthoTreeCore& tree,
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
     {
-      return tree.Create<IS_PARALLEL_EXEC>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      return tree.Create<TExecMode>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
     }
   };
 } // namespace OrthoTree
