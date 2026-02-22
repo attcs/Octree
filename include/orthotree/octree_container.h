@@ -678,16 +678,16 @@ namespace OrthoTree
   };
 
   template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
-  using TreePointContainerND = OrthoTreeContainer<TreePointND<DIMENSION_NO, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+  using TreePointContainerND = OrthoTreeContainer<OrthoTreePointND<DIMENSION_NO, TScalar, IS_CONTIOGUOS_CONTAINER>>;
 
   template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
-  using TreeBoxContainerND = OrthoTreeContainer<TreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+  using TreeBoxContainerND = OrthoTreeContainer<OrthoTreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar, IS_CONTIOGUOS_CONTAINER>>;
 
   template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer>
-  using TreePointContainerNDUD = OrthoTreeContainer<TreePointNDUD<DIMENSION_NO, TScalar, TEntityContainer>>;
+  using TreePointContainerNDUD = OrthoTreeContainer<OrthoTreePointNDUD<DIMENSION_NO, TScalar, TEntityContainer>>;
 
   template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer>
-  using TreeBoxContainerNDUD = OrthoTreeContainer<TreeBoxNDUD<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TEntityContainer>>;
+  using TreeBoxContainerNDUD = OrthoTreeContainer<OrthoTreeBoxNDUD<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TEntityContainer>>;
 
   // Dualtree for points
   using DualtreePointC = TreePointContainerND<1, BaseGeometryType>;
