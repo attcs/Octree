@@ -24,7 +24,15 @@ SOFTWARE.
 
 #pragma once
 
+#include "../detail/bitset_arithmetic.h"
+#include "../detail/common.h"
+#include "../detail/inplace_vector.h"
+#include "../detail/internal_geometry_module.h"
+#include "../detail/memory_resource.h"
+#include "configuration.h"
 #include "ot_base.h"
+#include "types.h"
+
 
 #include <algorithm>
 #include <bit>
@@ -114,10 +122,13 @@ namespace OrthoTree
         return true;
       }
 
-      constexpr void DecreaseEntityIDs(EntityID removedEntityID) noexcept
+      constexpr void DecreaseEntityIDs([[maybe_unused]] EntityID removedEntityID) noexcept
       {
-        for (auto& id : m_entities.segment)
-          id -= removedEntityID < id;
+        if constexpr (std::is_integral_v<EntityID>)
+        {
+          for (auto& id : m_entities.segment)
+            id -= removedEntityID < id;
+        }
       }
 
       EntityContainer& GetEntitySegment() noexcept { return m_entities; }
@@ -222,6 +233,8 @@ namespace OrthoTree
     using NodeIDCR = typename SI::NodeIDCR;
 
   private:
+    static_assert(std::is_trivially_copyable_v<EntityID>, "EntityID must be trivially copyable!");
+
     using NodeGeometry = std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, std::monostate, typename Base::NodeGeometry>;
 
     using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, NodeID, typename SI::ChildID, EntityID, NodeGeometry>;
@@ -268,33 +281,28 @@ namespace OrthoTree
     }
 
     // Initialize the base octree structure with entity collection
+    template<typename TExecMode = SeqExec>
     explicit DynamicHashOrthoTreeCore(
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      bool isParallelExec = false) noexcept
+      TExecMode execMode = {}) noexcept
     {
-      auto isSuccessfullyInsertedAllElements = false;
-      if (isParallelExec)
-        isSuccessfullyInsertedAllElements = Create<true>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
-      else
-        isSuccessfullyInsertedAllElements = Create<false>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
-
+      auto isSuccessfullyInsertedAllElements = Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
       assert(isSuccessfullyInsertedAllElements);
     }
 
     // Initialize the base octree structure with entity collection and parallel tree-building option
-    template<typename EXEC_TAG>
+    template<typename TExecMode>
     DynamicHashOrthoTreeCore(
-      EXEC_TAG,
+      TExecMode execMode,
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
-      auto isSuccessfullyInsertedAllElements =
-        Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      auto isSuccessfullyInsertedAllElements = Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
       assert(isSuccessfullyInsertedAllElements);
     }
 
@@ -666,12 +674,13 @@ namespace OrthoTree
 
   public: // Create
     // Create
-    template<bool IS_PARALLEL_EXEC = false, bool ARE_ENTITIES_SURELY_IN_MODELSPACE = false>
+    template<typename TExecMode = SeqExec, bool ARE_ENTITIES_SURELY_IN_MODELSPACE = false>
     bool Create(
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
     {
       auto const boxSpace = boxSpaceOptional ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::template GetBoundingBoxAD<EA>(entities);
 
@@ -701,7 +710,7 @@ namespace OrthoTree
         endIt = std::partition(locationsZip.begin(), endIt, [](auto const& element) { return element.GetFirst().GetDepthID() != INVALID_DEPTH; });
       }
 
-      constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
+      constexpr bool ARE_LOCATIONS_SORTED = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
@@ -722,21 +731,23 @@ namespace OrthoTree
     }
 
     // Create
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec, bool ARE_ENTITIES_SURELY_IN_MODELSPACE = false>
     static bool Create(
       DynamicHashOrthoTreeCore& tree,
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
     {
-      return tree.Create<IS_PARALLEL_EXEC>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      return tree.Create<TExecMode, ARE_ENTITIES_SURELY_IN_MODELSPACE>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
     }
 
   public: // BulkInsert // TODO finish
-    void BulkInsertV1(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+    template<typename TExecMode = SeqExec>
+    void BulkInsertV1(EntityContainerView entities, TExecMode execMode = {}) noexcept
     {
-      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
 
       auto const entityNo = entities.size();
 
@@ -829,9 +840,11 @@ namespace OrthoTree
         }
       }
     }
-    void BulkInsert(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+
+    template<typename TExecMode = SeqExec>
+    void BulkInsert(EntityContainerView entities, TExecMode execMode = {}) noexcept
     {
-      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
 
       auto const entityNo = entities.size();
 
@@ -851,7 +864,7 @@ namespace OrthoTree
       auto orphanNodes = std::vector<NodeID>{};
       auto const maxElementNo = static_cast<uint32_t>(Base::GetMaxElementNum());
       Partitioning::DepthFirstPartition<GA::DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
-        EXEC_TAG,
+        execMode,
         locationsZip.begin(),
         locationsZip.end(),
         SI::GetRootLocation(),
@@ -915,10 +928,10 @@ namespace OrthoTree
       }
     }
 
-
-    void BulkInsertWOPart(EntityContainerView entities, auto EXEC_TAG = SEQ_EXEC) noexcept
+    template<typename TExecMode = SeqExec>
+    void BulkInsertWOPart(EntityContainerView entities, TExecMode execMode = {}) noexcept
     {
-      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<std::remove_cvref_t<decltype(EXEC_TAG)>, ExecutionTags::Parallel>;
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
 
       auto const entityNo = entities.size();
 
@@ -1321,8 +1334,18 @@ namespace OrthoTree
 
   public:
     // Insert entity into the tree. If allowLeafCreation is true: The smallest node will be chosen by the max depth. If allowLeafCreation is false: The smallest existing level on the branch will be chosen.
-    bool InsertIntoLeaf(EntityID entityID, EA::Geometry const& entityGeometry, bool allowLeafCreation = false) noexcept
+    bool InsertIntoLeaf(EntityID entityID, EA::Geometry const& entityGeometry, InsertionMode insertionMode = InsertionMode::ExistingLeaf) noexcept
     {
+      assert([insertionMode] {
+        switch (insertionMode)
+        {
+        case InsertionMode::Balanced: return false;
+        case InsertionMode::LowestLeaf:
+        case InsertionMode::ExistingLeaf: return true;
+        }
+        return false;
+      }());
+
       auto const oosResult = HandleOutOfSpaceInsertion(entityID, entityGeometry);
       if (oosResult != OutOfSpaceInsertionResult::NotHandled)
         return oosResult != OutOfSpaceInsertionResult::Denied;
@@ -1332,7 +1355,7 @@ namespace OrthoTree
       bool isNodeAdded = false;
       if (nodeIt == m_nodes.end())
       {
-        if (allowLeafCreation)
+        if (insertionMode == InsertionMode::LowestLeaf)
         {
           nodeIt = AddNode(entityNodeID);
           isNodeAdded = true;
@@ -1524,7 +1547,7 @@ namespace OrthoTree
 
 
     // Update id by the new bounding box information
-    bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
+    bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, InsertionMode insertionMode = InsertionMode::ExistingLeaf) noexcept
     {
       if constexpr (!CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
       {
@@ -1535,15 +1558,19 @@ namespace OrthoTree
       if (!EraseBase<false>(entityID))
         return false;
 
-      return InsertIntoLeaf(entityID, newEntityGeometry, allowLeafCreation);
+      return InsertIntoLeaf(entityID, newEntityGeometry, insertionMode);
     }
 
     // Update id by the new bounding box information and the erase part is aided by the old bounding box geometry data
-    bool Update(EntityID entityID, EA::Geometry const& oldEntityGeometry, EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
+    bool Update(
+      EntityID entityID,
+      EA::Geometry const& oldEntityGeometry,
+      EA::Geometry const& newEntityGeometry,
+      InsertionMode insertionMode = InsertionMode::ExistingLeaf) noexcept
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
-        return Update(entityID, newEntityGeometry, allowLeafCreation);
+        return Update(entityID, newEntityGeometry, insertionMode);
       }
       else
       {
@@ -1561,7 +1588,7 @@ namespace OrthoTree
         if (newNodeIt == m_nodes.end())
           return false;
 
-        return InsertIntoLeaf(entityID, newEntityGeometry, allowLeafCreation);
+        return InsertIntoLeaf(entityID, newEntityGeometry, insertionMode);
       }
     }
 
@@ -1602,8 +1629,8 @@ namespace OrthoTree
     }
 
     // Update all element which are in the given hash-table. Use with std::move
-    template<bool IS_PARALLEL_EXEC = false>
-    void UpdateIndexes(std::unordered_map<EntityID, std::optional<EntityID>> updateMap) noexcept
+    template<typename TExecMode = SeqExec>
+    void UpdateIndexes(std::unordered_map<EntityID, std::optional<EntityID>> updateMap, TExecMode execMode = {}) noexcept
     {
       auto const updateMapEndIterator = updateMap.end();
 
@@ -1625,7 +1652,7 @@ namespace OrthoTree
             --i;
           }
 
-          if constexpr (!IS_PARALLEL_EXEC)
+          if constexpr (std::is_same_v<TExecMode, SeqExec>)
             updateMap.erase(it);
         }
 
@@ -1683,8 +1710,8 @@ namespace OrthoTree
 
 
     // Move the whole tree with a std::vector of the movement
-    template<bool IS_PARALLEL_EXEC = false>
-    void Move(TVector const& moveVector) noexcept
+    template<typename TExecMode = SeqExec>
+    void Move(TVector const& moveVector, TExecMode execMode = {}) noexcept
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
       {
@@ -1737,24 +1764,27 @@ namespace OrthoTree
       }
     }
 
-    void DecreaseEntityIDs(EntityID entityID) noexcept
+    void DecreaseEntityIDs([[maybe_unused]] EntityID entityID) noexcept
     {
-      for (auto& [_, node] : m_nodes)
-        node.DecreaseEntityIDs(entityID);
-
-      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+      if constexpr (!EA::IS_ENTITY_KEYED)
       {
-        auto reverseMap = std::move(m_reverseMap);
-        for (auto it = reverseMap.begin(); it != reverseMap.end();)
+        for (auto& [_, node] : m_nodes)
+          node.DecreaseEntityIDs(entityID);
+
+        if constexpr (CONFIG::USE_REVERSE_MAPPING)
         {
-          auto node = reverseMap.extract(it++);
-          node.key() -= (entityID <= node.key());
-          m_reverseMap.insert(std::move(node));
+          auto reverseMap = std::move(m_reverseMap);
+          for (auto it = reverseMap.begin(); it != reverseMap.end();)
+          {
+            auto node = reverseMap.extract(it++);
+            node.key() -= (entityID <= node.key());
+            m_reverseMap.insert(std::move(node));
+          }
         }
       }
     }
 
-    template<bool DECREASE_ENTITY_IDS = EA::REQUIRES_CONTIGUOUS_ENTITY_IDS>
+    template<bool DECREASE_ENTITY_IDS = !EA::IS_ENTITY_KEYED>
     constexpr bool EraseBase(EntityID entityID) noexcept
     {
       bool isErased = false;
@@ -1798,7 +1828,7 @@ namespace OrthoTree
       return true;
     }
 
-    template<bool DECREASE_ENTITY_IDS = EA::REQUIRES_CONTIGUOUS_ENTITY_IDS>
+    template<bool DECREASE_ENTITY_IDS = !EA::IS_ENTITY_KEYED>
     constexpr bool EraseBase(EntityID entitiyID, EA::Geometry const& entityGeometry) noexcept
     {
       auto nodeIt = GetNodeIt(entityGeometry);
@@ -1821,12 +1851,12 @@ namespace OrthoTree
 
   public: // Entity handling
     // Erase entity via reverse mapping or brute force search. Reverse mapping is recommended.
-    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase<EA::REQUIRES_CONTIGUOUS_ENTITY_IDS>(entityID); }
+    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase<!EA::IS_ENTITY_KEYED>(entityID); }
 
     // Erase id, aided with the original geometry. Reverse mapping is not used in this function, consider its usage, with the alternative Erase().
     constexpr bool Erase(EntityID entityID, EA::Geometry const& entityGeometry) noexcept
     {
-      return EraseBase<EA::REQUIRES_CONTIGUOUS_ENTITY_IDS>(entityID, entityGeometry);
+      return EraseBase<!EA::IS_ENTITY_KEYED>(entityID, entityGeometry);
     }
 
   public: // Search functions

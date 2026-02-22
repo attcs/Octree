@@ -185,6 +185,12 @@ namespace OrthoTree::detail
     return value.first;
   }
 
+  template<typename TValue>
+  constexpr auto getKeyPart(TValue const& value) noexcept
+  {
+    return value.first;
+  }
+
   template<typename TContainer>
   constexpr index_t getKeyPart(TContainer const& container, typename TContainer::value_type const& value) noexcept
     requires(std::contiguous_iterator<typename TContainer::iterator>)
@@ -246,16 +252,22 @@ namespace OrthoTree::detail
   }
 
   template<typename TContainer, typename TKey, typename TValue>
-  constexpr void set(TContainer& container, TKey key, TValue const& value) noexcept
-    requires(HasAt<TContainer, TKey>)
+  constexpr auto exchange(TContainer& container, TKey key, TValue&& value) noexcept
   {
-    container.at(key) = value;
+    if constexpr (requires { container.extract(key); } && requires { value.second; })
+    {
+      return std::pair{ key, std::exchange(container.at(key), value.second) };
+    }
+    else
+    {
+      return std::exchange(detail::at(container, key), std::forward<TValue>(value));
+    }
   }
 
   template<typename TContainer, typename TKey, typename TValue>
-  constexpr void set(TContainer& continer, TKey key, TValue const& value) noexcept
+  constexpr void set(TContainer& continer, TKey key, TValue&& value) noexcept
   {
-    continer[key] = value;
+    continer[key] = std::forward<TValue>(value);
   }
 
   template<typename TContainer, typename TValue>

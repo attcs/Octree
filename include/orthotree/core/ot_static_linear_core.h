@@ -25,6 +25,8 @@ SOFTWARE.
 #pragma once
 
 #include "ot_base.h"
+#include "types.h"
+
 
 namespace OrthoTree
 {
@@ -103,32 +105,28 @@ namespace OrthoTree
     constexpr StaticLinearOrthoTreeCore(StaticLinearOrthoTreeCore&&) = default;
 
     // Initialize the base octree structure with entity collection
+    template<typename TExecMode = SeqExec>
     explicit StaticLinearOrthoTreeCore(
       EA::EntityContainerView entities,
       std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      bool isParallelExec = false) noexcept
+      TExecMode execMode = {}) noexcept
     {
-      auto isSuccessfullyInsertedAllElements = false;
-      if (isParallelExec)
-        isSuccessfullyInsertedAllElements = Create<true>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
-      else
-        isSuccessfullyInsertedAllElements = Create<false>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      auto isSuccessfullyInsertedAllElements = Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
       assert(isSuccessfullyInsertedAllElements);
     }
 
     // Initialize the base octree structure with entity collection and parallel tree-building option
-    template<typename EXEC_TAG>
+    template<typename TExecMode>
     StaticLinearOrthoTreeCore(
-      EXEC_TAG,
+      TExecMode execMode,
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIDIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
-      auto isSuccessfullyInsertedAllElements =
-        Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode);
+      auto isSuccessfullyInsertedAllElements = Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
       assert(isSuccessfullyInsertedAllElements);
     }
 
@@ -496,12 +494,13 @@ namespace OrthoTree
 
   public: // Create
     // Create
-    template<bool IS_PARALLEL_EXEC = false, bool ARE_ENTITIES_SURELY_IN_MODELSPACE = false>
+    template<typename TExecMode = SeqExec, bool ARE_ENTITIES_SURELY_IN_MODELSPACE = false>
     bool Create(
       EntityContainerView entities,
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
-      std::size_t maxElementNumInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      std::size_t maxElementNumInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      [[maybe_unused]] TExecMode execMode = {}) noexcept
     {
       auto const boxSpace = boxSpaceOptional ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::template GetBoundingBoxAD<EA>(entities);
       auto const entityCount = entities.size();
@@ -532,7 +531,7 @@ namespace OrthoTree
         endIt = std::partition(locationsZip.begin(), endIt, [](auto const& element) { return element.GetFirst().GetDepthID() != INVALID_DEPTH; });
       }
 
-      constexpr bool ARE_LOCATIONS_SORTED = IS_PARALLEL_EXEC;
+      constexpr bool ARE_LOCATIONS_SORTED = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         EXEC_POL_DEF(eps); // GCC 11.3

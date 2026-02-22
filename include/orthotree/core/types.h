@@ -71,6 +71,13 @@ namespace OrthoTree
     Positive
   };
 
+  enum class InsertionMode
+  {
+    Balanced,
+    LowestLeaf,
+    ExistingLeaf
+  };
+
   namespace ExecutionTags
   {
     // Sequential execution tag
@@ -82,8 +89,9 @@ namespace OrthoTree
     {};
   } // namespace ExecutionTags
 
-  auto constexpr SEQ_EXEC = ExecutionTags::Sequential{};
-  auto constexpr PAR_EXEC = ExecutionTags::Parallel{};
-
+  using SeqExec = ExecutionTags::Sequential;
+  using ParExec = ExecutionTags::Parallel;
+  auto constexpr SEQ_EXEC = SeqExec{};
+  auto constexpr PAR_EXEC = ParExec{};
 
 } // namespace OrthoTree

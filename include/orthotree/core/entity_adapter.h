@@ -25,6 +25,7 @@ SOFTWARE.
 #pragma once
 
 #include "../detail/common.h"
+#include "../detail/utils.h"
 
 namespace OrthoTree
 {
@@ -41,7 +42,6 @@ namespace OrthoTree
     // Underlying data, that could be anything
     using Entity = TEntity;
 
-    // TODO: TEntityID is possible not default-constructible, it should be handled
     // Trivially copyable type, that is stored in the nodes
     using EntityID = TEntityID;
 
@@ -57,11 +57,14 @@ namespace OrthoTree
     using EntityContainerViewType = std::remove_cvref_t<EntityContainerView>;
 
   public:
-    static constexpr bool REQUIRES_CONTIGUOUS_ENTITY_IDS = std::contiguous_iterator<typename EntityContainerViewType::iterator> &&
-                                                           std::is_same_v<typename EntityContainerViewType::value_type, Geometry> &&
-                                                           std::is_integral_v<EntityID>;
+    // Whether the Entity contains its ID or not. If IS_ENTITY_KEYED = false, integer-based EntityID-s is required, because continuous indexing should be maintained in the tree.
+    static constexpr bool IS_ENTITY_KEYED =
+      !(std::contiguous_iterator<typename EntityContainerViewType::iterator> && std::is_same_v<typename EntityContainerViewType::value_type, Geometry> &&
+        std::is_integral_v<EntityID> && std::is_default_constructible_v<EntityID>);
 
-  public:
+  public: // General accessors
+    static constexpr Entity GetEntity(EntityContainerView entities, EntityID const& entityID) noexcept { return detail::get(entities, entityID); }
+
     static constexpr EntityID GetEntityID(EntityContainerView entities, Entity const& entity) noexcept
     {
       return detail::getKeyPart(entities, entity);
@@ -73,10 +76,62 @@ namespace OrthoTree
     }
 
     static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return detail::getValuePart(entity); }
+
     static constexpr void SetGeometry(Entity& entity, Geometry const& geometry) noexcept { return detail::setValuePart(entity, geometry); }
 
-    static constexpr Entity const& GetEntity(EntityContainerView entities, EntityID entityID) noexcept { return detail::get(entities, entityID); }
-    static constexpr Entity& GetEntity(EntityContainer& entities, EntityID entityID) noexcept { return detail::get(entities, entityID); }
+  public: // IS_ENTITY_KEYED required overload
+    static constexpr EntityID GetEntityID(Entity const& entity) noexcept { return detail::getKeyPart(entity); }
+
+  public: // Container mutation
+    // Insert entity into the container. Returns the EntityID of the newly inserted entity.
+    static constexpr EntityID Insert(EntityContainer& entities, auto&& entity) noexcept
+    {
+      if constexpr (IS_ENTITY_KEYED)
+      {
+        detail::emplace(entities, std::forward<decltype(entity)>(entity));
+        return detail::getKeyPart(entities, entity);
+      }
+      else
+      {
+        auto const id = EntityID(entities.size());
+        detail::emplace(entities, std::forward<decltype(entity)>(entity));
+        return id;
+      }
+    }
+
+    // Erase entity from the container by EntityID.
+    static constexpr void Erase(EntityContainer& entities, EntityID entityID) noexcept
+    {
+      if constexpr (IS_ENTITY_KEYED)
+        detail::erase(entities, entityID);
+      else
+      {
+        if (entityID >= entities.size())
+        {
+          return;
+        }
+
+        detail::erase(entities, std::next(entities.begin(), entityID));
+      }
+    }
+
+    // Exchange (replace) the entity at the given EntityID with a new value. The EntityID does not change.
+    static constexpr auto Exchange(EntityContainer& entities, EntityID entityID, auto&& entity) noexcept
+    {
+      return detail::exchange(entities, entityID, std::forward<decltype(entity)>(entity));
+    }
+
+    // Clear all entities from the container.
+    static constexpr void Clear(EntityContainer& entities) noexcept { detail::clear(entities); }
+
+    // Check entity containment in the container
+    static constexpr bool Contains(EntityContainer& entities, EntityID entityID) noexcept
+    {
+      if constexpr (IS_ENTITY_KEYED)
+        return detail::contains(entities, entityID);
+      else
+        return entityID < entities.size();
+    }
   };
 
   template<typename TPoint>

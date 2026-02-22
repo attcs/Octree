@@ -529,7 +529,8 @@ namespace OrthoTree::Partitioning
     {
       auto partititionEndsByThreads = std::vector<std::vector<iterator>>(subSpansInOrder.size());
 
-      bool constexpr IS_PARALLEL_EXEC = true;
+      using TExecMode = ExecutionTags::Parallel;
+      auto const execMode = TExecMode{};
       EXEC_POL_DEF(ept); // GCC 11.3
       std::transform(EXEC_POL_ADD(ept) subSpansInOrder.begin(), subSpansInOrder.end(), partititionEndsByThreads.begin(), [&](auto const& span) {
         auto context = BucketPartitionContext<1u << kRadixBits>{};
@@ -885,13 +886,7 @@ namespace OrthoTree::Partitioning
 
   template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
   constexpr void DepthFirstPartitionRecursive(
-    auto beginIt,
-    auto endIt,
-    TLocation locationHint,
-    depth_t maxDepthID,
-    uint32_t maxElementNo,
-    auto& context,
-    auto const& processElements) noexcept
+    auto beginIt, auto endIt, TLocation locationHint, depth_t maxDepthID, uint32_t maxElementNo, auto& context, auto const& processElements) noexcept
   {
     using Iterator = decltype(beginIt);
     using ValueType = typename decltype(beginIt)::value_type;
@@ -948,25 +943,13 @@ namespace OrthoTree::Partitioning
         continue;
 
       DepthFirstPartitionRecursive<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
-        partition.beginIt,
-        partition.endIt,
-        partition.location,
-        maxDepthID,
-        maxElementNo,
-        context,
-        processElements);
+        partition.beginIt, partition.endIt, partition.location, maxDepthID, maxElementNo, context, processElements);
     }
   }
 
   template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
   constexpr void DepthFirstPartitionRecursive2(
-    auto beginIt,
-    auto endIt,
-    TLocation locationHint,
-    depth_t maxDepthID,
-    uint32_t maxElementNo,
-    auto& context,
-    auto const& processElements) noexcept
+    auto beginIt, auto endIt, TLocation locationHint, depth_t maxDepthID, uint32_t maxElementNo, auto& context, auto const& processElements) noexcept
   {
     using Iterator = decltype(beginIt);
     using ValueType = typename decltype(beginIt)::value_type;
@@ -1059,42 +1042,25 @@ namespace OrthoTree::Partitioning
     if (locationHintTrue.depthID == locationHint.depthID || !processElements(beginIt, middleIt, locationHintTrue, false))
     {
       DepthFirstPartitionRecursive2<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
-        beginIt,
-        middleIt,
-        locationHintTrue,
-        maxDepthID,
-        maxElementNo,
-        context,
-        processElements);
+        beginIt, middleIt, locationHintTrue, maxDepthID, maxElementNo, context, processElements);
     }
 
     if (locationHintTrue.depthID == locationHint.depthID || !processElements(middleIt, endIt, locationHintFalse, false))
     {
       DepthFirstPartitionRecursive2<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
-        middleIt,
-        endIt,
-        locationHintFalse,
-        maxDepthID,
-        maxElementNo,
-        context,
-        processElements);
+        middleIt, endIt, locationHintFalse, maxDepthID, maxElementNo, context, processElements);
     }
   }
 
   template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
   constexpr void DepthFirstPartition(
-    auto EXEC_TAG,
-    auto beginIt,
-    auto endIt,
-    TLocation locationHint,
-    depth_t maxDepthID,
-    uint32_t maxElementNo,
-    auto const& processElements) noexcept
+    auto EXEC_MODE, auto beginIt, auto endIt, TLocation locationHint, depth_t maxDepthID, uint32_t maxElementNo, auto const& processElements) noexcept
   {
     constexpr uint32_t kRadixBits = std::max<uint32_t>(1u, 11u / DIMENSION_NO) * DIMENSION_NO;
     constexpr uint32_t kRadixSize = 1u << kRadixBits;
 
     auto context = BucketPartitionContext<kRadixSize>{};
-    DepthFirstPartitionRecursive<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(beginIt, endIt, locationHint, maxDepthID, maxElementNo, context, processElements);
+    DepthFirstPartitionRecursive<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
+      beginIt, endIt, locationHint, maxDepthID, maxElementNo, context, processElements);
   }
 } // namespace OrthoTree::Partitioning

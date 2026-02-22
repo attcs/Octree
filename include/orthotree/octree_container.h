@@ -1,4 +1,4 @@
-/*
+﻿/*
 MIT License
 
 Copyright (c) 2021 Attila Csikós
@@ -29,7 +29,14 @@ SOFTWARE.
 //////////////////////////////////////////////////////////////////////////
 
 
+#include "adapters/general.h"
+#include "core/types.h"
 #include "detail/common.h"
+
+
+#include <utility>
+
+
 namespace OrthoTree
 {
   template<typename TOrthoTreeCore>
@@ -59,83 +66,76 @@ namespace OrthoTree
     constexpr explicit OrthoTreeContainer() noexcept = default;
 
     // Constructor for any contiguous container with runtime parallel parameter
+    template<typename TExecMode = SeqExec>
     explicit OrthoTreeContainer(
       std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      bool isParallelCreation = false) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+      TExecMode execMode = {}) noexcept
+      requires(!EA::IS_ENTITY_KEYED)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifndef __cpp_lib_execution
-      assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      if (isParallelCreation)
-        TOrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      else
-        TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
+      TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
     }
 
     // Constructor for any copyable container with runtime parallel parameter
+    template<typename TExecMode = SeqExec>
     explicit OrthoTreeContainer(
       EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      bool isParallelCreation = false) noexcept
+      TExecMode execMode = {}) noexcept
     : m_entities(geometryCollection)
     {
 #ifndef __cpp_lib_execution
-      assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      if (isParallelCreation)
-        TOrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      else
-        TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
+      TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
     }
 
     // Constructor for any movable container with runtime parallel parameter
+    template<typename TExecMode = SeqExec>
     explicit OrthoTreeContainer(
       EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      bool isParallelCreation = false) noexcept
+      TExecMode execMode = {}) noexcept
     : m_entities(std::move(geometryCollection))
     {
 #ifndef __cpp_lib_execution
-      assert(!isParallelCreation); // Parallel creation is based on execution policies. __cpp_lib_execution is required.
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      if (isParallelCreation)
-        TOrthoTreeCore::template Create<true>(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
-      else
-        TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, boxSpace, maxElementNoInNode);
+      TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
     }
 
     // Constructor for any contiguous container with compile-time parallel parameter
-    template<typename EXEC_TAG>
+    template<typename TExecMode>
     explicit OrthoTreeContainer(
-      EXEC_TAG,
+      TExecMode execMode,
       std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+      requires(!EA::IS_ENTITY_KEYED)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifdef __cpp_lib_execution
 #else
-      static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      TOrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
-        m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
     }
 
     // Constructor for any copyable container compile-time parallel parameter
-    template<typename EXEC_TAG>
+    template<typename TExecMode>
     explicit OrthoTreeContainer(
-      EXEC_TAG,
+      TExecMode execMode,
       EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
@@ -144,16 +144,15 @@ namespace OrthoTree
     {
 #ifdef __cpp_lib_execution
 #else
-      static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      TOrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
-        m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
     }
 
     // Constructor for any movable container with compile-time parallel parameter
-    template<typename EXEC_TAG>
+    template<typename TExecMode>
     explicit OrthoTreeContainer(
-      EXEC_TAG,
+      TExecMode execMode,
       EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
@@ -162,50 +161,51 @@ namespace OrthoTree
     {
 #ifdef __cpp_lib_execution
 #else
-      static_assert(!std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
 #endif
-      TOrthoTreeCore::template Create<std::is_same_v<EXEC_TAG, ExecutionTags::Parallel>>(
-        m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::Create(m_tree, m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
     }
 
-    // Point
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec>
     static OrthoTreeContainer Create(
       std::span<Entity const> const& entities,
       depth_t maxDepthID = 0,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
+      requires(!EA::IS_ENTITY_KEYED)
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = std::vector(entities.begin(), entities.end());
-      TOrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
       return otc;
     }
 
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec>
     static OrthoTreeContainer Create(
       EntityContainer const& entities,
       depth_t maxDepthID = 0,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = entities;
-      TOrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
       return otc;
     }
 
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec>
     static OrthoTreeContainer Create(
       EntityContainer&& entities,
       depth_t maxDepthID = 0,
       std::optional<TBox> boxSpace = std::nullopt,
-      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = std::move(entities);
-      TOrthoTreeCore::template Create<IS_PARALLEL_EXEC>(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode);
+      TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
       return otc;
     }
 
@@ -219,242 +219,110 @@ namespace OrthoTree
     }
 
     // Get entity by ID
-    Entity const& Get(EntityID entityID) const noexcept { return detail::at(m_entities, entityID); }
+    constexpr Entity const& Get(EntityID entityID) const noexcept { return EA::GetEntity(m_entities, entityID); }
 
     // Add entity with tree rebalancing
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(EA::Entity const& newEntity) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    template<typename TEntity = Entity>
+    constexpr std::optional<EntityID> Add(TEntity&& newEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
     {
-      auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      auto const newEntityID = EA::Insert(m_entities, std::forward<decltype(newEntity)>(newEntity));
+      bool isInserted = false;
+      switch (insertionMode)
       {
-        if (detail::contains(m_entities, newEntityID))
-          return false;
+      case InsertionMode::Balanced: isInserted = m_tree.Insert(newEntityID, EA::GetGeometry(m_entities, newEntityID), m_entities); break;
+
+      case InsertionMode::LowestLeaf:
+      case InsertionMode::ExistingLeaf:
+        isInserted = m_tree.InsertIntoLeaf(newEntityID, EA::GetGeometry(m_entities, newEntityID), insertionMode);
+        break;
       }
 
-      if (!m_tree.Insert(newEntityID, EA::GetGeometry(newEntity), m_entities))
-        return false;
-
-      detail::emplace(m_entities, newEntity);
-      return true;
-    }
-
-    // Add entity with tree rebalancing
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(EA::Geometry const& newEntityGeometry) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      auto const newEntityID = EntityID(m_entities.size());
-      if (!m_tree.Insert(newEntityID, newEntityGeometry, m_entities))
-        return false;
-
-      detail::emplace(m_entities, newEntityGeometry);
-      return true;
-    }
-
-
-    // Add entity with tree rebalancing for Entities that represents only the Geometry
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool Add(EntityID newEntityID, EA::Geometry const& newEntityGeometry) noexcept
-    {
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      if (!isInserted)
       {
-        if (detail::contains(m_entities, newEntityID))
-          return false;
+        EA::Erase(m_entities, newEntityID);
+        return std::nullopt;
       }
 
-      if (!m_tree.Insert(newEntityID, newEntityGeometry, m_entities))
-        return false;
-
-      detail::emplace(m_entities, newEntityID, newEntityGeometry);
-      return true;
+      return newEntityID;
     }
 
-    // Add entity with tree rebalancing
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddIntoLeaf(EA::Entity const& newEntity, bool allowLeafCreation = false) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    // Add entity with tree rebalancing if it is not yet added
+    template<typename TEntity = Entity>
+    constexpr std::optional<EntityID> AddUnique(
+      TEntity&& newEntity, TFloatScalar tolerance = GA::BASE_TOLERANCE, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
     {
-      auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      auto const newEntityID = EA::Insert(m_entities, std::forward<decltype(newEntity)>(newEntity));
+      if (!m_tree.InsertUnique(newEntityID, EA::GetGeometry(m_entities, newEntityID), m_entities, tolerance, insertionMode))
       {
-        if (detail::contains(m_entities, newEntityID))
-          return false;
+        EA::Erase(m_entities, newEntityID);
+        return std::nullopt;
       }
 
-      if (!m_tree.InsertIntoLeaf(newEntityID, EA::GetGeometry(newEntity), allowLeafCreation))
-        return false;
-
-      detail::emplace(m_entities, newEntity);
-      return true;
+      return newEntityID;
     }
 
-    // Add entity without tree rebalancing
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddIntoLeaf(EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    // Replace entity to the changedEntity
+    template<typename TEntity = Entity>
+    constexpr bool Update(EntityID entityID, TEntity&& changedEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
+      requires(!EA::IS_ENTITY_KEYED)
     {
-      auto const newEntityID = EntityID(m_entities.size());
-      if (!m_tree.InsertIntoLeaf(newEntityID, newEntityGeometry, allowLeafCreation))
-        return false;
-
-      detail::emplace(m_entities, newEntityGeometry);
-      return true;
-    }
-
-    // Add entity without tree rebalancing
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddIntoLeaf(EntityID newEntityID, EA::Geometry const& newEntityGeometry, bool allowLeafCreation = false) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      auto oldEntity = EA::Exchange(m_entities, entityID, std::forward<decltype(changedEntity)>(changedEntity));
+      bool isInserted = false;
+      switch (insertionMode)
       {
-        if (detail::contains(m_entities, newEntityID))
-          return false;
+      case InsertionMode::Balanced:
+        isInserted = m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(m_entities, entityID), m_entities);
+        break;
+
+      case InsertionMode::ExistingLeaf:
+      case InsertionMode::LowestLeaf:
+        isInserted = m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(m_entities, entityID), insertionMode);
       }
 
-      if (!m_tree.InsertIntoLeaf(newEntityID, newEntityGeometry, allowLeafCreation))
-        return false;
+      // restore the original state
+      if (!isInserted)
+        EA::Exchange(m_entities, entityID, std::move(oldEntity));
 
-      detail::emplace(m_entities, newEntityID, newEntityGeometry);
-      return true;
+      return isInserted;
     }
 
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddUnique(EA::Entity const& newEntity, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool allowLeafCreation = false) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    // Replace entity to the changedEntity
+    template<typename TEntity = Entity>
+    constexpr bool Update(TEntity&& changedEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
+      requires(EA::IS_ENTITY_KEYED)
     {
-      auto const newEntityID = EA::GetEntityID(m_entities, newEntity);
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
+      auto const entityID = EA::GetEntityID(changedEntity);
+      auto oldEntity = EA::Exchange(m_entities, entityID, std::forward<decltype(changedEntity)>(changedEntity));
+
+      bool isInserted = false;
+      switch (insertionMode)
       {
-        if (detail::contains(m_entities, newEntityID))
-          return false;
+      case InsertionMode::Balanced:
+        isInserted = m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(m_entities, entityID), m_entities);
+        break;
+
+      case InsertionMode::ExistingLeaf:
+      case InsertionMode::LowestLeaf:
+        isInserted = m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(m_entities, entityID), insertionMode);
       }
 
-      if (!m_tree.InsertUnique(*newEntityID, EA::GetGeometry(newEntity), m_entities, tolerance, allowLeafCreation))
-        return false;
+      // restore the original state
+      if (!isInserted)
+        EA::Exchange(m_entities, entityID, std::move(oldEntity));
 
-      detail::emplace(m_entities, newEntity);
-      return true;
-    }
-
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddUnique(EA::Geometry const& newEntityGeometry, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool allowLeafCreation = false) noexcept
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      auto const newEntityID = EntityID(m_entities.size());
-
-      if (!m_tree.InsertUnique(*newEntityID, newEntityGeometry, m_entities, tolerance, allowLeafCreation))
-        return false;
-
-      detail::emplace(m_entities, newEntityGeometry);
-      return true;
-    }
-
-    template<bool CHECK_ID_FOR_CONTAINMENT = false>
-    bool AddUnique(EntityID newEntityID, EA::Geometry const& newEntityGeometry, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool doInsertToLeaf = false) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      if constexpr (CHECK_ID_FOR_CONTAINMENT)
-      {
-        if (detail::contains(m_entities, newEntityID))
-          return false;
-      }
-
-      if (!m_tree.InsertUnique(newEntityID, newEntityGeometry, m_entities, tolerance, doInsertToLeaf))
-        return false;
-
-      detail::emplace(m_entities, newEntityID, newEntityGeometry);
-      return true;
-    }
-
-    // Update with tree rebalancing
-    bool Update(EA::Entity const& changedEntity) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      auto const entityID = EA::GetEntityID(m_entities, changedEntity);
-      auto const oldEntity = detail::at(m_entities, entityID);
-
-      detail::set(m_entities, entityID, changedEntity);
-      if (!m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(changedEntity), m_entities))
-      {
-        // restore the original state
-        detail::set(m_entities, entityID, oldEntity);
-        return false;
-      }
-
-      return true;
-    }
-
-    // Update with tree rebalancing
-    bool Update(EntityID entityID, EA::Geometry const& changedGeometry) noexcept
-    {
-      auto& entity = EA::GetEntity(m_entities, entityID);
-      auto const oldGeometry = EA::GetGeometry(entity);
-      EA::SetGeometry(entity, changedGeometry);
-      if (!m_tree.Update(entityID, oldGeometry, changedGeometry, m_entities))
-      {
-        // restore the original state
-        EA::SetGeometry(entity, oldGeometry);
-        return false;
-      }
-
-      return true;
-    }
-
-    // Update without tree rebalancing
-    bool Update(EA::Entity const& changedEntity, bool doInsertToLeaf) noexcept
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-    {
-      auto const entityID = EA::GetEntityID(m_entities, changedEntity);
-      auto const oldGeometry = EA::GetGeometry(m_entities, entityID);
-
-      auto& entity = EA::GetEntity(m_entities, entityID);
-      auto const& newGeometry = EA::GetGeometry(changedEntity);
-      EA::SetGeometry(entity, newGeometry);
-      if (!m_tree.Update(entityID, oldGeometry, newGeometry, doInsertToLeaf))
-      {
-        // restore the original state
-        EA::SetGeometry(entity, oldGeometry);
-        return false;
-      }
-
-      return true;
-    }
-
-    // Update without tree rebalancing
-    bool Update(EntityID entityID, EA::Geometry const& changedEntityGeometry, bool doInsertToLeaf) noexcept
-    {
-      auto const oldEntity = detail::at(m_entities, entityID);
-      detail::set(m_entities, entityID, changedEntityGeometry);
-      if (!m_tree.Update(entityID, EA::GetGeometry(oldEntity), changedEntityGeometry, doInsertToLeaf))
-      {
-        // restore the original state
-        detail::set(m_entities, entityID, oldEntity);
-        return false;
-      }
-
-      return true;
+      return isInserted;
     }
 
     // Erase entity by ID
     bool Erase(EntityID entityID) noexcept
     {
-      if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-      {
-        if (m_entities.size() <= static_cast<size_t>(entityID))
-          return false;
-      }
+      if (!EA::Contains(m_entities, entityID))
+        return false;
 
       if (!m_tree.Erase(entityID, EA::GetGeometry(m_entities, entityID)))
         return false;
 
-      if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
-        detail::erase(m_entities, std::next(m_entities.begin(), entityID));
-      else
-        detail::erase(m_entities, entityID);
-
+      EA::Erase(m_entities, entityID);
       return true;
     }
 
@@ -462,20 +330,21 @@ namespace OrthoTree
     void Clear() noexcept
     {
       m_tree.Clear();
-      detail::clear(m_entities);
+      EA::Clear(m_entities);
     }
 
     // Reset the tree: Same as clear but also reset the handled domain
     void Reset() noexcept
     {
       m_tree.Reset();
-      detail::clear(m_entities);
+      EA::Clear(m_entities);
     }
 
-    template<bool IS_PARALLEL_EXEC = false>
-    void Move(TVector const& moveVector) noexcept
+    template<typename TExecMode = SeqExec>
+    void Move(TVector const& moveVector, TExecMode execMode = SEQ_EXEC) noexcept
     {
-      m_tree.template Move<IS_PARALLEL_EXEC>(moveVector);
+      m_tree.Move(moveVector, execMode);
+
       EXEC_POL_DEF(ep); // GCC 11.3
       std::for_each(EXEC_POL_ADD(ep) m_entities.begin(), m_entities.end(), [&moveVector](EA::Entity& entity) {
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
@@ -492,16 +361,10 @@ namespace OrthoTree
     }
 
     // Collect all entity ID in breadth-first traverse order
-    std::vector<EntityID> GetEntitiesBreadthFirst() const noexcept
-    {
-      return m_tree.GetEntitiesBreadthFirst();
-    }
+    std::vector<EntityID> GetEntitiesBreadthFirst() const noexcept { return m_tree.GetEntitiesBreadthFirst(); }
 
     // Collect all entity ID in depth-first traverse order
-    std::vector<EntityID> GetEntitiesDepthFirst() const noexcept
-    {
-      return m_tree.GetEntitiesDepthFirst();
-    }
+    std::vector<EntityID> GetEntitiesDepthFirst() const noexcept { return m_tree.GetEntitiesDepthFirst(); }
 
     // Visit entities in breadth first order
     template<typename TProcedure>
@@ -602,7 +465,7 @@ namespace OrthoTree
     template<bool IS_LOGICAL_OR_FILTERING = false>
     std::vector<EntityID> Query(auto const& conditions, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return m_tree.Query<IS_LOGICAL_OR_FILTERING>(conditions, m_entities, tolerance);
+      return m_tree.template Query<IS_LOGICAL_OR_FILTERING>(conditions, m_entities, tolerance);
     }
 
     // K Nearest Neighbor
@@ -624,21 +487,24 @@ namespace OrthoTree
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       TTester&& entityDistanceFn = {}) const noexcept
     {
-      return m_tree.template GetNearestNeighbors<SHOULD_SORT_ENTITIES_BY_DISTANCE>(pt, k, maxDistanceWithin, m_entities, tolerance, std::forward<TTester>(entityDistanceFn));
+      return m_tree.template GetNearestNeighbors<SHOULD_SORT_ENTITIES_BY_DISTANCE>(
+        pt, k, maxDistanceWithin, m_entities, tolerance, std::forward<TTester>(entityDistanceFn));
     }
 
   public: // Collision detection
     using FCollisionDetector = typename TOrthoTreeCore::FCollisionDetector;
 
     // Collision detection between the contained elements
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec>
     std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
-      TFloatScalar tolerance = GA::BASE_TOLERANCE, std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      std::optional<FCollisionDetector> const& collisionDetector = std::nullopt,
+      TExecMode execMode = {}) const noexcept
     {
       if (collisionDetector)
-        return m_tree.template CollisionDetection<IS_PARALLEL_EXEC>(m_entities, FCollisionDetector(*collisionDetector), tolerance);
-
-      return m_tree.template CollisionDetection<IS_PARALLEL_EXEC>(m_entities, tolerance);
+        return m_tree.CollisionDetection(m_entities, FCollisionDetector(*collisionDetector), tolerance, execMode);
+      else
+        return m_tree.template CollisionDetection<TExecMode>(m_entities, tolerance);
     }
 
     // Collision detection with another tree
@@ -752,8 +618,7 @@ namespace OrthoTree
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       TEntityRayHitTester&& entityHitTester = {}) const noexcept
     {
-      return m_tree.RayIntersectedFirst(
-        ray, m_entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
+      return m_tree.RayIntersectedFirst(ray, m_entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
     }
 
   public: // Plane

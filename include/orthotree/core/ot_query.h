@@ -24,6 +24,14 @@ SOFTWARE.
 
 #pragma once
 
+#include "../core/types.h"
+#include "../detail/utils.h"
+
+#include <concepts>
+#include <optional>
+#include <type_traits>
+
+
 namespace OrthoTree
 {
 
@@ -100,15 +108,20 @@ namespace OrthoTree
 
   public:
     // Insert entity into the tree, if there is no entity within the same location by tolerance.
-    bool InsertUnique(EA::Geometry const& entityGeometry, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, bool doInsertToLeaf = false)
-      requires(EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+    bool InsertUnique(
+      EA::Geometry const& entityGeometry,
+      EntityContainerView entities,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      InsertionMode insertionMode = InsertionMode::Balanced)
+      requires(!EA::IS_ENTITY_KEYED)
     {
       auto const nearestEntityList = GetNearestNeighbors(entityGeometry, 1, 0.0, entities, tolerance);
       if (!nearestEntityList.empty())
         return false;
 
       auto const entityID = EntityID(entities.size());
-      return doInsertToLeaf ? Core::InsertIntoLeaf(entityID, entityGeometry, true) : Core::Insert(entityID, entityGeometry, entities);
+      return insertionMode == InsertionMode::Balanced ? Core::Insert(entityID, entityGeometry, entities)
+                                                      : Core::InsertIntoLeaf(entityID, entityGeometry, insertionMode);
     }
 
     // Insert entity into the tree, if there is no entity within the same location by tolerance.
@@ -118,7 +131,7 @@ namespace OrthoTree
       EntityContainerView entities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       bool doInsertToLeaf = false)
-      requires(!EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+      requires(EA::IS_ENTITY_KEYED)
     {
       auto const nearestEntityList = GetNearestNeighbors(entityGeometry, 1, 0.0, entities, tolerance);
       if (!nearestEntityList.empty())
@@ -446,7 +459,8 @@ namespace OrthoTree
       {
         foundEntities.reserve(entityNo);
 
-        if constexpr (EA::REQUIRES_CONTIGUOUS_ENTITY_IDS)
+        constexpr bool REQUIRES_CONTIGUOUS_ENTITY_IDS = !EA::IS_ENTITY_KEYED;
+        if constexpr (REQUIRES_CONTIGUOUS_ENTITY_IDS)
         {
           foundEntities.resize(entityNo);
           std::iota(foundEntities.begin(), foundEntities.end(), 0);
@@ -1025,12 +1039,22 @@ namespace OrthoTree
         if constexpr (!std::is_same_v<TEntityDistanceFn, std::monostate>)
         {
           auto const entityDistanceResult = TestEntity(entityDistanceFn, entityID, entities, searchPoint);
-          if (!entityDistanceResult)
-            continue;
 
-          if constexpr (detail::IsStdOptionalV<decltype(entityDistanceResult)>)
+          using ResultType = std::decay_t<decltype(entityDistanceResult)>;
+          using OptionalTrait = typename detail::IsStdOptional<ResultType>;
+          if constexpr (std::is_same_v<typename OptionalTrait::BaseType, bool> || OptionalTrait::value)
           {
-            pbd.min = *entityDistanceResult;
+            if (!entityDistanceResult)
+              continue;
+          }
+          
+          if constexpr (std::is_same_v<typename OptionalTrait::BaseType, TScalar> || std::is_same_v<typename OptionalTrait::BaseType, TFloatScalar>)
+          {
+            if constexpr (OptionalTrait::value)
+              pbd.min = *entityDistanceResult;
+            else
+              pbd.min = entityDistanceResult;
+
             if (pbd.min >= farthestEntityDistance.upper)
               continue;
 
@@ -1134,14 +1158,11 @@ namespace OrthoTree
     // results more element than neighborCount, if those are in equal distance (point-like) or possible hit (box-like).
     //
     // Accepted entityDistanceFn signatures:
-    // * bool(EntityID)
-    // * bool(EntityID, TVector)
-    // * bool(Entity)
-    // * bool(Entity, TVector)
-    // * std::optional<TScalar>(EntityID)
-    // * std::optional<TScalar>(EntityID, TVector)
-    // * std::optional<TScalar>(Entity)
-    // * std::optional<TScalar>(Entity, TVector)
+    // * ReturnType(EntityID)
+    // * ReturnType(EntityID, TVector)
+    // * ReturnType(Entity)
+    // * ReturnType(Entity, TVector)
+    // where ReturnType is bool | TScalar | TFloatScalar | std::optional<TScalar> | std::optional<TFloatScalar>
     template<bool SHOULD_SORT_ENTITIES_BY_DISTANCE = true, typename TEntityDistanceFn = std::monostate>
     std::vector<EntityID> GetNearestNeighbors(
       TVector const& searchPoint,
@@ -1626,12 +1647,15 @@ namespace OrthoTree
     }
 
     // Collision detection between the stored entities from bottom to top logic
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec>
     std::vector<std::pair<EntityID, EntityID>> CollectCollidedEntities(
       EntityContainerView entities,
       TFloatScalar tolerance = EA::GEOMETRY_TYPE == GeometryType::Point ? GA::BASE_TOLERANCE : 0,
-      std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
+      std::optional<FCollisionDetector> const& collisionDetector = std::nullopt,
+      TExecMode execMode = {}) const noexcept
     {
+      static_assert(std::is_same_v<TExecMode, SeqExec> || std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Invalid execution tag!");
+
       auto const comparator = [&entities](EntityID entityID1, EntityID entityID2) {
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
         {
@@ -1656,7 +1680,7 @@ namespace OrthoTree
       collidedEntities.reserve(std::max<std::size_t>(100, entityNo / 10));
 
       // non-parallel execution
-      if constexpr (!IS_PARALLEL_EXEC)
+      if constexpr (std::is_same_v<TExecMode, SeqExec>)
       {
         auto nodeContextStack = std::vector<NodeCollisionContext>{};
         nodeContextStack.reserve(Core::GetDepthNo());
@@ -1829,18 +1853,19 @@ namespace OrthoTree
 
   public:
     // Collision detection between the stored entities from bottom to top logic
-    template<bool IS_PARALLEL_EXEC = false>
-    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    template<typename TExecMode = SeqExec>
+    std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
+      EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TExecMode execMode = {}) const noexcept
     {
-      return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, tolerance, std::nullopt);
+      return CollectCollidedEntities(entities, tolerance, std::nullopt, execMode);
     }
 
     // Collision detection between the stored entities from bottom to top logic
-    template<bool IS_PARALLEL_EXEC = false>
+    template<typename TExecMode = SeqExec>
     std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
-      EntityContainerView entities, FCollisionDetector&& collisionDetector, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+      EntityContainerView entities, FCollisionDetector&& collisionDetector, TFloatScalar tolerance = GA::BASE_TOLERANCE, TExecMode execMode = {}) const noexcept
     {
-      return CollectCollidedEntities<IS_PARALLEL_EXEC>(entities, tolerance, collisionDetector);
+      return CollectCollidedEntities(entities, tolerance, std::forward<FCollisionDetector>(collisionDetector), execMode);
     }
 
   public:

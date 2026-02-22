@@ -24,6 +24,8 @@ SOFTWARE.
 
 #pragma once
 
+#include "../core/types.h"
+
 #include <assert.h>
 #include <math.h>
 
@@ -101,18 +103,19 @@ SOFTWARE.
 #ifndef ORTHOTREE_CRASH_IF
 #define CRASH_IF_UNDEF
 #define ORTHOTREE_CRASH_IF(cond, errorMessage) \
-  do                                 \
-  {                                  \
-    if (cond)                        \
-    {                                \
-      CRASH(errorMessage);           \
-    }                                \
+  do                                           \
+  {                                            \
+    if (cond)                                  \
+    {                                          \
+      CRASH(errorMessage);                     \
+    }                                          \
   } while (0)
 #endif // !ORTHOTREE_CRASH_IF
 
 #ifdef __cpp_lib_execution
 #define EXEC_POL_DEF(e) \
-  std::conditional_t<IS_PARALLEL_EXEC, std::execution::parallel_unsequenced_policy, std::execution::unsequenced_policy> constexpr e
+  (void)execMode;       \
+  std::conditional_t<std::is_same_v<TExecMode, ExecutionTags::Parallel>, std::execution::parallel_unsequenced_policy, std::execution::unsequenced_policy> constexpr e
 #define EXEC_POL_ADD(e) e,
 #else
 #define EXEC_POL_DEF(e)
