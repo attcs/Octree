@@ -122,9 +122,33 @@ namespace OrthoTree::detail
     }
 
     template<typename... Args>
+    std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args)
+    {
+      return m_data.try_emplace(key, std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    std::pair<iterator, bool> try_emplace(key_type&& key, Args&&... args)
+    {
+      return m_data.try_emplace(std::move(key), std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
     iterator emplace_hint(const_iterator hint, Args&&... args)
     {
       return m_data.emplace_hint(hint, std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    iterator try_emplace(const_iterator hint, const key_type& key, Args&&... args)
+    {
+      return m_data.try_emplace(hint, key, std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    iterator try_emplace(const_iterator hint, key_type&& key, Args&&... args)
+    {
+      return m_data.try_emplace(hint, std::move(key), std::forward<Args>(args)...);
     }
 
     void erase(iterator it) { m_data.erase(it); }
