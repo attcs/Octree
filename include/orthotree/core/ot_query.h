@@ -25,11 +25,22 @@ SOFTWARE.
 #pragma once
 
 #include "../core/types.h"
+#include "../detail/internal_geometry_module.h"
+#include "../detail/partitioning.h"
 #include "../detail/utils.h"
+#include "../detail/zip_view.h"
+#include "configuration.h"
+#include "ot_base.h"
 
+
+#include <algorithm>
 #include <concepts>
+#include <map>
 #include <optional>
+#include <queue>
 #include <type_traits>
+#include <variant>
+#include <vector>
 
 
 namespace OrthoTree
@@ -1047,7 +1058,7 @@ namespace OrthoTree
             if (!entityDistanceResult)
               continue;
           }
-          
+
           if constexpr (std::is_same_v<typename OptionalTrait::BaseType, TScalar> || std::is_same_v<typename OptionalTrait::BaseType, TFloatScalar>)
           {
             if constexpr (OptionalTrait::value)
@@ -2098,6 +2109,124 @@ namespace OrthoTree
     {
       return RayIntersectedFirst(
         GA::GetRayOrigin(ray), GA::GetRayDirection(ray), entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
+    }
+
+    // Compare tree equality
+    template<typename TOtherCore>
+    bool IsEqualTo(OrthoTreeQueryBase<TOtherCore> const& otherTree, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
+    {
+      if (Core::GetMaxDepthID() != otherTree.GetMaxDepthID() || Core::GetMaxElementNum() != otherTree.GetMaxElementNum())
+        return false;
+
+      if (Core::GetNodeCount() != otherTree.GetNodeCount())
+        return false;
+
+      return AreNodesEqual(otherTree, Core::GetRootNodeID(), otherTree.GetRootNodeID(), tolerance);
+    }
+
+  private:
+    template<typename TOtherCore>
+    bool AreNodesEqual(OrthoTreeQueryBase<TOtherCore> const& otherTree, NodeID keyL, typename TOtherCore::NodeID keyR, TFloatScalar tolerance) const noexcept
+    {
+      auto const nodeL = Core::GetNodeValue(keyL);
+      auto const nodeR = otherTree.GetNodeValue(keyR);
+
+      // 1. Entities Check
+      auto const entitiesL = Core::GetNodeEntities(nodeL);
+      auto const entitiesR = otherTree.GetNodeEntities(nodeR);
+      if (entitiesL.size() != entitiesR.size())
+        return false;
+
+      if (entitiesL.size() > 0)
+      {
+        auto setL = std::vector<EntityID>(entitiesL.begin(), entitiesL.end());
+        auto setR = std::vector<typename TOtherCore::EntityID>(entitiesR.begin(), entitiesR.end());
+        std::sort(setL.begin(), setL.end());
+        std::sort(setR.begin(), setR.end());
+        for (size_t i = 0; i < setL.size(); ++i)
+          if (setL[i] != setR[i])
+            return false;
+      }
+
+      // 2. Geometry Check
+      auto const boxL = Core::GetNodeBox(nodeL);
+      auto const boxR = otherTree.GetNodeBox(nodeR);
+      if (!IGM::AreBoxesOverlappingByMinPoint(boxL.Min, IGM::Sub(boxL.Max, boxL.Min), boxR.Min, IGM::Sub(boxR.Max, boxR.Min), tolerance))
+        return false;
+
+      // 3. Children Check
+      auto const& childrenL = Core::GetNodeChildren(nodeL);
+      auto const& childrenR = otherTree.GetNodeChildren(nodeR);
+      if (childrenL.size() != childrenR.size())
+        return false;
+
+      if (childrenL.size() == 0)
+        return true;
+
+      // Map octants to children via Geometry
+      using ChildID = typename SI::ChildID;
+      auto mapL = std::map<ChildID, NodeID>();
+      auto mapR = std::map<ChildID, typename TOtherCore::NodeID>();
+
+      auto const parentMinL = Core::GetNodeMinPoint(nodeL);
+      auto const parentSizeL = Core::GetNodeSize(nodeL);
+      auto parentCenterL = parentMinL;
+      for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+        parentCenterL[d] += parentSizeL[d] * 0.5;
+
+      auto const parentMinR = otherTree.GetNodeMinPoint(nodeR);
+      auto const parentSizeR = otherTree.GetNodeSize(nodeR);
+      auto parentCenterR = parentMinR;
+      for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+        parentCenterR[d] += parentSizeR[d] * 0.5;
+
+      for (auto const childNodeID : childrenL)
+      {
+        auto const childNode = Core::GetNodeValue(childNodeID);
+        auto const childMin = Core::GetNodeMinPoint(childNode);
+        auto const childSize = Core::GetNodeSize(childNode);
+        auto childCenter = childMin;
+        for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+          childCenter[d] += childSize[d] * 0.5;
+
+        ChildID octant = 0;
+        for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+          if (childCenter[d] > parentCenterL[d])
+            octant |= (ChildID(1) << d);
+        mapL[octant] = childNodeID;
+      }
+
+      for (auto const childNodeID : childrenR)
+      {
+        auto const childNode = otherTree.GetNodeValue(childNodeID);
+        auto const childMin = otherTree.GetNodeMinPoint(childNode);
+        auto const childSize = otherTree.GetNodeSize(childNode);
+        auto childCenter = childMin;
+        for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+          childCenter[d] += childSize[d] * 0.5;
+
+        ChildID octant = 0;
+        for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+          if (childCenter[d] > parentCenterL[d])
+            octant |= (ChildID(1) << d);
+        mapR[octant] = childNodeID;
+      }
+
+      if (mapL.size() != mapR.size())
+        return false;
+
+      for (auto const& [octant, keyChildL] : mapL)
+      {
+        auto itR = mapR.find(octant);
+        if (itR == mapR.end())
+          return false;
+
+        auto const keyChildR = itR->second;
+        if (!AreNodesEqual(otherTree, keyChildL, keyChildR, tolerance))
+          return false;
+      }
+
+      return true;
     }
   };
 
