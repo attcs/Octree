@@ -748,7 +748,171 @@ namespace OrthoTree
       return tree.Create<TExecMode, ARE_ENTITIES_SURELY_IN_MODELSPACE>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
     }
 
+
+  private:
+    void LinkOrphanNodes(std::vector<NodeID>&& orphanNodes) noexcept
+    {
+      for (std::size_t i = 0; i < orphanNodes.size(); ++i)
+      {
+        auto const orphanNodeID = orphanNodes[i];
+        auto& [parentNodeID, parentNode] = *GetParentIt(orphanNodeID);
+        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
+
+        if (parentNode.HasChild(childID))
+        {
+          auto const childNodeID = parentNode.GetChild(childID);
+          auto const lcaNodeID = SI::GetLowestCommonAncestor(childNodeID, orphanNodeID);
+          parentNode.LinkChild(childID, lcaNodeID);
+
+          if (orphanNodeID == lcaNodeID)
+          {
+            auto& orphanNode = m_nodes.at(orphanNodeID);
+            auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
+            if (orphanNode.HasChild(childIDOfOrphanNode))
+              orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
+
+            orphanNode.LinkChild(childIDOfOrphanNode, childNodeID);
+          }
+          else
+          {
+            auto [lcaIt, _] = m_nodes.try_emplace(lcaNodeID);
+            InitNodeGeometry(&*lcaIt);
+            auto& lcaNode = lcaIt->second;
+            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
+            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
+          }
+        }
+        else
+        {
+          parentNode.LinkChild(childID, orphanNodeID);
+        }
+      }
+    }
+
+    constexpr void UpdateNodeGeometry(std::unordered_set<NodeID> const& changedNodes, EntityContainerView entities) noexcept
+    {
+      if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+      {
+        if (changedNodes.empty())
+          return;
+
+        // Sort changed nodes by depth (deepest first) so children are processed before parents.
+        auto sortedNodes = std::vector<NodeID>(changedNodes.begin(), changedNodes.end());
+        std::sort(sortedNodes.begin(), sortedNodes.end(), [](NodeID a, NodeID b) { return SI::GetDepthID(a) > SI::GetDepthID(b); });
+
+        // Track already-visited nodes to avoid redundant recomputation
+        auto visited = std::unordered_set<NodeID>();
+        visited.reserve(changedNodes.size() * 2);
+
+        // Queue of ancestor nodes that need recomputation (populated during processing)
+        auto ancestorQueue = std::vector<NodeID>();
+
+        // Phase 1: Process directly changed nodes (deepest first)
+        for (auto const nodeID : sortedNodes)
+        {
+          if (!visited.insert(nodeID).second)
+            continue;
+
+          auto nodeIt = m_nodes.find(nodeID);
+          if (nodeIt == m_nodes.end())
+            continue;
+
+          auto nodeBox = IGM::BoxInvertedInit();
+
+          // Union with all children's existing boxes
+          for (auto const& childNodeID : GetNodeChildren(&*nodeIt))
+          {
+            auto const childIt = m_nodes.find(childNodeID);
+            if (childIt != m_nodes.end() && IsNodeGeometryInitialized(childIt->second.GetGeometry()))
+            {
+              auto const childBox = GetNodeBox(&*childIt);
+              IGM::UniteInBoxAD(nodeBox, childBox);
+            }
+          }
+
+          // Union with all entities
+          for (auto const& entityID : GetNodeEntities(&*nodeIt))
+            IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, entityID));
+
+          nodeIt->second.GetGeometry() = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+
+          // Schedule parent for recomputation
+          auto parentIt = GetParentIt(nodeID);
+          if (parentIt != m_nodes.end())
+            ancestorQueue.push_back(parentIt->first);
+        }
+
+        // Phase 2: Propagate upward through ancestors
+        for (std::size_t i = 0; i < ancestorQueue.size(); ++i)
+        {
+          auto const ancestorNodeID = ancestorQueue[i];
+          if (!visited.insert(ancestorNodeID).second)
+            continue;
+
+          auto ancestorIt = m_nodes.find(ancestorNodeID);
+          if (ancestorIt == m_nodes.end())
+            continue;
+
+          auto nodeBox = IGM::BoxInvertedInit();
+
+          // Union with all children
+          for (auto const& childNodeID : GetNodeChildren(&*ancestorIt))
+          {
+            auto const childIt = m_nodes.find(childNodeID);
+            if (childIt != m_nodes.end() && IsNodeGeometryInitialized(childIt->second.GetGeometry()))
+            {
+              auto const childBox = GetNodeBox(&*childIt);
+              IGM::UniteInBoxAD(nodeBox, childBox);
+            }
+          }
+
+          // Union with own entities
+          for (auto const& entityID : GetNodeEntities(&*ancestorIt))
+            IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, entityID));
+
+          ancestorIt->second.GetGeometry() = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+
+          // Schedule parent for recomputation
+          auto parentIt = GetParentIt(ancestorNodeID);
+          if (parentIt != m_nodes.end())
+            ancestorQueue.push_back(parentIt->first);
+        }
+      }
+    }
+
   public: // BulkInsert // TODO finish
+    template<typename TExecMode = SeqExec>
+    void BulkInsertV0(EntityContainerView entities, TExecMode execMode = {}) noexcept
+    {
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
+
+      auto const entityNo = entities.size();
+
+      auto mortonIDs = std::vector<typename SI::Location>(entityNo);
+      auto mainMemorySegment = m_memoryResource.Allocate(entityNo);
+      detail::reserve(
+        m_nodes, detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, Base::GetMaxDepthID(), Base::GetMaxElementNum()));
+
+      auto orphanNodes = std::vector<NodeID>{};
+      auto changedNodes = std::unordered_set<NodeID>{};
+      for (auto const& entity : entities)
+      {
+        auto nodeID = m_spaceIndexing.GetNodeID(EA::GetGeometry(entity));
+        auto [it, isInserted] = m_nodes.try_emplace(nodeID);
+        if (isInserted)
+        {
+          orphanNodes.push_back(nodeID);
+          InitNodeGeometry(&*it);
+        }
+
+        AddNodeEntity(&*it, EA::GetEntityID(entities, entity));
+        changedNodes.insert(nodeID);
+      }
+
+      LinkOrphanNodes(std::move(orphanNodes));
+      UpdateNodeGeometry(changedNodes, entities);
+    }
+
     template<typename TExecMode = SeqExec>
     void BulkInsertV1(EntityContainerView entities, TExecMode execMode = {}) noexcept
     {
@@ -777,6 +941,7 @@ namespace OrthoTree
         GA::DIMENSION_NO);
 
       auto orphanNodes = std::vector<NodeID>{};
+      auto changedNodes = std::unordered_set<NodeID>{};
       auto partitionIt = partitions.begin();
       for (auto beginIt = locationsZip.begin(); beginIt != locationsZip.end();)
       {
@@ -806,44 +971,11 @@ namespace OrthoTree
 
         it->second.ReplaceEntities(std::span(beginIt.GetSecond(), endIt.GetSecond()));
         beginIt = endIt;
+        changedNodes.insert(nodeID);
       }
 
-
-      for (std::size_t i = 0; i < orphanNodes.size(); ++i)
-      {
-        auto const orphanNodeID = orphanNodes[i];
-        auto& [parentNodeID, parentNode] = *GetParentIt(orphanNodeID);
-        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
-
-        if (parentNode.HasChild(childID))
-        {
-          auto const childNodeID = parentNode.GetChild(childID);
-          auto const lcaNodeID = SI::GetLowestCommonAncestor(childNodeID, orphanNodeID);
-          parentNode.LinkChild(childID, lcaNodeID);
-
-          if (orphanNodeID == lcaNodeID)
-          {
-            auto& orphanNode = m_nodes.at(orphanNodeID);
-            auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
-            if (orphanNode.HasChild(childIDOfOrphanNode))
-              orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
-
-            orphanNode.LinkChild(childIDOfOrphanNode, childNodeID);
-          }
-          else
-          {
-            auto [lcaIt, _] = m_nodes.emplace(lcaNodeID, Node{});
-            InitNodeGeometry(&*lcaIt);
-            auto& lcaNode = lcaIt->second;
-            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
-            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
-          }
-        }
-        else
-        {
-          parentNode.LinkChild(childID, orphanNodeID);
-        }
-      }
+      LinkOrphanNodes(std::move(orphanNodes));
+      UpdateNodeGeometry(changedNodes, entities);
     }
 
     template<typename TExecMode = SeqExec>
@@ -863,10 +995,11 @@ namespace OrthoTree
       using EntityLocation = decltype(locationsZip)::iterator::value_type;
       EXEC_POL_DEF(ept); // GCC 11.3
       std::transform(EXEC_POL_ADD(ept) entities.begin(), entities.end(), locationsZip.begin(), [&](auto const& entity) -> EntityLocation {
-        return { GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+        return { m_spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
       });
 
       auto orphanNodes = std::vector<NodeID>{};
+      auto changedNodes = std::unordered_set<NodeID>{};
       auto const maxElementNo = static_cast<uint32_t>(Base::GetMaxElementNum());
       Partitioning::DepthFirstPartition<GA::DIMENSION_NO, EA::GEOMETRY_TYPE != GeometryType::Point, typename SI::Location>(
         execMode,
@@ -891,64 +1024,106 @@ namespace OrthoTree
             InitNodeGeometry(&*it);
           }
 
+          changedNodes.insert(nodeID);
+
           it->second.ReplaceEntities(std::span(beginIt.GetSecond(), endIt.GetSecond()));
           return true;
         });
 
-      for (std::size_t i = 0; i < orphanNodes.size(); ++i)
-      {
-        auto const orphanNodeID = orphanNodes[i];
-        auto& [parentNodeID, parentNode] = *GetParentIt(orphanNodeID);
-        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
-
-        if (parentNode.HasChild(childID))
-        {
-          auto const childNodeID = parentNode.GetChild(childID);
-          auto const lcaNodeID = SI::GetLowestCommonAncestor(childNodeID, orphanNodeID);
-          parentNode.LinkChild(childID, lcaNodeID);
-
-          if (orphanNodeID == lcaNodeID)
-          {
-            auto& orphanNode = m_nodes.at(orphanNodeID);
-            auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
-            if (orphanNode.HasChild(childIDOfOrphanNode))
-              orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
-
-            orphanNode.LinkChild(childIDOfOrphanNode, childNodeID);
-          }
-          else
-          {
-            auto [lcaIt, _] = m_nodes.emplace(lcaNodeID, Node{});
-            InitNodeGeometry(&*lcaIt);
-
-            auto& lcaNode = lcaIt->second;
-            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
-            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
-          }
-        }
-        else
-        {
-          parentNode.LinkChild(childID, orphanNodeID);
-        }
-      }
+      LinkOrphanNodes(std::move(orphanNodes));
+      UpdateNodeGeometry(changedNodes, entities);
     }
 
+
     template<typename TExecMode = SeqExec>
-    void BulkInsertWOPart(EntityContainerView entities, TExecMode execMode = {}) noexcept
+    void BulkInsertV2(EntityContainerView entities, TExecMode execMode = {}) noexcept
     {
       constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
+      constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
+      constexpr bool IS_ELEMENT_DEPTH_SPECIFIC = (EA::GEOMETRY_TYPE != GeometryType::Point);
 
       auto const entityNo = entities.size();
+      if (entityNo == 0)
+        return;
 
-      auto mortonIDs = std::vector<typename SI::Location>(entityNo);
-      auto mainMemorySegment = m_memoryResource.Allocate(entityNo);
-      detail::reserve(
-        m_nodes, detail::EstimateNodeNumber<GA::DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, Base::GetMaxDepthID(), Base::GetMaxElementNum()));
+      struct EntityData
+      {
+        typename SI::Location location;
+        EntityID id;
+      };
+
+      auto sortedEntities = std::vector<EntityData>(entityNo);
+
+      EXEC_POL_DEF(ept); // GCC 11.3
+      std::transform(EXEC_POL_ADD(ept) entities.begin(), entities.end(), sortedEntities.begin(), [&](auto const& entity) -> EntityData {
+        return { m_spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+      });
+
+      // Sort by location (locationID primary, depthID secondary via Location::operator<)
+      std::sort(sortedEntities.begin(), sortedEntities.end(), [](EntityData const& a, EntityData const& b) { return a.location < b.location; });
+
+      auto const maxDepthID = Base::GetMaxDepthID();
+      auto const maxElementNo = Base::GetMaxElementNum();
+
+      auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
+      detail::reserve(m_nodes, detail::EstimateNodeNumber<DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, maxDepthID, maxElementNo));
 
       auto orphanNodes = std::vector<NodeID>{};
-      for (auto const& entity : entities)
+      auto changedNodes = std::unordered_set<NodeID>{};
+
+      // Linear walk: greedily group sorted elements into leaf nodes.
+      // We walk forward, accumulating XOR diff. When the group exceeds maxElementNo
+      // or we run out of elements, we emit a node.
+      using LocationID = decltype(SI::Location::locationID);
+      std::size_t clusterBegin = 0;
+
+      while (clusterBegin < entityNo)
       {
-        auto nodeID = m_spaceIndexing.GetNodeID(EA::GetGeometry(entity));
+        auto const& beginLoc = sortedEntities[clusterBegin].location;
+        auto reference = beginLoc.locationID;
+        auto xorMask = LocationID{};
+        auto minDepthID = beginLoc.depthID;
+
+        std::size_t clusterEnd = clusterBegin + 1;
+
+        // Try to extend the cluster as far as possible while maintaining a single node
+        while (clusterEnd < entityNo)
+        {
+          auto const& nextLoc = sortedEntities[clusterEnd].location;
+          auto const newXorMask = xorMask | (nextLoc.locationID ^ reference);
+          auto const newLevelID = (detail::bit_width(newXorMask) + DIMENSION_NO - 1) / DIMENSION_NO;
+          auto const newDepthID = IS_ELEMENT_DEPTH_SPECIFIC
+                                  ? std::min(std::min(minDepthID, nextLoc.depthID), static_cast<depth_t>(maxDepthID - newLevelID))
+                                  : static_cast<depth_t>(maxDepthID - newLevelID);
+
+          // If extending the cluster would make the LCA shallower (broader), check if we should split
+          auto const clusterSize = clusterEnd - clusterBegin + 1;
+          if (clusterSize > maxElementNo && newDepthID < maxDepthID)
+          {
+            // Check: can we split? Only if the previous cluster is non-trivial to emit
+            // Use a simple heuristic: if adding one more element changes the LCA depth, split before it
+            auto const curLevelID = (detail::bit_width(xorMask) + DIMENSION_NO - 1) / DIMENSION_NO;
+            auto const curDepthID = IS_ELEMENT_DEPTH_SPECIFIC ? std::min(minDepthID, static_cast<depth_t>(maxDepthID - curLevelID))
+                                                              : static_cast<depth_t>(maxDepthID - curLevelID);
+
+            if (newDepthID < curDepthID)
+              break; // Split here - the new element belongs to a higher-level node
+          }
+
+          xorMask = newXorMask;
+          if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
+            minDepthID = std::min(minDepthID, nextLoc.depthID);
+          ++clusterEnd;
+        }
+
+        // Compute final LCA location for this cluster
+        auto const levelID = (detail::bit_width(xorMask) + DIMENSION_NO - 1) / DIMENSION_NO;
+        auto const depthID =
+          IS_ELEMENT_DEPTH_SPECIFIC ? std::min(minDepthID, static_cast<depth_t>(maxDepthID - levelID)) : static_cast<depth_t>(maxDepthID - levelID);
+        auto const shift = LocationID(levelID * DIMENSION_NO);
+        auto const location = typename SI::Location{ .locationID = (reference >> shift) << shift, .depthID = depthID };
+
+        auto nodeID = m_spaceIndexing.GetNodeID(location);
         auto [it, isInserted] = m_nodes.try_emplace(nodeID);
         if (isInserted)
         {
@@ -956,51 +1131,336 @@ namespace OrthoTree
           InitNodeGeometry(&*it);
         }
 
-        AddNodeEntity(&*it, EA::GetEntityID(entities, entity));
+        changedNodes.insert(nodeID);
+        // Copy entity IDs into the memory segment
+        auto const elementNum = clusterEnd - clusterBegin;
+        auto spanOut = std::span(mainMemorySegment.segment.begin() + clusterBegin, elementNum);
+        for (std::size_t i = 0; i < elementNum; ++i)
+          spanOut[i] = sortedEntities[clusterBegin + i].id;
+
+        it->second.ReplaceEntities(spanOut);
+        clusterBegin = clusterEnd;
       }
 
-      for (std::size_t i = 0; i < orphanNodes.size(); ++i)
-      {
-        auto const orphanNodeID = orphanNodes[i];
-        auto& [parentNodeID, parentNode] = *GetParentIt(orphanNodeID);
-        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
+      LinkOrphanNodes(std::move(orphanNodes));
+      UpdateNodeGeometry(changedNodes, entities);
+    }
 
-        if (!parentNode.HasChild(childID))
+    template<typename TExecMode = SeqExec>
+    void BulkInsertV3(EntityContainerView entities, TExecMode execMode = {}) noexcept
+    {
+      constexpr bool IS_ELEMENT_DEPTH_SPECIFIC = (EA::GEOMETRY_TYPE != GeometryType::Point);
+      constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
+      constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
+
+      using Location = typename SI::Location;
+      using LowestCommonAncestorCalculator = typename SI::template LowestCommonAncestorCalculator<IS_ELEMENT_DEPTH_SPECIFIC>;
+
+
+      auto const entityNo = entities.size();
+      if (entityNo == 0)
+        return;
+
+      struct EntityData
+      {
+        Location location;
+        EntityID id;
+      };
+
+      static_assert(sizeof(depth_t) == 4);
+      using LocationID = decltype(Location::locationID);
+
+      auto const maxDepthID = Base::GetMaxDepthID();
+      auto const maxElementNo = Base::GetMaxElementNum();
+
+      struct WorkItem
+      {
+        uint32_t begin;
+        uint32_t end;
+        uint32_t bitsRemaining;
+        Location location;
+      };
+
+      auto buffer = std::vector<EntityData>(entityNo);
+
+      // Transform + compute initial fold in one pass
+      LowestCommonAncestorCalculator rootCalc;
+      {
+        auto it = entities.begin();
+        auto const first = *it;
+        buffer[0] = { m_spaceIndexing.GetLocation(EA::GetGeometry(first)), EA::GetEntityID(entities, first) };
+        rootCalc = LowestCommonAncestorCalculator(buffer[0].location);
+
+        for (std::size_t i = 1; i < entityNo; ++i)
         {
-          parentNode.LinkChild(childID, orphanNodeID);
+          ++it;
+          auto const& entity = *it;
+          buffer[i] = { m_spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+          rootCalc.Add(buffer[i].location);
+        }
+      }
+
+      auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
+      detail::reserve(m_nodes, detail::EstimateNodeNumber<DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, maxDepthID, maxElementNo));
+
+      // --- Configurable digit width ---
+      // 6 bits (64 buckets) for 3D: histogram+offsets = 512B, fits ~8 cache lines.
+      constexpr uint32_t kRadixBits = DIMENSION_NO * 2; // 6 for 3D, 4 for 2D
+      constexpr uint32_t kRadixMaxSize = 1u << kRadixBits;
+
+      auto const totalBits = static_cast<uint32_t>(maxDepthID * DIMENSION_NO);
+
+      // ─── Module 1: radixPartition ───────────────────────────────────
+      // In-place partition of buffer[begin..end) using bits [shift, shift+numBits).
+      // Computes per-bucket LCA fold during histogram pass (zero extra scan).
+      // Calls onPartition(subBegin, subEnd, remainingBits, fold) for each non-empty bucket.
+
+
+      auto BucketSort = [&](auto& activeBuckets, auto& histogram, auto& offsets, auto& buffer, auto const& GetBucketID) {
+        auto leaderBucketIt = activeBuckets.begin();
+        uint32_t leaderBucketID = 0;
+        auto leaderBucketEndIdx = 0;
+        int fromIdx = 0;
+        for (;;)
+        {
+          if (fromIdx == leaderBucketEndIdx)
+          {
+            leaderBucketID = *leaderBucketIt;
+            ++leaderBucketIt;
+            if (leaderBucketIt == activeBuckets.end())
+              break;
+
+            if (histogram[leaderBucketID] == 0)
+              continue;
+
+            fromIdx = offsets[leaderBucketID];
+            leaderBucketEndIdx = fromIdx + histogram[leaderBucketID];
+            histogram[leaderBucketID] = 0;
+          }
+
+          auto bucketID = GetBucketID(buffer[fromIdx].location.GetLocationID());
+          if (leaderBucketID == bucketID)
+          {
+            ++fromIdx;
+          }
+          else
+          {
+            std::swap(buffer[fromIdx], buffer[offsets[bucketID]]);
+
+            ++offsets[bucketID];
+            --histogram[bucketID];
+          }
+        }
+      };
+
+      auto const radixPartition = [&](uint32_t begin, uint32_t end, uint32_t bitsToTest, auto& workStack) {
+        uint32_t const numBits = std::min(kRadixBits, bitsToTest);
+        uint32_t const radixShift = bitsToTest - numBits;
+        uint32_t const radixMask = (1u << numBits) - 1;
+
+        auto const GetBucketID = [radixShift, radixMask](LocationID key) noexcept -> uint32_t {
+          if constexpr (std::is_integral_v<LocationID>)
+            return static_cast<uint32_t>(key >> radixShift) & radixMask;
+          else
+            return static_cast<uint32_t>((key >> radixShift).to_ullong()) & radixMask; // TODO: use bitset_arithmetic could solve this
+        };
+
+        // Histogram + active bucket tracking + per-bucket LCA fold
+        auto histogram = std::array<uint32_t, kRadixMaxSize>{};
+        auto activeBuckets = Partitioning::flagset<kRadixMaxSize>{};
+        auto bucketFolds = std::array<LowestCommonAncestorCalculator, kRadixMaxSize>{};
+
+        for (uint32_t i = begin; i < end; ++i)
+        {
+          auto const& loc = buffer[i].location;
+          auto const b = GetBucketID(loc.locationID);
+          if (histogram[b] == 0)
+            bucketFolds[b] = LowestCommonAncestorCalculator(loc);
+          else
+            bucketFolds[b].Add(loc);
+
+          ++histogram[b];
+          activeBuckets.set(b);
+        }
+
+        // Prefix sum (only active buckets)
+        auto offsets = std::array<uint32_t, kRadixMaxSize>{};
+        uint32_t sum = begin;
+        for (auto b : activeBuckets)
+        {
+          offsets[b] = sum;
+          sum += histogram[b];
+
+          auto location = bucketFolds[b].GetLocation(Base::GetMaxDepthID());
+
+          auto const levelID = Base::GetMaxDepthID() - location.GetDepthID();
+          workStack.push_back({ offsets[b], sum, std::min(levelID * DIMENSION_NO, radixShift), location });
+        }
+
+        if (activeBuckets.size() == 1)
+          return;
+
+        BucketSort(activeBuckets, histogram, offsets, buffer, GetBucketID);
+      };
+
+      // ─── Module 2a: emitCluster (with precomputed fold) ─────────────
+      // Emit range as a single node using precomputed LCA fold. Zero scan.
+      auto orphanNodes = std::vector<NodeID>{};
+      auto changedNodes = std::unordered_set<NodeID>{};
+
+      auto const emitCluster = [&](uint32_t begin, uint32_t end, Location const& location) {
+        auto const elementNum = end - begin;
+        if (elementNum == 0)
+          return;
+
+        auto nodeID = m_spaceIndexing.GetNodeID(location);
+        auto [it, isInserted] = m_nodes.try_emplace(nodeID);
+        if (isInserted)
+        {
+          orphanNodes.push_back(nodeID);
+          InitNodeGeometry(&*it);
+        }
+
+        changedNodes.insert(nodeID);
+
+        // TODO: mainMemorySegment can be only used in creation
+        auto spanOut = std::span(mainMemorySegment.segment.begin() + begin, elementNum);
+        for (uint32_t i = 0; i < elementNum; ++i)
+          spanOut[i] = buffer[begin + i].id;
+        it->second.ReplaceEntities(spanOut);
+      };
+
+      // ─── Module 2b: emitSortedRange ─────────────────────────────────
+      // Linear walk over pre-sorted buffer[begin..end), emits tree nodes.
+      auto const emitSortedRange = [&](uint32_t begin, uint32_t end) {
+        uint32_t clusterBegin = begin;
+        while (clusterBegin < end)
+        {
+          auto lcah = LowestCommonAncestorCalculator(buffer[clusterBegin].location);
+
+          uint32_t clusterEnd = clusterBegin + 1;
+          while (clusterEnd < end)
+          {
+            auto newLcah = lcah;
+            newLcah.Add(buffer[clusterEnd].location);
+
+            auto const newDepthID = newLcah.GetLocation(maxDepthID).GetDepthID();
+            auto const clusterSize = clusterEnd - clusterBegin + 1;
+
+            if (clusterSize > maxElementNo && newDepthID < maxDepthID)
+            {
+              auto const curDepthID = lcah.GetLocation(maxDepthID).GetDepthID();
+              if (newDepthID < curDepthID)
+                break;
+            }
+
+            lcah = newLcah;
+            ++clusterEnd;
+          }
+
+          emitCluster(clusterBegin, clusterEnd, lcah.GetLocation(maxDepthID));
+          clusterBegin = clusterEnd;
+        }
+      };
+
+      auto const elementBasedPartition = [&](uint32_t begin, uint32_t end, Location const& location, auto& workStack) {
+        auto itBegin = buffer.begin() + begin;
+        auto itEnd = buffer.begin() + end;
+        if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
+        {
+          auto const currentDepthID = location.GetDepthID();
+
+          auto it = std::partition(itBegin, itEnd, [&](auto const& a) { return a.location.GetDepthID() == currentDepthID; });
+
+          if (it != itBegin)
+          {
+            emitCluster(static_cast<uint32_t>(std::distance(buffer.begin(), itBegin)), static_cast<uint32_t>(std::distance(buffer.begin(), it)), location);
+            itBegin = it;
+          }
+        }
+
+        while (itBegin < itEnd)
+        {
+          auto const levelID = maxDepthID - location.GetDepthID();
+          auto const shift = static_cast<uint32_t>(levelID > 0 ? (levelID - 1) * DIMENSION_NO : 0);
+          auto const groupPrefix = itBegin->location.GetLocationID() >> shift;
+
+          auto itChildEnd = std::partition(itBegin, itEnd, [&](auto const& a) { return (a.location.GetLocationID() >> shift) == groupPrefix; });
+          assert(itChildEnd != itBegin);
+
+          auto lcah = LowestCommonAncestorCalculator(itBegin->location);
+          for (auto itCur = itBegin + 1; itCur != itChildEnd; ++itCur)
+            lcah.Add(itCur->location);
+
+          workStack.push_back(
+            { .begin = static_cast<uint32_t>(std::distance(buffer.begin(), itBegin)),
+              .end = static_cast<uint32_t>(std::distance(buffer.begin(), itChildEnd)),
+              .bitsRemaining = static_cast<uint32_t>(shift),
+              .location = lcah.GetLocation(Base::GetMaxDepthID()) });
+
+          itBegin = itChildEnd;
+        }
+      };
+
+      // ─── DFS main loop ─────────────────────────────────────────────
+      // Strategy by size:
+      //   large  → radixPartition → push sub-ranges (fold piggybacked on histogram)
+      //   small  → emitCluster (precomputed fold, no scan) or sort+walk
+
+      constexpr uint32_t kSortThreshold = 1024; // ~64KB at 16B/elem → fits L2
+
+      auto workStack = std::vector<WorkItem>{};
+      workStack.reserve(64);
+      workStack.push_back({ 0, static_cast<uint32_t>(entityNo), totalBits, SI::GetRootLocation() });
+
+      while (!workStack.empty())
+      {
+        auto const w = workStack.back();
+        workStack.pop_back();
+
+        auto const elementNum = w.end - w.begin;
+        if (elementNum == 0)
+          continue;
+
+        // Terminal: fits in one node → emit directly using precomputed fold (zero scan)
+        if (elementNum <= maxElementNo || w.bitsRemaining == 0)
+        {
+          emitCluster(w.begin, w.end, w.location);
           continue;
         }
 
-        auto const childNodeID = parentNode.GetChild(childID);
-        auto const lcaNodeID = SI::GetLowestCommonAncestor(childNodeID, orphanNodeID);
-        parentNode.LinkChild(childID, lcaNodeID);
-
-        if (orphanNodeID == lcaNodeID)
+        // Size-based strategy: sort+walk if fits cache, else radix partition
+        if (elementNum <= kSortThreshold)
         {
-          auto& orphanNode = m_nodes.at(orphanNodeID);
-          auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
-          if (orphanNode.HasChild(childIDOfOrphanNode))
-            orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
-
-          orphanNode.LinkChild(childIDOfOrphanNode, childNodeID);
+          std::sort(buffer.begin() + w.begin, buffer.begin() + w.end, [](EntityData const& a, EntityData const& b) {
+            return SI::Location::IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(a.location, b.location);
+          });
+          emitSortedRange(w.begin, w.end);
         }
         else
         {
-          auto [lcaIt, _] = m_nodes.emplace(lcaNodeID, Node{});
-          InitNodeGeometry(&*lcaIt);
-
-          auto& lcaNode = lcaIt->second;
-          lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
-          lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
+          radixPartition(w.begin, w.end, w.bitsRemaining, workStack);
         }
+        /*
+        if (elementNum <= kSortThreshold)
+        {
+          elementBasedPartition(w.begin, w.end, w.location, workStack);
+        }
+        else
+        {
+          radixPartition(w.begin, w.end, w.bitsRemaining, workStack);
+        }*/
       }
+
+      LinkOrphanNodes(std::move(orphanNodes));
+      UpdateNodeGeometry(changedNodes, entities);
     }
 
 
   private:
     auto AddNode(NodeIDCR nodeID) noexcept
     {
-      auto [nodeIt, isNew] = m_nodes.emplace(nodeID, Node{});
+      auto [nodeIt, isNew] = m_nodes.try_emplace(nodeID);
       assert(isNew);
 
       InitNodeGeometry(&*nodeIt);
@@ -1506,7 +1966,8 @@ namespace OrthoTree
         MutableNodeValue childNodeValue = nullptr;
         if (detail::size(beginIt, nextIt) >= Base::GetMaxElementNum() / 2)
         {
-          auto lcaHelper = SI::GetLowestCommonAncestorHelper(*beginIt.GetFirst());
+          constexpr bool IS_ELEMENT_DEPTH_SPECIFIC = (EA::GEOMETRY_TYPE != GeometryType::Point);
+          auto lcaHelper = typename SI::template LowestCommonAncestorCalculator<IS_ELEMENT_DEPTH_SPECIFIC>(*beginIt.GetFirst());
           for (auto it = beginIt.GetFirst(); it != nextIt.GetFirst(); ++it)
             lcaHelper.Add(*it);
 

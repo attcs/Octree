@@ -596,12 +596,18 @@ namespace OrthoTree::Partitioning
   TLocation GetLocationFromLCAState(auto const& lcaState, depth_t maxDepthID)
   {
     if (lcaState.depthID == INVALID_DEPTH)
-      return TLocation{ .depthID = 0, .locationID = 0 };
+      return TLocation{
+        .locationID = 0,
+        .depthID = 0,
+      };
 
     auto const levelID = (std::bit_width(lcaState.xorMask) + DIMENSION_NO - 1) / DIMENSION_NO;
     auto const depthID = std::min(lcaState.depthID, maxDepthID - levelID);
     auto const shift = decltype(TLocation::locationID)(levelID * DIMENSION_NO);
-    return TLocation{ .depthID = depthID, .locationID = (lcaState.reference >> shift) << shift };
+    return TLocation{
+      .locationID = (lcaState.reference >> shift) << shift,
+      .depthID = depthID
+    };
   }
 
   template<dim_t DIMENSION_NO, uint32_t N>
@@ -1063,4 +1069,196 @@ namespace OrthoTree::Partitioning
     DepthFirstPartitionRecursive<DIMENSION_NO, IS_ELEMENT_DEPTH_SPECIFIC, TLocation>(
       beginIt, endIt, locationHint, maxDepthID, maxElementNo, context, processElements);
   }
+
+  // Iterative work-stack based cluster partitioning.
+  // Splits sub-ranges using radix partitioning until each partition is at or below maxElementNo.
+  // For each resulting cluster, computes the LCA location via XOR accumulation.
+  // Calls processCluster(beginIt, endIt, location) for each resulting cluster.
+  template<dim_t DIMENSION_NO, bool IS_ELEMENT_DEPTH_SPECIFIC, typename TLocation>
+  constexpr void ClusterPartition(auto beginIt, auto endIt, depth_t maxDepthID, uint32_t maxElementNo, auto const& processCluster) noexcept
+  {
+    using Iterator = decltype(beginIt);
+    using ValueType = typename decltype(beginIt)::value_type;
+    using LocationID = decltype(TLocation::locationID);
+
+    constexpr uint32_t kRadixBits = std::max<uint32_t>(1u, 11u / DIMENSION_NO) * DIMENSION_NO;
+    constexpr uint32_t kRadixMaxSize = 1u << kRadixBits;
+
+    // Compute LCA location for a range [b, e)
+    auto const computeLocationForRange = [maxDepthID](Iterator b, Iterator e) -> TLocation {
+      auto reference = b.GetFirst()->locationID;
+      auto xorMask = LocationID{};
+      auto minDepthID = b.GetFirst()->depthID;
+
+      for (auto it = std::next(b); it != e; ++it)
+      {
+        auto const& loc = it.GetFirst()[0];
+        xorMask |= (loc.locationID ^ reference);
+        reference |= loc.locationID;
+        if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
+          minDepthID = std::min(minDepthID, loc.depthID);
+      }
+
+      auto const levelID = (detail::bit_width(xorMask) + DIMENSION_NO - 1) / DIMENSION_NO;
+      auto const depthID =
+        IS_ELEMENT_DEPTH_SPECIFIC ? std::min(minDepthID, static_cast<depth_t>(maxDepthID - levelID)) : static_cast<depth_t>(maxDepthID - levelID);
+      auto const shift = decltype(TLocation::locationID)(levelID * DIMENSION_NO);
+      return TLocation{ .depthID = depthID, .locationID = (reference >> shift) << shift };
+    };
+
+    struct WorkItem
+    {
+      Iterator begin;
+      Iterator end;
+      uint32_t bitNumToTest;
+    };
+
+    auto const totalBits = maxDepthID * DIMENSION_NO;
+    auto workStack = std::vector<WorkItem>{};
+    workStack.reserve(64);
+    workStack.push_back({ beginIt, endIt, totalBits });
+
+    auto histogram = std::array<uint32_t, kRadixMaxSize>{};
+    auto offsets = std::array<uint32_t, kRadixMaxSize>{};
+
+    while (!workStack.empty())
+    {
+      auto const [wBegin, wEnd, wBitNum] = workStack.back();
+      workStack.pop_back();
+
+      auto const elementNum = detail::size(wBegin, wEnd);
+      if (elementNum == 0)
+        continue;
+
+      // Cluster is small enough or no more bits to split on -> emit
+      if (elementNum <= maxElementNo || wBitNum == 0)
+      {
+        processCluster(wBegin, wEnd, computeLocationForRange(wBegin, wEnd));
+        continue;
+      }
+
+      // Separate depth-specific elements first (those stuck at current depth)
+      auto actualBegin = wBegin;
+      if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
+      {
+        // Compute what depth the current partition covers from the bit number
+        auto const currentDepthFromBits = maxDepthID - (wBitNum / DIMENSION_NO);
+        auto middleIt =
+          std::partition(wBegin, wEnd, [currentDepthFromBits](auto const& element) { return element.GetFirst().depthID == currentDepthFromBits; });
+
+        if (middleIt != wBegin)
+        {
+          // These elements are stuck at this depth - emit them directly with their location
+          auto reference = wBegin.GetFirst()->locationID;
+          auto depthID = wBegin.GetFirst()->depthID;
+          auto const shift = decltype(TLocation::locationID)((maxDepthID - depthID) * DIMENSION_NO);
+          auto const location = TLocation{ .depthID = depthID, .locationID = (reference >> shift) << shift };
+          processCluster(wBegin, middleIt, location);
+        }
+
+        actualBegin = middleIt;
+        if (actualBegin == wEnd)
+          continue;
+      }
+
+      // Inline radix partition step
+      uint32_t const kRadixBitsTest = (kRadixBits > wBitNum ? wBitNum : kRadixBits);
+      uint32_t const kRadixMask = (1u << kRadixBitsTest) - 1;
+      uint32_t const radixShift = wBitNum - kRadixBitsTest;
+
+      auto const GetBucketID = [radixShift, kRadixMask](const auto key) noexcept -> uint32_t {
+        return static_cast<uint32_t>((key >> radixShift) & kRadixMask);
+      };
+
+      histogram = {};
+      auto activeBuckets = flagset<kRadixMaxSize>{};
+      auto minLocID = actualBegin.GetFirst()->locationID;
+      auto maxLocID = minLocID;
+      for (auto it = actualBegin; it != wEnd; ++it)
+      {
+        auto const locID = it.GetFirst()->locationID;
+        auto bucketID = GetBucketID(locID);
+        ++histogram[bucketID];
+        activeBuckets.set(bucketID);
+        minLocID = std::min(minLocID, locID);
+        maxLocID = std::max(maxLocID, locID);
+      }
+
+      if (activeBuckets.size() == 1)
+      {
+        // All in one bucket, compute remaining bits and re-push or emit
+        auto const mask = (1ull << wBitNum) - 1;
+        auto const remainingBits = static_cast<uint32_t>(detail::bit_width((minLocID ^ maxLocID) & mask));
+        auto const subElementNum = detail::size(actualBegin, wEnd);
+        if (subElementNum <= maxElementNo || remainingBits == 0)
+        {
+          processCluster(actualBegin, wEnd, computeLocationForRange(actualBegin, wEnd));
+        }
+        else
+        {
+          workStack.push_back({ actualBegin, wEnd, remainingBits });
+        }
+        continue;
+      }
+
+      // Compute offsets (prefix sums)
+      offsets = {};
+      uint32_t sum = 0;
+      for (auto bucketID : activeBuckets)
+      {
+        offsets[bucketID] = sum;
+        sum += histogram[bucketID];
+      }
+
+      // In-place permutation (cycle leader)
+      for (auto leaderBucketID : activeBuckets)
+      {
+        while (histogram[leaderBucketID] > 0)
+        {
+          auto from = actualBegin + offsets[leaderBucketID];
+          ValueType v = std::move(*from);
+          auto bucketID = GetBucketID(v.first.locationID);
+
+          while (bucketID != leaderBucketID)
+          {
+            auto to = actualBegin + offsets[bucketID];
+            ValueType tmp = std::move(*to);
+            *to = std::move(v);
+            v = std::move(tmp);
+
+            ++offsets[bucketID];
+            --histogram[bucketID];
+            bucketID = GetBucketID(v.first.locationID);
+          }
+
+          *from = std::move(v);
+          ++offsets[leaderBucketID];
+          --histogram[leaderBucketID];
+        }
+      }
+
+      // Emit or re-push partitions. offsets[bucketID] now points to end of each bucket.
+      sum = 0;
+      for (auto bucketID : activeBuckets)
+      {
+        auto const pBegin = actualBegin + sum;
+        auto const pEnd = actualBegin + offsets[bucketID];
+        sum = offsets[bucketID];
+
+        auto const pSize = detail::size(pBegin, pEnd);
+        if (pSize == 0)
+          continue;
+
+        if (pSize <= maxElementNo || radixShift == 0)
+        {
+          processCluster(pBegin, pEnd, computeLocationForRange(pBegin, pEnd));
+        }
+        else
+        {
+          workStack.push_back({ pBegin, pEnd, radixShift });
+        }
+      }
+    }
+  }
+
 } // namespace OrthoTree::Partitioning
