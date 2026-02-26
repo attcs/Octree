@@ -24,11 +24,12 @@ SOFTWARE.
 
 #pragma once
 
-#include <cassert>
-#include <type_traits>
 #include <algorithm>
-#include <memory>
+#include <cassert>
 #include <iterator>
+#include <memory>
+#include <type_traits>
+
 
 
 #ifdef __cpp_lib_constexpr_inplace_vector
@@ -85,77 +86,71 @@ namespace OrthoTree::detail
       ++m_size;
     }
 
-    constexpr T& operator[](std::size_t index) noexcept { return m_stack[index]; }
-
-    constexpr T const& operator[](std::size_t index) const noexcept { return m_stack[index]; }
-
-    constexpr std::size_t size() const noexcept { return m_size; }
-
-    constexpr bool empty() const noexcept { return m_size == 0; }
-
-    constexpr iterator insert(iterator whereIt, T const& val) noexcept
-      requires(std::is_trivially_copyable_v<T>)
-    {
-      assert(m_size < N);
-
-      auto* dst = std::to_address(whereIt);
-      auto* src = dst;
-      std::size_t count = m_size - (whereIt - begin());
-
-      std::memmove(dst + 1, src, count * sizeof(T));
-      *dst = val;
-      ++m_size;
-      return whereIt;
-    }
-
-    constexpr iterator insert(iterator whereIt, T const& val) noexcept
-      requires(!std::is_trivially_copyable_v<T>)
-    {
-      assert(m_size < N);
-      std::move_backward(whereIt, end(), end() + 1);
-      *whereIt = val;
-      ++m_size;
-      return whereIt;
-    }
-
-    constexpr bool erase(iterator it) noexcept
-      requires(std::is_trivially_copyable_v<T>)
-    {
-      if (it < begin() || it >= end())
-        return false;
-
-      auto* dst = std::to_address(it);
-      std::size_t count = end() - it - 1;
-
-      std::memmove(dst, dst + 1, count * sizeof(T));
-      --m_size;
-      return true;
-    }
-
-    constexpr bool erase(iterator it) noexcept
-      requires(!std::is_trivially_copyable_v<T>)
+    constexpr void pop_back() noexcept
     {
       assert(m_size > 0);
-
-      if (it < begin() || it >= end())
-      {
-        return false;
-      }
-
-      std::move(it + 1, end(), it);
       --m_size;
-      return true;
+    }
+
+    constexpr reference operator[](std::size_t index) noexcept { return m_stack[index]; }
+    constexpr const_reference operator[](std::size_t index) const noexcept { return m_stack[index]; }
+
+    constexpr reference front() noexcept { return m_stack.front(); }
+    constexpr const_reference front() const noexcept { return m_stack.front(); }
+
+    constexpr reference back() noexcept { return m_stack[m_size - 1]; }
+    constexpr const_reference back() const noexcept { return m_stack[m_size - 1]; }
+
+    constexpr T* data() noexcept { return m_stack.data(); }
+    constexpr const T* data() const noexcept { return m_stack.data(); }
+
+    constexpr std::size_t size() const noexcept { return m_size; }
+    constexpr bool empty() const noexcept { return m_size == 0; }
+    constexpr std::size_t capacity() const noexcept { return N; }
+
+    constexpr iterator insert(const_iterator whereIt, T const& val) noexcept
+    {
+      assert(m_size < N);
+      auto non_const_it = begin() + (whereIt - begin());
+      std::copy_backward(non_const_it, end(), end() + 1);
+      *non_const_it = val;
+      ++m_size;
+      return non_const_it;
+    }
+
+    constexpr iterator insert(const_iterator whereIt, T&& val) noexcept
+    {
+      assert(m_size < N);
+      auto non_const_it = begin() + (whereIt - begin());
+      std::copy_backward(non_const_it, end(), end() + 1);
+      *non_const_it = std::move(val);
+      ++m_size;
+      return non_const_it;
+    }
+
+    constexpr iterator erase(const_iterator it) noexcept
+    {
+      assert(m_size > 0);
+      auto non_const_it = begin() + (it - begin());
+      if (non_const_it >= begin() && non_const_it < end())
+      {
+        std::copy(non_const_it + 1, end(), non_const_it);
+        --m_size;
+        return non_const_it;
+      }
+      return end();
     }
 
     constexpr void clear() noexcept { m_size = 0; }
 
     constexpr iterator begin() noexcept { return m_stack.begin(); }
-
     constexpr iterator end() noexcept { return m_stack.begin() + m_size; }
 
     constexpr const_iterator begin() const noexcept { return m_stack.begin(); }
-
     constexpr const_iterator end() const noexcept { return m_stack.begin() + m_size; }
+
+    constexpr const_iterator cbegin() const noexcept { return m_stack.begin(); }
+    constexpr const_iterator cend() const noexcept { return m_stack.begin() + m_size; }
 
   private:
     container m_stack;
