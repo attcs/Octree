@@ -266,7 +266,7 @@ namespace OrthoTree
     NodeContainer<Node> m_nodes;
     ReverseMap m_reverseMap;
 
-    detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR> m_spaceIndexing;
+    detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID> m_spaceIndexing;
     detail::MemoryResource<EntityID> m_memoryResource;
 
   public: // Constructors
@@ -543,7 +543,8 @@ namespace OrthoTree
   private:
     constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
     {
-      m_spaceIndexing = detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR>(maxDepthID, boxSpace);
+      m_spaceIndexing =
+        detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID>(maxDepthID, boxSpace);
       Base::InitBase(m_spaceIndexing.GetMinPoint(), m_spaceIndexing.GetSize(), maxDepthID, maxElementNo);
 
       ORTHOTREE_CRASH_IF(
@@ -880,22 +881,36 @@ namespace OrthoTree
       }
     }
 
-  public: // BulkInsert // TODO finish
+  public:
+    // Insert entities into the octree. Returns true if all entities were inserted successfully, false otherwise.
+    // Input: Accepted newEntities containers: std::span<EA::Geometry>, TContainer<[EA::EntityID, EA::Geometry]>, TContainer<EA:Entity>
+    // Output: failedEntities contains the IDs of entities that were not inserted if there were any. (Only if CONFIG::ALLOW_OUT_OF_SPACE_INSERTION == false)
     template<typename TExecMode = SeqExec>
-    void BulkInsert(EntityContainerView entities, TExecMode execMode = {}) noexcept
+    bool Insert(auto&& newEntities, EA::EntityContainerView existingEntities, TExecMode execMode = {}, std::unordered_set<EntityID>* failedEntities = nullptr) noexcept
+      requires std::ranges::input_range<decltype(newEntities)> &&
+               (std::convertible_to<std::ranges::range_value_t<decltype(newEntities)>, typename EA::Geometry> ||
+                std::convertible_to<std::ranges::range_value_t<decltype(newEntities)>, typename EA::Entity> ||
+                requires(std::ranges::range_value_t<decltype(newEntities)> v) { v.first; v.second; } ||
+                requires(std::ranges::range_value_t<decltype(newEntities)> v) {
+                  // Structured binding check that is less likely to trigger hard errors on arrays
+                  []<typename U>(U&& u) { auto [a, b] = u; }(v);
+                })
     {
       constexpr bool IS_ELEMENT_DEPTH_SPECIFIC = (EA::GEOMETRY_TYPE != GeometryType::Point);
       constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
       constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
+      constexpr uint32_t kSortThreshold = 1024;
 
       using Location = typename SI::Location;
       using LocationID = typename SI::LocationID;
       using LowestCommonAncestorCalculator = typename SI::template LowestCommonAncestorCalculator<IS_ELEMENT_DEPTH_SPECIFIC>;
+
       struct EntityData
       {
         Location location;
         EntityID id;
       };
+
       struct WorkItem
       {
         uint32_t begin;
@@ -904,36 +919,75 @@ namespace OrthoTree
         Location location;
       };
 
-      auto const entityNo = entities.size();
-      if (entityNo == 0)
-        return;
-
+      auto newEntityCount = newEntities.size();
+      if (newEntityCount == 0)
+        return true;
 
       auto const maxDepthID = Base::GetMaxDepthID();
       auto const maxElementNo = Base::GetMaxElementNum();
+      auto const existingEntityNum = EA::GetEntityCount(existingEntities);
 
-      auto buffer = std::vector<EntityData>(entityNo);
-
+      // Morton code creation
+      auto buffer = std::vector<EntityData>(newEntityCount);
       EXEC_POL_DEF(ept); // GCC 11.3
-      std::transform(EXEC_POL_ADD(ept) entities.begin(), entities.end(), buffer.begin(), [&](auto const& entity) -> EntityData {
-        return { m_spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
+      std::transform(EXEC_POL_ADD(ept) newEntities.begin(), newEntities.end(), buffer.begin(), [&](auto const& item) -> EntityData {
+        using T = std::remove_cvref_t<decltype(item)>;
+        if constexpr (EA::IS_ENTITY_KEYED && std::is_convertible_v<T, typename EA::Entity>)
+        {
+          return { m_spaceIndexing.GetLocation(EA::GetGeometry(item)), EA::GetEntityID(item) };
+        }
+        else if constexpr (std::is_convertible_v<T, typename EA::Geometry> && std::ranges::contiguous_range<decltype(newEntities)>)
+        {
+          auto const entityID = static_cast<EntityID>(existingEntityNum + detail::getID(newEntities, item));
+          return { m_spaceIndexing.GetLocation(item), entityID };
+        }
+        else if constexpr (requires(T v) {
+                             []<typename U>(U&& u) {
+                               auto [a, b] = u;
+                             }(v);
+                           })
+        {
+          auto const& [entityID, entityGeometry] = item;
+          return { m_spaceIndexing.GetLocation(entityGeometry), static_cast<EntityID>(entityID) };
+        }
+        else
+        {
+          static_assert(false, "EntityID cannot be determined for non-keyed entities in a non-contiguous container.");
+        }
       });
 
-      auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
-      detail::reserve(m_nodes, detail::EstimateNodeNumber<DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, maxDepthID, maxElementNo));
+      bool isAllEntitiesInserted = true;
+      if constexpr (!CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+      {
+        auto const endIt =
+          std::partition(buffer.begin(), buffer.end(), [](auto const& element) { return element.location.GetDepthID() != INVALID_DEPTH; });
+        newEntityCount = std::distance(buffer.begin(), endIt);
+        isAllEntitiesInserted = endIt == buffer.end();
 
-      // --- Configurable digit width ---
-      // 6 bits (64 buckets) for 3D: histogram+offsets = 512B, fits ~8 cache lines.
-      constexpr uint32_t kRadixBits = DIMENSION_NO * 2; // 6 for 3D, 4 for 2D
+        if (!isAllEntitiesInserted && failedEntities)
+        {
+          failedEntities->reserve(std::distance(endIt, buffer.end()));
+          std::transform(endIt, buffer.end(), std::back_inserter(*failedEntities), [](auto const& element) { return element.id; });
+        }
+
+        if constexpr (!EA::IS_ENTITY_KEYED)
+        {
+          if (!isAllEntitiesInserted)
+            return false;
+        }
+      }
+
+
+      // Configurable digit width
+      // Considering 32kB L1 cache with 64B width cache lines: 512 cache lines total is the limit.
+      // 3D: 6 bits/64 buckets with 2 cache lines per bucket: 128 cache lines. Other stack variabbles (e.g. histogram / offsets) are also cached.
+      constexpr uint32_t kRadixBits = DIMENSION_NO > 8 ? std::min<uint32_t>(12, DIMENSION_NO) : (8 / DIMENSION_NO) * DIMENSION_NO;
       constexpr uint32_t kRadixMaxSize = 1u << kRadixBits;
 
       auto const totalBits = static_cast<uint32_t>(maxDepthID * DIMENSION_NO);
 
       // In-place partition of buffer[begin..end) using bits [shift, shift+numBits).
-      // Computes per-bucket LCA fold during histogram pass (zero extra scan).
-      // Calls onPartition(subBegin, subEnd, remainingBits, fold) for each non-empty bucket.
-
-      auto BucketSort = [&](auto& activeBuckets, auto& histogram, auto& offsets, auto& buffer, auto const& GetBucketID) {
+      auto bucketSort = [&](auto& activeBuckets, auto& histogram, auto& offsets, auto& buffer, auto const& GetBucketID) {
         auto leaderBucketIt = activeBuckets.begin();
         uint32_t leaderBucketID = 0;
         auto leaderBucketEndIdx = 0;
@@ -970,6 +1024,7 @@ namespace OrthoTree
         }
       };
 
+      // Computes per-bucket LCA fold during histogram pass (zero extra scan).
       auto const radixPartition = [&](uint32_t begin, uint32_t end, uint32_t bitsToTest, auto& workStack) {
         uint32_t const numBits = std::min(kRadixBits, bitsToTest);
         uint32_t const radixShift = bitsToTest - numBits;
@@ -1014,7 +1069,7 @@ namespace OrthoTree
         if (activeBuckets.size() == 1)
           return;
 
-        BucketSort(activeBuckets, histogram, offsets, buffer, GetBucketID);
+        bucketSort(activeBuckets, histogram, offsets, buffer, GetBucketID);
       };
 
       // Emit range as a single node using precomputed LCA fold. Zero scan.
@@ -1027,20 +1082,26 @@ namespace OrthoTree
           return;
 
         auto nodeID = m_spaceIndexing.GetNodeID(location);
+        changedNodes.insert(nodeID);
         auto [it, isInserted] = m_nodes.try_emplace(nodeID);
+        auto& entitySegment = it->second.GetEntitySegment();
         if (isInserted)
         {
           orphanNodes.push_back(nodeID);
           InitNodeGeometry(&*it);
+
+          entitySegment = m_memoryResource.Allocate(elementNum);
+          for (uint32_t i = 0; i < elementNum; ++i)
+            entitySegment.segment[i] = buffer[begin + i].id;
         }
+        else
+        {
+          auto existingElementNum = entitySegment.segment.size();
+          m_memoryResource.IncreaseSegment(entitySegment, elementNum);
 
-        changedNodes.insert(nodeID);
-
-        // TODO: mainMemorySegment can be only used in creation
-        auto spanOut = std::span(mainMemorySegment.segment.begin() + begin, elementNum);
-        for (uint32_t i = 0; i < elementNum; ++i)
-          spanOut[i] = buffer[begin + i].id;
-        it->second.ReplaceEntities(spanOut);
+          for (uint32_t i = 0; i < elementNum; ++i)
+            entitySegment.segment[existingElementNum + i] = buffer[begin + i].id;
+        }
       };
 
       // Linear walk over pre-sorted buffer[begin..end), emits tree nodes.
@@ -1075,11 +1136,10 @@ namespace OrthoTree
         }
       };
 
-      constexpr uint32_t kSortThreshold = 1024;
 
       auto workStack = std::vector<WorkItem>{};
       workStack.reserve(64);
-      workStack.push_back({ 0, static_cast<uint32_t>(entityNo), totalBits, SI::GetRootLocation() });
+      workStack.push_back({ 0, static_cast<uint32_t>(newEntityCount), totalBits, SI::GetRootLocation() });
 
       while (!workStack.empty())
       {
@@ -1112,7 +1172,9 @@ namespace OrthoTree
       }
 
       LinkOrphanNodes(std::move(orphanNodes));
-      UpdateNodeGeometry(changedNodes, entities);
+      UpdateNodeGeometry(changedNodes, newEntities);
+
+      return isAllEntitiesInserted;
     }
 
 

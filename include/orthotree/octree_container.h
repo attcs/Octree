@@ -261,6 +261,46 @@ namespace OrthoTree
       return newEntityID;
     }
 
+    // Add multiple entities (Bulk Insertion)
+    // Accepted entity ranges:
+    // - TContainer<Entity>
+    // Note:
+    // - If the container is not keyed, if any entity is failed to insert, nothing will be inserted.
+    // - The tree will not be rebalanced after insertion.
+    template<typename TEntityRange, typename TExecMode = SeqExec>
+    constexpr bool Add(TEntityRange&& newEntities, TExecMode execMode = {}) noexcept
+    {
+      if (newEntities.size() == 0)
+        return true;
+
+      auto failedEntities = std::unordered_set<EntityID>{};
+      auto const isAllEntitiesInserted = m_tree.Insert(newEntities, m_entities, execMode, &failedEntities);
+      if constexpr (!EA::IS_ENTITY_KEYED)
+      {
+        // For non-keyed entities, we MUST insert everything to keep indices sync with tree IDs
+        if (!isAllEntitiesInserted)
+          return false;
+      }
+
+      // Now add to the physical container
+      if constexpr (requires { m_entities.reserve(0); })
+        m_entities.reserve(m_entities.size() + newEntities.size());
+
+      for (auto&& entity : newEntities)
+      {
+        if constexpr (EA::IS_ENTITY_KEYED)
+        {
+          bool isFailed = std::erase(failedEntities, EA::GetEntityID(entity));
+          if (isFailed)
+            continue;
+        }
+
+        EA::Insert(m_entities, std::forward<decltype(entity)>(entity));
+      }
+
+      return isAllEntitiesInserted;
+    }
+
     // Replace entity to the changedEntity
     template<typename TEntity = Entity>
     constexpr bool Update(EntityID entityID, TEntity&& changedEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
