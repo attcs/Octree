@@ -432,6 +432,8 @@ namespace OrthoTree
         uint32_t beginID = 0, length = 0;
       };
 
+      using LCAC = typename SI::template LowestCommonAncestorCalculator<EA::GEOMETRY_TYPE != OrthoTree::GeometryType::Point>;
+
       auto nodeQueue = std::queue<NodeProcessingData>();
       nodeQueue.push(NodeProcessingData{ {}, 0, detail::size<uint32_t>(rootBeginLocationIt, rootEndLocationIt) });
 
@@ -453,16 +455,17 @@ namespace OrthoTree
         auto const endID = nodeEntityBeginID + nodeEntityCount;
 
         uint32_t nonRefinableEntityCount = 0;
-        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+        if constexpr (EA::GEOMETRY_TYPE == OrthoTree::GeometryType::Box)
         {
           auto nonRefinableEndIt = beginIt;
           if constexpr (ARE_LOCATIONS_SORTED)
           {
-            nonRefinableEndIt = std::partition_point(beginIt, endIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+            nonRefinableEndIt =
+              std::partition_point(beginIt, endIt, [depthID](auto const& location) { return location.GetFirst().GetDepthID() == depthID; });
           }
           else
           {
-            nonRefinableEndIt = std::partition(beginIt, endIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+            nonRefinableEndIt = std::partition(beginIt, endIt, [depthID](auto const& location) { return location.GetFirst().GetDepthID() == depthID; });
           }
 
           if (beginIt != nonRefinableEndIt)
@@ -489,7 +492,7 @@ namespace OrthoTree
           auto const& pivot = (*beginIt).GetFirst();
           auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, pivot.GetLocationID());
 
-          auto lcah = SI::GetLowestCommonAncestorHelper(pivot);
+          auto lcah = LCAC(pivot);
           auto childEndIt = [&] {
             if constexpr (ARE_LOCATIONS_SORTED)
             {
@@ -511,7 +514,7 @@ namespace OrthoTree
           }();
 
           auto childEntityCount = detail::size<uint32_t>(beginIt, childEndIt);
-          nodeQueue.push({ lcah.GetLocation(Base::GetMaxDepthID()), beginID, childEntityCount });
+          nodeQueue.push(NodeProcessingData{ lcah.GetLocation(Base::GetMaxDepthID()), beginID, childEntityCount });
 
           ++childNodeCount;
           beginID += childEntityCount;
@@ -530,7 +533,7 @@ namespace OrthoTree
       std::optional<depth_t> maxDepthIn = std::nullopt,
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNumInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
-      [[maybe_unused]] TExecMode execMode = {}) noexcept
+      TExecMode execMode = {}) noexcept
     {
       auto const boxSpace = boxSpaceOptional ? IGM::GetBoxAD(*boxSpaceOptional) : IGM::template GetBoundingBoxAD<EA>(entities);
       auto const entityCount = entities.size();
