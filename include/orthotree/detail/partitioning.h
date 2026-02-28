@@ -596,18 +596,12 @@ namespace OrthoTree::Partitioning
   TLocation GetLocationFromLCAState(auto const& lcaState, depth_t maxDepthID)
   {
     if (lcaState.depthID == INVALID_DEPTH)
-      return TLocation{
-        .locationID = 0,
-        .depthID = 0,
-      };
+      return TLocation(0, 0);
 
     auto const levelID = (std::bit_width(lcaState.xorMask) + DIMENSION_NO - 1) / DIMENSION_NO;
     auto const depthID = std::min(lcaState.depthID, maxDepthID - levelID);
-    auto const shift = decltype(TLocation::locationID)(levelID * DIMENSION_NO);
-    return TLocation{
-      .locationID = (lcaState.reference >> shift) << shift,
-      .depthID = depthID
-    };
+    auto const shift = TLocation::LocationID(levelID * DIMENSION_NO);
+    return TLocation((lcaState.reference >> shift) << shift, depthID);
   }
 
   template<dim_t DIMENSION_NO, uint32_t N>
@@ -935,9 +929,9 @@ namespace OrthoTree::Partitioning
     BucketPartition2<kRadixBits, DIMENSION_NO, TLocation>(
       beginIt,
       endIt,
-      [](ValueType const& location) { return location.first.locationID; },
-      [](Reference const& location) { return location.GetFirst().depthID; },
-      (maxDepthID - locationHint.depthID) * DIMENSION_NO,
+      [](ValueType const& location) { return location.first.GetLocationID(); },
+      [](Reference const& location) { return location.GetFirst().GetDepthID(); },
+      (maxDepthID - locationHint.GetDepthID()) * DIMENSION_NO,
       maxDepthID,
       maxElementNo,
       context,
@@ -1103,7 +1097,7 @@ namespace OrthoTree::Partitioning
       auto const depthID =
         IS_ELEMENT_DEPTH_SPECIFIC ? std::min(minDepthID, static_cast<depth_t>(maxDepthID - levelID)) : static_cast<depth_t>(maxDepthID - levelID);
       auto const shift = decltype(TLocation::locationID)(levelID * DIMENSION_NO);
-      return TLocation{ .depthID = depthID, .locationID = (reference >> shift) << shift };
+      return TLocation((reference >> shift) << shift, depthID);
     };
 
     struct WorkItem
@@ -1152,7 +1146,7 @@ namespace OrthoTree::Partitioning
           auto reference = wBegin.GetFirst()->locationID;
           auto depthID = wBegin.GetFirst()->depthID;
           auto const shift = decltype(TLocation::locationID)((maxDepthID - depthID) * DIMENSION_NO);
-          auto const location = TLocation{ .depthID = depthID, .locationID = (reference >> shift) << shift };
+          auto const location = TLocation((reference >> shift) << shift, depthID);
           processCluster(wBegin, middleIt, location);
         }
 

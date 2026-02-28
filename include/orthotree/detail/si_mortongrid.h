@@ -55,11 +55,11 @@ namespace OrthoTree::detail
     {
       if constexpr (ALLOW_OUT_OF_SPACE_INSERTION)
       {
-        return SI::GetLocation(SI::LocationID(), 0);
+        return typename SI::Location(typename SI::LocationID(), 0);
       }
       else
       {
-        return SI::GetLocation(SI::LocationID(), INVALID_DEPTH);
+        return typename SI::Location(typename SI::LocationID(), INVALID_DEPTH);
       }
     }
 
@@ -69,7 +69,7 @@ namespace OrthoTree::detail
       if (gridID[0] == INVALID_GRIDID) [[unlikely]]
         return GetInvalidLocation();
 
-      return SI::GetLocation(SI::Encode(gridID), m_maxDepthID);
+      return typename SI::Location(SI::Encode(gridID), m_maxDepthID);
     }
 
     constexpr typename SI::Location GetLocation(TBox const& box) const noexcept
@@ -80,7 +80,7 @@ namespace OrthoTree::detail
         if (centerGridID[0] == INVALID_GRIDID) [[unlikely]]
           return GetInvalidLocation();
 
-        return SI::GetLocation(SI::Encode(centerGridID), m_maxDepthID - levelID);
+        return typename SI::Location(SI::Encode(centerGridID), m_maxDepthID - levelID);
       }
       else
       {

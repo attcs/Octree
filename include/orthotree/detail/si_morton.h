@@ -74,9 +74,20 @@ namespace OrthoTree::detail
 
     struct Location
     {
+    public:
+      using LocationID = LocationID;
+
+    private:
       // Pack members to avoid padding
       LocationID locationID;
       depth_t depthID;
+
+    public:
+      constexpr Location() noexcept = default;
+      constexpr Location(LocationID locationID, depth_t depthID) noexcept
+      : locationID(locationID)
+      , depthID(depthID)
+      {}
 
       constexpr depth_t GetDepthID() const noexcept { return depthID; }
       constexpr LocationID GetLocationID() const noexcept { return locationID; }
@@ -104,7 +115,7 @@ namespace OrthoTree::detail
       }
     };
 
-    static constexpr Location GetRootLocation() noexcept { return Location{ .locationID = LocationID{}, .depthID = 0 }; }
+    static constexpr Location GetRootLocation() noexcept { return Location(LocationID{}, 0); }
 
     class ChildCheckerFixedDepth
     {
@@ -173,11 +184,13 @@ namespace OrthoTree::detail
     template<typename T>
     static constexpr NodeID GetNodeID(T&& location, depth_t maxDepthID) noexcept
       requires requires(T t) {
-        t.depthID;
-        t.locationID;
+        t.GetDepthID();
+        t.GetLocationID();
       }
     {
-      return (NodeID{ 1 } << (location.depthID * DIMENSION_NO)) | (location.locationID >> ((maxDepthID - location.depthID) * DIMENSION_NO));
+      auto depthID = location.GetDepthID();
+      auto locationID = location.GetLocationID();
+      return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | (locationID >> ((maxDepthID - depthID) * DIMENSION_NO));
     }
 
 
@@ -289,8 +302,8 @@ namespace OrthoTree::detail
       constexpr LowestCommonAncestorCalculator() noexcept = default;
 
       constexpr explicit LowestCommonAncestorCalculator(Location location) noexcept
-      : m_minDepthID(location.depthID)
-      , m_base(location.locationID)
+      : m_minDepthID(location.GetDepthID())
+      , m_base(location.GetLocationID())
       {}
 
       constexpr void Add(Location location) noexcept
@@ -306,7 +319,7 @@ namespace OrthoTree::detail
         auto const levelIDDiff = (detail::bit_width(m_diff) + DIMENSION_NO - 1) / DIMENSION_NO;
         auto const depthID = std::min(m_minDepthID, maxDepthID - levelIDDiff);
 
-        return MortonSpaceIndexing::GetLocation(m_base, depthID);
+        return Location(m_base, depthID);
       }
 
       constexpr NodeID GetNodeID(depth_t maxDepthID) const noexcept
@@ -619,12 +632,12 @@ namespace OrthoTree::detail
       return { Encode(gridIDRange[0]), Encode(gridIDRange[1]) };
     }
 
-    static constexpr Location GetLocation(auto&& locationID, depth_t maxDepthID) noexcept { return Location{ locationID, maxDepthID }; }
+    static constexpr Location GetLocation(auto&& locationID, depth_t maxDepthID) noexcept { return Location(locationID, maxDepthID); }
 
     static constexpr Location GetRangeLocation(auto&& gridIDRange, depth_t maxDepthID) noexcept
     {
       if (gridIDRange[0] == gridIDRange[1])
-        return Location{ Encode(gridIDRange[0]), maxDepthID };
+        return Location(Encode(gridIDRange[0]), maxDepthID);
 
       auto locationIDRange = std::array<LocationID, 2>{ Encode(gridIDRange[0]), Encode(gridIDRange[1]) };
       auto const locationDifference = locationIDRange[0] ^ locationIDRange[1];
@@ -644,7 +657,7 @@ namespace OrthoTree::detail
       assert(0 < levelID && levelID <= maxDepthID);
 
       auto const shift = levelID * DIMENSION_NO;
-      return Location{ (locationIDRange[0] >> shift) << shift, maxDepthID - levelID };
+      return Location((locationIDRange[0] >> shift) << shift, maxDepthID - levelID);
     }
   };
 } // namespace OrthoTree::detail

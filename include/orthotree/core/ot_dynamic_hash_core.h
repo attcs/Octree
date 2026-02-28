@@ -588,12 +588,12 @@ namespace OrthoTree
         if constexpr (ARE_LOCATIONS_SORTED)
         {
           stuckedEndLocationIt =
-            std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+            std::partition_point(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().GetDepthID() == depthID; });
         }
         else
         {
           stuckedEndLocationIt =
-            std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().depthID == depthID; });
+            std::partition(locationIt, endLocationIt, [depthID](auto const& location) { return location.GetFirst().GetDepthID() == depthID; });
         }
 
         nodeEntityNo = std::size_t(std::distance(locationIt, stuckedEndLocationIt));
@@ -623,7 +623,7 @@ namespace OrthoTree
       NodeProcessingData& parentNodeProcessingData,
       NodeProcessingData& nodeProcessingData) const noexcept
     {
-      auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, (*locationIt).GetFirst().locationID);
+      auto const childChecker = typename SI::ChildCheckerFixedDepth(examinedLevelID, (*locationIt).GetFirst().GetLocationID());
       auto const childID = childChecker.GetChildID(examinedLevelID);
       auto childKey = keyGenerator.GetChildNodeKey(childID);
 
@@ -631,13 +631,13 @@ namespace OrthoTree
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         nodeProcessingData.EndLocationIt = std::partition_point(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
-          return childChecker.Test(location.GetFirst().locationID);
+          return childChecker.Test(location.GetFirst().GetLocationID());
         });
       }
       else
       {
         nodeProcessingData.EndLocationIt = std::partition(locationIt, parentNodeProcessingData.EndLocationIt, [&](auto const& location) {
-          return childChecker.Test(location.GetFirst().locationID);
+          return childChecker.Test(location.GetFirst().GetLocationID());
         });
       }
 
@@ -1013,7 +1013,7 @@ namespace OrthoTree
           if (elementNum == 0)
             return true;
 
-          if (!isForcedToFinish && elementNum > Base::GetMaxElementNum() && location.depthID < Base::GetMaxDepthID())
+          if (!isForcedToFinish && elementNum > Base::GetMaxElementNum() && location.GetDepthID() < Base::GetMaxDepthID())
             return false;
 
           auto nodeID = m_spaceIndexing.GetNodeID(location);
@@ -1121,7 +1121,7 @@ namespace OrthoTree
         auto const depthID =
           IS_ELEMENT_DEPTH_SPECIFIC ? std::min(minDepthID, static_cast<depth_t>(maxDepthID - levelID)) : static_cast<depth_t>(maxDepthID - levelID);
         auto const shift = LocationID(levelID * DIMENSION_NO);
-        auto const location = typename SI::Location{ .locationID = (reference >> shift) << shift, .depthID = depthID };
+        auto const location = typename SI::Location((reference >> shift) << shift, depthID);
 
         auto nodeID = m_spaceIndexing.GetNodeID(location);
         auto [it, isInserted] = m_nodes.try_emplace(nodeID);
@@ -1154,25 +1154,13 @@ namespace OrthoTree
       constexpr bool IS_PARALLEL_EXEC = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
 
       using Location = typename SI::Location;
+      using LocationID = typename SI::LocationID;
       using LowestCommonAncestorCalculator = typename SI::template LowestCommonAncestorCalculator<IS_ELEMENT_DEPTH_SPECIFIC>;
-
-
-      auto const entityNo = entities.size();
-      if (entityNo == 0)
-        return;
-
       struct EntityData
       {
         Location location;
         EntityID id;
       };
-
-      static_assert(sizeof(depth_t) == 4);
-      using LocationID = decltype(Location::locationID);
-
-      auto const maxDepthID = Base::GetMaxDepthID();
-      auto const maxElementNo = Base::GetMaxElementNum();
-
       struct WorkItem
       {
         uint32_t begin;
@@ -1181,24 +1169,15 @@ namespace OrthoTree
         Location location;
       };
 
+      auto const entityNo = entities.size();
+      if (entityNo == 0)
+        return;
+
+
+      auto const maxDepthID = Base::GetMaxDepthID();
+      auto const maxElementNo = Base::GetMaxElementNum();
+
       auto buffer = std::vector<EntityData>(entityNo);
-
-      // Transform + compute initial fold in one pass
-      LowestCommonAncestorCalculator rootCalc;
-      {
-        auto it = entities.begin();
-        auto const first = *it;
-        buffer[0] = { m_spaceIndexing.GetLocation(EA::GetGeometry(first)), EA::GetEntityID(entities, first) };
-        rootCalc = LowestCommonAncestorCalculator(buffer[0].location);
-
-        for (std::size_t i = 1; i < entityNo; ++i)
-        {
-          ++it;
-          auto const& entity = *it;
-          buffer[i] = { m_spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
-          rootCalc.Add(buffer[i].location);
-        }
-      }
 
       auto mainMemorySegment = this->m_memoryResource.Allocate(entityNo);
       detail::reserve(m_nodes, detail::EstimateNodeNumber<DIMENSION_NO, SI::MAX_THEORETICAL_DEPTH_ID>(entityNo, maxDepthID, maxElementNo));
@@ -1210,11 +1189,9 @@ namespace OrthoTree
 
       auto const totalBits = static_cast<uint32_t>(maxDepthID * DIMENSION_NO);
 
-      // ─── Module 1: radixPartition ───────────────────────────────────
       // In-place partition of buffer[begin..end) using bits [shift, shift+numBits).
       // Computes per-bucket LCA fold during histogram pass (zero extra scan).
       // Calls onPartition(subBegin, subEnd, remainingBits, fold) for each non-empty bucket.
-
 
       auto BucketSort = [&](auto& activeBuckets, auto& histogram, auto& offsets, auto& buffer, auto const& GetBucketID) {
         auto leaderBucketIt = activeBuckets.begin();
@@ -1273,7 +1250,7 @@ namespace OrthoTree
         for (uint32_t i = begin; i < end; ++i)
         {
           auto const& loc = buffer[i].location;
-          auto const b = GetBucketID(loc.locationID);
+          auto const b = GetBucketID(loc.GetLocationID());
           if (histogram[b] == 0)
             bucketFolds[b] = LowestCommonAncestorCalculator(loc);
           else
@@ -1303,7 +1280,6 @@ namespace OrthoTree
         BucketSort(activeBuckets, histogram, offsets, buffer, GetBucketID);
       };
 
-      // ─── Module 2a: emitCluster (with precomputed fold) ─────────────
       // Emit range as a single node using precomputed LCA fold. Zero scan.
       auto orphanNodes = std::vector<NodeID>{};
       auto changedNodes = std::unordered_set<NodeID>{};
@@ -1330,7 +1306,6 @@ namespace OrthoTree
         it->second.ReplaceEntities(spanOut);
       };
 
-      // ─── Module 2b: emitSortedRange ─────────────────────────────────
       // Linear walk over pre-sorted buffer[begin..end), emits tree nodes.
       auto const emitSortedRange = [&](uint32_t begin, uint32_t end) {
         uint32_t clusterBegin = begin;
@@ -1363,51 +1338,7 @@ namespace OrthoTree
         }
       };
 
-      auto const elementBasedPartition = [&](uint32_t begin, uint32_t end, Location const& location, auto& workStack) {
-        auto itBegin = buffer.begin() + begin;
-        auto itEnd = buffer.begin() + end;
-        if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
-        {
-          auto const currentDepthID = location.GetDepthID();
-
-          auto it = std::partition(itBegin, itEnd, [&](auto const& a) { return a.location.GetDepthID() == currentDepthID; });
-
-          if (it != itBegin)
-          {
-            emitCluster(static_cast<uint32_t>(std::distance(buffer.begin(), itBegin)), static_cast<uint32_t>(std::distance(buffer.begin(), it)), location);
-            itBegin = it;
-          }
-        }
-
-        while (itBegin < itEnd)
-        {
-          auto const levelID = maxDepthID - location.GetDepthID();
-          auto const shift = static_cast<uint32_t>(levelID > 0 ? (levelID - 1) * DIMENSION_NO : 0);
-          auto const groupPrefix = itBegin->location.GetLocationID() >> shift;
-
-          auto itChildEnd = std::partition(itBegin, itEnd, [&](auto const& a) { return (a.location.GetLocationID() >> shift) == groupPrefix; });
-          assert(itChildEnd != itBegin);
-
-          auto lcah = LowestCommonAncestorCalculator(itBegin->location);
-          for (auto itCur = itBegin + 1; itCur != itChildEnd; ++itCur)
-            lcah.Add(itCur->location);
-
-          workStack.push_back(
-            { .begin = static_cast<uint32_t>(std::distance(buffer.begin(), itBegin)),
-              .end = static_cast<uint32_t>(std::distance(buffer.begin(), itChildEnd)),
-              .bitsRemaining = static_cast<uint32_t>(shift),
-              .location = lcah.GetLocation(Base::GetMaxDepthID()) });
-
-          itBegin = itChildEnd;
-        }
-      };
-
-      // ─── DFS main loop ─────────────────────────────────────────────
-      // Strategy by size:
-      //   large  → radixPartition → push sub-ranges (fold piggybacked on histogram)
-      //   small  → emitCluster (precomputed fold, no scan) or sort+walk
-
-      constexpr uint32_t kSortThreshold = 1024; // ~64KB at 16B/elem → fits L2
+      constexpr uint32_t kSortThreshold = 1024;
 
       auto workStack = std::vector<WorkItem>{};
       workStack.reserve(64);
@@ -1441,15 +1372,6 @@ namespace OrthoTree
         {
           radixPartition(w.begin, w.end, w.bitsRemaining, workStack);
         }
-        /*
-        if (elementNum <= kSortThreshold)
-        {
-          elementBasedPartition(w.begin, w.end, w.location, workStack);
-        }
-        else
-        {
-          radixPartition(w.begin, w.end, w.bitsRemaining, workStack);
-        }*/
       }
 
       LinkOrphanNodes(std::move(orphanNodes));
