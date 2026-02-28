@@ -27,14 +27,17 @@ SOFTWARE.
 #include <array>
 #include <bit>
 #include <cassert>
+#include <cstdint>
+#include <type_traits>
 
 #include "bitset_arithmetic.h"
 #include "common.h"
+#include "utils.h"
 
 namespace OrthoTree::detail
 {
 
-  template<dim_t DIMENSION_NO>
+  template<dim_t DIMENSION_NO, depth_t MAX_ALLOWED_DEPTH_ID>
   struct MortonSpaceIndexing
   {
 #ifdef ORTHOTREE__LOCATIONCODE_32
@@ -72,25 +75,64 @@ namespace OrthoTree::detail
     static auto constexpr MAX_THEORETICAL_DEPTH_ID =
       IS_LINEAR_TREE ? static_cast<depth_t>((CHAR_BIT * sizeof(NodeID) - 1 /*sentinel bit*/)) / DIMENSION_NO : MAX_NONLINEAR_DEPTH_ID;
 
-    struct Location
+  private:
+    struct GeneralLocationData
     {
-    public:
-      using LocationID = LocationID;
-
-    private:
-      // Pack members to avoid padding
       LocationID locationID;
       depth_t depthID;
 
-    public:
-      constexpr Location() noexcept = default;
-      constexpr Location(LocationID locationID, depth_t depthID) noexcept
+      constexpr GeneralLocationData() noexcept = default;
+      constexpr GeneralLocationData(LocationID locationID, depth_t depthID) noexcept
       : locationID(locationID)
       , depthID(depthID)
       {}
 
       constexpr depth_t GetDepthID() const noexcept { return depthID; }
       constexpr LocationID GetLocationID() const noexcept { return locationID; }
+    };
+
+    struct CompactLocationData
+    {
+    private:
+      static constexpr std::size_t DEPTH_ID_BIT_COUNT = 5;
+      static constexpr std::size_t DEPTH_ID_SHIFT = 64 - DEPTH_ID_BIT_COUNT;
+      static constexpr uint64_t DEPTH_ID_MASK = ((1ULL << DEPTH_ID_BIT_COUNT) - 1) << DEPTH_ID_SHIFT;
+      static constexpr uint64_t LOCATION_ID_MASK = ~DEPTH_ID_MASK;
+
+      // upper 5 bits are reserved for depth id
+      // lower 59 bits are reserved for location id -> 19 levels for 3D
+      uint64_t locationAndDepthID;
+
+    public:
+      constexpr CompactLocationData() noexcept = default;
+      constexpr CompactLocationData(LocationID locationID, uint64_t depthID) noexcept
+      : locationAndDepthID(depthID << DEPTH_ID_SHIFT | locationID)
+      {}
+
+      constexpr depth_t GetDepthID() const noexcept { return (locationAndDepthID & DEPTH_ID_MASK) >> DEPTH_ID_SHIFT; }
+      constexpr LocationID GetLocationID() const noexcept { return locationAndDepthID & LOCATION_ID_MASK; }
+    };
+
+  public:
+    struct Location
+    {
+    public:
+      using LocationID = LocationID;
+
+    private:
+      static constexpr bool IS_COMPACT_STORAGE = MAX_ALLOWED_DEPTH_ID <= 19 && DIMENSION_NO == 3;
+      using LocationData = std::conditional_t<IS_COMPACT_STORAGE, CompactLocationData, GeneralLocationData>;
+
+      LocationData locationData;
+
+    public:
+      constexpr Location() noexcept = default;
+      constexpr Location(LocationID locationID, depth_t depthID) noexcept
+      : locationData(locationID, depthID)
+      {}
+
+      constexpr depth_t GetDepthID() const noexcept { return locationData.GetDepthID(); }
+      constexpr LocationID GetLocationID() const noexcept { return locationData.GetLocationID(); }
 
       constexpr bool operator<(Location const& rightLocation) const noexcept
       {

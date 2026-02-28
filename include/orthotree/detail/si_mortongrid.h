@@ -31,11 +31,11 @@ SOFTWARE.
 
 namespace OrthoTree::detail
 {
-  template<typename TGeometryAdapter, bool ALLOW_OUT_OF_SPACE_INSERTION, double LOOSE_FACTOR>
-  class MortonGridSpaceIndexing : public MortonSpaceIndexing<TGeometryAdapter::DIMENSION_NO>
+  template<typename TGeometryAdapter, bool ALLOW_OUT_OF_SPACE_INSERTION, double LOOSE_FACTOR, depth_t MAX_ALLOWED_DEPTH_ID>
+  class MortonGridSpaceIndexing : public MortonSpaceIndexing<TGeometryAdapter::DIMENSION_NO, MAX_ALLOWED_DEPTH_ID>
   {
     static constexpr dim_t DIMENSION_NO = TGeometryAdapter::DIMENSION_NO;
-    using SI = typename MortonSpaceIndexing<DIMENSION_NO>;
+    using SI = typename MortonSpaceIndexing<DIMENSION_NO, MAX_ALLOWED_DEPTH_ID>;
 
   public:
     using TVector = typename TGeometryAdapter::Vector;

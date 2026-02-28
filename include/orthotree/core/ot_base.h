@@ -25,6 +25,10 @@ SOFTWARE.
 #pragma once
 
 #include "../detail/common.h"
+#include "../detail/internal_geometry_module.h"
+#include "../detail/si_morton.h"
+#include "configuration.h"
+
 
 namespace OrthoTree
 {
@@ -37,7 +41,7 @@ namespace OrthoTree
     using GA = TGeometryAdapter;
     using CONFIG = TConfiguration;
     using IGM = detail::InternalGeometryModule<GA>;
-    using SI = detail::MortonSpaceIndexing<GA::DIMENSION_NO>;
+    using SI = detail::MortonSpaceIndexing<GA::DIMENSION_NO, CONFIG::MAX_ALLOWED_DEPTH_ID>;
 
     using IGM_Geometry = typename IGM::Geometry;
 
