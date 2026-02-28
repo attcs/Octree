@@ -29,9 +29,12 @@ SOFTWARE.
 #include "types.h"
 
 
+#include "../detail/partitioning.h"
+#include "../detail/sequence_view.h"
 #include "../detail/si_mortongrid.h"
 #include "../detail/zip_view.h"
 
+#include <queue>
 #include <variant>
 #include <vector>
 
@@ -58,7 +61,7 @@ namespace OrthoTree
     static_assert(SI::IS_LINEAR_TREE);
 
   private:
-    using MGSI = typename detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR>;
+    using MGSI = typename detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID>;
 
     template<typename TBegin, typename TLength>
     struct Segment
@@ -287,29 +290,53 @@ namespace OrthoTree
         GetNodeCount() > 0, "To build/setup/create the tree, use the Create() [recommended] or Init() function. If an already built tree is wanted to be reset, use the Reset() function before Init().");
     }
 
-    IGM::Box InitializeSubtreeMinimalNodeGeometry(NodeID nodeID, EntityContainerView entities)
+  private:
+    template<typename TExecMode = SeqExec>
+    void InitializeMinimalNodeGeometry(EntityContainerView entities, TExecMode execMode = {})
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
       {
-        auto nodeBox = IGM::BoxInvertedInit();
+        auto const nodeCount = static_cast<uint32_t>(m_nodeDepthIDs.size());
+        if (nodeCount == 0)
+          return;
 
-        // Union with all children
-        for (auto const& childNodeID : GetNodeChildren(nodeID))
+        // Group nodes by depth for safe parallel/iterative bottom-up processing
+        std::vector<std::vector<uint32_t>> nodesAtDepth(Base::GetMaxDepthID() + 1);
+        for (uint32_t i = 0; i < nodeCount; ++i)
+          nodesAtDepth[m_nodeDepthIDs[i]].push_back(i);
+
+        auto const processNode = [&](uint32_t nodeID) {
+          auto nodeBox = IGM::BoxInvertedInit();
+
+          std::visit(
+            [&](auto const& nodes) {
+              auto const [beginID, length] = nodes.nodeEntitySegment[nodeID];
+              for (uint32_t j = beginID, endID = beginID + length; j < endID; ++j)
+                IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, m_entityStorage[j]));
+
+              if (nodes.nodeChildSegmentBegins.size() <= nodeID + 1)
+                return;
+
+              auto const childBeginNodeID = nodes.nodeChildSegmentBegins[nodeID];
+              auto const childEndNodeID = nodes.nodeChildSegmentBegins[nodeID + 1];
+              for (auto childID = childBeginNodeID; childID < childEndNodeID; ++childID)
+                IGM::UniteInBoxAD(nodeBox, GetNodeBox(childID));
+            },
+            m_nodes);
+
+          m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+        };
+
+        // Process depths bottom-up
+        for (int d = static_cast<int>(Base::GetMaxDepthID()); d >= 0; --d)
         {
-          auto childNodeBox = InitializeSubtreeMinimalNodeGeometry(childNodeID, entities);
-          IGM::UniteInBoxAD(nodeBox, childNodeBox);
+          auto const& currentLevelNodes = nodesAtDepth[d];
+          if (currentLevelNodes.empty())
+            continue;
+
+          EXEC_POL_DEF(ep);
+          std::for_each(EXEC_POL_ADD(ep) currentLevelNodes.begin(), currentLevelNodes.end(), processNode);
         }
-
-        // Union with all entities
-        for (auto const& entityID : GetNodeEntities(nodeID))
-          IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, entityID));
-
-        m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
-        return nodeBox;
-      }
-      else
-      {
-        return {};
       }
     }
 
@@ -565,6 +592,7 @@ namespace OrthoTree
 
       Build<ARE_LOCATIONS_SORTED>(locationsZip.begin(), endIt, spaceIndexing);
       InitializeSubtreeMinimalNodeGeometry(GetRootNodeID(), entities);
+      InitializeMinimalNodeGeometry(entities, execMode);
       return true;
     }
 
