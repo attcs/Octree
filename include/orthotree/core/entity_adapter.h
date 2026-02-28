@@ -79,6 +79,14 @@ namespace OrthoTree
 
     static constexpr void SetGeometry(Entity& entity, Geometry const& geometry) noexcept { return detail::setValuePart(entity, geometry); }
 
+    static constexpr std::size_t GetEntityCount(EntityContainerView entities) noexcept
+    {
+      if constexpr (std::ranges::sized_range<EntityContainerViewType>)
+        return std::ranges::size(entities);
+      else
+        return std::distance(std::ranges::begin(entities), std::ranges::end(entities));
+    }
+
   public: // IS_ENTITY_KEYED required overload
     static constexpr EntityID GetEntityID(Entity const& entity) noexcept { return detail::getKeyPart(entity); }
 
