@@ -24,30 +24,31 @@ SOFTWARE.
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <cassert>
-#include <type_traits>
-#include <utility>
-#include <vector>
 #include <algorithm>
 #include <bit>
+#include <cassert>
 #include <compare>
 #include <concepts>
-#include <span>
-#include <optional>
-#include <memory>
-#include <limits>
-#include <string>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <iterator>
-#include <numeric>
-#include <set>
+#include <limits>
 #include <map>
+#include <memory>
+#include <numeric>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <span>
+#include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <variant>
-#include <ranges>
+#include <vector>
+
 
 #include <array>
 #include <cassert>
@@ -106,6 +107,13 @@ namespace OrthoTree::detail
       Vector center;
       static_for<DIMENSION_NO>([&](auto dimensionID) { center[dimensionID] = (box.Min[dimensionID] + box.Max[dimensionID]) * Geometry(0.5); });
       return center;
+    }
+
+    static constexpr Vector Multiply(Vector const& v, Geometry scalar) noexcept
+    {
+      Vector result;
+      static_for<DIMENSION_NO>([&](auto dimensionID) { result[dimensionID] = v[dimensionID] * scalar; });
+      return result;
     }
 
     static constexpr Vector Sub(Vector const& v1, Vector const& v2) noexcept

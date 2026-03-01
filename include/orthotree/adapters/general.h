@@ -32,7 +32,7 @@ SOFTWARE.
 #include <optional>
 
 #include "../detail/common.h"
-#include "../octree.h"
+
 #include "concepts.h"
 
 namespace OrthoTree
@@ -70,7 +70,8 @@ namespace OrthoTree
     static constexpr Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return plane.OrigoDistance; }
   };
 
-  // Provides general vector/box/ray/plane operations based on a basic adapter interface. If the geometric types are connected to an BLAS, it is recommended to implement a custom GeneralGeometryAdapterTemplate.
+  // Provides general vector/box/ray/plane operations based on a basic adapter interface. If the geometric types are connected to a BLAS, it is
+  // recommended to implement a custom GeneralGeometryAdapterTemplate.
   template<typename TBaseGeometryAdapter>
   struct GeneralGeometryAdapter : TBaseGeometryAdapter
   {

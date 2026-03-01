@@ -212,10 +212,10 @@ namespace OrthoTree::detail
     , m_data2(data2)
     {
       assert(m_data1.size() == m_data2.size());
-      assert(m_data1.data() == m_data2.data());
+      assert((void*)m_data1.data() != (void*)m_data2.data());
 
       // overlap is not allowed
-      assert(m_data1.data() + m_data1.size() <= m_data2.data() || m_data2.data() + m_data2.size() <= m_data1.data());
+      assert((void*)(m_data1.data() + m_data1.size()) <= (void*)m_data2.data() || (void*)(m_data2.data() + m_data2.size()) <= (void*)m_data1.data());
     }
 
     zip_view(const zip_view& other) noexcept

@@ -60,7 +60,10 @@ namespace OrthoTree
       IGM_Vector size;
     };
 
-    using NodeGeometry = std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint, IGM_Vector, NodeBox>;
+    using NodeGeometry = std::conditional_t<
+      CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint,
+      IGM_Vector,
+      std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR, NodeBox, std::monostate>>;
 
   private:
     std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
@@ -72,13 +75,16 @@ namespace OrthoTree
       IGM::Vector size;
     };
 
-    std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, TreeBox, std::monostate> m_nominalTreeBox;
+    std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None || CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR, TreeBox, std::monostate>
+      m_nominalTreeBox;
     std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, TreeBox, std::monostate> m_realTreeBox;
     std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint, std::vector<typename IGM::Vector>, std::monostate> m_nodeSize;
 
   public:
     using EntityContainerView = EA::EntityContainerView;
     using EntityID = EA::EntityID;
+    using Entity = EA::Entity;
+    using EntityGeometry = EA::Geometry;
 
   protected:
     constexpr OrthoTreeCoreBase() = default;
@@ -97,10 +103,10 @@ namespace OrthoTree
 
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
       {
-        m_nodeSize = TreeBox{ .minPoint = treeMinPoint, .size = treeSize };
+        m_nominalTreeBox = TreeBox{ .minPoint = treeMinPoint, .size = treeSize };
         if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
         {
-          m_nodeSize = TreeBox{ .minPoint = treeMinPoint, .size = treeSize };
+          m_realTreeBox = TreeBox{ .minPoint = treeMinPoint, .size = treeSize };
         }
       }
       else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
@@ -116,6 +122,14 @@ namespace OrthoTree
         for (depth_t depthID = 0; depthID < examinedDepthSize; ++depthID, looseFactor *= multiplier)
           detail::static_for<GA::DIMENSION_NO>(
             [&](auto dimensionID) noexcept { m_nodeSize[depthID][dimensionID] = treeSize[dimensionID] * looseFactor; });
+      }
+      else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+      {
+        m_nominalTreeBox = TreeBox{ .minPoint = treeMinPoint, .size = treeSize };
+      }
+      else
+      {
+        static_assert(false);
       }
     }
 
@@ -139,7 +153,7 @@ namespace OrthoTree
     constexpr typename IGM::Vector CalculateNodeSize(depth_t depthID) const noexcept
       requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
     {
-      return IGM::Multiply(m_nodeSize.nominalSize, detail::pow2(depthID));
+      return IGM::Multiply(m_nominalTreeBox.size, IGM_Geometry(1) / static_cast<IGM_Geometry>(detail::pow2(depthID)));
     }
 
   public:
@@ -160,22 +174,40 @@ namespace OrthoTree
       }
     }
 
-    constexpr typename IGM::Vector const& GetTreeMinPoint() const noexcept
-      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
+    constexpr typename IGM::Vector const& GetTreeBoxNominalMinPoint() const noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None || CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
     {
       return m_nominalTreeBox.minPoint;
     }
 
-    constexpr typename IGM::Vector const& GetRealTreeMinPoint() const noexcept
+    constexpr typename IGM::Vector const& GetTreeBoxNominalSize() const noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None || CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
+    {
+      return m_nominalTreeBox.size;
+    }
+
+    constexpr typename IGM::Vector const& GetTreeBoxRealMinPoint() const noexcept
       requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
     {
       return m_realTreeBox.minPoint;
     }
 
-    constexpr typename IGM::Vector const& GetRealTreeSize() const noexcept
+    constexpr typename IGM::Vector const& GetTreeBoxRealSize() const noexcept
       requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
     {
       return m_realTreeBox.size;
+    }
+
+    constexpr void SetRealTreeMinPoint(IGM::Vector const& minPoint) noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+    {
+      m_realTreeBox.minPoint = minPoint;
+    }
+
+    constexpr void SetRealTreeSize(IGM::Vector const& size) noexcept
+      requires(CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None && CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
+    {
+      m_realTreeBox.size = size;
     }
 
     constexpr void SetTreeSize(IGM::Vector const& treeSize) noexcept
@@ -192,20 +224,23 @@ namespace OrthoTree
     }
   };
 
-#define ORTHOTREE_DEPENDENT_TYPES(Base)                \
-  using EA = Base::EA;                                 \
-  using GA = Base::GA;                                 \
-  using CONFIG = Base::CONFIG;                         \
-  using IGM = Base::IGM;                               \
-  using SI = Base::SI;                                 \
-  using IGM_Geometry = IGM::Geometry;                  \
-                                                       \
-  using TScalar = typename GA::Scalar;                 \
-  using TFloatScalar = typename GA::FloatScalar;       \
-  using TVector = typename GA::Vector;                 \
-  using TBox = typename GA::Box;                       \
-  using TRay = typename GA::Ray;                       \
-  using TPlane = typename GA::Plane;                   \
-  using EntityContainerView = EA::EntityContainerView; \
-  using EntityID = EA::EntityID
+#define ORTHOTREE_DEPENDENT_TYPES(Base)                         \
+  using EA = Base::EA;                                          \
+  using GA = Base::GA;                                          \
+  using CONFIG = Base::CONFIG;                                  \
+  using IGM = Base::IGM;                                        \
+  using SI = Base::SI;                                          \
+  using IGM_Geometry = IGM::Geometry;                           \
+                                                                \
+  using TScalar = typename GA::Scalar;                          \
+  using TFloatScalar = typename GA::FloatScalar;                \
+  using TVector = typename GA::Vector;                          \
+  using TBox = typename GA::Box;                                \
+  using TRay = typename GA::Ray;                                \
+  using TPlane = typename GA::Plane;                            \
+                                                                \
+  using EntityContainerView = typename EA::EntityContainerView; \
+  using EntityID = typename EA::EntityID;                       \
+  using Entity = typename EA::Entity;                           \
+  using EntityGeometry = typename EA::Geometry
 } // namespace OrthoTree

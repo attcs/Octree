@@ -182,10 +182,10 @@ namespace CGAL
 
   // Core types
   using QuadtreePoint =
-    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration>;
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration<>>;
 
   using OctreePoint =
-    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration>;
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration<>>;
 
   template<bool IS_LOOSE_TREE>
   using QuadtreeBoxs =
@@ -220,11 +220,11 @@ namespace CGAL
 
   // Core types
   using QuadtreePointMap =
-    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration>;
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration<>>;
 
 
   using OctreePointMap =
-    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration>;
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration<>>;
 
 
   template<bool IS_LOOSE_TREE>

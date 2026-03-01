@@ -212,7 +212,7 @@ namespace XYZ
   using namespace OrthoTree::XYAdaptor2D;
   using namespace OrthoTree::XYZAdaptor3D;
 
-  using QuadtreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYPoint2D>, XYGeometryAdapter, PointConfiguration>;
+  using QuadtreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYPoint2D>, XYGeometryAdapter, PointConfiguration<>>;
 
   template<bool IS_LOOSE_TREE = true>
   using QuadtreeBox = OrthoTreeBase<BoxEntitySpanAdapter<XYBoundingBox2D>, XYGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
@@ -223,7 +223,7 @@ namespace XYZ
   using QuadtreeBoxCs = OrthoTreeContainer<QuadtreeBox<IS_LOOSE_TREE>>;
   using QuadtreeBoxC = QuadtreeBoxCs<true>;
 
-  using OctreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration>;
+  using OctreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration<>>;
 
   template<bool IS_LOOSE_TREE = true>
   using OctreeBox = OrthoTreeBase<BoxEntitySpanAdapter<XYZBoundingBox3D>, XYZGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
@@ -240,7 +240,7 @@ namespace XYZ
   template<typename Entity>
   using Map = std::unordered_map<int, Entity>;
 
-  using QuadtreePointMap = OrthoTreeBase<PointEntityMapAdapter<XYPoint2D>, XYGeometryAdapter, PointConfiguration>;
+  using QuadtreePointMap = OrthoTreeBase<PointEntityMapAdapter<XYPoint2D>, XYGeometryAdapter, PointConfiguration<>>;
 
   template<bool IS_LOOSE_TREE = true>
   using QuadtreeBoxMap = OrthoTreeBase<BoxEntityMapAdapter<XYBoundingBox2D>, XYGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
@@ -251,7 +251,7 @@ namespace XYZ
   using QuadtreeBoxMapCs = OrthoTreeContainer<QuadtreeBoxMap<IS_LOOSE_TREE>>;
   using QuadtreeBoxMapC = QuadtreeBoxMapCs<true>;
 
-  using OctreePointMap = OrthoTreeBase<PointEntityMapAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration>;
+  using OctreePointMap = OrthoTreeBase<PointEntityMapAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration<>>;
 
   template<bool IS_LOOSE_TREE = true>
   using OctreeBoxMap = OrthoTreeBase<BoxEntityMapAdapter<XYZBoundingBox3D>, XYZGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;

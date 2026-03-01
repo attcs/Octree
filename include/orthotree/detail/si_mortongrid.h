@@ -35,7 +35,7 @@ namespace OrthoTree::detail
   class MortonGridSpaceIndexing : public MortonSpaceIndexing<TGeometryAdapter::DIMENSION_NO, MAX_ALLOWED_DEPTH_ID>
   {
     static constexpr dim_t DIMENSION_NO = TGeometryAdapter::DIMENSION_NO;
-    using SI = typename MortonSpaceIndexing<DIMENSION_NO, MAX_ALLOWED_DEPTH_ID>;
+    using SI = MortonSpaceIndexing<DIMENSION_NO, MAX_ALLOWED_DEPTH_ID>;
 
   public:
     using TVector = typename TGeometryAdapter::Vector;

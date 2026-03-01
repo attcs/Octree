@@ -24,6 +24,17 @@ SOFTWARE.
 
 #pragma once
 
+#include "../core/types.h"
+
+#include "../core/configuration.h"
+#include "../core/entity_adapter.h"
+
+#include "../core/ot_dynamic_hash_core.h"
+#include "../core/ot_query.h"
+#include "../core/ot_static_linear_core.h"
+
+#include "../adapters/general.h"
+
 namespace OrthoTree
 {
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
@@ -37,49 +48,53 @@ namespace OrthoTree
 
   // Tree aliases
 
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
   using OrthoTreePointND = OrthoTree::OrthoTreeBase<
     std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>, PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>>>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    PointConfiguration>;
+    PointConfiguration<NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
   using OrthoTreeBoxND = OrthoTree::OrthoTreeBase<
     std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    BoxConfiguration<IS_LOOSE_TREE>>;
+    BoxConfiguration<IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer>
-  using OrthoTreePointNDUD =
-    OrthoTree::OrthoTreeBase<PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>, TEntityContainer>, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration>;
+  template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
+  using OrthoTreePointNDUD = OrthoTree::OrthoTreeBase<
+    PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>, TEntityContainer>,
+    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
+    PointConfiguration<NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer>
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
   using OrthoTreeBoxNDUD = OrthoTree::OrthoTreeBase<
     BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>, TEntityContainer>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    BoxConfiguration<IS_LOOSE_TREE>>;
+    BoxConfiguration<IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
   using StaticOrthoTreePointND = OrthoTree::StaticOrthoTreeBase<
     std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>, PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>>>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    PointConfiguration>;
+    PointConfiguration<NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
   using StaticOrthoTreeBoxND = OrthoTree::StaticOrthoTreeBase<
     std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    BoxConfiguration<IS_LOOSE_TREE>>;
+    BoxConfiguration<IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer>
-  using StaticOrthoTreePointNDUD =
-    OrthoTree::StaticOrthoTreeBase<PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>, TEntityContainer>, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration>;
+  template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
+  using StaticOrthoTreePointNDUD = OrthoTree::StaticOrthoTreeBase<
+    PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>, TEntityContainer>,
+    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
+    PointConfiguration<NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer>
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
   using StaticOrthoTreeBoxNDUD = OrthoTree::StaticOrthoTreeBase<
     BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>, TEntityContainer>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    BoxConfiguration<IS_LOOSE_TREE>>;
+    BoxConfiguration<IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>>;
 
 
   // Dualtree for points
@@ -157,11 +172,22 @@ namespace OrthoTree
   using OctreeBoxMap = OrthoTreeBoxND<3, true, BaseGeometryType, false>;
 
 
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, typename TEntityAdapter = PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>>
-  using TreePointEAND = OrthoTree::OrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration>;
+  template<
+    dim_t DIMENSION_NO,
+    typename TScalar = BaseGeometryType,
+    typename TEntityAdapter = PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>,
+    NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
+  using TreePointEAND =
+    OrthoTree::OrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration<NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, typename TEntityAdapter = BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>
-  using TreeBoxEAND = OrthoTree::OrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE>>;
+  template<
+    dim_t DIMENSION_NO,
+    bool IS_LOOSE_TREE = true,
+    typename TScalar = BaseGeometryType,
+    typename TEntityAdapter = BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>,
+    NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
+  using TreeBoxEAND =
+    OrthoTree::OrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>>;
 
 
   // User-defined container-based Quadtree for points
@@ -256,12 +282,22 @@ namespace OrthoTree
   using StaticOctreeBoxMap = StaticOrthoTreeBoxND<3, true, BaseGeometryType, false>;
 
 
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, typename TEntityAdapter = PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>>
-  using StaticTreePointEAND = OrthoTree::StaticOrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration>;
+  template<
+    dim_t DIMENSION_NO,
+    typename TScalar = BaseGeometryType,
+    typename TEntityAdapter = PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>,
+    NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
+  using StaticTreePointEAND =
+    OrthoTree::StaticOrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, PointConfiguration<NODE_GEOMETRY_STORAGE>>;
 
-  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, typename TEntityAdapter = BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>
+  template<
+    dim_t DIMENSION_NO,
+    bool IS_LOOSE_TREE = true,
+    typename TScalar = BaseGeometryType,
+    typename TEntityAdapter = BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>,
+    NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
   using StaticTreeBoxEAND =
-    OrthoTree::StaticOrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE>>;
+    OrthoTree::StaticOrthoTreeBase<TEntityAdapter, GeneralGeometryAdapterND<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>>;
 
 
   // User-defined container-based Quadtree for points

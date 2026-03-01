@@ -480,19 +480,19 @@ namespace OrthoTree
 
     template<typename FGeometry_, typename FVector_, typename FBox_>
     using QuadtreePointTemplate =
-      OrthoTreeBase<PointEntitySpanAdapter<FVector_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, PointConfiguration>;
+      OrthoTreeBase<PointEntitySpanAdapter<FVector_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, PointConfiguration<>>;
 
     template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_>
     using OctreePointTemplate =
-      OrthoTreeBase<PointEntitySpanAdapter<FVector_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, PointConfiguration>;
+      OrthoTreeBase<PointEntitySpanAdapter<FVector_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, PointConfiguration<>>;
 
     template<typename FGeometry_, typename FVector_, typename FBox_, typename TContainer_ = std::unordered_map<index_t, FVector_>>
     using QuadtreePointMapTemplate =
-      OrthoTreeBase<PointEntityMapAdapter<FVector_, TContainer_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, PointConfiguration>;
+      OrthoTreeBase<PointEntityMapAdapter<FVector_, TContainer_>, UnrealGeometryAdapter2D<FGeometry_, FVector_, FBox_>, PointConfiguration<>>;
 
     template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, typename TContainer_ = std::unordered_map<index_t, FVector_>>
     using OctreePointMapTemplate =
-      OrthoTreeBase<PointEntityMapAdapter<FVector_, TContainer_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, PointConfiguration>;
+      OrthoTreeBase<PointEntityMapAdapter<FVector_, TContainer_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, PointConfiguration<>>;
 
     // Templates for box types
 

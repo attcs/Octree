@@ -40,8 +40,8 @@ SOFTWARE.
 ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAST32_T
 
 // By default, the node interface is not available. Use this macro to make node-related functions public.
-#define ORTHOTREE_PUBLIC_NODE_INTERFACE
+#define ORTHOTREE__PUBLIC_NODE_INTERFACE
 
 // Enable debug checks
-#define ORTHOTREE_DEBUG_CHECKS
+#define ORTHOTREE__DEBUG_CHECKS
 */

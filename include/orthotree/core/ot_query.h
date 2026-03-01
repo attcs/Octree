@@ -95,7 +95,7 @@ namespace OrthoTree
     ORTHOTREE_DEPENDENT_TYPES(Core);
 
   public:
-#ifdef ORTHOTREE_PUBLIC_NODE_INTERFACE
+#ifdef ORTHOTREE__PUBLIC_NODE_INTERFACE
     static_assert(OrthoTreeCoreView<TOrthoTreeCore>);
 #endif
     static_assert(GeometryAdapterConcept<GA, GA::DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar, TFloatScalar>);
@@ -167,7 +167,7 @@ namespace OrthoTree
 
 
     // Node interface
-#ifdef ORTHOTREE_PUBLIC_NODE_INTERFACE
+#ifdef ORTHOTREE__PUBLIC_NODE_INTERFACE
   public:
 #else
   protected:
@@ -229,9 +229,9 @@ namespace OrthoTree
     constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator, NodeValue rootNodeValue) const noexcept
     {
       using TPriorityResult = std::invoke_result_t<decltype(priorityCalculator), NodeValue>;
-      using TPriority = std::conditional_t<detail::IsStdOptionalV<TPriorityResult>, typename TPriorityResult::value_type, TPriorityResult>;
+      using TPriority = typename detail::IsStdOptional<TPriorityResult>::BaseType;
 
-      auto constexpr GetValue = [](TPriorityResult const& pr) noexcept -> TPriority {
+      auto constexpr GetValue = [](auto const& pr) noexcept -> TPriority {
         if constexpr (detail::IsStdOptionalV<TPriorityResult>)
           return *pr;
         else
@@ -284,44 +284,50 @@ namespace OrthoTree
       }
     }
 
-  public:
-    // Visit nodes in breadth first order
+    // Visit nodes in breadth first order (procedure requires node interface)
     constexpr void TraverseNodesBreadthFirst(auto&& procedure) const noexcept
     {
       TraverseNodesBreadthFirst(std::forward<decltype(procedure)>(procedure), Core::GetRootNodeValue());
     }
 
-    // Visit nodes in depth first order
+    // Visit nodes in depth first order (procedure requires node interface)
     constexpr void TraverseNodesDepthFirst(auto&& procedure) const noexcept
     {
       TraverseNodesDepthFirst(std::forward<decltype(procedure)>(procedure), Core::GetRootNodeValue());
     }
 
-    // Visit nodes in priority order
+    // Visit nodes in priority order (procedure and priorityCalculator require node interface)
     constexpr void TraverseNodesByPriority(auto&& procedure, auto&& priorityCalculator) const noexcept
     {
       TraverseNodesByPriority(
         std::forward<decltype(procedure)>(procedure), std::forward<decltype(priorityCalculator)>(priorityCalculator), Core::GetRootNodeValue());
     }
 
+  public:
     // Visit entities in breadth first order
+    // Accepted procedure signature: TraverseControl(auto const& entitiesInNode, TBox const& nodeBox). Where entitiesInNode is iterable of EntityID.
     constexpr void TraverseEntitiesBreadthFirst(auto&& procedure) const noexcept
     {
-      TraverseNodesBreadthFirst([&](auto const nodeValue) { return procedure(GetNodeEntities(nodeValue), GetNodeBox(nodeValue)); });
+      TraverseNodesBreadthFirst([&](auto const nodeValue) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue)); });
     }
 
     // Visit entities in depth first order
+    // Accepted procedure signature: TraverseControl(auto const& entitiesInNode, TBox const& nodeBox). Where entitiesInNode is iterable of EntityID.
     constexpr void TraverseEntitiesDepthFirst(auto&& procedure) const noexcept
     {
-      TraverseNodesDepthFirst([&](auto const nodeValue) { return procedure(GetNodeEntities(nodeValue), GetNodeBox(nodeValue)); });
+      TraverseNodesDepthFirst([&](auto const nodeValue) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue)); });
     }
 
     // Visit entities in priority order
+    // Accepted procedure signature: TraverseControl(auto const& entitiesInNode, TBox const& nodeBox, TPriorityValue priority). Where entitiesInNode
+    // is iterable of EntityID. Accepted priorityCalculator signature: TPriority(TBox const& nodeBox).
+    //   Where TPriority is TPriorityValue or std::optional<TPriorityValue>. TPriorityValue is any type that is comparable by operator<. If it is
+    //   wrapped in std::optional, nodes with std::nullopt priority will be skipped.
     constexpr void TraverseEntitiesByPriority(auto&& procedure, auto&& priorityCalculator) const noexcept
     {
       TraverseNodesByPriority(
-        [&](auto const nodeValue, auto const& priority) { return procedure(GetNodeEntities(nodeValue), GetNodeBox(nodeValue), priority); },
-        [&](auto const nodeValue) { return priorityCalculator(GetNodeBox(nodeValue)); });
+        [&](auto const nodeValue, auto const& priority) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue), priority); },
+        [&](auto const nodeValue) { return priorityCalculator(Core::GetNodeBox(nodeValue)); });
     }
 
     // Collect all item id, traversing the tree in breadth-first search order
@@ -459,9 +465,13 @@ namespace OrthoTree
     // * bool(EntityID, TVector&)
     // * bool(Entity)
     // * bool(Entity, TVector&)
-    template<bool DO_RANGE_MUST_FULLY_CONTAIN = true, typename TTester = std::monostate>
+    template<typename TTester = std::monostate>
     std::vector<EntityID> RangeSearch(
-      TBox const& range, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
+      TBox const& range,
+      EntityContainerView entities,
+      RangeSearchMode rangeSearchMode = RangeSearchMode::Inside,
+      TFloatScalar tolerance = GA::BASE_TOLERANCE,
+      TTester&& tester = {}) const noexcept
     {
       auto foundEntities = std::vector<EntityID>{};
 
@@ -499,10 +509,11 @@ namespace OrthoTree
         }
         else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
         {
-          if constexpr (DO_RANGE_MUST_FULLY_CONTAIN)
-            return GA::AreBoxesOverlapped(range, EA::GetGeometry(entities, entityID), DO_RANGE_MUST_FULLY_CONTAIN, false, tolerance);
-          else
-            return GA::AreBoxesOverlappedStrict(range, EA::GetGeometry(entities, entityID), tolerance);
+          switch (rangeSearchMode)
+          {
+          case RangeSearchMode::Overlap: return GA::AreBoxesOverlappedStrict(range, EA::GetGeometry(entities, entityID), tolerance);
+          case RangeSearchMode::Inside: return GA::AreBoxesOverlapped(range, EA::GetGeometry(entities, entityID), true, false, tolerance);
+          }
         }
         else
         {
@@ -813,7 +824,7 @@ namespace OrthoTree
     struct RangeCondition
     {
       TBox range;
-      bool isFullyContainRequired = false;
+      RangeSearchMode rangeSearchMode = RangeSearchMode::Inside;
     };
 
     struct PlaneIntersectionCondition
@@ -825,8 +836,21 @@ namespace OrthoTree
     using EntityCondition = std::function<bool(typename EA::Entity)>;
     using QueryCondition = std::variant<FrustumCondition, RangeCondition, PlaneIntersectionCondition, EntityIDCondition, EntityCondition>;
 
+    static constexpr QueryCondition ByWithin(TBox const& range) noexcept { return RangeCondition{ range, RangeSearchMode::Inside }; }
+    static constexpr QueryCondition ByOverlaps(TBox const& range) noexcept { return RangeCondition{ range, RangeSearchMode::Overlap }; }
+    static constexpr QueryCondition ByInFrustum(std::vector<std::pair<TPlane, bool>> boundaryPlanes) noexcept
+    {
+      return FrustumCondition{ std::move(boundaryPlanes) };
+    }
+    static constexpr QueryCondition ByIntersecting(TPlane const& plane, TFloatScalar tolerance = GA::BASE_TOLERANCE) noexcept
+    {
+      return PlaneIntersectionCondition{ plane, tolerance };
+    }
+    static constexpr QueryCondition BySatisfies(EntityIDCondition condition) noexcept { return condition; }
+    static constexpr QueryCondition BySatisfies(EntityCondition condition) noexcept { return condition; }
+
     // Complex query with multiple conditions. The conditions are combined with logical AND by default, but can be switched to OR by template parameter.
-    template<bool IS_LOGICAL_OR_FILTERING = false>
+    template<LogicalOperator OP = LogicalOperator::And>
     constexpr std::vector<EntityID> Query(auto const& conditions, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
       auto results = std::vector<EntityID>{};
@@ -857,7 +881,7 @@ namespace OrthoTree
               return true;
             },
             [&](RangeCondition const& rangeCondition) {
-              auto const& [range, shouldFullyContained] = rangeCondition;
+              auto const& [range, rangeSearchMode] = rangeCondition;
 
               auto const searchRangeMinPoint = IGM::GetBoxMinPointAD(range);
               auto const searchRangeSize = IGM::GetBoxSizeAD(range);
@@ -873,20 +897,24 @@ namespace OrthoTree
             [&](EntityIDCondition const&) { return true; },
             [&](EntityCondition const&) { return true; });
 
-          if constexpr (IS_LOGICAL_OR_FILTERING)
+          if constexpr (OP == LogicalOperator::Or)
           {
             isNodePassed |= isNodePassedCondition;
             if (isNodePassed)
               break;
           }
-          else
+          else if constexpr (OP == LogicalOperator::And)
           {
             if (!isNodePassedCondition)
               return TraverseControl::SkipChildren;
           }
+          else
+          {
+            static_assert(false, "Invalid logical operator");
+          }
         }
 
-        if constexpr (IS_LOGICAL_OR_FILTERING)
+        if constexpr (OP == LogicalOperator::Or)
         {
           if (!isNodePassed)
             return TraverseControl::SkipChildren;
@@ -897,7 +925,7 @@ namespace OrthoTree
 
         for (auto const entityID : Core::GetNodeEntities(nodeValue))
         {
-          bool isPassed = !IS_LOGICAL_OR_FILTERING;
+          bool isPassed = OP == LogicalOperator::And;
           for (auto const& condition : conditions)
           {
             auto const isConditionPassed = detail::VisitVariant(
@@ -920,7 +948,7 @@ namespace OrthoTree
                 return true;
               },
               [&](RangeCondition const& rangeCondition) {
-                auto const& [range, shouldFullyContained] = rangeCondition;
+                auto const& [range, rangeSearchMode] = rangeCondition;
 
                 if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
                 {
@@ -928,10 +956,13 @@ namespace OrthoTree
                 }
                 else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
                 {
-                  if (shouldFullyContained)
-                    return GA::AreBoxesOverlapped(range, EA::GetGeometry(entities, entityID), shouldFullyContained, false, tolerance);
-                  else
-                    return GA::AreBoxesOverlappedStrict(range, EA::GetGeometry(entities, entityID), tolerance);
+                  switch (rangeSearchMode)
+                  {
+                  case RangeSearchMode::Inside: return GA::AreBoxesOverlapped(range, EA::GetGeometry(entities, entityID), true, false, tolerance);
+                  case RangeSearchMode::Overlap: return GA::AreBoxesOverlappedStrict(range, EA::GetGeometry(entities, entityID), tolerance);
+                  }
+                  assert(false && "Unsupported range search mode!");
+                  return false;
                 }
                 else
                 {
@@ -948,19 +979,23 @@ namespace OrthoTree
               [&](EntityIDCondition const& entityIDTester) { return entityIDTester(entityID); },
               [&](EntityCondition const& entityTester) { return entityTester(EA::GetEntity(entities, entityID)); });
 
-            if constexpr (IS_LOGICAL_OR_FILTERING)
+            if constexpr (OP == LogicalOperator::Or)
             {
               isPassed |= isConditionPassed;
               if (isPassed)
                 break;
             }
-            else
+            else if constexpr (OP == LogicalOperator::And)
             {
               if (!isConditionPassed)
               {
                 isPassed = false;
                 break;
               }
+            }
+            else
+            {
+              static_assert(false, "Invalid logical operator");
             }
           }
 
@@ -1022,11 +1057,8 @@ namespace OrthoTree
       EntityDistances& neighborEntities,
       FarthestDistance& farthestEntityDistance) noexcept
     {
-      auto constexpr pessimisticCmp = [](auto const& lhs, auto const& rhs) {
-        return lhs.pessimisticDistance < rhs.pessimisticDistance;
-      };
-
       auto neighborEntitiesPessimisticMaxHeap = std::vector<TFloatScalar>{};
+
       for (auto const entityID : nodeEntityIDs)
       {
         typename GA::PointBoxMinMaxDistance pbd;
@@ -1807,7 +1839,12 @@ namespace OrthoTree
             {
               for (auto it2 = it1 + 1; it2 != childNodeIDs.end(); ++it2)
               {
-                taskContexts.push_back({ .nodeValue = Core::GetNodeValue(*it1), .nodeValueSecondary = Core::GetNodeValue(*it2) });
+                taskContexts.push_back(
+                  { .nodeValue = Core::GetNodeValue(*it1),
+                    .nodeValueSecondary = Core::GetNodeValue(*it2),
+                    .parentID = INVALID_INDEX,
+                    .contextID = INVALID_INDEX,
+                    .collidedEntities = {} });
               }
             }
           }
@@ -2148,11 +2185,14 @@ namespace OrthoTree
             return false;
       }
 
-      // 2. Geometry Check
+      // 2. Geometry Check: node boxes must be equal (not just overlapping)
       auto const boxL = Core::GetNodeBox(nodeL);
       auto const boxR = otherTree.GetNodeBox(nodeR);
-      if (!IGM::AreBoxesOverlappingByMinPoint(boxL.Min, IGM::Sub(boxL.Max, boxL.Min), boxR.Min, IGM::Sub(boxR.Max, boxR.Min), tolerance))
-        return false;
+      for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+      {
+        if (std::abs(boxL.Min[d] - boxR.Min[d]) > tolerance || std::abs(boxL.Max[d] - boxR.Max[d]) > tolerance)
+          return false;
+      }
 
       // 3. Children Check
       auto const& childrenL = Core::GetNodeChildren(nodeL);
@@ -2207,7 +2247,7 @@ namespace OrthoTree
 
         ChildID octant = 0;
         for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
-          if (childCenter[d] > parentCenterL[d])
+          if (childCenter[d] > parentCenterR[d]) // Use parentCenterR for the right tree
             octant |= (ChildID(1) << d);
         mapR[octant] = childNodeID;
       }

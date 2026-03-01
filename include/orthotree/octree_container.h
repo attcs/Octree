@@ -30,11 +30,15 @@ SOFTWARE.
 
 
 #include "adapters/general.h"
+
+#include "core/aliases.h"
 #include "core/types.h"
+
 #include "detail/common.h"
 
 
 #include <utility>
+#include <variant>
 
 
 namespace OrthoTree
@@ -57,6 +61,8 @@ namespace OrthoTree
     using Entity = typename EA::Entity;
     using EntityID = typename EA::EntityID;
     using EntityContainer = EA::EntityContainer;
+
+    using QueryCondition = typename TOrthoTreeCore::QueryCondition;
 
   protected:
     TOrthoTreeCore m_tree;
@@ -169,7 +175,7 @@ namespace OrthoTree
     template<typename TExecMode = SeqExec>
     static OrthoTreeContainer Create(
       std::span<Entity const> const& entities,
-      depth_t maxDepthID = 0,
+      std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
@@ -184,7 +190,7 @@ namespace OrthoTree
     template<typename TExecMode = SeqExec>
     static OrthoTreeContainer Create(
       EntityContainer const& entities,
-      depth_t maxDepthID = 0,
+      std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
@@ -198,7 +204,7 @@ namespace OrthoTree
     template<typename TExecMode = SeqExec>
     static OrthoTreeContainer Create(
       EntityContainer&& entities,
-      depth_t maxDepthID = 0,
+      std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
@@ -230,7 +236,6 @@ namespace OrthoTree
       switch (insertionMode)
       {
       case InsertionMode::Balanced: isInserted = m_tree.Insert(newEntityID, EA::GetGeometry(m_entities, newEntityID), m_entities); break;
-
       case InsertionMode::LowestLeaf:
       case InsertionMode::ExistingLeaf:
         isInserted = m_tree.InsertIntoLeaf(newEntityID, EA::GetGeometry(m_entities, newEntityID), insertionMode);
@@ -269,8 +274,9 @@ namespace OrthoTree
     // - The tree will not be rebalanced after insertion.
     template<typename TEntityRange, typename TExecMode = SeqExec>
     constexpr bool Add(TEntityRange&& newEntities, TExecMode execMode = {}) noexcept
+      requires requires { newEntities.size(); }
     {
-      if (newEntities.size() == 0)
+      if (newEntities.empty())
         return true;
 
       auto failedEntities = std::unordered_set<EntityID>{};
@@ -447,10 +453,11 @@ namespace OrthoTree
     // * bool(EntityID, TVector&)
     // * bool(Entity)
     // * bool(Entity, TVector&)
-    template<bool isFullyContained = true, typename TTester = std::monostate>
-    std::vector<EntityID> RangeSearch(TBox const& range, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
+    template<typename TTester = std::monostate>
+    std::vector<EntityID> RangeSearch(
+      TBox const& range, RangeSearchMode rangeSearchMode = RangeSearchMode::Inside, TFloatScalar tolerance = GA::BASE_TOLERANCE, TTester&& tester = {}) const noexcept
     {
-      return m_tree.template RangeSearch<isFullyContained>(range, m_entities, tolerance, std::forward<TTester>(tester));
+      return m_tree.RangeSearch(range, m_entities, rangeSearchMode, tolerance, std::forward<TTester>(tester));
     }
 
     // Hyperplane segmentation, get all elements in positive side (Plane equation: dotProduct(planeNormal, point) = distanceOfOrigo)
@@ -500,12 +507,25 @@ namespace OrthoTree
     using EntityIDCondition = TOrthoTreeCore::EntityIDCondition;
     using EntityCondition = TOrthoTreeCore::EntityCondition;
 
+    static constexpr QueryCondition ByWithin(TBox const& range) noexcept { return TOrthoTreeCore::ByWithin(range); }
+    static constexpr QueryCondition ByOverlaps(TBox const& range) noexcept { return TOrthoTreeCore::ByOverlaps(range); }
+    static constexpr QueryCondition ByInFrustum(std::vector<std::pair<TPlane, bool>> boundaryPlanes) noexcept
+    {
+      return TOrthoTreeCore::ByInFrustum(std::move(boundaryPlanes));
+    }
+    static constexpr QueryCondition ByIntersecting(TPlane const& plane, TFloatScalar tolerance = GA::BASE_TOLERANCE) noexcept
+    {
+      return TOrthoTreeCore::ByIntersecting(plane, tolerance);
+    }
+    static constexpr QueryCondition BySatisfies(EntityIDCondition condition) noexcept { return TOrthoTreeCore::BySatisfies(std::move(condition)); }
+    static constexpr QueryCondition BySatisfies(EntityCondition condition) noexcept { return TOrthoTreeCore::BySatisfies(std::move(condition)); }
+
     // Complex query with multiple conditions. The conditions are combined with logical AND by default, but can be switched to OR by template parameter.
-    // See `FrustumCondition`/ `RangeCondition` / `PlaneIntersectionCondition`/ `EntityIDCondition`/ `EntityCondition` for the accepted condition signatures.
-    template<bool IS_LOGICAL_OR_FILTERING = false>
+    // See the By* functions and the `FrustumCondition`/ `RangeCondition` / `PlaneIntersectionCondition`/ `EntityIDCondition`/ `EntityCondition` for the accepted condition signatures.
+    template<LogicalOperator OP = LogicalOperator::And>
     std::vector<EntityID> Query(auto const& conditions, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
     {
-      return m_tree.template Query<IS_LOGICAL_OR_FILTERING>(conditions, m_entities, tolerance);
+      return m_tree.template Query<OP>(conditions, m_entities, tolerance);
     }
 
     // K Nearest Neighbor
@@ -612,7 +632,13 @@ namespace OrthoTree
       TEntityRayHitTester&& entityHitTester = {}) const noexcept
     {
       return m_tree.template RayIntersectedAll<SHOULD_SORT_ENTITIES_BY_DISTANCE>(
-        ray, m_entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
+        GA::GetRayOrigin(ray),
+        GA::GetRayDirection(ray),
+        m_entities,
+        tolerance,
+        toleranceIncrement,
+        maxDistance,
+        std::forward<TEntityRayHitTester>(entityHitTester));
     }
 
     // Get first entities that hit by the ray
@@ -658,7 +684,14 @@ namespace OrthoTree
       TScalar maxDistance = std::numeric_limits<TScalar>::max(),
       TEntityRayHitTester&& entityHitTester = {}) const noexcept
     {
-      return m_tree.RayIntersectedFirst(ray, m_entities, tolerance, toleranceIncrement, maxDistance, std::forward<TEntityRayHitTester>(entityHitTester));
+      return m_tree.RayIntersectedFirst(
+        GA::GetRayOrigin(ray),
+        GA::GetRayDirection(ray),
+        m_entities,
+        tolerance,
+        toleranceIncrement,
+        maxDistance,
+        std::forward<TEntityRayHitTester>(entityHitTester));
     }
 
   public: // Plane

@@ -51,7 +51,7 @@ namespace OrthoTree
               //   Entity removal does not effect. Recommended for Loose trees, where the node overlapping would be large.
   };
 
-  template<double IS_LOOSE_FACTOR_ = 1.0, bool USE_MBR = false, bool USE_PMR = detail::USE_PMR>
+  template<double IS_LOOSE_FACTOR_ = 1.0, NodeGeometryStorage NODE_GEOMETRY_STORAGE_ = NodeGeometryStorage::MinPoint, bool USE_PMR = detail::USE_PMR>
   struct Configuration
   {
     // Geometry type cannot be mixed within the same octree.
@@ -66,7 +66,6 @@ namespace OrthoTree
     // If tree, Reverse mapping (entityID -> nodeID) will be stored to speed up removal and update operations. (Dynamic datasets)
     static constexpr bool USE_REVERSE_MAPPING = false;
 
-    // TODO: rethink Location
     // It determines the internal location data type sizes.
     // In 3D, 21: (maximum allowed depth for 3D), LocationID is an uint64_t, Location's size is over 64bit. Resolution: for 1km model-space is 0.5mm
     // In 3D, 19: Location's size is 57bit. Resolution: for 1km model-space is 20mm
@@ -74,7 +73,7 @@ namespace OrthoTree
     // In 3D, 8: LocationID is an uint32_t, Location's size is 32bit. Resolution: for 1km model-space is 4m
     static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 19 };
 
-    static constexpr NodeGeometryStorage NODE_GEOMETRY_STORAGE = false ? NodeGeometryStorage::MBR : NodeGeometryStorage::MinPoint;
+    static constexpr NodeGeometryStorage NODE_GEOMETRY_STORAGE = NODE_GEOMETRY_STORAGE_;
 
     // Target number of elements in nodes
     static constexpr std::size_t DEFAULT_TARGET_ELEMENT_NUM_IN_NODES = 20; // TODO: set to 16
@@ -85,16 +84,18 @@ namespace OrthoTree
       std::conditional_t<USE_PMR, detail::EmbeddedResourcePmrMap<std::pmr::unordered_map<TKey, TValue, THash>>, std::unordered_map<TKey, TValue, THash>>;
 
     template<typename TKey, typename TValue, typename TComp>
-    using MapNodeContainer = std::conditional_t<USE_PMR, detail::EmbeddedResourcePmrMap<std::pmr::map<TKey, TValue, TComp>>, std::map<TKey, TValue, TComp>>;
+    using MapNodeContainer =
+      std::conditional_t<USE_PMR, detail::EmbeddedResourcePmrMap<std::pmr::map<TKey, TValue, TComp>>, std::map<TKey, TValue, TComp>>;
 
     // Associative container used for reverse mapping storage (default: std::unordered_map)
     template<typename TKey, typename TValue, typename THash>
     using ReverseMap = std::unordered_map<TKey, TValue, THash>;
   };
 
-  using PointConfiguration = Configuration<1.0, false>;
+  template<NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
+  using PointConfiguration = Configuration<1.0, NODE_GEOMETRY_STORAGE>;
 
-  template<bool IS_LOOSE_TREE>
-  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, true>;
+  template<bool IS_LOOSE_TREE, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
+  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, NODE_GEOMETRY_STORAGE>;
 
 } // namespace OrthoTree

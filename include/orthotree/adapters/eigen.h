@@ -156,7 +156,7 @@ namespace Eigen
   // Basic OrthoTree types
   template<typename TScalar, int AmbientDim>
   using EigenOrthoTreePointSpan =
-    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<Matrix<TScalar, AmbientDim, 1>>, EigenGeometryAdapter<TScalar, AmbientDim>, OrthoTree::PointConfiguration>;
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<Matrix<TScalar, AmbientDim, 1>>, EigenGeometryAdapter<TScalar, AmbientDim>, OrthoTree::PointConfiguration<>>;
 
   template<typename TScalar, int AmbientDim, bool IS_LOOSE_TREE = true>
   using EigenOrthoTreeBoxSpan =
@@ -164,7 +164,7 @@ namespace Eigen
 
   template<typename TScalar, int AmbientDim, typename TContainer = std::unordered_map<OrthoTree::index_t, AlignedBox<TScalar, AmbientDim>>>
   using EigenOrthoTreePointMap =
-    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<Matrix<TScalar, AmbientDim, 1>, TContainer>, EigenGeometryAdapter<TScalar, AmbientDim>, OrthoTree::PointConfiguration>;
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<Matrix<TScalar, AmbientDim, 1>, TContainer>, EigenGeometryAdapter<TScalar, AmbientDim>, OrthoTree::PointConfiguration<>>;
 
   template<typename TScalar, int AmbientDim, bool IS_LOOSE_TREE = true, typename TContainer = std::unordered_map<OrthoTree::index_t, AlignedBox<TScalar, AmbientDim>>>
   using EigenOrthoTreeBoxMap = OrthoTree::OrthoTreeBase<

@@ -105,7 +105,7 @@ namespace OrthoTree
 
     template<dim_t DIMENSION_NO, typename TScalar>
     using GlmOrthoTreePoint =
-      OrthoTreeBase<PointEntitySpanAdapter<glm::vec<DIMENSION_NO, TScalar>>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, PointConfiguration>;
+      OrthoTreeBase<PointEntitySpanAdapter<glm::vec<DIMENSION_NO, TScalar>>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, PointConfiguration<>>;
 
     template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar>
     using GlmOrthoTreeBoundingBox =
@@ -113,7 +113,7 @@ namespace OrthoTree
 
     template<dim_t DIMENSION_NO, typename TScalar, typename TContainer = std::unordered_map<index_t, glm::vec<DIMENSION_NO, TScalar>>>
     using GlmOrthoTreePointMap =
-      OrthoTreeBase<PointEntityMapAdapter<glm::vec<DIMENSION_NO, TScalar>, TContainer>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, PointConfiguration>;
+      OrthoTreeBase<PointEntityMapAdapter<glm::vec<DIMENSION_NO, TScalar>, TContainer>, GlmAdaptorGeneral<DIMENSION_NO, TScalar>, PointConfiguration<>>;
 
     template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TContainer = std::unordered_map<index_t, glm::boxNd_t<DIMENSION_NO, TScalar>>>
     using GlmOrthoTreeBoundingBoxMap =

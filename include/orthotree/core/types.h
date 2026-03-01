@@ -55,6 +55,12 @@ namespace OrthoTree
   using GridID = uint32_t;
   constexpr GridID INVALID_GRIDID = std::numeric_limits<GridID>::max();
 
+  enum class LogicalOperator
+  {
+    And,
+    Or
+  };
+
   // Enum of entity geometry type
   enum class GeometryType
   {
@@ -62,6 +68,13 @@ namespace OrthoTree
     Box,
     // Mixed // Not supported yet
   };
+
+  enum class RangeSearchMode
+  {
+    Inside,
+    Overlap
+  };
+
 
   // Enum of relation with Planes
   enum class PlaneRelation : char

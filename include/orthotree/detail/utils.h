@@ -52,6 +52,7 @@ SOFTWARE.
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 #include <version>
 
@@ -75,11 +76,15 @@ namespace OrthoTree::detail
 {
   template<typename T>
   struct IsStdOptional : std::false_type
-  {};
+  {
+    using BaseType = T;
+  };
 
   template<typename U>
   struct IsStdOptional<std::optional<U>> : std::true_type
-  {};
+  {
+    using BaseType = U;
+  };
 
   template<typename T>
   constexpr bool IsStdOptionalV = IsStdOptional<T>::value;

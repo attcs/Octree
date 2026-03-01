@@ -191,7 +191,7 @@ namespace OrthoTree
     using BoostGeometryAdapter = GeneralGeometryAdapter<BoostBaseGeometryAdapter<DIMENSION_NO, TScalar>>;
 
     template<dim_t DIMENSION_NO, typename TScalar, typename TEntityAdapter = PointEntitySpanAdapter<boost::geometry::model::pointNd_t<DIMENSION_NO, TScalar>>>
-    using BoostOrthoTreePoint = OrthoTreeBase<TEntityAdapter, BoostGeometryAdapter<DIMENSION_NO, TScalar>, PointConfiguration>;
+    using BoostOrthoTreePoint = OrthoTreeBase<TEntityAdapter, BoostGeometryAdapter<DIMENSION_NO, TScalar>, PointConfiguration<>>;
 
     template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityAdapter = BoxEntitySpanAdapter<boost::geometry::model::boxNd_t<DIMENSION_NO, TScalar>>>
     using BoostOrthoTreeBoundingBox = OrthoTreeBase<TEntityAdapter, BoostGeometryAdapter<DIMENSION_NO, TScalar>, BoxConfiguration<IS_LOOSE_TREE>>;

@@ -145,32 +145,31 @@ namespace OrthoTree
     constexpr TBox GetBox() const noexcept
     {
       auto box = GA::MakeBox();
-
       auto const& minPoint = [&]() -> decltype(auto) {
         if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
-          return m_nodeGeometry[GetRootNodeID()].minPoint;
+          return Base::GetTreeBoxNominalMinPoint();
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
           return m_nodeGeometry[GetRootNodeID()];
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
         {
           if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
-            return Base::GetRealTreeMinPoint();
+            return Base::GetTreeBoxRealMinPoint();
           else
-            return Base::GetTreeMinPoint();
+            return Base::GetTreeBoxNominalMinPoint();
         }
       }();
 
       auto const& size = [&]() -> decltype(auto) {
         if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
-          return m_nodeGeometry[GetRootNodeID()].size;
+          return Base::GetTreeBoxNominalSize();
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint)
           return Base::GetNodeSize(0);
         else if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
         {
           if constexpr (CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
-            return Base::GetRealTreeSize();
+            return Base::GetTreeBoxRealSize();
           else
-            return Base::GetTreeSize();
+            return Base::GetTreeBoxNominalSize();
         }
       }();
 
@@ -184,7 +183,7 @@ namespace OrthoTree
 
 
     // Node API
-#ifdef ORTHOTREE_PUBLIC_NODE_INTERFACE
+#ifdef ORTHOTREE__PUBLIC_NODE_INTERFACE
   public:
 #else
   protected:
@@ -205,7 +204,7 @@ namespace OrthoTree
     constexpr SequenceView<NodeID> GetNodeChildren(NodeValue nodeID) const noexcept
     {
       return std::visit(
-        [this, nodeID](auto const& nodes) {
+        [nodeID](auto const& nodes) {
           if (nodeID >= nodes.nodeChildSegmentBegins.size() - 1)
             return SequenceView<NodeID>(static_cast<NodeID>(0), static_cast<NodeID>(0));
 
@@ -484,7 +483,6 @@ namespace OrthoTree
 
         ++depthID;
         auto const examinedLevelID = Base::GetExaminationLevelID(depthID);
-        auto const keyGenerator = typename SI::ChildKeyGenerator(location.GetLocationID());
 
         uint32_t childNodeCount = 0;
         while (beginID < endID)
@@ -558,10 +556,14 @@ namespace OrthoTree
         return { spaceIndexing.GetLocation(EA::GetGeometry(entity)), EA::GetEntityID(entities, entity) };
       });
 
+      bool outOfSpace = false;
       auto endIt = locationsZip.end();
       if constexpr (!ARE_ENTITIES_SURELY_IN_MODELSPACE && !CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
       {
         endIt = std::partition(locationsZip.begin(), endIt, [](auto const& element) { return element.GetFirst().GetDepthID() != INVALID_DEPTH; });
+        outOfSpace = endIt != locationsZip.end();
+        if (outOfSpace)
+          m_entityStorage.resize(detail::size(locationsZip.begin(), endIt));
       }
 
       constexpr bool ARE_LOCATIONS_SORTED = std::is_same_v<TExecMode, ExecutionTags::Parallel>;
@@ -594,9 +596,8 @@ namespace OrthoTree
         m_nodeGeometry.reserve(estimatedNodeNum);
 
       Build<ARE_LOCATIONS_SORTED>(locationsZip.begin(), endIt, spaceIndexing);
-      InitializeSubtreeMinimalNodeGeometry(GetRootNodeID(), entities);
       InitializeMinimalNodeGeometry(entities, execMode);
-      return true;
+      return !outOfSpace;
     }
 
   public: // Create

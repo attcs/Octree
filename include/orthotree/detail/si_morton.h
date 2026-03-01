@@ -192,30 +192,6 @@ namespace OrthoTree::detail
     private:
       NodeID m_parentFlag = {};
     };
-    /*
-    static constexpr NodeID GetHashAtDepth(auto&& location, depth_t maxDepthID) noexcept
-    {
-      return (NodeID{ 1 } << (location.depthID * DIMENSION_NO)) | (location.LocID >> ((maxDepthID - location.depthID) * DIMENSION_NO));
-    }
-
-    static constexpr NodeID GetHashAtDepth(LocationIDCR locationID, depth_t depthID, depth_t maxDepthID) noexcept
-    {
-      return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | (locationID >> ((maxDepthID - depthID) * DIMENSION_NO));
-    }
-
-    static constexpr NodeID GetHash(depth_t depth, LocationIDCR locationID) noexcept
-    {
-      assert(locationID < (NodeID(1) << (depth * DIMENSION_NO)));
-      return (NodeID{ 1 } << (depth * DIMENSION_NO)) | locationID;
-    }
-    */
-    /*
-    static constexpr NodeID GetNodeID(depth_t depthID, LocationIDCR locationID) noexcept
-    {
-      assert(locationID < (NodeID(1) << (depthID * DIMENSION_NO)));
-      return (NodeID{ 1 } << (depthID * DIMENSION_NO)) | locationID;
-    }
-    */
 
     static constexpr NodeID GetNodeID(LocationIDCR locationIDOnDepth, depth_t depthID) noexcept
     {

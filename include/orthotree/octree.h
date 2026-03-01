@@ -74,12 +74,13 @@ SOFTWARE.
 #include "detail/utils.h"
 #include "detail/zip_view.h"
 
-#include "core/types.h"
 #include "core/build_config.h"
 #include "core/configuration.h"
 #include "core/entity_adapter.h"
 #include "core/ot_dynamic_hash_core.h"
 #include "core/ot_static_linear_core.h"
+#include "core/types.h"
+
 
 #include "core/ot_query.h"
 
@@ -87,6 +88,7 @@ SOFTWARE.
 
 #include "core/aliases.h"
 #include "octree_container.h"
+
 
 
 #include "detail/undefs.h"
