@@ -24,7 +24,10 @@ SOFTWARE.
 */
 
 #include "../octree.h"
-/* Required headers
+
+// Define ORTHOTREE_CGAL_INCLUDE if your CGAL installation is in a non-standard location and include the following headers manually.
+// Example: -DORTHOTREE_CGAL_INCLUDE
+#ifndef ORTHOTREE_CGAL_INCLUDE
 #include <CGAL/Bbox_2.h>
 #include <CGAL/Bbox_3.h>
 #include <CGAL/Cartesian.h>
@@ -36,7 +39,8 @@ SOFTWARE.
 #include <CGAL/Ray_3.h>
 #include <CGAL/basic.h>
 #include <CGAL/cartesian.h>
-*/
+#endif
+
 namespace CGAL
 {
   // 2d Hyperplane
@@ -118,7 +122,7 @@ namespace OrthoTree
 
       static constexpr dim_t DIMENSION_NO = 2;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
-   
+
       static Vector MakePoint() noexcept { return {}; };
       static Box MakeBox() noexcept { return {}; };
 

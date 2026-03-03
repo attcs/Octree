@@ -29,10 +29,20 @@ SOFTWARE.
 #pragma warning(disable : 4324)
 #endif
 
-#include "general.h"
+#include "../adapters/general.h"
+
 #include "../detail/common.h"
+
 #include "../octree.h"
-#include <Eigen/Geometry>
+
+
+// Override the Eigen include if your Eigen installation is in a non-standard location.
+// Example: -DORTHOTREE_EIGEN_INCLUDE="<my_vendor/Eigen/Geometry>"
+#ifndef ORTHOTREE_EIGEN_INCLUDE
+#define ORTHOTREE_EIGEN_INCLUDE <Eigen/Geometry>
+#endif
+
+#include ORTHOTREE_EIGEN_INCLUDE
 
 namespace OrthoTree
 {
@@ -52,7 +62,7 @@ namespace OrthoTree
 
       static constexpr dim_t DIMENSION_NO = AmbientDim;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
-      
+
       static constexpr Vector MakePoint() noexcept { return {}; };
       static constexpr Box MakeBox() noexcept { return {}; };
 

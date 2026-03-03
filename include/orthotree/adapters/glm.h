@@ -24,7 +24,14 @@ SOFTWARE.
 */
 
 #include "../octree.h"
-// #include <glm/glm.hpp>
+// Override the GLM include if your GLM installation is in a non-standard location.
+// Example: -DORTHOTREE_GLM_INCLUDE="<my_vendor/glm/glm.hpp>"
+#ifndef ORTHOTREE_GLM_INCLUDE
+#define ORTHOTREE_GLM_INCLUDE <glm/glm.hpp>
+#endif
+
+#include ORTHOTREE_GLM_INCLUDE
+
 namespace glm
 {
   // Define related elements

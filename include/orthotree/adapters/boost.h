@@ -23,9 +23,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "../octree.h"
-#include <boost/geometry.hpp>
+// Override the Boost Geometry include if your Boost installation is in a non-standard location.
+// Example: -DORTHOTREE_BOOST_GEOMETRY_INCLUDE="<my_vendor/boost/geometry.hpp>"
+#ifndef ORTHOTREE_BOOST_GEOMETRY_INCLUDE
+#define ORTHOTREE_BOOST_GEOMETRY_INCLUDE <boost/geometry.hpp>
+#endif
 
+#include ORTHOTREE_BOOST_GEOMETRY_INCLUDE
+
+
+#include "../octree.h"
 namespace boost::geometry::model
 {
   // Define related elements
