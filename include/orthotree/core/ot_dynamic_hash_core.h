@@ -811,7 +811,7 @@ namespace OrthoTree
         newEntitiesMap.reserve(newEntities.size());
         std::for_each(newEntities.begin(), newEntities.end(), [&](auto const& item) {
           using T = std::remove_cvref_t<decltype(item)>;
-          if constexpr (EA::IS_ENTITY_KEYED && std::is_convertible_v<T, typename EA::Entity>)
+          if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed && std::is_convertible_v<T, typename EA::Entity>)
           {
             newEntitiesMap.try_emplace(EA::GetEntityID(item), EA::GetGeometry(item));
           }
@@ -970,7 +970,7 @@ namespace OrthoTree
       EXEC_POL_DEF(ept); // GCC 11.3
       std::transform(EXEC_POL_ADD(ept) newEntities.begin(), newEntities.end(), buffer.begin(), [&](auto const& item) -> EntityData {
         using T = std::remove_cvref_t<decltype(item)>;
-        if constexpr (EA::IS_ENTITY_KEYED && std::is_convertible_v<T, typename EA::Entity>)
+        if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed && std::is_convertible_v<T, typename EA::Entity>)
         {
           return { m_spaceIndexing.GetLocation(EA::GetGeometry(item)), EA::GetEntityID(item) };
         }
@@ -1008,7 +1008,7 @@ namespace OrthoTree
           std::transform(endIt, buffer.end(), std::back_inserter(*failedEntities), [](auto const& element) { return element.id; });
         }
 
-        if constexpr (!EA::IS_ENTITY_KEYED)
+        if constexpr (EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
         {
           if (!isAllEntitiesInserted)
             return false;
@@ -1968,7 +1968,7 @@ namespace OrthoTree
 
     void DecreaseEntityIDs([[maybe_unused]] EntityID entityID) noexcept
     {
-      if constexpr (!EA::IS_ENTITY_KEYED)
+      if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
       {
         for (auto& [_, node] : m_nodes)
           node.DecreaseEntityIDs(entityID);
@@ -1986,7 +1986,7 @@ namespace OrthoTree
       }
     }
 
-    template<bool DECREASE_ENTITY_IDS = !EA::IS_ENTITY_KEYED>
+    template<bool DECREASE_ENTITY_IDS = EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>
     constexpr bool EraseBase(EntityID entityID) noexcept
     {
       bool isErased = false;
@@ -2030,7 +2030,7 @@ namespace OrthoTree
       return true;
     }
 
-    template<bool DECREASE_ENTITY_IDS = !EA::IS_ENTITY_KEYED>
+    template<bool DECREASE_ENTITY_IDS = EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>
     constexpr bool EraseBase(EntityID entitiyID, EA::Geometry const& entityGeometry) noexcept
     {
       auto nodeIt = GetNodeIt(entityGeometry);
@@ -2057,12 +2057,12 @@ namespace OrthoTree
 
   public: // Entity handling
     // Erase entity via reverse mapping or brute force search. Reverse mapping is recommended.
-    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase<!EA::IS_ENTITY_KEYED>(entityID); }
+    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase<EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>(entityID); }
 
     // Erase id, aided with the original geometry. Reverse mapping is not used in this function, consider its usage, with the alternative Erase().
     constexpr bool Erase(EntityID entityID, EA::Geometry const& entityGeometry) noexcept
     {
-      return EraseBase<!EA::IS_ENTITY_KEYED>(entityID, entityGeometry);
+      return EraseBase<EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>(entityID, entityGeometry);
     }
 
   public: // Search functions

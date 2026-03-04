@@ -29,6 +29,13 @@ SOFTWARE.
 
 namespace OrthoTree
 {
+  enum class EntityIdStrategy
+  {
+    ContiguousIndex, // Index-based ID, and the tree actively maintains the continuity of indexes (e.g. by swapping elements on removal, so indexes might change).
+    StableIndex, // Index-based ID, contiguous upon creation, but removals may create "holes", keeping remaining indexes stable.
+    EntityKeyed  // The entity itself contains the ID.
+  };
+
   template<GeometryType GEOMETRY_TYPE_, typename TEntity, typename TEntityID, typename TEntityContainer, typename TEntityContainerView, typename TGeometry, typename TEntityIDHash = std::hash<TEntityID>>
   struct EntityAdapterDefault
   {
@@ -56,11 +63,13 @@ namespace OrthoTree
   private:
     using EntityContainerViewType = std::remove_cvref_t<EntityContainerView>;
 
-  public:
     // Whether the Entity contains its ID or not. If IS_ENTITY_KEYED = false, integer-based EntityID-s is required, because continuous indexing should be maintained in the tree.
     static constexpr bool IS_ENTITY_KEYED =
       !(std::contiguous_iterator<typename EntityContainerViewType::iterator> && std::is_same_v<typename EntityContainerViewType::value_type, Geometry> &&
         std::is_integral_v<EntityID> && std::is_default_constructible_v<EntityID>);
+
+  public:
+    static constexpr EntityIdStrategy ENTITY_ID_STRATEGY = IS_ENTITY_KEYED ? EntityIdStrategy::EntityKeyed : EntityIdStrategy::ContiguousIndex;
 
   public: // General accessors
     static constexpr Entity GetEntity(EntityContainerView entities, EntityID const& entityID) noexcept { return detail::get(entities, entityID); }
@@ -87,14 +96,14 @@ namespace OrthoTree
         return std::distance(std::ranges::begin(entities), std::ranges::end(entities));
     }
 
-  public: // IS_ENTITY_KEYED required overload
+  public: // ENTITY_ID_STRATEGY == EntityKeyed required overload
     static constexpr EntityID GetEntityID(Entity const& entity) noexcept { return detail::getKeyPart(entity); }
 
   public: // Container mutation
     // Insert entity into the container. Returns the EntityID of the newly inserted entity.
     static constexpr EntityID Insert(EntityContainer& entities, auto&& entity) noexcept
     {
-      if constexpr (IS_ENTITY_KEYED)
+      if constexpr (ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
       {
         detail::emplace(entities, std::forward<decltype(entity)>(entity));
         return detail::getKeyPart(entities, entity);
@@ -110,16 +119,15 @@ namespace OrthoTree
     // Erase entity from the container by EntityID.
     static constexpr void Erase(EntityContainer& entities, EntityID entityID) noexcept
     {
-      if constexpr (IS_ENTITY_KEYED)
+      if constexpr (ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
         detail::erase(entities, entityID);
       else
       {
         if (entityID >= entities.size())
-        {
           return;
-        }
 
-        detail::erase(entities, std::next(entities.begin(), entityID));
+        if (ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
+          detail::erase(entities, std::next(entities.begin(), entityID));
       }
     }
 
@@ -135,7 +143,7 @@ namespace OrthoTree
     // Check entity containment in the container
     static constexpr bool Contains(EntityContainer& entities, EntityID entityID) noexcept
     {
-      if constexpr (IS_ENTITY_KEYED)
+      if constexpr (ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
         return detail::contains(entities, entityID);
       else
         return entityID < entities.size();

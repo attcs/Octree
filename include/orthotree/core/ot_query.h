@@ -124,7 +124,7 @@ namespace OrthoTree
       EntityContainerView entities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       InsertionMode insertionMode = InsertionMode::Balanced)
-      requires(!EA::IS_ENTITY_KEYED)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
     {
       auto const nearestEntityList = GetNearestNeighbors(entityGeometry, 1, 0.0, entities, tolerance);
       if (!nearestEntityList.empty())
@@ -142,7 +142,7 @@ namespace OrthoTree
       EntityContainerView entities,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       bool doInsertToLeaf = false)
-      requires(EA::IS_ENTITY_KEYED)
+      requires(EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
     {
       auto const nearestEntityList = GetNearestNeighbors(entityGeometry, 1, 0.0, entities, tolerance);
       if (!nearestEntityList.empty())
@@ -478,23 +478,31 @@ namespace OrthoTree
       auto foundEntities = std::vector<EntityID>{};
 
       auto const entityNo = entities.size();
-      if (IGM::DoesRangeContainBoxAD(range, Core::GetNodeBox(Core::GetRootNodeValue()), tolerance))
-      {
-        foundEntities.reserve(entityNo);
 
-        constexpr bool REQUIRES_CONTIGUOUS_ENTITY_IDS = !EA::IS_ENTITY_KEYED;
-        if constexpr (REQUIRES_CONTIGUOUS_ENTITY_IDS)
+      if constexpr (EA::ENTITY_ID_STRATEGY != EntityIdStrategy::StableIndex)
+      {
+        if (IGM::DoesRangeContainBoxAD(range, Core::GetNodeBox(Core::GetRootNodeValue()), tolerance))
         {
-          foundEntities.resize(entityNo);
-          std::iota(foundEntities.begin(), foundEntities.end(), 0);
+          foundEntities.reserve(entityNo);
+
+          if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
+          {
+            foundEntities.resize(entityNo);
+            std::iota(foundEntities.begin(), foundEntities.end(), 0);
+          }
+          else if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
+          {
+            std::transform(entities.begin(), entities.end(), std::back_inserter(foundEntities), [&entities](auto const& item) {
+              return EA::GetEntityID(entities, item);
+            });
+          }
+          else
+          {
+            static_assert(false, "Unsupported entity ID strategy!");
+          }
+
+          return foundEntities;
         }
-        else
-        {
-          std::transform(entities.begin(), entities.end(), std::back_inserter(foundEntities), [&entities](auto const& item) {
-            return EA::GetEntityID(entities, item);
-          });
-        }
-        return foundEntities;
       }
 
       // If the range has zero volume, it could stuck at any node comparison with point/side touch. It is eliminated to work node bounding box independently.

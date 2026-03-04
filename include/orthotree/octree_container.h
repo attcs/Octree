@@ -79,7 +79,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
-      requires(!EA::IS_ENTITY_KEYED)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifndef __cpp_lib_execution
@@ -128,7 +128,7 @@ namespace OrthoTree
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
-      requires(!EA::IS_ENTITY_KEYED)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifdef __cpp_lib_execution
@@ -179,7 +179,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
-      requires(!EA::IS_ENTITY_KEYED)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
     {
       auto otc = OrthoTreeContainer();
       otc.m_entities = std::vector(entities.begin(), entities.end());
@@ -281,7 +281,7 @@ namespace OrthoTree
 
       auto failedEntities = std::unordered_set<EntityID>{};
       auto const isAllEntitiesInserted = m_tree.Insert(newEntities, m_entities, execMode, &failedEntities);
-      if constexpr (!EA::IS_ENTITY_KEYED)
+      if constexpr (EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
       {
         // For non-keyed entities, we MUST insert everything to keep indices sync with tree IDs
         if (!isAllEntitiesInserted)
@@ -294,7 +294,7 @@ namespace OrthoTree
 
       for (auto&& entity : newEntities)
       {
-        if constexpr (EA::IS_ENTITY_KEYED)
+        if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
         {
           bool isFailed = std::erase(failedEntities, EA::GetEntityID(entity));
           if (isFailed)
@@ -310,7 +310,7 @@ namespace OrthoTree
     // Replace entity to the changedEntity
     template<typename TEntity = Entity>
     constexpr bool Update(EntityID entityID, TEntity&& changedEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
-      requires(!EA::IS_ENTITY_KEYED)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
     {
       auto oldEntity = EA::Exchange(m_entities, entityID, std::forward<decltype(changedEntity)>(changedEntity));
       bool isInserted = false;
@@ -335,7 +335,7 @@ namespace OrthoTree
     // Replace entity to the changedEntity
     template<typename TEntity = Entity>
     constexpr bool Update(TEntity&& changedEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
-      requires(EA::IS_ENTITY_KEYED)
+      requires(EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
     {
       auto const entityID = EA::GetEntityID(changedEntity);
       auto oldEntity = EA::Exchange(m_entities, entityID, std::forward<decltype(changedEntity)>(changedEntity));
