@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "../octree.h"
-#include "../unittests/compile_test.h"     
+#include "../../include/orthotree/octree.h"
+#include "../unittests/compile_test.h"
 
 using namespace OrthoTree;
 
