@@ -89,28 +89,47 @@ namespace OrthoTree::detail
 
       constexpr depth_t GetDepthID() const noexcept { return depthID; }
       constexpr LocationID GetLocationID() const noexcept { return locationID; }
+
+      template<bool IS_ELEMENT_DEPTH_SPECIFIC = true>
+      static constexpr bool IsLess(GeneralLocationData const& leftLocation, GeneralLocationData const& rightLocation) noexcept
+      {
+        if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
+        {
+          auto const leftLocationID = leftLocation.locationID;
+          auto const rightLocationID = rightLocation.locationID;
+          return (leftLocationID < rightLocationID) || ((leftLocationID == rightLocationID) && (leftLocation.depthID < rightLocation.depthID));
+        }
+        else
+        {
+          return leftLocation.locationID < rightLocation.locationID;
+        }
+      }
     };
 
     struct CompactLocationData
     {
     private:
       static constexpr std::size_t DEPTH_ID_BIT_COUNT = 5;
-      static constexpr std::size_t DEPTH_ID_SHIFT = 64 - DEPTH_ID_BIT_COUNT;
-      static constexpr uint64_t DEPTH_ID_MASK = ((1ULL << DEPTH_ID_BIT_COUNT) - 1) << DEPTH_ID_SHIFT;
-      static constexpr uint64_t LOCATION_ID_MASK = ~DEPTH_ID_MASK;
+      static constexpr uint64_t DEPTH_ID_MASK = ((1ULL << DEPTH_ID_BIT_COUNT) - 1);
 
-      // upper 5 bits are reserved for depth id
-      // lower 59 bits are reserved for location id -> 19 levels for 3D
+      // upper 59 bits are reserved for location id -> 19 levels for 3D
+      // lower 5 bits are reserved for depth id
       uint64_t locationAndDepthID;
 
     public:
       constexpr CompactLocationData() noexcept = default;
       constexpr CompactLocationData(LocationID locationID, uint64_t depthID) noexcept
-      : locationAndDepthID(depthID << DEPTH_ID_SHIFT | locationID)
+      : locationAndDepthID((locationID << DEPTH_ID_BIT_COUNT) | depthID)
       {}
 
-      constexpr depth_t GetDepthID() const noexcept { return (locationAndDepthID & DEPTH_ID_MASK) >> DEPTH_ID_SHIFT; }
-      constexpr LocationID GetLocationID() const noexcept { return locationAndDepthID & LOCATION_ID_MASK; }
+      constexpr depth_t GetDepthID() const noexcept { return (locationAndDepthID & DEPTH_ID_MASK); }
+      constexpr LocationID GetLocationID() const noexcept { return locationAndDepthID >> DEPTH_ID_BIT_COUNT; }
+
+      template<bool IS_ELEMENT_DEPTH_SPECIFIC = true>
+      static constexpr bool IsLess(CompactLocationData const& leftLocation, CompactLocationData const& rightLocation) noexcept
+      {
+        return leftLocation.locationAndDepthID < rightLocation.locationAndDepthID;
+      }
     };
 
   public:
@@ -134,26 +153,12 @@ namespace OrthoTree::detail
       constexpr depth_t GetDepthID() const noexcept { return locationData.GetDepthID(); }
       constexpr LocationID GetLocationID() const noexcept { return locationData.GetLocationID(); }
 
-      constexpr bool operator<(Location const& rightLocation) const noexcept
-      {
-        auto const leftLocationID = GetLocationID();
-        auto const rightLocationID = rightLocation.GetLocationID();
-        return (leftLocationID < rightLocationID) || ((leftLocationID == rightLocationID) && (GetDepthID() < rightLocation.GetDepthID()));
-      }
+      constexpr bool operator<(Location const& rightLocation) const noexcept { return IsLess<true>(*this, rightLocation); }
 
       template<bool IS_ELEMENT_DEPTH_SPECIFIC = true>
       static constexpr bool IsLess(Location const& leftLocation, Location const& rightLocation) noexcept
       {
-        if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
-        {
-          auto const leftLocationID = leftLocation.GetLocationID();
-          auto const rightLocationID = rightLocation.GetLocationID();
-          return (leftLocationID < rightLocationID) || ((leftLocationID == rightLocationID) && (leftLocation.GetDepthID() < rightLocation.GetDepthID()));
-        }
-        else
-        {
-          return leftLocation.GetLocationID() < rightLocation.GetLocationID();
-        }
+        return LocationData::IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(leftLocation.locationData, rightLocation.locationData);
       }
     };
 
