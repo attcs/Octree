@@ -797,7 +797,10 @@ namespace OrthoTree
       }
     }
 
-    constexpr void UpdateNodeGeometry(std::vector<std::pair<NodeID, uint32_t>> const& changedNodes, auto const& newEntities, std::size_t existingEntityNum) noexcept
+    constexpr void UpdateNodeGeometry(
+      [[maybe_unused]] std::vector<std::pair<NodeID, uint32_t>> const& changedNodes,
+      [[maybe_unused]] auto const& newEntities,
+      [[maybe_unused]] std::size_t existingEntityNum) noexcept
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
       {
@@ -1120,7 +1123,7 @@ namespace OrthoTree
         auto [it, isInserted] = m_nodes.try_emplace(nodeID);
         auto& entitySegment = it->second.GetEntitySegment();
         auto existingElementNum = entitySegment.segment.size();
-        changedNodes.emplace_back(nodeID, existingElementNum);
+        changedNodes.emplace_back(nodeID, int32_t(existingElementNum));
 
         if (isInserted)
         {
@@ -1709,6 +1712,9 @@ namespace OrthoTree
         static_assert(false);
       }
 
+      constexpr bool IS_ELEMENT_DEPTH_SPECIFIC = (EA::GEOMETRY_TYPE != GeometryType::Point);
+      using LCAC = typename SI::template LowestCommonAncestorCalculator<IS_ELEMENT_DEPTH_SPECIFIC>;
+
       // Child nodes
       auto const childNodeLevelID = Base::GetMaxDepthID() - depthID - 1;
       while (beginIt != locationsZip.end())
@@ -1717,24 +1723,19 @@ namespace OrthoTree
         auto const nextIt =
           std::partition(beginIt, locationsZip.end(), [&](auto const& element) { return nodeChecker.Test(element.GetFirst().GetLocationID()); });
 
-        // Create child node deeper if possible and worth it
-        MutableNodeValue childNodeValue = nullptr;
-        if (detail::size(beginIt, nextIt) >= Base::GetMaxElementNum() / 2)
-        {
-          constexpr bool IS_ELEMENT_DEPTH_SPECIFIC = (EA::GEOMETRY_TYPE != GeometryType::Point);
-          auto lcaHelper = typename SI::template LowestCommonAncestorCalculator<IS_ELEMENT_DEPTH_SPECIFIC>(*beginIt.GetFirst());
-          for (auto it = beginIt.GetFirst(); it != nextIt.GetFirst(); ++it)
-            lcaHelper.Add(*it);
+        // Create child node deeper if possible
+        auto lcaHelper = LCAC(*beginIt.GetFirst());
+        for (auto it = std::next(beginIt.GetFirst()); it != nextIt.GetFirst(); ++it)
+          lcaHelper.Add(*it);
 
-          auto childNodeIt = AddNode(lcaHelper.GetNodeID(Base::GetMaxDepthID()));
-          childNodeValue = &*childNodeIt;
-        }
-        else
-        {
-          auto const partitionChildNodeID = m_spaceIndexing.GetNodeID(*beginIt.GetFirst());
-          auto childNodeIt = AddNode(m_spaceIndexing.GetDirectChildNodeID(nodeValue->first, partitionChildNodeID));
-          childNodeValue = &*childNodeIt;
-        }
+        auto lcaNodeID = lcaHelper.GetNodeID(Base::GetMaxDepthID());
+        assert(
+          lcaHelper.GetLocation(Base::GetMaxDepthID()).GetDepthID() >= depthID &&
+          "Existing entities are out-of-sync with the tree. Client code may have modified the geometry of the existing entities without updating "
+          "the tree.");
+
+        auto childNodeIt = AddNode(lcaNodeID);
+        auto childNodeValue = &*childNodeIt;
 
         bool isNewEntityContained = false;
 
@@ -1798,19 +1799,8 @@ namespace OrthoTree
       }
       else
       {
-        auto const oldNodeIt = GetNodeIt(oldEntityGeometry);
-        if (oldNodeIt == m_nodes.end())
-          return false;
-
-        auto const newNodeIt = GetNodeIt(newEntityGeometry);
-        if (oldNodeIt == newNodeIt)
-          return true; // No update is required.
-
         if (!EraseBase<false>(entityID, oldEntityGeometry))
           return false; // entityID was not registered previously.
-
-        if (newNodeIt == m_nodes.end())
-          return false;
 
         return InsertIntoLeaf(entityID, newEntityGeometry, insertionMode);
       }
@@ -1834,19 +1824,8 @@ namespace OrthoTree
       }
       else
       {
-        auto const oldNodeIt = GetNodeIt(oldEntityGeometry);
-        if (oldNodeIt == m_nodes.end())
-          return false;
-
-        auto const newNodeIt = GetNodeIt(newEntityGeometry);
-        if (oldNodeIt == newNodeIt)
-          return true; // No update is required.
-
         if (!EraseBase<false>(entityID, oldEntityGeometry))
           return false; // entityID was not registered previously.
-
-        if (newNodeIt == m_nodes.end())
-          return false;
 
         return Insert(entityID, newEntityGeometry, entities);
       }
@@ -1895,7 +1874,7 @@ namespace OrthoTree
         }
 
         EXEC_POL_DEF(ep);
-        std::for_each(EXEC_POL_ADD(ep) nodes.begin(), nodes.end(), UpdateNodes);
+        std::for_each(EXEC_POL_ADD(ep) nodes.begin(), nodes.end(), [&](auto nodeID) { UpdateNodes(*m_nodes.find(nodeID)); });
       }
       else
       {
@@ -2058,9 +2037,13 @@ namespace OrthoTree
       if (nodeIt == m_nodes.end())
         return false; // entity's geometry is not in the handled space
 
-      bool const isEntityRemoved = RemoveNodeEntity(nodeIt->second, entitiyID);
-      if (!isEntityRemoved)
-        return false;
+      // entityID may be in a parent node, so we need to check all the way up to the root
+      while (!RemoveNodeEntity(nodeIt->second, entitiyID))
+      {
+        nodeIt = GetParentIt(nodeIt->first);
+        if (nodeIt == m_nodes.end())
+          return false; // entity is not in the tree
+      }
 
       RemoveNodeIfPossible(nodeIt);
 

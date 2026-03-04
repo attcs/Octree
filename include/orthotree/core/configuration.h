@@ -51,7 +51,7 @@ namespace OrthoTree
               //   Entity removal does not effect. Recommended for Loose trees, where the node overlapping would be large.
   };
 
-  template<double IS_LOOSE_FACTOR_ = 1.0, NodeGeometryStorage NODE_GEOMETRY_STORAGE_ = NodeGeometryStorage::MinPoint, bool USE_PMR = detail::USE_PMR>
+  template<double IS_LOOSE_FACTOR_ = 1.0, NodeGeometryStorage NODE_GEOMETRY_STORAGE_ = NodeGeometryStorage::MinPoint, bool USE_REVERSE_MAPPING_ = false, bool USE_PMR = detail::USE_PMR>
   struct Configuration
   {
     // Geometry type cannot be mixed within the same octree.
@@ -64,7 +64,7 @@ namespace OrthoTree
     static constexpr bool ALLOW_OUT_OF_SPACE_INSERTION = true;
 
     // If tree, Reverse mapping (entityID -> nodeID) will be stored to speed up removal and update operations. (Dynamic datasets)
-    static constexpr bool USE_REVERSE_MAPPING = false;
+    static constexpr bool USE_REVERSE_MAPPING = USE_REVERSE_MAPPING_;
 
     // It determines the internal location data type sizes.
     // In 3D, 21: (maximum allowed depth for 3D), LocationID is an uint64_t, Location's size is over 64bit. Resolution: for 1km model-space is 0.5mm
@@ -92,10 +92,10 @@ namespace OrthoTree
     using ReverseMap = std::unordered_map<TKey, TValue, THash>;
   };
 
-  template<NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint>
-  using PointConfiguration = Configuration<1.0, NODE_GEOMETRY_STORAGE>;
+  template<NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint, bool USE_REVERSE_MAPPING = true>
+  using PointConfiguration = Configuration<1.0, NODE_GEOMETRY_STORAGE, USE_REVERSE_MAPPING>;
 
-  template<bool IS_LOOSE_TREE, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR>
-  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, NODE_GEOMETRY_STORAGE>;
+  template<bool IS_LOOSE_TREE, NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MBR, bool USE_REVERSE_MAPPING = true>
+  using BoxConfiguration = Configuration<IS_LOOSE_TREE ? 2.0 : 1.0, NODE_GEOMETRY_STORAGE, USE_REVERSE_MAPPING>;
 
 } // namespace OrthoTree

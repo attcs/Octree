@@ -148,11 +148,19 @@ namespace OrthoTree
   template<typename TBox>
   using BoxEntitySpanAdapter = EntityAdapterDefault<GeometryType::Box, TBox, index_t, std::vector<TBox>, std::span<TBox const>, TBox>;
 
-  template<typename TPoint, typename TEntityContainer = std::unordered_map<index_t, TPoint>, typename TEntityContainerView = TEntityContainer const&>
+  template<
+    typename TPoint,
+    typename TEntityContainer = std::unordered_map<index_t, TPoint>,
+    typename TEntityContainerView = TEntityContainer const&,
+    typename THash = std::hash<typename TEntityContainer::key_type>>
   using PointEntityMapAdapter =
-    EntityAdapterDefault<GeometryType::Point, typename TEntityContainer::value_type, typename TEntityContainer::key_type, TEntityContainer, TEntityContainerView, TPoint>;
+    EntityAdapterDefault<GeometryType::Point, typename TEntityContainer::value_type, typename TEntityContainer::key_type, TEntityContainer, TEntityContainerView, TPoint, THash>;
 
-  template<typename TBox, typename TEntityContainer = std::unordered_map<index_t, TBox>, typename TEntityContainerView = TEntityContainer const&>
+  template<
+    typename TBox,
+    typename TEntityContainer = std::unordered_map<index_t, TBox>,
+    typename TEntityContainerView = TEntityContainer const&,
+    typename THash = std::hash<typename TEntityContainer::key_type>>
   using BoxEntityMapAdapter =
-    EntityAdapterDefault<GeometryType::Box, typename TEntityContainer::value_type, typename TEntityContainer::key_type, TEntityContainer, TEntityContainerView, TBox>;
+    EntityAdapterDefault<GeometryType::Box, typename TEntityContainer::value_type, typename TEntityContainer::key_type, TEntityContainer, TEntityContainerView, TBox, THash>;
 } // namespace OrthoTree

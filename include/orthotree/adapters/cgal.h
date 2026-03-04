@@ -120,7 +120,7 @@ namespace OrthoTree
       using Ray = CGAL::Ray_3<CGAL::Cartesian<Scalar>>;
       using Plane = CGAL::Plane_3<CGAL::Cartesian<Scalar>>;
 
-      static constexpr dim_t DIMENSION_NO = 2;
+      static constexpr dim_t DIMENSION_NO = 3;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
       static Vector MakePoint() noexcept { return {}; };
