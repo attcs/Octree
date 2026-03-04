@@ -157,7 +157,7 @@ namespace OrthoTree
     {
       auto const box = Core::GetNodeBox(nodeValue);
       TBox outBox = {};
-      detail::static_for<GA::DIMENSION_NO>([&](auto dimensionID) {
+      detail::static_for<GA::DIMENSION_NO>([&, this](auto dimensionID) {
         GA::SetBoxMinC(outBox, dimensionID, box.Min[dimensionID]);
         GA::SetBoxMaxC(outBox, dimensionID, box.Max[dimensionID]);
       });
@@ -308,14 +308,14 @@ namespace OrthoTree
     // Accepted procedure signature: TraverseControl(auto const& entitiesInNode, TBox const& nodeBox). Where entitiesInNode is iterable of EntityID.
     constexpr void TraverseEntitiesBreadthFirst(auto&& procedure) const noexcept
     {
-      TraverseNodesBreadthFirst([&](auto const nodeValue) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue)); });
+      TraverseNodesBreadthFirst([&, this](auto const nodeValue) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue)); });
     }
 
     // Visit entities in depth first order
     // Accepted procedure signature: TraverseControl(auto const& entitiesInNode, TBox const& nodeBox). Where entitiesInNode is iterable of EntityID.
     constexpr void TraverseEntitiesDepthFirst(auto&& procedure) const noexcept
     {
-      TraverseNodesDepthFirst([&](auto const nodeValue) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue)); });
+      TraverseNodesDepthFirst([&, this](auto const nodeValue) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue)); });
     }
 
     // Visit entities in priority order
@@ -326,8 +326,10 @@ namespace OrthoTree
     constexpr void TraverseEntitiesByPriority(auto&& procedure, auto&& priorityCalculator) const noexcept
     {
       TraverseNodesByPriority(
-        [&](auto const nodeValue, auto const& priority) { return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue), priority); },
-        [&](auto const nodeValue) { return priorityCalculator(Core::GetNodeBox(nodeValue)); });
+        [&, this](auto const nodeValue, auto const& priority) {
+          return procedure(Core::GetNodeEntities(nodeValue), Core::GetNodeBox(nodeValue), priority);
+        },
+        [&, this](auto const nodeValue) { return priorityCalculator(Core::GetNodeBox(nodeValue)); });
     }
 
     // Collect all item id, traversing the tree in breadth-first search order
@@ -335,7 +337,7 @@ namespace OrthoTree
     {
       auto entityIDs = std::vector<EntityID>();
       TraverseNodesBreadthFirst(
-        [&](auto const nodeValue) {
+        [&, this](auto const nodeValue) {
           auto const& entities = Core::GetNodeEntities(nodeValue);
           auto const entityIDsSize = entityIDs.size();
           entityIDs.insert(entityIDs.end(), entities.begin(), entities.end());
@@ -424,11 +426,11 @@ namespace OrthoTree
 
       foundEntitiyIDs.reserve(100);
 
-      TraverseNodesDepthFirst([&](auto const nodeValue) {
+      TraverseNodesDepthFirst([&, this](auto const nodeValue) {
         if (!IGM::DoesBoxContainPointAD(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue), pickPoint, tolerance))
           return TraverseControl::SkipChildren;
 
-        auto const pointTest = [&](auto const entityID) {
+        auto const pointTest = [&, this](auto const entityID) {
           if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
           {
             return GA::ArePointsEqual(EA::GetGeometry(entities, entityID), pickPoint, tolerance);
@@ -444,7 +446,7 @@ namespace OrthoTree
           ORTHOTREE_UNREACHABLE();
         };
 
-        std::ranges::copy_if(Core::GetNodeEntities(nodeValue), std::back_inserter(foundEntitiyIDs), [&](auto const entityID) {
+        std::ranges::copy_if(Core::GetNodeEntities(nodeValue), std::back_inserter(foundEntitiyIDs), [&, this](auto const entityID) {
           if (!pointTest(entityID))
             return false;
 
@@ -502,7 +504,7 @@ namespace OrthoTree
         return foundEntities;
       }
 
-      auto const boxTest = [&](auto const entityID) {
+      auto const boxTest = [&, this](auto const entityID) {
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
         {
           return GA::DoesBoxContainPoint(range, EA::GetGeometry(entities, entityID), tolerance);
@@ -524,7 +526,7 @@ namespace OrthoTree
 
       auto const searchRangeMinPoint = IGM::GetBoxMinPointAD(range);
       auto const searchRangeSize = IGM::GetBoxSizeAD(range);
-      TraverseNodesDepthFirst([&](auto const nodeValue) {
+      TraverseNodesDepthFirst([&, this](auto const nodeValue) {
         auto const& nodeMinPoint = Core::GetNodeMinPoint(nodeValue);
         auto const& nodeSize = Core::GetNodeSize(nodeValue);
         if (!IGM::AreBoxesOverlappingByMinPoint(searchRangeMinPoint, searchRangeSize, nodeMinPoint, nodeSize, tolerance))
@@ -533,14 +535,14 @@ namespace OrthoTree
         if (IGM::DoesRangeContainBoxAD(range, nodeMinPoint, nodeSize, tolerance))
         {
           TraverseNodesDepthFirst(
-            [&](auto const childNodeValue) {
+            [&, this](auto const childNodeValue) {
               if constexpr (std::is_same_v<TTester, std::monostate>)
               {
                 std::ranges::copy(Core::GetNodeEntities(childNodeValue), std::back_inserter(foundEntities));
               }
               else
               {
-                std::ranges::copy_if(Core::GetNodeEntities(childNodeValue), std::back_inserter(foundEntities), [&](auto const entityID) {
+                std::ranges::copy_if(Core::GetNodeEntities(childNodeValue), std::back_inserter(foundEntities), [&, this](auto const entityID) {
                   return TestEntity(tester, entityID, entities, range);
                 });
               }
@@ -552,7 +554,7 @@ namespace OrthoTree
         }
         else
         {
-          std::ranges::copy_if(Core::GetNodeEntities(nodeValue), std::back_inserter(foundEntities), [&](auto const entityID) {
+          std::ranges::copy_if(Core::GetNodeEntities(nodeValue), std::back_inserter(foundEntities), [&, this](auto const entityID) {
             if (!boxTest(entityID))
               return false;
 
@@ -604,7 +606,7 @@ namespace OrthoTree
       assert(GA::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<EntityID>{};
-      TraverseNodesDepthFirst([&](auto const nodeValue) {
+      TraverseNodesDepthFirst([&, this](auto const nodeValue) {
         if (IGM::GetBoxPlaneRelationAD(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue), distanceOfOrigo, planeNormal, tolerance) != PlaneRelation::Hit)
           return TraverseControl::SkipChildren;
 
@@ -683,7 +685,7 @@ namespace OrthoTree
       assert(GA::IsNormalizedVector(planeNormal));
 
       auto results = std::vector<EntityID>{};
-      TraverseNodesDepthFirst([&](auto const nodeValue) {
+      TraverseNodesDepthFirst([&, this](auto const nodeValue) {
         auto const nodeRelation =
           IGM::GetBoxPlaneRelationAD(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue), distanceOfOrigo, planeNormal, tolerance);
 
@@ -692,14 +694,14 @@ namespace OrthoTree
         case PlaneRelation::Negative: return TraverseControl::SkipChildren;
         case PlaneRelation::Positive:
           TraverseNodesDepthFirst(
-            [&](auto const childNodeValue) {
+            [&, this](auto const childNodeValue) {
               if constexpr (std::is_same_v<std::monostate, TTester>)
               {
                 std::ranges::copy(Core::GetNodeEntities(childNodeValue), std::back_inserter(results));
               }
               else
               {
-                std::ranges::copy_if(Core::GetNodeEntities(childNodeValue), std::back_inserter(results), [&](auto const entityID) {
+                std::ranges::copy_if(Core::GetNodeEntities(childNodeValue), std::back_inserter(results), [&, this](auto const entityID) {
                   return TestEntity(tester, entityID, entities, distanceOfOrigo, planeNormal);
                 });
               }
@@ -760,7 +762,7 @@ namespace OrthoTree
         return GA::IsNormalizedVector(GA::GetPlaneNormal(plane));
       }));
 
-      auto const selector = [&](auto const nodeValue) -> bool {
+      auto const selector = [&, this](auto const nodeValue) -> bool {
         auto const& nodeMinPoint = Core::GetNodeMinPoint(nodeValue);
         auto const& nodeSize = Core::GetNodeSize(nodeValue);
 
@@ -778,7 +780,7 @@ namespace OrthoTree
         return true;
       };
 
-      auto const procedure = [&](auto const nodeValue) {
+      auto const procedure = [&, this](auto const nodeValue) {
         if (!selector(nodeValue))
           return TraverseControl::SkipChildren;
 
@@ -789,7 +791,7 @@ namespace OrthoTree
           {
             auto const relation =
               GetEntityPlaneRelation(EA::GetGeometry(entities, entityID), GA::GetPlaneOrigoDistance(plane), GA::GetPlaneNormal(plane), tolerance);
-            auto const isOnPositiveSideOrHit = [&](auto const planeRelation) {
+            auto const isOnPositiveSideOrHit = [&, this](auto const planeRelation) {
               switch (planeRelation)
               {
               case PlaneRelation::Hit: return TestEntity(tester, entityID, entities, plane);
@@ -855,7 +857,7 @@ namespace OrthoTree
     {
       auto results = std::vector<EntityID>{};
 
-      TraverseNodesDepthFirst([&](auto const nodeValue) {
+      TraverseNodesDepthFirst([&, this](auto const nodeValue) {
         // Node selection
 
         auto const& nodeMinPoint = Core::GetNodeMinPoint(nodeValue);
@@ -1229,7 +1231,7 @@ namespace OrthoTree
                           maxDistanceWithin == std::numeric_limits<TScalar>::max() ? std::numeric_limits<TScalar>::max()
                                                                                    : GetValueWithToleranceUpper(maxDistanceWithin, tolerance) };
       TraverseNodesByPriority(
-        [&](auto const nodeValue, TFloatScalar nodeDistance) -> TraverseControl {
+        [&, this](auto const nodeValue, TFloatScalar nodeDistance) -> TraverseControl {
           if (nodeDistance >= farthestEntityDistance.upper)
             return TraverseControl::Terminate;
 
@@ -1238,7 +1240,7 @@ namespace OrthoTree
 
           return TraverseControl::Continue;
         },
-        [&](auto const nodeValue) -> std::optional<TFloatScalar> {
+        [&, this](auto const nodeValue) -> std::optional<TFloatScalar> {
           auto wallDistance = GetNodeWallDistance(searchPoint, nodeValue, true);
           if (wallDistance >= farthestEntityDistance.upper)
             return std::nullopt;
@@ -1279,7 +1281,7 @@ namespace OrthoTree
       constexpr SweepAndPruneDatabase(EntityContainerView entities, auto const& entityIDs) noexcept
       : m_sortedEntityIDs(entityIDs.begin(), entityIDs.end())
       {
-        std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&](auto const entityIDL, auto const entityIDR) {
+        std::sort(m_sortedEntityIDs.begin(), m_sortedEntityIDs.end(), [&, this](auto const entityIDL, auto const entityIDR) {
           if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
           {
             return GA::GetPointC(EA::GetGeometry(entities, entityIDL), 0) < GA::GetPointC(EA::GetGeometry(entities, entityIDR), 0);
@@ -1812,7 +1814,7 @@ namespace OrthoTree
         }
 
         EXEC_POL_DEF(epcd); // GCC 11.3
-        std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin(), taskContexts.end(), [&](auto& taskContext) {
+        std::for_each(EXEC_POL_ADD(epcd) taskContexts.begin(), taskContexts.end(), [&, this](auto& taskContext) {
           auto const& [nodeValue, nvs_, parentID, contextID, ce_] = taskContext;
 
           auto nodeContextStack = std::vector<NodeCollisionContext>();
@@ -1850,7 +1852,7 @@ namespace OrthoTree
           }
 
           EXEC_POL_DEF(epst); // GCC 11.3
-          std::for_each(EXEC_POL_ADD(epst) taskContexts.begin() + nodeQueueNum, taskContexts.end(), [&](auto& taskContext) {
+          std::for_each(EXEC_POL_ADD(epst) taskContexts.begin() + nodeQueueNum, taskContexts.end(), [&, this](auto& taskContext) {
             CollisionDetection(
               *this, entities, taskContext.nodeValue, *this, entities, taskContext.nodeValueSecondary, taskContext.collidedEntities, tolerance, collisionDetector);
           });
@@ -1858,7 +1860,7 @@ namespace OrthoTree
         auto collidedEntitiesInParents = std::vector<std::pair<EntityID, EntityID>>{};
         auto nodeContextStack = std::vector<NodeCollisionContext>();
         auto usedContextsStack = std::vector<NodeCollisionContext*>{};
-        std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNum, [&](auto const& nodeData) {
+        std::for_each(nodeQueue.begin(), nodeQueue.end() - nodeQueueNum, [&, this](auto const& nodeData) {
           {
             usedContextsStack.emplace_back(&nodeContextMap[nodeData.contextID]);
             auto parentID = nodeData.parentID;
@@ -1948,13 +1950,13 @@ namespace OrthoTree
 
       struct ItemDistance
       {
-        IGM_Geometry Distance;
+        IGM_Geometry distance;
         auto operator<=>(ItemDistance const& rhs) const = default;
       };
 
       struct EntityDistance : ItemDistance
       {
-        EntityID EntityID;
+        EntityID entityID;
         auto operator<=>(EntityDistance const& rhs) const { return ItemDistance::operator<=>(rhs); }
       };
 
@@ -1963,7 +1965,7 @@ namespace OrthoTree
       auto foundEntities = EntityDistanceContainer{};
       foundEntities.reserve(20);
 
-      TraverseNodesDepthFirst([&](auto const nodeValue) {
+      TraverseNodesDepthFirst([&, this](auto const nodeValue) {
         auto const nodeHit = rayHitTester->Hit(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue));
         if (!nodeHit)
           return TraverseControl::SkipChildren;
@@ -2008,7 +2010,7 @@ namespace OrthoTree
         std::ranges::sort(foundEntities);
 
         auto foundEntityIDs = std::vector<EntityID>(foundEntities.size());
-        std::ranges::transform(foundEntities, foundEntityIDs.begin(), [](auto const& entityDistance) { return entityDistance.EntityID; });
+        std::ranges::transform(foundEntities, foundEntityIDs.begin(), [](auto const& entityDistance) { return entityDistance.entityID; });
         return foundEntityIDs;
       }
     }
@@ -2063,7 +2065,7 @@ namespace OrthoTree
       auto maxDistanceHeap = std::priority_queue<Candidate, std::vector<Candidate>>{};
       auto maxExaminationDistance = TFloatScalar(maxDistance);
       TraverseNodesByPriority(
-        [&, rayHitTester = *rayHitTester](const auto nodeValue, TFloatScalar nodeEnterDistance) {
+        [&, this, rayHitTester = *rayHitTester](auto const nodeValue, TFloatScalar nodeEnterDistance) {
           if (nodeEnterDistance > maxExaminationDistance)
             return TraverseControl::Terminate;
 
@@ -2108,7 +2110,7 @@ namespace OrthoTree
 
           return TraverseControl::Continue;
         },
-        [&, rayHitTester = *rayHitTester](auto const nodeValue) -> std::optional<TFloatScalar> {
+        [&, this, rayHitTester = *rayHitTester](auto const nodeValue) -> std::optional<TFloatScalar> {
           auto result = rayHitTester.Hit(Core::GetNodeMinPoint(nodeValue), Core::GetNodeSize(nodeValue));
           if (!result)
             return std::nullopt;

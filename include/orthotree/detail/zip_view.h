@@ -114,14 +114,11 @@ namespace OrthoTree::detail
     using iterator_concept = std::random_access_iterator_tag;
     using iterator_category = std::random_access_iterator_tag;
 
-    // TODO: remove: using difference_type = typename std::iterator_traits<It1>::difference_type;
     using difference_type = std::common_type_t<typename std::iterator_traits<It1>::difference_type, typename std::iterator_traits<It2>::difference_type>;
     using pointer = void;
 
     using reference = proxy_reference<It1, It2>;
     using value_type = std::pair<typename std::iterator_traits<It1>::value_type, typename std::iterator_traits<It2>::value_type>;
-    // using reference = std::tuple<std::iter_reference_t<It1>, std::iter_reference_t<It2>>;
-    // using value_type = std::tuple<std::iter_value_t<It1>, std::iter_value_t<It2>>;
 
     constexpr zip_iterator() noexcept = default;
     constexpr zip_iterator(It1 it1, It2 it2) noexcept

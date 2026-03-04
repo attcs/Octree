@@ -529,7 +529,7 @@ namespace OrthoTree
         return true;
       }
     }
-    // TODO: remove?
+
     constexpr NodeValueType CreateNode(NodeIDCR nodeID) const noexcept
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None)
@@ -1202,7 +1202,7 @@ namespace OrthoTree
         if (elementNum <= kSortThreshold)
         {
           std::sort(buffer.begin() + w.begin, buffer.begin() + w.end, [](EntityData const& a, EntityData const& b) {
-            return SI::Location::IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(a.location, b.location);
+            return SI::Location::template IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(a.location, b.location);
           });
           emitSortedRange(w.begin, w.end);
         }

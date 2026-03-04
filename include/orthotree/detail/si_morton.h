@@ -135,9 +135,6 @@ namespace OrthoTree::detail
   public:
     struct Location
     {
-    public:
-      using LocationID = LocationID;
-
     private:
       static constexpr bool IS_COMPACT_STORAGE = MAX_ALLOWED_DEPTH_ID <= 19 && DIMENSION_NO == 3;
       using LocationData = std::conditional_t<IS_COMPACT_STORAGE, CompactLocationData, GeneralLocationData>;
@@ -158,7 +155,7 @@ namespace OrthoTree::detail
       template<bool IS_ELEMENT_DEPTH_SPECIFIC = true>
       static constexpr bool IsLess(Location const& leftLocation, Location const& rightLocation) noexcept
       {
-        return LocationData::IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(leftLocation.locationData, rightLocation.locationData);
+        return LocationData::template IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(leftLocation.locationData, rightLocation.locationData);
       }
     };
 
