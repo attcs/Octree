@@ -4,7 +4,7 @@
 #include <array>
 #include <vector>
 
-#include "orthotree/octree.h"
+#include "../../include/orthotree/octree.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -19,21 +19,14 @@
 
 // Enforce the compilation of all template function
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
+template<OrthoTree::dim_t N, typename TExecMode, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
 void testCompilePoint()
 {
   using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
 
-  using OT = OrthoTree::TreePointND<N>;
-
-  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
-  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
-  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
-  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
-  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
+  using OT = OrthoTree::OrthoTreePointND<N, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>;
 
   auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
@@ -45,30 +38,18 @@ void testCompilePoint()
     BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
-  auto tree = OT(vpt, 3, std::nullopt, 2);
+  auto tree = OT(TExecMode{}, vpt, 3, std::nullopt, 2);
 
   // const member functions
   {
-    auto const keyRoot = OT::SI::GetRootKey();
-    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
-
-    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
-
-    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(vpt.back());
-
-    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
-    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
     [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
-    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
-    [[maybe_unused]] auto const nodes = tree.GetNodes();
-    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, vpt, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, vpt, 0);
 
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes[0], vpt, OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes[0], vpt, OrthoTree::RangeSearchMode::Inside);
     [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, vpt, 0.01);
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, vpt, 0.0);
     [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
@@ -91,39 +72,32 @@ void testCompilePoint()
       vpt,
       0.0);
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
-
-    [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
-      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
-      return OrthoTree::TraverseControl::Continue;
-    });
   }
 
   // non-const member functions
   {
-    tree.EraseEntity(4);
+    tree.Erase(4);
     tree.Erase(3, vpt[3]);
-    tree.Insert(3, vpt[3]);
+    tree.InsertIntoLeaf(3, vpt[3]);
     tree.Update(2, vpt[2], vpt[3]);
-    tree.Update(3, vpt[4]);
+    tree.Update(3, vpt[3], vpt[4]);
     tree.UpdateIndexes(
       {
         { 1, std::nullopt },
         { 3,            4 }
     });
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
+    tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt);
+    OT::Create(tree, vpt, 0, std::nullopt, 2, TExecMode{});
   }
 }
 
-
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
+template<OrthoTree::dim_t N, typename TExecMode, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
 void testCompilePointMap()
 {
   using Point = OrthoTree::PointND<N>;
@@ -131,14 +105,7 @@ void testCompilePointMap()
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, Point>;
 
-  using OT = OrthoTree::TreePointNDUD<N, OrthoTree::BaseGeometryType, Map>;
-
-  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
-  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
-  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
-  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
-  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
+  using OT = OrthoTree::OrthoTreePointNDUD<N, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>;
 
   auto const vpt = Map{
     { 10, Point{ 0.0 } },
@@ -156,30 +123,17 @@ void testCompilePointMap()
     BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
-  auto tree = OT(vpt, 3, std::nullopt, 2);
+  auto tree = OT(TExecMode{}, vpt, 3, std::nullopt, 2);
 
   // const member functions
   {
-    [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
-    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
-
-    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
-
-    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(vpt.at(11));
-
-    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
-    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
     [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
-    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
-    [[maybe_unused]] auto const nodes = tree.GetNodes();
-    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
-
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, vpt, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, vpt, 0);
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], vpt);
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], vpt);
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], vpt);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes[0], vpt, OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes[0], vpt, OrthoTree::RangeSearchMode::Inside);
     [[maybe_unused]] auto const aidPtsInPlane = tree.PlaneSearch(0.0, Point{ 1.0 }, vpt, 0.01);
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneSearch(1.0, { 1.0, 0.0 }, vpt, 0.0);
     [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneSearch(
@@ -202,52 +156,38 @@ void testCompilePointMap()
       vpt,
       0.0);
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, vpt);
-
-    auto vListIsAnyChild = std::vector<bool>{};
-    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
-      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
-      return OrthoTree::TraverseControl::Continue;
-    });
   }
 
   // non-const member functions
   {
-    tree.EraseEntity(20);
+    tree.Erase(20);
     tree.Erase(30, vpt.at(30));
-    tree.Insert(3, vpt.at(11));
+    tree.InsertIntoLeaf(3, vpt.at(11));
     tree.Update(11, vpt.at(11), vpt.at(12));
-    tree.Update(3, vpt.at(12));
+    tree.Update(3, vpt.at(11), vpt.at(12));
     tree.UpdateIndexes(
       {
         { 11, std::nullopt },
         {  3,            4 }
     });
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
+    tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, vpt);
+    OT::Create(tree, vpt, 0, std::nullopt, 2, TExecMode{});
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
+template<OrthoTree::dim_t N, typename TExecMode, bool IS_LOOSE_TREE = true, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MBR>
 void testCompileBox()
 {
   using Vector = OrthoTree::VectorND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
-
-  using OT = OrthoTree::TreeBoxND<N, IS_LOOSE_TREE>;
-
-  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
-  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
-  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
-  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
-  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
+  using OT = OrthoTree::OrthoTreeBoxND<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>;
 
   auto constexpr boxes = std::array{
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -257,34 +197,19 @@ void testCompileBox()
     BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
-  auto tree = OT(boxes, 3, std::nullopt, 2);
+  auto tree = OT(TExecMode{}, boxes, 3, std::nullopt, 2);
 
   // const member functions
   {
-    [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
-    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
-
-    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
-
-    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(boxes.back());
-
-    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
-    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
     [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
-    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
-    [[maybe_unused]] auto const nodes = tree.GetNodes();
-    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
-
-    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
+    [[maybe_unused]] auto const vidCollision = tree.CollisionDetection(boxes);
     [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
 
     [[maybe_unused]] auto const aidPick = tree.PickSearch({}, boxes);
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], boxes);
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0], boxes);
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0], boxes);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes[0], boxes, OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes[0], boxes, OrthoTree::RangeSearchMode::Inside);
 
     [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
     [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
@@ -309,38 +234,32 @@ void testCompileBox()
     },
       boxes,
       0.0);
-
-    [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
-      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
-      return OrthoTree::TraverseControl::Continue;
-    });
   }
 
   // non-const member functions
   {
-    tree.EraseEntity(4);
+    tree.Erase(4);
     tree.Erase(3, boxes[3]);
-    tree.Insert(3, boxes[3]);
+    tree.InsertIntoLeaf(3, boxes[3]);
     tree.Update(2, boxes[2], boxes[3]);
-    tree.Update(3, boxes[4]);
+    tree.Update(3, boxes[3], boxes[4]);
     tree.UpdateIndexes(
       {
         { 1, std::nullopt },
         { 3,            4 }
     });
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
+    tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes);
+    OT::Create(tree, boxes, 0, std::nullopt, 2, TExecMode{});
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
+template<OrthoTree::dim_t N, typename TExecMode, bool IS_LOOSE_TREE = true, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MBR>
 void testCompileBoxMap()
 {
   using Vector = OrthoTree::VectorND<N>;
@@ -348,14 +267,7 @@ void testCompileBoxMap()
   using Plane = OrthoTree::PlaneND<N>;
 
   using Map = std::unordered_map<int, BoundingBox>;
-  using OT = OrthoTree::TreeBoxNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map>;
-
-  [[maybe_unused]] auto const key = OT::SI::GetNodeID(3, 2);
-  [[maybe_unused]] auto const noNode = OT::EstimateNodeNumber(100, 10, 3);
-  [[maybe_unused]] auto const aidGrid = OT::SI::Decode(key, 3);
-  [[maybe_unused]] auto const idGrid = OT::SI::Encode(aidGrid);
-  [[maybe_unused]] auto const fValid = OT::SI::IsValidKey(key);
-  [[maybe_unused]] auto const idChild = OT::SI::RemoveSentinelBit(key);
+  using OT = OrthoTree::OrthoTreeBoxNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>;
 
   auto const boxes = Map{
     { 10, BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
@@ -365,34 +277,20 @@ void testCompileBoxMap()
     { 11, BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } } }
   };
 
-  auto tree = OT(boxes, 3, std::nullopt, 2);
+  auto tree = OT(TExecMode{}, boxes, 3, std::nullopt, 2);
 
   // const member functions
   {
-    [[maybe_unused]] auto const keyRoot = OT::SI::GetRootKey();
-    [[maybe_unused]] auto const center = tree.GetNodeCenter(keyRoot);
-    [[maybe_unused]] auto const size = tree.GetNodeHalfSize(0);
-
-    [[maybe_unused]] auto const allidBFS = tree.CollectAllEntitiesInBFS(keyRoot);
-    [[maybe_unused]] auto const allidDFS = tree.CollectAllEntitiesInDFS(keyRoot);
-
-    [[maybe_unused]] auto const nodeSmallest = tree.FindSmallestNode(boxes.at(11));
-
-    [[maybe_unused]] auto const keySmallest = tree.FindSmallestNodeKey(keyRoot);
     [[maybe_unused]] auto const boxAll = tree.GetBox();
-    [[maybe_unused]] auto const nDepth = OT::SI::GetDepthID(keyRoot);
     [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
-    [[maybe_unused]] auto const nodeRoot = tree.GetNode(keyRoot);
-    [[maybe_unused]] auto const nodes = tree.GetNodes();
-    [[maybe_unused]] auto const grid = tree.GetResolutionMax();
-
-    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>(boxes);
-    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes);
+    [[maybe_unused]] auto const vidCollision = tree.CollisionDetection(boxes, 0.01);
+    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(boxes, tree, boxes, 0.01);
+    [[maybe_unused]] auto const vidCollisionET = tree.CollisionDetection(boxes, [](OT::EntityID, OT::EntityID) { return true; }, 0.01);
 
     [[maybe_unused]] auto const aidPick = tree.PickSearch({}, boxes);
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes.at(10), boxes);
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(10), boxes);
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(10), boxes);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes.at(10), boxes, OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes.at(10), boxes, OrthoTree::RangeSearchMode::Inside);
 
     [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
     [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
@@ -418,44 +316,83 @@ void testCompileBoxMap()
       boxes,
       0.0);
 
-    [[maybe_unused]] auto vListIsAnyChild = std::vector<bool>{};
-    tree.TraverseNodesBreadthFirst([&vListIsAnyChild](auto const& nodeValue) {
-      vListIsAnyChild.emplace_back(nodeValue.second.IsAnyChildExist());
-      return OrthoTree::TraverseControl::Continue;
-    });
+    // Query tests
+    [[maybe_unused]] auto const queryEntities = tree.Query(
+      std::array{
+        OT::ByWithin(boxes.at(10)),
+        OT::ByIntersecting(Plane{ 1.0, Vector{ 1.0, 0.0 } }
+        ),
+        OT::BySatisfies([](OT::Entity const&) { return true; }
+        ),
+        OT::ByInFrustum({ { Plane{ 1.0, Vector{ 1.0, 0.0 } }, true } }
+        ),
+        OT::ByOverlaps(boxes.at(10)),
+        OT::BySatisfies([](OT::EntityID) { return true; }
+        )
+    },
+      boxes);
+
+    // Traversal tests
+    tree.TraverseEntitiesBreadthFirst([](auto const& /*nodeEntities*/, auto const& /*nodeBox*/) { return OrthoTree::TraverseControl::Continue; });
+    tree.TraverseEntitiesDepthFirst([](auto const& /*nodeEntities*/, auto const& /*nodeBox*/) { return OrthoTree::TraverseControl::Continue; });
+    tree.TraverseEntitiesByPriority(
+      [](auto const& /*nodeEntities*/, auto const& /*nodeBox*/, auto const& /*priority*/) { return OrthoTree::TraverseControl::Continue; },
+      [](auto const& /*nodeBox*/) { return 0.0; });
+
+    // Ray intersection signatures
+    Vector vHeading{};
+    vHeading[0] = 1.0;
+
+    [[maybe_unused]] auto const rayIntersectedAll = tree.RayIntersectedAll({}, vHeading, boxes, 0);
+    [[maybe_unused]] auto const rayIntersectedFirst = tree.RayIntersectedFirst({}, vHeading, boxes, 0);
+
+    using TFloatScalar = typename OT::GA::FloatScalar;
+    // Ray Hit Testers
+    [[maybe_unused]] auto const r1 = tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](OT::EntityID) { return true; });
+    [[maybe_unused]] auto const r2 = tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](OT::EntityID, Vector, Vector) { return true; });
+    [[maybe_unused]] auto const r3 = tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](auto const&) { return true; });
+    [[maybe_unused]] auto const r4 = tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](auto const&, Vector, Vector) { return true; });
+
+    [[maybe_unused]] auto const rd1 =
+      tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](OT::EntityID) -> std::optional<TFloatScalar> { return 0.0; });
+    [[maybe_unused]] auto const rd2 =
+      tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](OT::EntityID, Vector, Vector) -> std::optional<TFloatScalar> { return 0.0; });
+    [[maybe_unused]] auto const rd3 =
+      tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](auto const&) -> std::optional<TFloatScalar> { return 0.0; });
+    [[maybe_unused]] auto const rd4 =
+      tree.RayIntersectedAll({}, vHeading, boxes, 0, 0, 1000.0, [](auto const&, Vector, Vector) -> std::optional<TFloatScalar> { return 0.0; });
   }
 
   // non-const member functions
   {
-    tree.EraseEntity(12);
+    tree.Erase(12);
     tree.Erase(10, boxes.at(10));
-    tree.Insert(23, boxes.at(17));
+    tree.InsertIntoLeaf(23, boxes.at(17));
     tree.Update(11, boxes.at(11), boxes.at(17));
-    tree.Update(23, boxes.at(13));
+    tree.Update(23, boxes.at(17), boxes.at(13));
     tree.UpdateIndexes(
       {
         { 17, std::nullopt },
         { 23,           22 }
     });
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
+    tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes.at(13), 3, 12);
     tree.Reset();
 
-    OT::template Create<IS_PARALLEL_EXEC>(tree, boxes);
+    OT::Create(tree, boxes, std::nullopt, std::nullopt, 2, TExecMode{});
   }
 }
 
-
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
+template<OrthoTree::dim_t N, typename TExecMode, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
 void testCompilePointC()
 {
   using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
-  using OT = OrthoTree::TreePointContainerND<N>;
+  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreePointND<N, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>>;
 
   auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
@@ -467,19 +404,18 @@ void testCompilePointC()
     BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
-  auto tree = OT(vpt, 3, std::nullopt, 2, false);
-#ifdef __cpp_lib_execution
-  [[maybe_unused]] auto treePar = OT(vpt, 3, std::nullopt, 2, true);
-#endif
+  auto tree = OT(TExecMode{}, vpt, 3, std::nullopt, 2);
 
   // const member functions
   {
     [[maybe_unused]] auto const& treeCore = tree.GetCore();
     [[maybe_unused]] auto const& data = tree.GetData();
 
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, OT::GA::BASE_TOLERANCE);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes[0], OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes[0], OrthoTree::RangeSearchMode::Inside);
 
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2);
 
@@ -505,29 +441,29 @@ void testCompilePointC()
 
   // non-const member functions
   {
-    tree.Add(vpt[2]);
+    auto const arr = std::array{ Point{} };
+
     tree.Erase(2);
     tree.Update(3, vpt[4]);
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
+    tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt);
-    tree = OT::template Create<IS_PARALLEL_EXEC>(std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } });
+    tree = OT::Create(vpt, 0, std::nullopt, 2, TExecMode{});
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC>
+template<OrthoTree::dim_t N, typename TExecMode, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
 void testCompilePointMapC()
 {
   using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, Point>;
-  using OT = OrthoTree::TreePointContainerNDUD<N, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreePointNDUD<N, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>>;
 
   auto const vpt = Map{
     { 10, Point{ 0.0 } },
@@ -545,18 +481,17 @@ void testCompilePointMapC()
     BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
-  auto tree = OT(vpt, 3, std::nullopt, 2, false);
-#ifdef __cpp_lib_execution
-  [[maybe_unused]] auto treePar = OT(vpt, 3, std::nullopt, 2, true);
-#endif
+  auto tree = OT(TExecMode{}, vpt, 3, std::nullopt, 2);
   // const member functions
   {
     [[maybe_unused]] auto const& treeCore = tree.GetCore();
     [[maybe_unused]] auto const& data = tree.GetData();
 
+    [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
+    [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes[0], OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes[0], OrthoTree::RangeSearchMode::Inside);
 
     [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2);
 
@@ -581,38 +516,24 @@ void testCompilePointMapC()
   }
 
   // non-const member functions
-  {
-    tree.Add(60, vpt.at(20));
-    tree.Add(std::pair{ 60, vpt.at(20) });
-    tree.Erase(20);
-    tree.Update(30, vpt.at(40));
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
-    tree.Clear();
-    tree.Reset();
 
-    tree.Init(boxes[0], 3, 12);
-    tree.Reset();
+  tree.Update({ 30, vpt.at(40) });
+  tree.Move({ 1.0, 1.0 }, TExecMode{});
+  tree.Clear();
+  tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(vpt);
-    tree = OT::template Create<IS_PARALLEL_EXEC>(
-      Map{
-        { 11, Point{ 0.0 } },
-        { 21, Point{ 1.0 } },
-        { 31, Point{ 2.0 } },
-        { 41, Point{ 3.0 } },
-        { 51, Point{ 4.0 } }
-    },
-      4);
-  }
+  tree.Init(boxes[0], 3, 12);
+  tree.Reset();
+
+  tree = OT::Create(vpt, std::nullopt, std::nullopt, 2, TExecMode{});
 }
 
-
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
+template<OrthoTree::dim_t N, typename TExecMode, bool IS_LOOSE_TREE = true, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MBR>
 void testCompileBoxC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
-  using OT = OrthoTree::TreeBoxContainerND<N, IS_LOOSE_TREE>;
+  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreeBoxND<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>>;
 
   auto constexpr boxes = std::array{
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -622,10 +543,7 @@ void testCompileBoxC()
     BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
   };
 
-  auto tree = OT(boxes, 3, std::nullopt, 2, false);
-#ifdef __cpp_lib_execution
-  [[maybe_unused]] auto treePar = OT(boxes, 3, std::nullopt, 2, true);
-#endif
+  auto tree = OT(TExecMode{}, boxes, 3, std::nullopt, 2);
 
   // const member functions
   {
@@ -633,15 +551,15 @@ void testCompileBoxC()
     [[maybe_unused]] auto const& data = tree.GetData();
 
     [[maybe_unused]] auto const aidPick = tree.PickSearch({});
-    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes[0]);
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes[0]);
-
-    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
-    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(tree);
 
     [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
     [[maybe_unused]] auto const idBoxesIntersectedFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
+    [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0]);
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes[0], OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes[0], OrthoTree::RangeSearchMode::Inside);
+
+    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<TExecMode>();
+    [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(tree);
 
     [[maybe_unused]] auto const idPlaneIntersected = tree.PlaneIntersection(1.0, { 1.0, 0.0 }, 0.0);
     [[maybe_unused]] auto const idPlaneIntersectedP = tree.PlaneIntersection(
@@ -665,34 +583,28 @@ void testCompileBoxC()
 
   // non-const member functions
   {
-    tree.Add(boxes[0]);
+    auto const arr = std::array{ BoundingBox{} };
+
     tree.Erase(2);
     tree.Update(3, boxes[4]);
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
+    tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes[0], 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes);
-    tree = OT::template Create<IS_PARALLEL_EXEC>(std::vector{
-      BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
-      BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } },
-      BoundingBox{ { 2.0, 2.0 }, { 3.0, 3.0 } },
-      BoundingBox{ { 3.0, 3.0 }, { 4.0, 4.0 } },
-      BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } }
-    });
+    tree = OT::Create(boxes, 3, std::nullopt, 2, TExecMode{});
   }
 }
 
-template<OrthoTree::dim_t N, bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
+template<OrthoTree::dim_t N, typename TExecMode, bool IS_LOOSE_TREE = true, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MBR>
 void testCompileBoxMapC()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, BoundingBox>;
-  using OT = OrthoTree::TreeBoxContainerNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map>;
+  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreeBoxNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>>;
 
   auto const boxes = Map{
     {  5, BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
@@ -702,11 +614,7 @@ void testCompileBoxMapC()
     { 30, BoundingBox{ { 1.2, 1.2 }, { 2.8, 2.8 } } }
   };
 
-  auto tree = OT(boxes, std::nullopt, std::nullopt, 2, false);
-
-#ifdef __cpp_lib_execution
-  [[maybe_unused]] auto treePar = OT(boxes, std::nullopt, std::nullopt, 2, true);
-#endif
+  auto tree = OT(TExecMode{}, boxes, std::nullopt, std::nullopt, 2);
 
   // const member functions
   {
@@ -715,10 +623,10 @@ void testCompileBoxMapC()
 
     [[maybe_unused]] auto const aidPick = tree.PickSearch({});
     [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes.at(30));
-    [[maybe_unused]] auto const aidBoxesInRangeF = tree.template RangeSearch<false>(boxes.at(30));
-    [[maybe_unused]] auto const aidBoxesInRangeT = tree.template RangeSearch<true>(boxes.at(30));
+    [[maybe_unused]] auto const aidBoxesInRangeF = tree.RangeSearch(boxes.at(30), OrthoTree::RangeSearchMode::Overlap);
+    [[maybe_unused]] auto const aidBoxesInRangeT = tree.RangeSearch(boxes.at(30), OrthoTree::RangeSearchMode::Inside);
 
-    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<IS_PARALLEL_EXEC>();
+    [[maybe_unused]] auto const vidCollision = tree.template CollisionDetection<TExecMode>();
     [[maybe_unused]] auto const vidCollisionTree = tree.CollisionDetection(tree);
 
     [[maybe_unused]] auto const idBoxesIntersectedAll = tree.RayIntersectedAll({}, { 3.0 / 5.0, 4.0 / 5.0 }, 0);
@@ -746,18 +654,17 @@ void testCompileBoxMapC()
 
   // non-const member functions
   {
-    tree.Add(11, boxes.at(10));
     tree.Erase(20);
-    tree.Update(40, boxes.at(30));
-    tree.template Move<IS_PARALLEL_EXEC>({ 1.0, 1.0 });
+    tree.Update({ 40, boxes.at(30) });
+    tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
     tree.Reset();
 
     tree.Init(boxes.at(5), 3, 12);
     tree.Reset();
 
-    tree = OT::template Create<IS_PARALLEL_EXEC>(boxes);
-    tree = OT::template Create<IS_PARALLEL_EXEC>(
+    tree = OT::Create(boxes, 0, std::nullopt, 2, TExecMode{});
+    tree = OT::Create(
       Map{
         { 10, BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
         { 15, BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } } },
@@ -769,109 +676,167 @@ void testCompileBoxMapC()
   }
 }
 
-
-template<bool IS_PARALLEL_EXEC, bool IS_LOOSE_TREE = true>
+template<typename TExecMode, bool IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
 void testCompileBoxBatchDimension()
 {
   auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
 
   // Core types
   {
-    testCompilePoint<2, IS_PARALLEL_EXEC>();
-    testCompilePoint<3, IS_PARALLEL_EXEC>();
-    testCompilePoint<4, IS_PARALLEL_EXEC>();
-    testCompilePoint<5, IS_PARALLEL_EXEC>();
-    testCompilePoint<6, IS_PARALLEL_EXEC>();
-    testCompilePoint<7, IS_PARALLEL_EXEC>();
-    testCompilePoint<8, IS_PARALLEL_EXEC>();
-    testCompilePoint<12, IS_PARALLEL_EXEC>();
-    testCompilePoint<16, IS_PARALLEL_EXEC>();
-    testCompilePoint<31, IS_PARALLEL_EXEC>();
+    testCompilePoint<2, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePoint<3, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePoint<4, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePoint<5, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePoint<6, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePoint<7, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePoint<8, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePoint<12, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePoint<16, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePoint<31, TExecMode, NODE_GEOMETRY_STORAGE>();
     if constexpr (isPlatform64)
     {
-      testCompilePoint<32, IS_PARALLEL_EXEC>();
-      testCompilePoint<63, IS_PARALLEL_EXEC>();
+      testCompilePoint<32, TExecMode, NODE_GEOMETRY_STORAGE>();
+      testCompilePoint<63, TExecMode, NODE_GEOMETRY_STORAGE>();
     }
-    testCompilePointMap<2, IS_PARALLEL_EXEC>();
-    testCompilePointMap<3, IS_PARALLEL_EXEC>();
+    testCompilePointMap<2, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointMap<3, TExecMode, NODE_GEOMETRY_STORAGE>();
 
-    testCompileBox<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<4, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<5, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<6, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<7, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<8, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<12, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<16, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBox<31, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBox<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBox<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBox<4, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBox<5, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBox<6, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBox<7, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBox<8, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBox<12, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBox<16, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBox<31, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     if constexpr (isPlatform64)
     {
-      testCompileBox<32, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-      testCompileBox<63, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+      testCompileBox<32, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+      testCompileBox<63, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     }
 
-    testCompileBoxMap<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxMap<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxMap<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxMap<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
   }
 
   // Container types
   {
-    testCompilePointC<2, IS_PARALLEL_EXEC>();
-    testCompilePointC<3, IS_PARALLEL_EXEC>();
-    testCompilePointC<4, IS_PARALLEL_EXEC>();
-    testCompilePointC<5, IS_PARALLEL_EXEC>();
-    testCompilePointC<6, IS_PARALLEL_EXEC>();
-    testCompilePointC<7, IS_PARALLEL_EXEC>();
-    testCompilePointC<8, IS_PARALLEL_EXEC>();
-    testCompilePointC<12, IS_PARALLEL_EXEC>();
-    testCompilePointC<16, IS_PARALLEL_EXEC>();
-    testCompilePointC<31, IS_PARALLEL_EXEC>();
+    testCompilePointC<2, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointC<3, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointC<4, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointC<5, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointC<6, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointC<7, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointC<8, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointC<12, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointC<16, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointC<31, TExecMode, NODE_GEOMETRY_STORAGE>();
     if constexpr (isPlatform64)
     {
-      testCompilePointC<32, IS_PARALLEL_EXEC>();
-      testCompilePointC<63, IS_PARALLEL_EXEC>();
+      testCompilePointC<32, TExecMode, NODE_GEOMETRY_STORAGE>();
+      testCompilePointC<63, TExecMode, NODE_GEOMETRY_STORAGE>();
     }
-    testCompilePointMapC<2, IS_PARALLEL_EXEC>();
-    testCompilePointMapC<3, IS_PARALLEL_EXEC>();
+    testCompilePointMapC<2, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointMapC<3, TExecMode, NODE_GEOMETRY_STORAGE>();
 
-    testCompileBoxC<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<4, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<5, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<6, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<7, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<8, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<12, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<16, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxC<31, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxC<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxC<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxC<4, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxC<5, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxC<6, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxC<7, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxC<8, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxC<12, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxC<16, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxC<31, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
 
     if constexpr (isPlatform64)
     {
-      testCompileBoxC<32, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-      testCompileBoxC<63, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+      testCompileBoxC<32, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+      testCompileBoxC<63, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     }
 
-    testCompileBoxMapC<2, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
-    testCompileBoxMapC<3, IS_PARALLEL_EXEC, IS_LOOSE_TREE>();
+    testCompileBoxMapC<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxMapC<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
   }
 }
-
 
 template<bool IS_LOOSE_TREE = true>
 void testCompileBoxBatchExPol()
 {
 #ifdef __cpp_lib_execution
-  testCompileBoxBatchDimension<false, IS_LOOSE_TREE>();
-  testCompileBoxBatchDimension<true, IS_LOOSE_TREE>();
+  testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::None>();
+  testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::None>();
+  testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MinPoint>();
+  testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MinPoint>();
+  testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MBR>();
+  testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MBR>();
 #else
-  testCompileBoxBatchDimension<false, IS_LOOSE_TREE>();
+  testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::None>();
+  testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MinPoint>();
+  testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MBR>();
 #endif
 }
 
+inline void testCompileSpaceIndexing()
+{
+  [[maybe_unused]] auto const key = OrthoTree::detail::MortonSpaceIndexing<3, 21>::GetNodeID(3, 2);
+  [[maybe_unused]] auto const aidGrid = OrthoTree::detail::MortonSpaceIndexing<3, 21>::Decode(key, 3);
+  [[maybe_unused]] auto const idGrid = OrthoTree::detail::MortonSpaceIndexing<3, 21>::Encode(aidGrid);
+  [[maybe_unused]] auto const fValid = OrthoTree::detail::MortonSpaceIndexing<3, 21>::IsValidKey(key);
+  [[maybe_unused]] auto const idChild = OrthoTree::detail::MortonSpaceIndexing<3, 21>::RemoveSentinelBit(key);
+  [[maybe_unused]] auto const keyRoot = OrthoTree::detail::MortonSpaceIndexing<3, 21>::GetRootKey();
+  [[maybe_unused]] auto const nDepth = OrthoTree::detail::MortonSpaceIndexing<3, 21>::GetDepthID(keyRoot);
+}
+
+template<OrthoTree::dim_t N>
+void testCompileStaticTree()
+{
+  {
+    using BoundingBox = OrthoTree::BoundingBoxND<N>;
+    using OT = OrthoTree::StaticOrthoTreeBoxND<N, true, OrthoTree::BaseGeometryType, true, OrthoTree::NodeGeometryStorage::MBR>;
+
+    auto constexpr boxes = std::array{
+      BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
+      BoundingBox{ { 1.0, 1.0 }, { 2.0, 2.0 } }
+    };
+    auto tree = OT(boxes, 3, std::nullopt, 2);
+
+    {
+      [[maybe_unused]] auto const boxAll = tree.GetBox();
+      [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
+      [[maybe_unused]] auto const aidBoxesInRange = tree.RangeSearch(boxes[0], boxes);
+      [[maybe_unused]] auto const aidPick = tree.PickSearch({}, boxes);
+      [[maybe_unused]] auto const vidCollision = tree.CollisionDetection(boxes);
+      [[maybe_unused]] auto const rayFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, boxes, 0);
+    }
+  }
+
+  {
+    using Point = OrthoTree::PointND<N>;
+    using OT = OrthoTree::StaticOrthoTreePointND<N, OrthoTree::BaseGeometryType, true, OrthoTree::NodeGeometryStorage::MinPoint>;
+
+    auto constexpr pts = std::array{ Point{ 0.0 }, Point{ 1.0 } };
+    auto tree = OT(pts, 3, std::nullopt, 2);
+
+    {
+      [[maybe_unused]] auto const boxAll = tree.GetBox();
+      [[maybe_unused]] auto const nDepthMax = tree.GetDepthNo();
+      [[maybe_unused]] auto const aidPtsInRange = tree.RangeSearch(OrthoTree::BoundingBoxND<N>{ pts[0], pts[0] }, pts);
+      [[maybe_unused]] auto const aidPick = tree.PickSearch({}, pts);
+      [[maybe_unused]] auto const kNN = tree.GetNearestNeighbors({}, 2, pts);
+      [[maybe_unused]] auto const rayFirst = tree.RayIntersectedFirst({}, { 3.0 / 5.0, 4.0 / 5.0 }, pts, 0);
+    }
+  }
+}
 
 inline void testCompileBoxBatchSplitStrategy()
 {
+  testCompileSpaceIndexing();
+  testCompileStaticTree<2>();
+  testCompileStaticTree<3>();
   testCompileBoxBatchExPol<false>();
   testCompileBoxBatchExPol<true>();
 }

@@ -197,8 +197,8 @@ namespace Tests
 
       auto a = mr.Allocate(64);
       auto b = mr.Allocate(64);
-      auto pageID_a = a.pageID;
-      auto pageID_b = b.pageID;
+      [[maybe_unused]] auto pageID_a = a.pageID;
+      [[maybe_unused]] auto pageID_b = b.pageID;
 
       mr.Deallocate(a);
       mr.Deallocate(b);

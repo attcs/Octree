@@ -261,15 +261,15 @@ namespace PerformaceTest
   private:
 
     template<dim_t nDim>
-    static TreePointND<nDim> CreateTest(depth_t depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
+    static OrthoTreePointND<nDim> CreateTest(depth_t depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
     {
       auto const Box = CreateSearcBox<nDim>(0.0, rMax);
 
-      auto nt = TreePointND<nDim>{};
+      auto nt = OrthoTreePointND<nDim>{};
       if (fPar)
-        TreePointND<nDim>::template Create<true>(nt, aPoint, depth, Box);
+        OrthoTreePointND<nDim>::template Create<ParExec>(nt, aPoint, depth, Box);
       else
-        TreePointND<nDim>::Create(nt, aPoint, depth, Box);
+        OrthoTreePointND<nDim>::Create(nt, aPoint, depth, Box);
 
       return nt;
     }
@@ -318,11 +318,11 @@ namespace PerformaceTest
     {
       auto const Box = CreateSearcBox<nDim>(0.0, rMax);
 
-      auto nt = TreeBoxND<nDim>{};
+      auto nt = OrthoTreeBoxND<nDim>{};
       if (fPar)
-        TreeBoxND<nDim>::template Create<true>(nt, aBox, depth, Box);
+        OrthoTreeBoxND<nDim>::template Create<ParExec>(nt, aBox, depth, Box);
       else
-        TreeBoxND<nDim>::Create(nt, aBox, depth, Box);
+        OrthoTreeBoxND<nDim>::Create(nt, aBox, depth, Box);
 
       return nt;
     }
