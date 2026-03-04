@@ -1,7 +1,7 @@
 # Changelog
 
-# 2026-01 v3.0
-Major refactorization.
+# 2026-03 v3.0
+Major refactorization with large interface change.
 
 > [!CAUTION]
 > `RayIntersectedAll()` has a new, `toleranceIncrement` parameter, which can be misinterpreted as `maxExaminationDistance`, causing **false positive hits**.
@@ -10,20 +10,39 @@ Interface changes
 * Geometric types and `DIMENSION_NO` moved into the `BaseGeometryAdapter` (formerly `AdaptorGeneralBasics`)
 * `BASE_TOLERANCE` is added to the `BaseGeometryAdapter`, and it is applied as default parameter.
 * `TFloatScalar` is introduced: integer based geometry calculation is very hectic. Internal calculation uses this type and tolerances.
-* EntityAdapter is introduced: this allows any type of system adoption
-* Configuration is introduced.
+* EntityAdapter is introduced: this allows any type of system adoption. For more details see the [EntityAdapter](./include/orthotree/core/entity_adapter.h).
+* Configuration is introduced. For more details see the [configuration.h](./include/orthotree/core/configuration.h).
 * Loose octree is implemented.
 * Split strategy is removed completely: Last iteration (single depth split) was an inferior solution in every aspect.
 * `Visit*()` functions are changed: `TraverseNodesBreadthFirst()`/`TraverseNodesDepthFirst()`/`TraverseNodesByPriority()`. 
   Only one lambda is required which 
-  * input is NodeValue (currently std::pair<const NodeID, Node>, but do not rely on in long term), other API function are available to ask node geometry data and entities (`GetNodeCenter()`, `GetNodeHalfSize()`, `GetNodeEntities()`).
-  * must return TraverseControl enum to control the traverse.
+  * input is `NodeValue` (currently std::pair<const NodeID, Node>, but do not rely on in long term), other API function are available to ask node geometry data and entities (`GetNodeMinPoint()`, `GetNodeHSize()`, `GetNodeEntities()`).
+  * must return `TraverseControl` enum to control the traverse.
 * Out of modelspace entities handling now is configurable. Default behavior is changed to allow.
   * Allow = true [Default]: OoM entities will be placed in the Root. Root bounding box will be changed to enclose the new entity.
   * Allow = false: OoM entity related operations will be failed, and no changes will be applied to the tree. (E.g. Insert/Update) Creation will be partial.
+* `Insert()` is changed: it will split the overflowed node. 
+  * `InsertWithRebalance()` is removed in favor of `Insert()`.
+  * `InsertIntoLeaf()` inherited the original behavior. An  `InsertionMode` enum controls whether to be restricted to the existing nodes or create new ones.
+  * Efficient bulk insert overload is added.
+* `Query()` function is added for complex combined queries: simultanious frustum culling, plane intersection, range search and custom tester.
+* Custom template `EntityTester`-s were added to queries. (Both entityID/Entity and geometry-related testers are allowed.)
+* `RangeSearch()` function is changes: `isFullyContain` template parameter is removed and `RangeSearchMode` enum is added as function parameter.
+* `bool`-flagged pararellism parameters are replaced with `ExecutionTags` enum.
+* Required adapter includes are added to the public headers. For custom include path, a build macro is available. (E.g. Eigen: `#define ORTHOTREE_EIGEN_INCLUDE <my_vendor/Eigen/Geometry>`)
 
+New features
+* Static octree is implemented. Inmutable orthotree with contiguous memory layout.
+* Bulk `Insert()` for dynamic octree.
+* Loose octree option.
+* MBR node storage option.
+
+Miscellaneous
+* Code is restructured from single to multi header structure.
+* Double precision is used in grid calculation for float32 based geometry with larger depth to avoid numerical issues.
+ 
 Performance improvements
-* Loose octree has major performance advantage for picking
+* Loose octree has major performance advantage for picking.
 
 # 2025-11 v2.7
 Interface changes
