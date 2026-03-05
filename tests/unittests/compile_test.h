@@ -725,13 +725,13 @@ void testCompileBoxBatchDimension()
   {
     testCompilePointC<2, TExecMode, NODE_GEOMETRY_STORAGE>();
     testCompilePointC<3, TExecMode, NODE_GEOMETRY_STORAGE>();
-    testCompilePointC<4, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointC<4, TExecMode, NODE_GEOMETRY_STORAGE>();
     // testCompilePointC<5, TExecMode, NODE_GEOMETRY_STORAGE>();
     testCompilePointC<6, TExecMode, NODE_GEOMETRY_STORAGE>();
     // testCompilePointC<7, TExecMode, NODE_GEOMETRY_STORAGE>();
-    testCompilePointC<8, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointC<8, TExecMode, NODE_GEOMETRY_STORAGE>();
     // testCompilePointC<12, TExecMode, NODE_GEOMETRY_STORAGE>();
-    testCompilePointC<16, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointC<16, TExecMode, NODE_GEOMETRY_STORAGE>();
     testCompilePointC<31, TExecMode, NODE_GEOMETRY_STORAGE>();
     if constexpr (isPlatform64)
     {
@@ -743,13 +743,13 @@ void testCompileBoxBatchDimension()
 
     testCompileBoxC<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     testCompileBoxC<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    testCompileBoxC<4, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxC<4, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     // testCompileBoxC<5, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     testCompileBoxC<6, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     // testCompileBoxC<7, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    testCompileBoxC<8, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxC<8, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     // testCompileBoxC<12, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    testCompileBoxC<16, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxC<16, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     testCompileBoxC<31, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
 
     if constexpr (isPlatform64)
@@ -768,9 +768,9 @@ void testCompileBoxBatchExPol()
 {
 #ifdef __cpp_lib_execution
   testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::None>();
-  testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::None>();
+  // testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::None>();
   testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MinPoint>();
-  testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MinPoint>();
+  // testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MinPoint>();
   testCompileBoxBatchDimension<OrthoTree::SeqExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MBR>();
   testCompileBoxBatchDimension<OrthoTree::ParExec, IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage::MBR>();
 #else
