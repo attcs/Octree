@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Octree Benchmark Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --s: #161b22;
+      --s2: #21262d;
+      --bd: #30363d;
+      --t: #e6edf3;
+      --tm: #7d8590;
+      --a: #58a6ff;
+      --r: 10px
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--t);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.5
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--s);
+      border-bottom: 1px solid var(--bd);
+      padding: 10px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px)
+    }
+
+    .hdr-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px
+    }
+
+    .logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--a), #d2a8ff);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      flex: 1
+    }
+
+    /* Filter chips in header */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center
+    }
+
+    .filter-bar .sep {
+      width: 1px;
+      height: 18px;
+      background: var(--bd);
+      margin: 0 4px
+    }
+
+    .chip {
+      padding: 3px 10px;
+      border: 1px solid var(--bd);
+      border-radius: 14px;
+      background: transparent;
+      color: var(--tm);
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all .12s;
+      white-space: nowrap
+    }
+
+    .chip:hover {
+      border-color: var(--a);
+      color: var(--a)
+    }
+
+    .chip.on {
+      border-color: var(--a);
+      color: #000;
+      background: var(--a)
+    }
+
+    /* ── Main ── */
+    .main {
+      max-width: 1700px;
+      margin: 0 auto;
+      padding: 16px 24px
+    }
+
+    /* Upload/file controls row */
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap
+    }
+
+    .file-row select,
+    .file-row input[type=text] {
+      padding: 6px 10px;
+      background: var(--s);
+      border: 1px solid var(--bd);
+      border-radius: 6px;
+      color: var(--t);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      outline: none
+    }
+
+    .file-row select:focus,
+    .file-row input[type=text]:focus {
+      border-color: var(--a)
+    }
+
+    .file-row select {
+      min-width: 200px
+    }
+
+    .file-row input[type=text] {
+      flex: 1;
+      min-width: 160px;
+      max-width: 300px
+    }
+
+    .file-row option {
+      background: var(--s2)
+    }
+
+    .btn-sm {
+      padding: 5px 12px;
+      border: 1px solid var(--bd);
+      border-radius: 6px;
+      background: var(--s);
+      color: var(--tm);
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all .12s
+    }
+
+    .btn-sm:hover {
+      border-color: var(--a);
+      color: var(--a)
+    }
+
+    .btn-sm.accent {
+      background: var(--a);
+      color: #000;
+      border-color: var(--a);
+      font-weight: 600
+    }
+
+    .btn-sm.accent:hover {
+      opacity: .85
+    }
+
+    .file-row input[type=file] {
+      display: none
+    }
+
+    /* Presets */
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+      align-items: center
+    }
+
+    .preset-label {
+      font-size: 11px;
+      color: var(--tm);
+      margin-right: 2px
+    }
+
+    .preset-btn {
+      padding: 4px 12px;
+      border: 1px solid var(--bd);
+      border-radius: 14px;
+      background: var(--s);
+      color: var(--tm);
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all .12s
+    }
+
+    .preset-btn:hover,
+    .preset-btn.active {
+      border-color: var(--a);
+      color: var(--a);
+      background: rgba(88, 166, 255, .1)
+    }
+
+    /* Layout toggle */
+    .layout-toggle {
+      display: flex;
+      gap: 3px;
+      margin-left: auto
+    }
+
+    .layout-toggle .btn-sm {
+      padding: 4px 8px;
+      font-size: 13px
+    }
+
+    .layout-toggle .btn-sm.active {
+      border-color: var(--a);
+      color: var(--a)
+    }
+
+    /* Charts grid */
+    .charts-grid {
+      display: grid;
+      gap: 16px
+    }
+
+    .charts-grid.c1 {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .charts-grid.c2 {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .charts-grid.c2 .chart-card {
+      flex: 1 1 calc(50% - 8px);
+      min-width: 480px;
+      max-width: calc(50% - 8px);
+    }
+
+    .chart-card {
+      background: var(--s);
+      border: 1px solid var(--bd);
+      border-radius: var(--r);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 280px;
+      height: 340px;
+      resize: both;
+      overflow: hidden;
+      transition: border-color .12s
+    }
+
+    .chart-card:hover {
+      border-color: #484f58
+    }
+
+    .chart-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      flex-shrink: 0
+    }
+
+    .chart-card .sub {
+      font-size: 10px;
+      color: var(--tm);
+      margin-bottom: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .chart-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 180px
+    }
+
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--tm)
+    }
+
+    .empty .icon {
+      font-size: 40px;
+      margin-bottom: 8px
+    }
+
+    /* Unit selector */
+    .unit-sel {
+      margin-left: auto
+    }
+
+    .time-label {
+      font-size: 11px;
+      color: var(--tm);
+      margin-right: 4px
+    }
+
+    @media(max-width:900px) {
+      .charts-grid.c2 {
+        grid-template-columns: 1fr
+      }
+
+      .charts-grid.c2 .chart-card {
+        max-width: 100%;
+        min-width: 100%;
+      }
+
+      header {
+        padding: 8px 12px
+      }
+
+      .main {
+        padding: 10px 12px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="hdr-top">
+      <div class="logo">📊</div>
+      <h1>Octree Benchmark Viewer</h1>
+    </div>
+    <div class="filter-bar" id="filterBar">
+      <span style="font-size:11px;color:var(--tm)">Filter:</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- File controls -->
+    <div class="file-row">
+      <button class="btn-sm accent" onclick="document.getElementById('folderInput').click()">📂 Load Docs
+        Folder</button>
+      <button class="btn-sm" onclick="document.getElementById('fileInput').click()">⬆ Files</button>
+      <input type="file" id="folderInput" webkitdirectory style="display:none">
+      <input type="file" id="fileInput" multiple accept=".json,.txt" style="display:none">
+      <select id="fileSel" style="min-width:180px">
+        <option value="__all__" selected>All loaded files</option>
+      </select>
+      <input type="text" id="funcFilter" placeholder="🔍 Filter by function...">
+      <div class="unit-sel">
+        <span class="time-label">⏱</span>
+        <select id="unitSelect"
+          style="padding:5px 8px;background:var(--s);border:1px solid var(--bd);border-radius:6px;color:var(--t);font-size:11px">
+          <option value="auto">Auto</option>
+          <option value="ns">ns</option>
+          <option value="us">μs</option>
+          <option value="ms">ms</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="presets" id="presets">
+      <span class="preset-label">Presets:</span>
+      <div class="layout-toggle">
+        <button class="btn-sm active" id="lay2" onclick="setLayout(2)" title="2 columns">▥</button>
+        <button class="btn-sm" id="lay1" onclick="setLayout(1)" title="1 column">▣</button>
+      </div>
+    </div>
+
+    <div id="charts" class="charts-grid c2"></div>
+  </div>
+
+  <script>
+    const PALETTE = ['#58a6ff', '#3fb950', '#d2a8ff', '#ffa657', '#ff7b72', '#79c0ff', '#56d364', '#f78166', '#e3b341', '#a5d6ff', '#7ee787', '#ffb3d1', '#cae8ff', '#ffd700', '#c9d1d9'];
+
+    const KNOWN_FILES = [
+      'bench test.txt',
+      'ethalon 2025-12-15 5058b3090c8b88e405fe2bfddd6c1c872f2b79d2.txt',
+      'ethalon 2026-01-02 (oversized modelspace) 5058b3090c8b88e405fe2bfddd6c1c872f2b79d2.txt',
+      'ethalon 2026-01-02 (oversized modelspace, create d10) 5058b3090c8b88e405fe2bfddd6c1c872f2b79d2.txt',
+    ];
+
+    const FILTER_CHIPS = [
+      { group: 'entity', items: ['Point', 'Box'] },
+      { group: 'lifecycle', items: ['Dynamic', 'Static'] },
+      { group: 'storage', items: ['MBR', 'MinPoint'] },
+      { group: 'mode', items: ['Loose', 'Regular'] },
+      { group: 'map', items: ['WithReverseMap', 'WithoutReverseMap'] },
+      { group: 'exec', items: ['Seq', 'Par'] },
+    ];
+
+    const PRESETS = [
+      { id: 'point3', label: '📍 Point Trees', patterns: ['PointTree'] },
+      { id: 'boxmodes', label: '📦 Box: MinPt vs MBR vs Loose', patterns: ['DynamicBoxTree__MinPoint_Regular', 'DynamicBoxTree__MBR_Regular', 'DynamicBoxTree__MBR_Loose'] },
+      { id: 'dynvsstatic', label: '⚡ Dynamic vs Static Loose', patterns: ['DynamicBoxTree__MBR_Loose', 'StaticBoxTree__MBR_Loose'] },
+      { id: 'staticbox', label: '🏛 Static Box Trees', patterns: ['StaticBoxTree'] },
+      { id: 'createbulk', label: '🔄 Create vs Insert__Bulk', fn: 'Create|Insert__Bulk' },
+      { id: 'seqpar', label: '🔀 Seq vs Par', fn: 'Create' },
+      { id: 'all', label: '📋 All' },
+    ];
+
+    let allBenchmarks = [], loadedFiles = [], charts = [], activePreset = null, layoutCols = 2, activeFilters = new Set();
+    FILTER_CHIPS.forEach(g => g.items.forEach(i => activeFilters.add(i))); // Default mind aktív
+
+    // ── Init ──
+    function init()
+    {
+      buildFilterBar();
+      buildPresetBar();
+      document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+      document.getElementById('folderInput').addEventListener('change', e => handleFolder(e.target.files));
+      document.getElementById('funcFilter').addEventListener('input', renderCharts);
+      document.getElementById('unitSelect').addEventListener('change', renderCharts);
+      document.getElementById('fileSel').addEventListener('change', onFileSelChange);
+      tryAutoLoad();
+    }
+
+    function handleFolder(files)
+    {
+      const matching = [...files].filter(f =>
+      {
+        const n = f.name.toLowerCase();
+        return (n.endsWith('.txt') || n.endsWith('.json')) && (n.startsWith('bench') || n.startsWith('ethalon'));
+      });
+      if (!matching.length) { alert('No bench*.txt or ethalon*.txt files found in selected folder.'); return; }
+      matching.forEach(f =>
+      {
+        const reader = new FileReader();
+        reader.onload = ev => loadFile(f.name, ev.target.result);
+        reader.readAsText(f);
+      });
+    }
+
+    function buildFilterBar()
+    {
+      const bar = document.getElementById('filterBar');
+      FILTER_CHIPS.forEach((g, gi) =>
+      {
+        if (gi > 0) { const s = document.createElement('div'); s.className = 'sep'; bar.appendChild(s); }
+        g.items.forEach(label =>
+        {
+          const c = document.createElement('button');
+          c.className = 'chip'; c.textContent = label; c.dataset.filter = label;
+          if (activeFilters.has(label)) c.classList.add('on');
+          c.onclick = () => toggleFilter(label, c);
+          bar.appendChild(c);
+        });
+      });
+    }
+
+    function toggleFilter(label, btn)
+    {
+      if (activeFilters.has(label)) { activeFilters.delete(label); btn.classList.remove('on'); }
+      else { activeFilters.add(label); btn.classList.add('on'); }
+      updateChartVisibility();
+    }
+
+    function updateChartVisibility()
+    {
+      charts.forEach(chart =>
+      {
+        chart.data.datasets.forEach(ds =>
+        {
+          const full = (ds._treeName + '::' + chart._funcBase + (ds._execMode ? '::' + ds._execMode : '')).toLowerCase();
+          let visible = true;
+          if (activeFilters.size < FILTER_CHIPS.reduce((sum, g) => sum + g.items.length, 0))
+          {
+            for (const g of FILTER_CHIPS)
+            {
+              const matchingItems = g.items.filter(item => full.includes(item.toLowerCase()));
+              if (matchingItems.length > 0)
+              {
+                const hasActiveMatch = matchingItems.some(item => activeFilters.has(item));
+                if (!hasActiveMatch) { visible = false; break; }
+              }
+            }
+          }
+          ds.hidden = !visible;
+        });
+        chart.update();
+
+        // Hide chart card if all datasets are hidden
+        const card = chart.canvas.closest('.chart-card');
+        if (card)
+        {
+          const anyVisible = chart.data.datasets.some(ds => !ds.hidden);
+          card.style.display = anyVisible ? '' : 'none';
+        }
+      });
+    }
+
+    function buildPresetBar()
+    {
+      const wrap = document.getElementById('presets');
+      const label = wrap.querySelector('.preset-label');
+      const lt = wrap.querySelector('.layout-toggle');
+      wrap.innerHTML = '';
+      wrap.appendChild(label);
+      PRESETS.forEach(p =>
+      {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn' + (activePreset === p.id ? ' active' : '');
+        btn.textContent = p.label; btn.dataset.pid = p.id;
+        btn.onclick = () => applyPreset(p);
+        wrap.appendChild(btn);
+      });
+      wrap.appendChild(lt);
+    }
+
+    function applyPreset(p)
+    {
+      activePreset = p.id === 'all' ? null : p.id;
+      document.getElementById('funcFilter').value = p.fn || '';
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.pid === p.id));
+      renderCharts();
+    }
+
+    function setLayout(n)
+    {
+      layoutCols = n;
+      document.getElementById('charts').className = 'charts-grid c' + n;
+      document.getElementById('lay1').classList.toggle('active', n === 1);
+      document.getElementById('lay2').classList.toggle('active', n === 2);
+    }
+
+    // ── File loading ──
+    async function tryAutoLoad()
+    {
+      for (const name of KNOWN_FILES)
+      {
+        try
+        {
+          const r = await fetch(encodeURIComponent(name));
+          if (!r.ok) continue;
+          const text = await r.text();
+          if (text.length < 50) continue;
+          addToFileSel(name);
+        } catch (e) { }
+      }
+    }
+
+    async function onFileSelChange()
+    {
+      const name = document.getElementById('fileSel').value;
+      if (!name || name === '__all__') return renderCharts();
+      if (loadedFiles.some(f => f.name === name)) return renderCharts();
+      try
+      {
+        const r = await fetch(encodeURIComponent(name));
+        if (!r.ok) { handleManualFile(name); return; }
+        const text = await r.text();
+        loadFile(name, text);
+      } catch (e) { handleManualFile(name); }
+    }
+
+    function handleManualFile(name) { alert(`Cannot auto-load "${name}". Depending on your environment, you may need to use the Load Folder or Files button.`); }
+
+    function addToFileSel(name)
+    {
+      const sel = document.getElementById('fileSel');
+      if ([...sel.options].some(o => o.value === name)) return;
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name.length > 50 ? name.slice(0, 47) + '…' : name;
+      sel.appendChild(opt);
+    }
+
+    function handleFiles(files)
+    {
+      for (const f of files)
+      {
+        const reader = new FileReader();
+        reader.onload = ev => loadFile(f.name, ev.target.result);
+        reader.readAsText(f);
+      }
+    }
+
+    function loadFile(name, text)
+    {
+      let rows = [];
+      try { const j = JSON.parse(text); rows = parseJSON(j); }
+      catch (e) { rows = parseTXT(text); }
+      if (!rows.length) return;
+      if (loadedFiles.some(f => f.name === name))
+      {
+        const existing = loadedFiles.find(f => f.name === name);
+        allBenchmarks = allBenchmarks.filter(b => b.file !== name);
+        existing.rows = rows;
+      } else
+      {
+        loadedFiles.push({ name, rows });
+      }
+      const idx = loadedFiles.findIndex(f => f.name === name);
+      rows.forEach(r => { r.fileIdx = idx; r.file = name; });
+      allBenchmarks.push(...rows);
+      addToFileSel(name);
+      document.getElementById('fileSel').value = name;
+      renderCharts();
+    }
+
+    function parseJSON(j)
+    {
+      return (j.benchmarks || []).map(b => parseBenchmarkEntry(b.name, b.real_time, b.cpu_time, b.time_unit || 'ns'));
+    }
+
+    function parseTXT(text)
+    {
+      const rows = [];
+      const re = /^(Benchmarks::[^\t]+?)\s{2,}([\d.eE+\-]+)\s*(ns|us|ms|s)\s+([\d.eE+\-]+)\s*(ns|us|ms|s)/;
+      for (const line of text.split(/\r?\n/))
+      {
+        const t = line.trim();
+        if (!t) continue;
+        if (t.startsWith('Benchmarks::'))
+        {
+          const m = t.match(re);
+          if (m) rows.push(parseBenchmarkEntry(m[1].trim(), parseFloat(m[2]), parseFloat(m[4]), m[3]));
+        }
+      }
+      return rows;
+    }
+
+    function parseBenchmarkEntry(fullName, real, cpu, unit)
+    {
+      let name = fullName.replace(/^Benchmarks::/, '');
+      const si = name.lastIndexOf('/');
+      const arg = si >= 0 ? parseInt(name.slice(si + 1)) || 0 : 0;
+      const wa = si >= 0 ? name.slice(0, si) : name;
+      const dc = wa.lastIndexOf('::');
+      let treeName, funcName;
+      if (dc >= 0) { treeName = wa.slice(0, dc); funcName = wa.slice(dc + 2); }
+      else { treeName = 'Base'; funcName = wa; }
+      const em = funcName.match(/SeqExec|ParExec/);
+      const execMode = em ? em[0] : null;
+      const funcBase = funcName.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
+      return { fullName, treeName, funcName, funcBase, execMode, arg, realTime: real, cpuTime: cpu, unit, timeNs: toNs(real, unit) };
+    }
+
+    function toNs(v, u) { return u === 'ns' ? v : u === 'us' ? v * 1e3 : u === 'ms' ? v * 1e6 : v * 1e9; }
+    function fmtTime(ns, tu)
+    {
+      if (tu === 'ns') return { val: ns, u: 'ns' }; if (tu === 'us') return { val: ns / 1e3, u: 'μs' }; if (tu === 'ms') return { val: ns / 1e6, u: 'ms' };
+      if (ns < 1e3) return { val: ns, u: 'ns' }; if (ns < 1e6) return { val: ns / 1e3, u: 'μs' }; if (ns < 1e9) return { val: ns / 1e6, u: 'ms' }; return { val: ns / 1e9, u: 's' };
+    }
+
+    // ── Rendering ──
+    function renderCharts()
+    {
+      const ct = document.getElementById('charts');
+
+      const fnF = document.getElementById('funcFilter').value.trim();
+      const uSel = document.getElementById('unitSelect').value;
+      const fileF = document.getElementById('fileSel').value;
+      const preset = PRESETS.find(p => p.id === activePreset);
+
+      let data = allBenchmarks.slice();
+
+      // Filter by selected file (if not "__all__")
+      if (fileF && fileF !== '__all__' && loadedFiles.some(f => f.name === fileF))
+      {
+        data = data.filter(b => b.file === fileF);
+      }
+
+      // Apply preset patterns
+      if (preset && preset.patterns)
+      {
+        data = data.filter(b => preset.patterns.some(p => b.treeName.includes(p)));
+      }
+
+      // Apply function name filter (supports | for OR)
+      if (fnF)
+      {
+        const parts = fnF.split('|').map(s => s.trim().toLowerCase()).filter(Boolean);
+        data = data.filter(b => parts.some(p => b.funcBase.toLowerCase().includes(p) || b.funcName.toLowerCase().includes(p)));
+      }
+
+      const emptyNode = ct.querySelector('.empty');
+      if (emptyNode) emptyNode.remove();
+
+      if (!data.length)
+      {
+        charts.forEach(c => c.destroy()); charts = []; ct.innerHTML = '';
+        ct.innerHTML = '<div class="empty"><div class="icon">🔍</div><h3>No matching benchmarks</h3><p>Adjust filters or load a file.</p></div>';
+        return;
+      }
+
+      const groups = buildGroups(data);
+      ct.className = 'charts-grid c' + layoutCols;
+
+      const newCharts = [];
+      const newCards = new Map();
+
+      groups.forEach(g =>
+      {
+        let card = Array.from(ct.children).find(c => c.dataset && c.dataset.title === g.title);
+        if (!card)
+        {
+          card = document.createElement('div');
+          card.className = 'chart-card';
+          card.dataset.title = g.title;
+          card.innerHTML = `<h3>${g.title}</h3><div class="sub"></div><div class="chart-wrap"><canvas></canvas></div>`;
+          ct.appendChild(card);
+        } else
+        {
+          ct.appendChild(card); // Reorder to match current order
+        }
+
+        newCards.set(g.title, card);
+        card.querySelector('h3').textContent = g.title;
+        card.querySelector('.sub').title = g.subtitle;
+        card.querySelector('.sub').textContent = g.subtitle;
+
+        if (card.chartInstance)
+        {
+          card.chartInstance.destroy();
+          card.querySelector('.chart-wrap').innerHTML = '<canvas></canvas>';
+        }
+
+        const ch = buildChart(card.querySelector('canvas'), g, uSel);
+        ch._funcBase = g.title;
+        card.chartInstance = ch;
+        newCharts.push(ch);
+      });
+
+      Array.from(ct.children).forEach(node =>
+      {
+        if (node.classList.contains('chart-card') && !newCards.has(node.dataset.title))
+        {
+          if (node.chartInstance) node.chartInstance.destroy();
+          node.remove();
+        }
+      });
+
+      charts = newCharts;
+
+      updateChartVisibility();
+    }
+
+    function buildGroups(data)
+    {
+      const fbs = [...new Set(data.map(b => b.funcBase))];
+      return fbs.map(fn =>
+      {
+        const rows = data.filter(b => b.funcBase === fn);
+        const sks = [...new Map(rows.map(b =>
+        {
+          const k = [b.treeName, b.execMode || '', b.fileIdx].join('|');
+          return [k, { treeName: b.treeName, execMode: b.execMode, fileIdx: b.fileIdx, file: b.file }];
+        })).values()];
+        const args = [...new Set(rows.map(b => b.arg))].filter(a => a > 0).sort((a, b) => a - b);
+        const datasets = sks.map((sk, i) =>
+        {
+          const pts = rows.filter(b => b.treeName === sk.treeName && (b.execMode || '') === (sk.execMode || '') && b.fileIdx === sk.fileIdx);
+          const vals = args.map(a => { const m = pts.find(b => b.arg === a); return m ? m.timeNs : null; });
+          let lbl = sk.treeName; if (sk.execMode) lbl += ' [' + sk.execMode + ']';
+          if (loadedFiles.length > 1 && sk.file) lbl += ' (' + sk.file.slice(0, 20) + ')';
+          const c = PALETTE[i % PALETTE.length];
+          const pStyle = sk.treeName.toLowerCase().includes('loose') ? 'rectRot' : 'circle';
+          return { label: lbl, data: vals, borderColor: c, backgroundColor: c + '22', pointBackgroundColor: c, borderWidth: 2, pointRadius: args.length <= 2 ? 6 : 3.5, pointHoverRadius: 6, tension: 0.25, fill: false, spanGaps: true, pointStyle: pStyle, _treeName: sk.treeName, _execMode: sk.execMode };
+        });
+        const sub = sks.map(sk => { let l = sk.treeName; if (sk.execMode) l += ' [' + sk.execMode + ']'; return l; }).join(' · ');
+        return { title: fn, subtitle: sub, args, datasets };
+      });
+    }
+
+    function buildChart(canvas, group, uSel)
+    {
+      const allV = group.datasets.flatMap(d => d.data).filter(v => v !== null);
+      const med = allV.length ? allV.sort((a, b) => a - b)[Math.floor(allV.length / 2)] : 1e3;
+      const { u } = fmtTime(med, uSel === 'auto' ? 'auto' : uSel);
+      const div = u === 'ns' ? 1 : u === 'μs' ? 1e3 : u === 'ms' ? 1e6 : 1e9;
+      const ds = group.datasets.map(d => ({ ...d, data: group.args.map((a, i) => d.data[i] === null ? null : { x: a, y: +(d.data[i] / div).toPrecision(4) }) }));
+
+      return new Chart(canvas, {
+        type: 'line',
+        data: { datasets: ds },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', maxHeight: 70, labels: { color: '#8b949e', font: { family: 'Inter', size: 11 }, boxWidth: 10, padding: 8, usePointStyle: true } },
+            tooltip: {
+              backgroundColor: '#21262d', borderColor: '#30363d', borderWidth: 1, titleColor: '#e6edf3', titleFont: { size: 13 }, bodyColor: '#c9d1d9', bodyFont: { size: 12 }, padding: 10,
+              callbacks: { title: c => c[0] ? `N = ${c[0].parsed.x.toLocaleString()}` : '', label: c => ` ${c.dataset.label}: ${c.parsed.y} ${u}` }
+            }
+          },
+          scales: {
+            x: {
+              type: 'logarithmic',
+              title: { display: true, text: 'Entity count', color: '#8b949e', font: { size: 13, weight: '500' } },
+              grid: { color: '#21262d' },
+              ticks: { color: '#8b949e', font: { size: 12 }, callback: v => v >= 1e6 ? (v / 1e6) + 'M' : v >= 1e3 ? (v / 1e3) + 'k' : v }
+            },
+            y: {
+              type: 'logarithmic',
+              title: { display: true, text: `Time (${u})`, color: '#8b949e', font: { size: 13, weight: '500' } },
+              grid: { color: '#21262d' },
+              ticks: { color: '#8b949e', font: { size: 12 }, callback: v => { const s = v.toPrecision(3); return parseFloat(s) === v ? Number(s).toString() : ''; } }
+            }
+          }
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+
+</html>
