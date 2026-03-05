@@ -1854,7 +1854,9 @@ namespace OrthoTree
 
     // Update all element which are in the given hash-table. Use with std::move
     template<typename TExecMode = SeqExec>
-    void UpdateIndexes(std::unordered_map<EntityID, std::optional<EntityID>> updateMap, TExecMode execMode = {}) noexcept
+    void UpdateIndexes(
+      std::unordered_map<EntityID, std::conditional_t<EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex, EntityID, std::optional<EntityID>>> updateMap,
+      TExecMode execMode = {}) noexcept
     {
       auto const updateMapEndIterator = updateMap.end();
 
@@ -1867,15 +1869,21 @@ namespace OrthoTree
           if (it == updateMapEndIterator)
             continue;
 
-          if (it->second)
-            entityIDs[i] = *it->second;
+          if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
+          {
+            entityIDs[i] = it->second;
+          }
           else
           {
-            --entityNo;
-            entityIDs[i] = entityIDs[entityNo];
-            --i;
+            if (it->second)
+              entityIDs[i] = *it->second;
+            else
+            {
+              --entityNo;
+              entityIDs[i] = entityIDs[entityNo];
+              --i;
+            }
           }
-
           if constexpr (std::is_same_v<TExecMode, SeqExec>)
             updateMap.erase(it);
         }
@@ -1890,7 +1898,7 @@ namespace OrthoTree
         {
           nodes.emplace(detail::at(m_reverseMap, oldEntityID));
 
-          if (!newEntityID && EA::ENTITY_ID_STRATEGY != EntityIdStrategy::StableIndex)
+          if (!newEntityID && EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
             detail::erase(m_reverseMap, oldEntityID);
         }
 
