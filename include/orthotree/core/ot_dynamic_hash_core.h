@@ -1252,6 +1252,7 @@ namespace OrthoTree
       if (nodeID == lcaNodeID)
       {
         nodeIt->second.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
+        return nodeIt;
       }
       else
       {
@@ -1261,9 +1262,12 @@ namespace OrthoTree
         auto& lcaNode = lcaIt->second;
         lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
         lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, nodeID), nodeID);
-      }
 
-      return nodeIt;
+        if constexpr (detail::is_reference_stable_v<decltype(m_nodes)>)
+          return nodeIt;
+        else
+          return m_nodes.find(nodeID);
+      }
     }
 
     static auto GetParentIt(auto& nodes, NodeID nodeID) noexcept

@@ -117,6 +117,47 @@ namespace OrthoTree::detail
     }
   }
 
+  template<typename T>
+  struct is_reference_stable : std::false_type
+  {};
+
+  // Standard pointer-stable containers
+  template<typename T, std::size_t N>
+  struct is_reference_stable<std::array<T, N>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::list<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::forward_list<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::map<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::set<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::multimap<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::multiset<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::unordered_map<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::unordered_set<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::unordered_multimap<T...>> : std::true_type
+  {};
+  template<typename... T>
+  struct is_reference_stable<std::unordered_multiset<T...>> : std::true_type
+  {};
+
+  template<typename T>
+  constexpr bool is_reference_stable_v = is_reference_stable<T>::value;
 
   template<typename... Handlers>
   struct Overloaded : Handlers...
