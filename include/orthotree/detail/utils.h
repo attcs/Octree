@@ -293,6 +293,13 @@ namespace OrthoTree::detail
   }
 
   template<typename TReturn = std::size_t>
+  constexpr TReturn size(auto const& container) noexcept
+  {
+    return static_cast<TReturn>(container.size());
+  }
+
+
+  template<typename TReturn = std::size_t>
   constexpr TReturn size(auto beginIt, auto endIt) noexcept
   {
     return static_cast<TReturn>(std::distance(beginIt, endIt));
@@ -334,6 +341,21 @@ namespace OrthoTree::detail
     container.emplace(std::forward<TElement>(element)...);
   }
 
+
+  template<HasEmplaceBack TContainer, typename TKey, typename TMappedType>
+  constexpr void add(TContainer& container, TKey&& key, TMappedType&& mappedType) noexcept
+  {
+    container.resize(key + 1);
+    container[key] = std::forward<TMappedType>(mappedType);
+  }
+
+  template<HasEmplace TContainer, typename TKey, typename TMappedType>
+  constexpr void add(TContainer& container, TKey&& key, TMappedType&& mappedType) noexcept
+  {
+    container[std::forward<TKey>(key)] = std::forward<TMappedType>(mappedType);
+  }
+
+
   constexpr bool contains(auto const& container, auto const& element) noexcept
   {
     return container.contains(element);
@@ -347,6 +369,36 @@ namespace OrthoTree::detail
   constexpr auto erase(auto& container, auto const& element) noexcept
   {
     return container.erase(element);
+  }
+
+  template<typename TContainer, typename TValue>
+    requires(!requires(TContainer& c, TValue const& v) { c.erase(v); })
+  constexpr auto erase(TContainer& container, TValue const& element) noexcept
+  {
+    auto const it = std::remove(container.begin(), container.end(), element);
+    auto const count = std::distance(it, container.end());
+    container.erase(it, container.end());
+    return count;
+  }
+
+  template<typename TContainer, typename TValue>
+    requires(!requires(TContainer& c, TValue const& v) { c.extract(v); })
+  constexpr void decrementKeys(TContainer& container, TValue const& element) noexcept
+  {
+    detail::erase(container, element);
+  }
+
+  template<typename TContainer, typename TValue>
+    requires(requires(TContainer& c, TValue const& v) { c.extract(v); })
+  constexpr void decrementKeys(TContainer& container, TValue const& element) noexcept
+  {
+    auto reverseMap = std::move(container);
+    for (auto it = reverseMap.begin(); it != reverseMap.end();)
+    {
+      auto node = reverseMap.extract(it++);
+      node.key() -= (element <= node.key());
+      container.insert(std::move(node));
+    }
   }
 
   // Indexable containers (std::array, std::vector, std::span)
@@ -380,6 +432,40 @@ namespace OrthoTree::detail
     return *container.find(id);
   }
 
+
+  template<typename Container, typename Key>
+    requires(
+      requires(Container& c, Key k) { c[k]; } && !requires(Container& c, Key k) { c.find(k); })
+  constexpr decltype(auto) get_if(Container& container, Key id) noexcept
+  {
+    return std::size_t(id) < container.size() ? &container[id] : nullptr;
+  }
+
+  template<typename Container, typename Key>
+    requires(
+      requires(const Container& c, Key k) { c[k]; } && !requires(const Container& c, Key k) { c.find(k); })
+  constexpr decltype(auto) get_if(const Container& container, Key id) noexcept
+  {
+    return std::size_t(id) < container.size() ? &container[id] : nullptr;
+  }
+
+  template<typename Container, typename Key>
+    requires requires(Container& c, Key k) { c.find(k); }
+  constexpr decltype(auto) get_if(Container& container, const Key& id) noexcept
+  {
+    auto it = container.find(id);
+    return it != container.end() ? &it->second : nullptr;
+  }
+
+  template<typename Container, typename Key>
+    requires requires(const Container& c, Key k) { c.find(k); }
+  constexpr decltype(auto) get_if(const Container& container, const Key& id) noexcept
+  {
+    auto it = container.find(id);
+    return it != container.end() ? &it->second : nullptr;
+  }
+
+
   template<typename T, bool DOES_ORDER_MATTER>
   static std::pair<T, T> makePair(T a, T b) noexcept
   {
@@ -396,7 +482,7 @@ namespace OrthoTree::detail
     c.erase(std::unique(c.begin(), c.end()), c.end());
   }
 
-  template<typename TContainer, typename... TElement>
+  template<typename TContainer>
   concept HasReserve = requires(TContainer container) { container.reserve(0); };
 
   template<HasReserve TContainer>
@@ -407,6 +493,18 @@ namespace OrthoTree::detail
 
   template<typename TContainer>
   constexpr void reserve(TContainer&, std::size_t) noexcept {};
+
+  template<typename TContainer>
+  concept HasResize = requires(TContainer container) { container.resize(0); };
+
+  template<HasResize TContainer>
+  constexpr void resize(TContainer& c, std::size_t n) noexcept
+  {
+    c.resize(n);
+  };
+
+  template<typename TContainer>
+  constexpr void resize(TContainer&, std::size_t) noexcept {};
 
   template<uint8_t e, typename TOut = std::size_t>
   consteval TOut pow2_ce()

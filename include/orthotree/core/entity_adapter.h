@@ -126,7 +126,7 @@ namespace OrthoTree
         if (entityID >= entities.size())
           return;
 
-        if (ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
+        if constexpr (ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
           detail::erase(entities, std::next(entities.begin(), entityID));
       }
     }

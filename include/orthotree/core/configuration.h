@@ -63,7 +63,7 @@ namespace OrthoTree
     // If true, out-of-handled space element will be stored in the root node. Otherwise, insertion will fail.
     static constexpr bool ALLOW_OUT_OF_SPACE_INSERTION = true;
 
-    // If tree, Reverse mapping (entityID -> nodeID) will be stored to speed up removal and update operations. (Dynamic datasets)
+    // If tree, Reverse mapping (entityID -> nodeID) will be stored to speed up removal and update operations. Maintaining reverse mapping has significant overhead. (Dynamic datasets)
     static constexpr bool USE_REVERSE_MAPPING = USE_REVERSE_MAPPING_;
 
     // It determines the internal location data type sizes.
@@ -79,6 +79,7 @@ namespace OrthoTree
     static constexpr std::size_t DEFAULT_TARGET_ELEMENT_NUM_IN_NODES = 20; // TODO: set to 16
 
     // Associative container used for node storage (default: std::unordered_map)
+    // Pointer-stability is checked via detail::is_reference_stable(), non-std containers are handled as non-pointer-stable.
     template<typename TKey, typename TValue, typename THash>
     using UMapNodeContainer =
       std::conditional_t<USE_PMR, detail::EmbeddedResourcePmrMap<std::pmr::unordered_map<TKey, TValue, THash>>, std::unordered_map<TKey, TValue, THash>>;
@@ -87,9 +88,13 @@ namespace OrthoTree
     using MapNodeContainer =
       std::conditional_t<USE_PMR, detail::EmbeddedResourcePmrMap<std::pmr::map<TKey, TValue, TComp>>, std::map<TKey, TValue, TComp>>;
 
-    // Associative container used for reverse mapping storage (default: std::unordered_map)
+    // Associative container used for reverse mapping storage (default: std::unordered_map) for keyed entities
     template<typename TKey, typename TValue, typename THash>
-    using ReverseMap = std::unordered_map<TKey, TValue, THash>;
+    using ReverseMapKeyed = std::unordered_map<TKey, TValue, THash>;
+
+    // Associative container used for reverse mapping storage (default: std::vector) for indexed entities
+    template<typename TValue>
+    using ReverseMapIndexed = std::vector<TValue>;
   };
 
   template<NodeGeometryStorage NODE_GEOMETRY_STORAGE = NodeGeometryStorage::MinPoint, bool USE_REVERSE_MAPPING = true>

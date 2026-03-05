@@ -253,7 +253,10 @@ namespace OrthoTree
     template<typename TData>
     using NodeContainer = typename std::conditional_t<SI::IS_LINEAR_TREE, LinearNodeContainer<TData>, NonLinearNodeContainer<TData>>;
 
-    using ReverseMapType = typename CONFIG::template ReverseMap<EntityID, NodeID, typename EA::Hash>;
+    using ReverseMapType = std::conditional_t<
+      EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed,
+      typename CONFIG::template ReverseMapKeyed<EntityID, NodeID, typename EA::Hash>,
+      typename CONFIG::template ReverseMapIndexed<NodeID>>;
     using ReverseMap = std::conditional_t<CONFIG::USE_REVERSE_MAPPING, ReverseMapType, std::monostate>;
 
     using NodeValueType = std::pair<NodeID, Node>;
@@ -615,9 +618,7 @@ namespace OrthoTree
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
         for (auto it = locationIt.GetSecond(); it != stuckedEndLocationIt.GetSecond(); ++it)
-        {
-          m_reverseMap.emplace(*it, node.first);
-        }
+          detail::set(m_reverseMap, *it, node.first);
       }
 
       locationIt += nodeEntityNo;
@@ -705,6 +706,10 @@ namespace OrthoTree
 
       if (entityNo == 0)
         return true;
+
+
+      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+        detail::resize(m_reverseMap, entityNo);
 
       auto mortonIDs = std::vector<typename SI::Location>(entityNo);
       auto entityIDsView = m_memoryResource.Allocate(entityNo).segment;
@@ -964,6 +969,9 @@ namespace OrthoTree
       auto const maxDepthID = Base::GetMaxDepthID();
       auto const maxElementNo = Base::GetMaxElementNum();
       auto const existingEntityNum = EA::GetEntityCount(existingEntities);
+
+      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+        detail::resize(m_reverseMap, existingEntityNum + newEntityCount);
 
       // Morton code creation
       auto buffer = std::vector<EntityData>(newEntityCount);
@@ -1292,7 +1300,16 @@ namespace OrthoTree
     constexpr void UpdateReverseMap(EntityID entityID, NodeIDCR nodeID) noexcept
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
-        m_reverseMap[entityID] = nodeID;
+      {
+        if constexpr (EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
+        {
+          auto size = detail::size(m_reverseMap);
+          if (entityID >= size)
+            detail::resize(m_reverseMap, std::size_t(entityID + 1));
+        }
+
+        detail::set(m_reverseMap, entityID, nodeID);
+      }
     }
 
     IGM::Box InitializeSubtreeMinimalNodeGeometry(MutableNodeValue nodeValue, EntityContainerView entities)
@@ -1483,11 +1500,11 @@ namespace OrthoTree
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
-        auto const it = m_reverseMap.find(entityID);
-        if (it == m_reverseMap.end())
+        auto const pNodeID = detail::get_if(m_reverseMap, entityID);
+        if (!pNodeID)
           return GetNoneNodeID();
 
-        return it->second;
+        return *pNodeID;
       }
       else
       {
@@ -1867,10 +1884,10 @@ namespace OrthoTree
         auto nodes = std::unordered_set<NodeID>{};
         for (auto const [oldEntityID, newEntityID] : updateMap)
         {
-          nodes.emplace(m_reverseMap.at(oldEntityID));
+          nodes.emplace(detail::at(m_reverseMap, oldEntityID));
 
-          if (!newEntityID)
-            m_reverseMap.erase(oldEntityID);
+          if (!newEntityID && EA::ENTITY_ID_STRATEGY != EntityIdStrategy::StableIndex)
+            detail::erase(m_reverseMap, oldEntityID);
         }
 
         EXEC_POL_DEF(ep);
@@ -1893,7 +1910,7 @@ namespace OrthoTree
       m_nodes.clear();
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
-        m_reverseMap.clear();
+        detail::clear(m_reverseMap);
       }
       m_memoryResource.Reset();
       m_spaceIndexing = {};
@@ -1973,16 +1990,8 @@ namespace OrthoTree
         for (auto& [_, node] : m_nodes)
           node.DecreaseEntityIDs(entityID);
 
-        if constexpr (CONFIG::USE_REVERSE_MAPPING)
-        {
-          auto reverseMap = std::move(m_reverseMap);
-          for (auto it = reverseMap.begin(); it != reverseMap.end();)
-          {
-            auto node = reverseMap.extract(it++);
-            node.key() -= (entityID <= node.key());
-            m_reverseMap.insert(std::move(node));
-          }
-        }
+        if constexpr (CONFIG::USE_REVERSE_MAPPING && EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
+          detail::decrementKeys(m_reverseMap, entityID);
       }
     }
 
@@ -1993,16 +2002,17 @@ namespace OrthoTree
 
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
-        auto it = m_reverseMap.find(entityID);
-        if (it == m_reverseMap.end())
+        auto pNodeID = detail::get_if(m_reverseMap, entityID);
+        if (!pNodeID)
           return false;
 
-        NodeID n = it->second;
-        auto nodeIt = m_nodes.find(n);
+        auto nodeIt = m_nodes.find(*pNodeID);
         if (!RemoveNodeEntity(nodeIt->second, entityID))
           return false;
 
-        m_reverseMap.erase(it);
+        if constexpr (EA::ENTITY_ID_STRATEGY != EntityIdStrategy::StableIndex)
+          detail::erase(m_reverseMap, entityID);
+
         RemoveNodeIfPossible(nodeIt);
         isErased = true;
       }
@@ -2057,12 +2067,12 @@ namespace OrthoTree
 
   public: // Entity handling
     // Erase entity via reverse mapping or brute force search. Reverse mapping is recommended.
-    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase<EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>(entityID); }
+    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase < EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex > (entityID); }
 
     // Erase id, aided with the original geometry. Reverse mapping is not used in this function, consider its usage, with the alternative Erase().
     constexpr bool Erase(EntityID entityID, EA::Geometry const& entityGeometry) noexcept
     {
-      return EraseBase<EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>(entityID, entityGeometry);
+      return EraseBase < EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex > (entityID, entityGeometry);
     }
 
   public: // Search functions
@@ -2094,7 +2104,7 @@ namespace OrthoTree
     {
       if constexpr (CONFIG::USE_REVERSE_MAPPING)
       {
-        return m_reverseMap.find(entityID) != m_reverseMap.end();
+        return detail::get_if(m_reverseMap, entityID) != nullptr;
       }
       else
       {
