@@ -34,7 +34,14 @@ SOFTWARE.
 #include "../detail/si_mortongrid.h"
 #include "../detail/zip_view.h"
 
+#include <algorithm>
+#include <bit>
+#include <cassert>
+#include <limits>
+#include <optional>
 #include <queue>
+#include <span>
+#include <utility>
 #include <variant>
 #include <vector>
 

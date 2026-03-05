@@ -24,14 +24,15 @@ SOFTWARE.
 
 #pragma once
 
+#include <bit>
+#include <bitset>
+#include <cassert>
+#include <compare>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <cassert>
-#include <bitset>
-#include <compare>
-#include <bit>
-#include <concepts>
 #include <type_traits>
+
 
 namespace OrthoTree
 {

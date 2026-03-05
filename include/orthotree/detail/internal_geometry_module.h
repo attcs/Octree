@@ -24,9 +24,16 @@ SOFTWARE.
 
 #pragma once
 
+#include "../adapters/concepts.h"
+#include "../core/types.h"
+#include "common.h"
+#include "utils.h"
+
 #include <algorithm>
-#include <bit>
+#include <array>
+#include <bitset>
 #include <cassert>
+#include <cmath>
 #include <compare>
 #include <concepts>
 #include <cstddef>
@@ -34,33 +41,10 @@ SOFTWARE.
 #include <functional>
 #include <iterator>
 #include <limits>
-#include <map>
-#include <memory>
-#include <numeric>
 #include <optional>
-#include <ranges>
-#include <set>
-#include <span>
-#include <string>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <variant>
-#include <vector>
 
-
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <limits>
-#include <optional>
-#include <type_traits>
-
-#include "../adapters/concepts.h"
-#include "../core/types.h"
-#include "common.h"
-#include "utils.h"
 
 namespace OrthoTree::detail
 {

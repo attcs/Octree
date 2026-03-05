@@ -24,19 +24,24 @@ SOFTWARE.
 
 #pragma once
 
-#include <assert.h>
-#include <math.h>
+#include "common.h"
 
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <bitset>
+#include <cassert>
+#include <climits>
+#include <cmath>
 #include <concepts>
 #include <cstdint>
 #include <cstring>
 #include <execution>
+#include <forward_list>
 #include <functional>
 #include <iterator>
+#include <limits>
+#include <list>
 #include <map>
 #include <memory_resource>
 #include <numeric>
@@ -52,11 +57,11 @@ SOFTWARE.
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <variant>
 #include <vector>
 #include <version>
 
-#include "common.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push

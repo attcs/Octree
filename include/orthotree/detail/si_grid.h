@@ -24,10 +24,17 @@ SOFTWARE.
 
 #pragma once
 
-#include <array>
-
 #include "common.h"
 #include "internal_geometry_module.h"
+
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <cassert>
+#include <cmath>
+#include <type_traits>
+#include <variant>
+
 
 namespace OrthoTree::detail
 {
@@ -298,6 +305,5 @@ namespace OrthoTree::detail
     IGM::Vector m_sizeInDimensions = {};
 
     std::variant<NativeRasterizationFactors, ForcedDoubleRasterizationFactors> m_rasterization = {};
-
   };
 } // namespace OrthoTree::detail

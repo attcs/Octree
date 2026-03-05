@@ -24,8 +24,10 @@ SOFTWARE.
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
+
 
 namespace OrthoTree
 {

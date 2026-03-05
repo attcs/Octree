@@ -24,7 +24,9 @@ SOFTWARE.
 
 #pragma once
 
+#include <iterator>
 #include <memory_resource>
+
 #include <type_traits>
 #include <utility>
 

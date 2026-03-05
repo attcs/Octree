@@ -29,7 +29,11 @@ SOFTWARE.
 #include "../detail/embedded_resource_pmr_map.h"
 
 #include <map>
+#include <memory_resource>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
+
 
 namespace OrthoTree::detail
 {

@@ -29,6 +29,13 @@ SOFTWARE.
 #include "../detail/si_morton.h"
 #include "configuration.h"
 
+#include <climits>
+#include <cstddef>
+#include <limits>
+#include <type_traits>
+#include <variant>
+#include <vector>
+
 
 namespace OrthoTree
 {

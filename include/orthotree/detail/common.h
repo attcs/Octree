@@ -26,20 +26,28 @@ SOFTWARE.
 
 #include "../core/types.h"
 
-#include <assert.h>
-#include <math.h>
-
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <bitset>
+#include <cassert>
+#include <climits>
+#include <cmath>
+#include <compare>
 #include <concepts>
-#include <cstdint> // TODO: is needed?
+#include <cstdint>
+#include <cstdlib>
 #include <cstring>
+
+#include <exception>
 #include <execution>
+#include <forward_list>
 #include <functional>
 #include <iterator>
+#include <limits>
+#include <list>
 #include <map>
+#include <memory>
 #include <memory_resource>
 #include <numeric>
 #include <optional>
@@ -49,13 +57,16 @@ SOFTWARE.
 #include <span>
 #include <stack>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 #include <version>
+
 
 #if defined(__cpp_lib_unreachable) && (__cpp_lib_unreachable >= 202202L)
 #include <utility>
@@ -68,6 +79,7 @@ SOFTWARE.
 #include <cstdlib>
 #define ORTHOTREE_UNREACHABLE() std::abort()
 #endif
+
 
 #if (defined(__BMI2__) || defined(__AVX2__)) && (defined(_M_X64) || defined(__x86_64__) || defined(__amd64__))
 #ifdef __has_include

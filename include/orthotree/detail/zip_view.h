@@ -24,11 +24,14 @@ SOFTWARE.
 
 #pragma once
 
+#include <cassert>
 #include <concepts>
 #include <iterator>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 #include <vector>
+
 
 namespace OrthoTree::detail
 {

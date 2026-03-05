@@ -35,6 +35,9 @@ SOFTWARE.
 
 #include "../adapters/general.h"
 
+#include <type_traits>
+
+
 namespace OrthoTree
 {
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>

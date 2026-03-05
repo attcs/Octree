@@ -24,15 +24,21 @@ SOFTWARE.
 
 #pragma once
 
-#include <array>
-#include <bit>
-#include <cassert>
-#include <cstdint>
-#include <type_traits>
-
 #include "bitset_arithmetic.h"
 #include "common.h"
 #include "utils.h"
+
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <cassert>
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <type_traits>
+
 
 namespace OrthoTree::detail
 {

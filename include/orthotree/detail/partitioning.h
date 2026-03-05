@@ -24,16 +24,21 @@ SOFTWARE.
 
 #pragma once
 
+#include "common.h"
+#include "inplace_vector.h"
+#include "utils.h"
+
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <iterator>
 #include <utility>
 #include <vector>
 
-#include "common.h"
-#include "inplace_vector.h"
-#include "utils.h"
+
 namespace OrthoTree::Partitioning
 {
   template<uint32_t kChunkBitSize>

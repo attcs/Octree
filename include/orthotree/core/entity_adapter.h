@@ -27,6 +27,16 @@ SOFTWARE.
 #include "../detail/common.h"
 #include "../detail/utils.h"
 
+#include <functional>
+#include <iterator>
+#include <ranges>
+#include <span>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+
 namespace OrthoTree
 {
   enum class EntityIdStrategy

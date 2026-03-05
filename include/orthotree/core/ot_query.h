@@ -30,15 +30,21 @@ SOFTWARE.
 #include "../detail/utils.h"
 #include "../detail/zip_view.h"
 #include "configuration.h"
+#include "entity_adapter.h"
 #include "ot_base.h"
 
 
 #include <algorithm>
 #include <concepts>
+#include <functional>
+#include <iterator>
 #include <map>
+#include <numeric>
 #include <optional>
 #include <queue>
+#include <span>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 

@@ -30,6 +30,8 @@ SOFTWARE.
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+
 #include <iterator>
 #include <limits>
 #include <memory>
