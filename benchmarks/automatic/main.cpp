@@ -2,702 +2,890 @@
 
 #include "external/benchmark/include/benchmark/benchmark.h"
 
-#include "../../octree.h"
 #include "../manual/generators.h"
+#include "orthotree/octree.h"
 // #include "../unittests/compile_test.h"
 
 using namespace OrthoTree;
-namespace
+
+static void SetIterationNo(benchmark::State& state, std::size_t no)
 {
-  void SetIterationNo(benchmark::State& state, std::size_t no)
+  state.SetComplexityN(no);
+  state.SetItemsProcessed(state.iterations() * no);
+}
+
+
+template<dim_t DIMENSION_NO>
+static std::optional<PointND<DIMENSION_NO>> GetNormalized(PointND<DIMENSION_NO> const& direction)
+{
+  auto length2 = 0.0;
+  for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
   {
-    state.SetComplexityN(no);
-    state.SetItemsProcessed(state.iterations() * no);
+    length2 += direction[dimensionID] * direction[dimensionID];
   }
 
-  namespace Benchmarks
+  if (length2 == 0)
   {
-    namespace Base
+    return std::nullopt;
+  }
+
+  auto normalized = direction;
+  auto const length = std::sqrt(length2);
+  for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
+  {
+    normalized[dimensionID] = direction[dimensionID] / length;
+  }
+
+  return normalized;
+}
+
+namespace Benchmarks
+{
+  namespace Base
+  {
+    void GetNodeID(benchmark::State& state)
     {
-      void GetNodeID(benchmark::State& state)
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = 5;
+
+      using GA = GeneralGeometryAdapterND<DIMENSION_NO>;
+
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      detail::MortonGridSpaceIndexing<GA, true, 1.0, 19> modelSpaceGrid(depth, detail::InternalGeometryModule<GA>::GetBoxAD(boxSpace));
+
+      using NodeID = typename OrthoTreePointND<DIMENSION_NO>::NodeID;
+
+      std::vector<NodeID> entityIDs(entityNo);
+      for (auto _ : state)
       {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
-        using NodeID = typename TreePointND<DIMENSION_NO>::MortonNodeID;
-
-        std::vector<NodeID> entityIDs(entityNo);
-        for (auto _ : state)
+        for (int i = 0; i < entityNo; ++i)
         {
-          for (int i = 0; i < entityNo; ++i)
-          {
-            entityIDs[i] = tree.GetNodeID(points[i]);
-          }
+          entityIDs[i] = modelSpaceGrid.GetNodeID(points[i]);
         }
-
-        SetIterationNo(state, entityNo);
       }
 
-      static void GetDepthID(benchmark::State& state)
+      SetIterationNo(state, entityNo);
+    }
+
+    static void GetDepthID(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = 5;
+      using GA = GeneralGeometryAdapterND<DIMENSION_NO>;
+
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      detail::MortonGridSpaceIndexing<GA, true, 1.0, 19> modelSpaceGrid(depth, detail::InternalGeometryModule<GA>::GetBoxAD(boxSpace));
+
+      using NodeID = typename OrthoTreePointND<DIMENSION_NO>::NodeID;
+      auto entityIDs = std::vector<NodeID>{};
+      for (auto const& point : points)
+        entityIDs.emplace_back(modelSpaceGrid.GetNodeID(point));
+
+      std::vector<depth_t> depthIDs(entityNo);
+      for (auto _ : state)
       {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
+        for (int i = 0; i < entityNo; ++i)
+        {
+          depthIDs[i] = detail::MortonSpaceIndexing<DIMENSION_NO, 19>::GetDepthID(entityIDs[i]);
+        }
+      }
+      SetIterationNo(state, entityNo);
+    }
+    /*
+    static void GetNodeEntities(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = 5;
 
-        size_t entityNo = state.range();
+      using Node = typename OrthoTreePointND<DIMENSION_NO>::Node;
 
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
+      size_t entityNo = state.range();
 
-        using NodeID = typename TreePointND<DIMENSION_NO>::MortonNodeID;
-        auto entityIDs = std::vector<NodeID>{};
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const tree = OrthoTreePointND<DIMENSION_NO>(points, depth);
+
+      auto const& nodes = tree.GetNodes();
+
+      auto nodePtrs = std::vector<Node const*>();
+      for (auto const& [key, node] : nodes)
+        nodePtrs.emplace_back(&node);
+
+      for (auto _ : state)
+      {
+        for (auto const* nodePtr : nodePtrs)
+          benchmark::DoNotOptimize(tree.GetNodeEntities(*nodePtr));
+      }
+      SetIterationNo(state, entityNo);
+    }
+    */
+    static void GridSpaceIndexing_GetPointGridID(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = 5;
+      using GridSpaceIndexing = detail::GridSpaceIndexing<GeneralGeometryAdapterND<DIMENSION_NO>>;
+
+      size_t entityNo = state.range();
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const gsi = GridSpaceIndexing(depth, GridSpaceIndexing::IGM::GetBoxAD(boxSpace));
+
+      auto gridIDs = std::vector<std::array<GridID, DIMENSION_NO>>(entityNo);
+      for (auto _ : state)
+      {
+        for (std::size_t i = 0; i < entityNo; ++i)
+        {
+          gridIDs[i] = gsi.GetPointGridID(points[i]);
+        }
+      }
+
+      SetIterationNo(state, entityNo);
+    }
+
+    static void GridSpaceIndexing_GetBoxGridID(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = 5;
+      using GridSpaceIndexing = detail::GridSpaceIndexing<GeneralGeometryAdapterND<DIMENSION_NO>>;
+
+      size_t entityNo = state.range();
+      auto const boxes = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const gsi = GridSpaceIndexing(depth, GridSpaceIndexing::IGM::GetBoxAD(boxSpace));
+
+      auto gridIDs = std::vector<std::array<std::array<GridID, DIMENSION_NO>, 2>>(entityNo);
+      for (auto _ : state)
+      {
+        for (std::size_t i = 0; i < entityNo; ++i)
+        {
+          gridIDs[i] = gsi.GetBoxGridID(boxes[i]);
+        }
+      }
+
+      SetIterationNo(state, entityNo);
+    }
+
+  } // namespace Base
+
+  static constexpr depth_t depthCreationForSmallND = 19;
+  static constexpr depth_t depthCreationForLargeND = 10;
+  static constexpr depth_t depthEdit = 10;
+
+  consteval static depth_t GetCreationDepth(dim_t dimensionNo)
+  {
+    return dimensionNo <= 3 ? 19 : 10;
+  }
+
+  enum class TreeType
+  {
+    Dynamic,
+    Static
+  };
+
+
+  template<TreeType TREE_TYPE, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MinPoint, bool USE_REVERSE_MAPPING = false, bool IS_CONTIOGUOS_CONTAINER = true>
+  struct PointBenchmarks
+  {
+    using Config = Configuration<1.0, NODE_GEOMETRY_STORAGE, USE_REVERSE_MAPPING>;
+
+    template<dim_t DIMENSION_NO>
+    using DynamicTree = typename OrthoTree::OrthoTreeBase<
+      std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO>>, PointEntityMapAdapter<PointND<DIMENSION_NO>>>,
+      GeneralGeometryAdapterND<DIMENSION_NO>,
+      Config>;
+
+    template<dim_t DIMENSION_NO>
+    using StaticTree = typename OrthoTree::StaticOrthoTreeBase<
+      std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO>>, PointEntityMapAdapter<PointND<DIMENSION_NO>>>,
+      GeneralGeometryAdapterND<DIMENSION_NO>,
+      Config>;
+
+    template<dim_t DIMENSION_NO>
+    using Tree = std::conditional_t<TREE_TYPE == TreeType::Static, StaticTree<DIMENSION_NO>, DynamicTree<DIMENSION_NO>>;
+
+    template<dim_t DIMENSION_NO, typename TExecMode>
+    static void Create(benchmark::State& state)
+    {
+      constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
+
+      size_t entityNo = state.range();
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>(TExecMode{}, points, depth, boxSpace);
+      }
+    }
+
+    template<dim_t DIMENSION_NO, typename TExecMode>
+    static void Create__OversizedModelspace(benchmark::State& state)
+    {
+      constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
+
+      size_t entityNo = state.range();
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(-rMax * 127.5, rMax * 256.0);
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>(TExecMode{}, points, depth, boxSpace);
+      }
+    }
+
+    template<dim_t DIMENSION_NO, typename TExecMode>
+    static void Insert__Bulk(benchmark::State& state)
+    {
+      constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
+
+      size_t entityNo = state.range();
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>(TExecMode{}, {}, depth, boxSpace);
+        tree.Insert(points, std::vector<PointND<DIMENSION_NO>>{}, TExecMode{});
+      }
+    }
+
+    template<dim_t DIMENSION_NO, typename TExecMode>
+    static void Insert__BulkOversizedModelspace(benchmark::State& state)
+    {
+      constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
+
+      size_t entityNo = state.range();
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(-rMax * 127.5, rMax * 256.0);
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>(TExecMode{}, {}, depth, boxSpace);
+        tree.Insert(points, std::vector<PointND<DIMENSION_NO>>{}, TExecMode{});
+      }
+    }
+
+    static void InsertIntoLeaf(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>();
+        tree.Init(boxSpace, depth);
+
+        auto entityID = OrthoTreePointND<DIMENSION_NO>::EntityID(0);
         for (auto const& point : points)
-          entityIDs.emplace_back(tree.GetNodeID(point));
-
-        std::vector<depth_t> depthIDs(entityNo);
-        for (auto _ : state)
         {
-          for (int i = 0; i < entityNo; ++i)
-          {
-            depthIDs[i] = detail::MortonSpaceIndexing<DIMENSION_NO>::GetDepthID(entityIDs[i]);
-          }
-        }
-        SetIterationNo(state, entityNo);
-      }
-
-      static void GetNodeEntities(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        using Node = typename TreePointND<DIMENSION_NO>::Node;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
-
-        auto const& nodes = tree.GetNodes();
-
-        auto nodePtrs = std::vector<Node const*>();
-        for (auto const& [key, node] : nodes)
-          nodePtrs.emplace_back(&node);
-
-        for (auto _ : state)
-        {
-          for (auto const* nodePtr : nodePtrs)
-            benchmark::DoNotOptimize(tree.GetNodeEntities(*nodePtr));
-        }
-        SetIterationNo(state, entityNo);
-      }
-
-      static void GridSpaceIndexing_GetPointGridID(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-        using GridSpaceIndexing =
-          detail::GridSpaceIndexing<DIMENSION_NO, OrthoTree::BaseGeometryType, VectorND<DIMENSION_NO>, BoundingBoxND<DIMENSION_NO>, AdaptorGeneralND<DIMENSION_NO>>;
-
-        size_t entityNo = state.range();
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const gsi = GridSpaceIndexing(depth, GridSpaceIndexing::IGM::GetBoxAD(boxSpace));
-
-        auto gridIDs = std::vector<std::array<GridID, DIMENSION_NO>>(entityNo);
-        for (auto _ : state)
-        {
-          for (std::size_t i = 0; i < entityNo; ++i)
-          {
-            gridIDs[i] = gsi.GetPointGridID(points[i]);
-          }
-        }
-
-        SetIterationNo(state, entityNo);
-      }
-
-      static void GridSpaceIndexing_GetBoxGridID(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-        using GridSpaceIndexing =
-          detail::GridSpaceIndexing<DIMENSION_NO, OrthoTree::BaseGeometryType, VectorND<DIMENSION_NO>, BoundingBoxND<DIMENSION_NO>, AdaptorGeneralND<DIMENSION_NO>>;
-
-        size_t entityNo = state.range();
-        auto const boxes = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const gsi = GridSpaceIndexing(depth, GridSpaceIndexing::IGM::GetBoxAD(boxSpace));
-
-        auto gridIDs = std::vector<std::array<std::array<GridID, DIMENSION_NO>, 2>>(entityNo);
-        for (auto _ : state)
-        {
-          for (std::size_t i = 0; i < entityNo; ++i)
-          {
-            gridIDs[i] = gsi.GetBoxGridID(boxes[i]);
-          }
-        }
-
-        SetIterationNo(state, entityNo);
-      }
-
-    } // namespace Base
-
-
-    namespace Point
-    {
-      template<dim_t DIMENSION_NO, bool IS_PARALLEL_EXEC>
-      void Create(benchmark::State& state)
-      {
-        constexpr depth_t depth = 5;
-
-        size_t entityNo = state.range();
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto constexpr executionTag = std::conditional_t<IS_PARALLEL_EXEC, ExecutionTags::Parallel, ExecutionTags::Sequential>{};
-        for (auto _ : state)
-        {
-          auto tree = TreePointND<DIMENSION_NO>(executionTag, points, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES);
-        }
-      }
-
-
-      static void InsertToLeaf(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-
-        for (auto _ : state)
-        {
-          auto tree = TreePointND<DIMENSION_NO>();
-          tree.Init(boxSpace, depth);
-
-          auto entityID = TreePointND<DIMENSION_NO>::TEntityID(0);
-          for (auto const& point : points)
-          {
-            tree.Insert(entityID, point, true);
-            ++entityID;
-          }
-        }
-      }
-
-
-      static void InsertWithRebalancing(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-
-        for (auto _ : state)
-        {
-          auto tree = TreePointND<DIMENSION_NO>();
-          tree.Init(boxSpace, depth);
-
-          auto entityID = TreePointND<DIMENSION_NO>::TEntityID(0);
-          for (auto const& point : points)
-          {
-            tree.InsertWithRebalancing(entityID, point, points);
-            ++entityID;
-          }
-        }
-      }
-
-
-      static void InsertUnique(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-
-        for (auto _ : state)
-        {
-          auto tree = TreePointND<DIMENSION_NO>();
-          tree.Init(boxSpace, depth);
-
-          auto entityID = TreePointND<DIMENSION_NO>::TEntityID(0);
-          for (auto const& point : points)
-          {
-            if (tree.InsertUnique(entityID, point, rMax / 100.0, points))
-            {
-              ++entityID;
-            }
-          }
-        }
-      }
-
-
-      static void Update(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo * 100, 0);
-        auto const updatePoints = GeneratePointsRandom<DIMENSION_NO>(entityNo, 1);
-        auto const updatePointsNo = TreePointND<DIMENSION_NO>::TEntityID(updatePoints.size());
-        auto tree = TreePointND<DIMENSION_NO>(points, depth);
-        for (auto _ : state)
-        {
-          for (TreePointND<DIMENSION_NO>::TEntityID entityID = 0; entityID < updatePointsNo; ++entityID)
-          {
-            tree.Update(entityID, points[entityID], updatePoints[entityID], points);
-          }
-        }
-        SetIterationNo(state, entityNo);
-      }
-
-
-      static void Contains(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
-
-        size_t entityID = 0;
-        for (auto _ : state)
-        {
-          tree.Contains(points[entityID % entityNo], points, rMax / 1000.0);
+          tree.InsertIntoLeaf(entityID, point, InsertionMode::LowestLeaf);
           ++entityID;
         }
       }
+    }
 
 
-      static void RangeSearch(benchmark::State& state)
+    static void Insert__RebalanceMode(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+
+      for (auto _ : state)
       {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
+        auto tree = Tree<DIMENSION_NO>();
+        tree.Init(boxSpace, depth);
 
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
-        constexpr size_t boxNo = 100;
-        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1, 0.05);
-
-        size_t entityID = 0;
-        for (auto _ : state)
+        auto entityID = OrthoTreePointND<DIMENSION_NO>::EntityID(0);
+        for (auto const& point : points)
         {
-          tree.RangeSearch(searchBoxes[entityID % boxNo], points);
+          tree.Insert(entityID, point, points);
           ++entityID;
         }
       }
-
-      template<dim_t DIMENSION_NO = 3>
-      static void GetNearestNeighbors(benchmark::State& state)
-      {
-        constexpr auto depth = std::min<depth_t>(5, TreePointND<DIMENSION_NO>::SI::MAX_THEORETICAL_DEPTH_ID);
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo, 0);
-        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
-
-        auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(std::max<std::size_t>(20, entityNo / 100), 1);
-        auto const pointNo = searchPoints.size();
-        size_t pointID = 0;
-        for (auto _ : state)
-        {
-          auto const& searchPoint = searchPoints[pointID % pointNo];
-          tree.GetNearestNeighbors(searchPoint, std::max(2, static_cast<int>(std::floor(searchPoint[0]))), points);
-          ++pointID;
-        }
-      }
+    }
 
 
-      static void FrustumCulling(benchmark::State& state)
-      {
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
-
-        size_t entityNo = state.range();
-
-        auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
-        auto const tree = TreePointND<DIMENSION_NO>(points, depth);
-
-        auto const planes = std::vector{
-          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 1.0, 0.0, 0.0 } },
-          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 1.0, 0.0 } },
-          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 0.0, 1.0 } }
-        };
-        for (auto _ : state)
-        {
-          tree.FrustumCulling(planes, 0.1, points);
-        }
-      }
-    } // namespace Point
-
-
-    namespace Box
+    static void InsertUnique(benchmark::State& state)
     {
-      template<dim_t DIMENSION_NO, uint32_t SPLIT_DEPTH_INCREASEMENT, bool IS_PARALLEL_EXEC>
-      void Create(benchmark::State& state)
-      {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr depth_t depth = 5;
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
 
-        size_t entityNo = state.range();
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto constexpr executionTag = std::conditional_t<IS_PARALLEL_EXEC, ExecutionTags::Parallel, ExecutionTags::Sequential>{};
-        for (auto _ : state)
+      size_t entityNo = state.range();
+
+      auto const possiblePoints = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>();
+        tree.Init(boxSpace, depth);
+
+        std::remove_cvref_t<decltype(possiblePoints)> storedPoints;
+        for (auto const& point : possiblePoints)
         {
-          auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(executionTag, entities, depth, boxSpace, DEFAULT_MAX_ELEMENT_IN_NODES);
+          if (tree.InsertUnique(point, storedPoints, rMax / 100.0))
+            storedPoints.emplace_back(point);
         }
       }
+    }
 
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void InsertToLeaf(benchmark::State& state)
+
+    static void Update(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo * 100, 0);
+      auto const updatePoints = GeneratePointsRandom<DIMENSION_NO>(entityNo, 1);
+      auto const updatePointsNo = OrthoTreePointND<DIMENSION_NO>::EntityID(updatePoints.size());
+      auto tree = Tree<DIMENSION_NO>(points, depth);
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
-
-        size_t entityNo = state.range();
-
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-
-        for (auto _ : state)
+        auto workingPoints = points;
+        for (OrthoTreePointND<DIMENSION_NO>::EntityID entityID = 0; entityID < updatePointsNo; ++entityID)
         {
-          auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>();
-          tree.Init(boxSpace, depth);
-
-          EntityID entityID = 0;
-          for (auto const& entity : entities)
-          {
-            tree.Insert(entityID, entity, true);
-            ++entityID;
-          }
+          if (tree.Update(entityID, workingPoints[entityID], updatePoints[entityID], workingPoints))
+            workingPoints[entityID] = updatePoints[entityID];
         }
       }
+      SetIterationNo(state, entityNo);
+    }
 
 
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void InsertWithRebalancing(benchmark::State& state)
+    static void Contains(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const tree = Tree<DIMENSION_NO>(points, depth);
+
+      size_t entityID = 0;
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
-
-        size_t entityNo = state.range();
-
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-
-        for (auto _ : state)
-        {
-          auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>();
-          tree.Init(boxSpace, depth);
-
-          EntityID entityID = 0;
-          for (auto const& entity : entities)
-          {
-            tree.InsertWithRebalancing(entityID, entity, entities);
-            ++entityID;
-          }
-        }
+        tree.Contains(points[entityID % entityNo], points, rMax / 1000.0);
+        ++entityID;
       }
+    }
 
 
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT = 0>
-      static void Update(benchmark::State& state)
+    static void RangeSearch(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const tree = Tree<DIMENSION_NO>(points, depth);
+      constexpr size_t boxNo = 100;
+      auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1, 0.05);
+
+      size_t entityID = 0;
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 5;
-
-        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
-
-        size_t entityNo = state.range();
-
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo * 10);
-        auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
-        auto const updateEntitiesNo = EntityID(updateEntities.size());
-
-        auto tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
-        for (auto _ : state)
-        {
-          for (EntityID entityID = 0; entityID < updateEntitiesNo; ++entityID)
-          {
-            auto oldEntity = entities[entityID];
-            entities[entityID] = updateEntities[entityID];
-            tree.Update(entityID, oldEntity, updateEntities[entityID], entities);
-          }
-        }
-
-        SetIterationNo(state, entityNo);
+        tree.RangeSearch(searchBoxes[entityID % boxNo], points);
+        ++entityID;
       }
+    }
 
+    template<dim_t DIMENSION_NO = 3>
+    static void GetNearestNeighbors(benchmark::State& state)
+    {
+      constexpr auto depth = std::min<depth_t>(depthEdit, OrthoTreePointND<DIMENSION_NO>::SI::MAX_THEORETICAL_DEPTH_ID);
 
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void PickSearch(benchmark::State& state)
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo, 0);
+      auto const tree = Tree<DIMENSION_NO>(points, depth);
+
+      auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(std::max<std::size_t>(20, entityNo / 100), 1);
+      auto const pointNo = searchPoints.size();
+      size_t pointID = 0;
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
-        using EntityID = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>::TEntityID;
+        auto const& searchPoint = searchPoints[pointID % pointNo];
+        tree.GetNearestNeighbors(searchPoint, std::max(2, static_cast<int>(std::floor(searchPoint[0]))), points);
+        ++pointID;
+      }
+    }
 
-        size_t entityNo = state.range();
 
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
+    static void FrustumCulling(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
 
-        constexpr size_t pointNo = 100;
-        auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(pointNo, 1);
+      size_t entityNo = state.range();
+
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const tree = Tree<DIMENSION_NO>(points, depth);
+
+      auto const planes = std::vector{
+        PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 1.0, 0.0, 0.0 } },
+        PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 1.0, 0.0 } },
+        PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 0.0, 1.0 } }
+      };
+      for (auto _ : state)
+      {
+        tree.FrustumCulling(planes, points, 0.1);
+      }
+    }
+  }; // struct PointBenchmarks
+
+  enum class LooseMode
+  {
+    Loose,
+    Regular
+  };
+
+  template<
+    TreeType TREE_TYPE,
+    LooseMode LOOSE_MODE = LooseMode::Loose,
+    OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MinPoint,
+    bool USE_REVERSE_MAPPING = false,
+    bool IS_CONTIOGUOS_CONTAINER = true>
+  struct BoxBenchmarks
+  {
+    using Config = Configuration<LOOSE_MODE == LooseMode::Loose ? 2.0 : 1.0, NODE_GEOMETRY_STORAGE, USE_REVERSE_MAPPING>;
+
+    template<dim_t DIMENSION_NO>
+    using DynamicTree = typename OrthoTree::OrthoTreeBase<
+      std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO>>>,
+      GeneralGeometryAdapterND<DIMENSION_NO>,
+      Config>;
+
+    template<dim_t DIMENSION_NO>
+    using StaticTree = typename OrthoTree::StaticOrthoTreeBase<
+      std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO>>>,
+      GeneralGeometryAdapterND<DIMENSION_NO>,
+      Config>;
+
+    template<dim_t DIMENSION_NO>
+    using Tree = std::conditional_t<TREE_TYPE == TreeType::Static, StaticTree<DIMENSION_NO>, DynamicTree<DIMENSION_NO>>;
+
+
+    template<dim_t DIMENSION_NO, typename TExecMode>
+    static void Create(benchmark::State& state)
+    {
+      constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
+
+      size_t entityNo = state.range();
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      for (auto _ : state)
+      {
+        auto const tree = Tree<DIMENSION_NO>(TExecMode{}, entities, depth, boxSpace);
+      }
+    }
+
+    template<dim_t DIMENSION_NO, typename TExecMode>
+    static void Create__OversizedModelspace(benchmark::State& state)
+    {
+      constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(-rMax * 127.5, rMax * 256.0);
+
+      size_t entityNo = state.range();
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+      for (auto _ : state)
+      {
+        auto const tree = Tree<DIMENSION_NO>(TExecMode{}, entities, depth, boxSpace);
+      }
+    }
+
+    template<dim_t DIMENSION_NO, typename TExecMode>
+    static void Insert__Bulk(benchmark::State& state)
+    {
+      constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
+
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+
+      size_t entityNo = state.range();
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>(TExecMode{}, {}, depth, boxSpace);
+        tree.Insert(entities, std::vector<BoundingBoxND<DIMENSION_NO>>{}, TExecMode{});
+      }
+    }
+
+    static void InsertToLeaf(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      using EntityID = typename Tree<DIMENSION_NO>::EntityID;
+
+      size_t entityNo = state.range();
+
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+
+      for (auto _ : state)
+      {
+        auto tree = Tree<DIMENSION_NO>();
+        tree.Init(boxSpace, depth);
 
         EntityID entityID = 0;
-        for (auto _ : state)
+        for (auto const& entity : entities)
         {
-          tree.PickSearch(searchPoints[entityID % pointNo], entities);
+          assert(tree.Insert(entityID, entity, entities));
           ++entityID;
         }
       }
+    }
 
+    static void Insert__RebalanceMode(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
 
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void RangeSearch(benchmark::State& state)
+      using EntityID = typename Tree<DIMENSION_NO>::EntityID;
+
+      size_t entityNo = state.range();
+
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
+        auto tree = Tree<DIMENSION_NO>();
+        tree.Init(boxSpace, depth);
 
-        size_t entityNo = state.range();
-
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
-
-        constexpr size_t boxNo = 100;
-        auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1, 0.02);
-
-        size_t entityID = 0;
-        for (auto _ : state)
+        EntityID entityID = 0;
+        for (auto const& entity : entities)
         {
-          tree.RangeSearch(searchBoxes[entityID % boxNo], entities);
+          tree.Insert(entityID, entity, entities);
           ++entityID;
         }
       }
+    }
 
 
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void FrustumCulling(benchmark::State& state)
+    static void Update(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      using EntityID = typename Tree<DIMENSION_NO>::EntityID;
+
+      size_t entityNo = state.range();
+
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo * 10);
+      auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
+      auto const updateEntitiesNo = EntityID(updateEntities.size());
+
+      auto tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
-
-        size_t entityNo = state.range();
-
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
-
-        auto const planes = std::vector{
-          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 1.0, 0.0, 0.0 } },
-          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 1.0, 0.0 } },
-          PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 0.0, 1.0 } }
-        };
-        for (auto _ : state)
+        for (EntityID entityID = 0; entityID < updateEntitiesNo; ++entityID)
         {
-          tree.FrustumCulling(planes, 0.1, entities);
+          auto oldEntity = entities[entityID];
+          entities[entityID] = updateEntities[entityID];
+          tree.Update(entityID, oldEntity, updateEntities[entityID], entities);
         }
       }
 
+      SetIterationNo(state, entityNo);
+    }
 
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT, bool IS_PARALLEL_EXEC>
-      static void CollisionDetection(benchmark::State& state)
+
+    static void PickSearch(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+      using EntityID = typename Tree<DIMENSION_NO>::EntityID;
+
+      size_t entityNo = state.range();
+
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+
+      constexpr size_t pointNo = 100;
+      auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(pointNo, 1);
+
+      EntityID entityID = 0;
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
+        tree.PickSearch(searchPoints[entityID % pointNo], entities);
+        ++entityID;
+      }
+    }
 
-        size_t entityNo = state.range();
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
 
-        for (auto _ : state)
+    static void RangeSearch(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+
+      constexpr size_t boxNo = 100;
+      auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1, 0.02);
+
+      size_t entityID = 0;
+      for (auto _ : state)
+      {
+        tree.RangeSearch(searchBoxes[entityID % boxNo], entities);
+        ++entityID;
+      }
+    }
+
+
+    static void FrustumCulling(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+
+      auto const planes = std::vector{
+        PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 1.0, 0.0, 0.0 } },
+        PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 1.0, 0.0 } },
+        PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 0.0, 0.0, 1.0 } }
+      };
+      for (auto _ : state)
+      {
+        tree.FrustumCulling(planes, entities, 0.1);
+      }
+    }
+
+
+    template<typename TExecMode>
+    static void CollisionDetection(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+
+      for (auto _ : state)
+      {
+        tree.template CollisionDetection<TExecMode>(entities);
+      }
+    }
+
+
+    static void CollisionDetection__WithOtherTree(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+      auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
+      auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1, 0.05);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const tree0 = Tree<DIMENSION_NO>(entities0, depth, boxSpace);
+      auto const tree1 = Tree<DIMENSION_NO>(entities1, depth, boxSpace);
+
+      for (auto _ : state)
+      {
+        Tree<DIMENSION_NO>::CollisionDetection(tree0, entities0, tree1, entities1);
+      }
+    }
+
+
+    template<bool IS_FIRST>
+    static void RayIntersectedGeneral(benchmark::State& state)
+    {
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = depthEdit;
+
+      size_t entityNo = state.range();
+
+      auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 2, 0.02);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+
+      size_t constexpr rayNo = 100;
+      auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo, 3);
+      auto const rayDirections = GeneratePointsRandom<DIMENSION_NO>(rayNo, 4);
+
+      auto rays = std::vector<RayND<DIMENSION_NO>>{};
+      for (size_t rayID = 0; rayID < rayNo; ++rayID)
+      {
+        auto const direction = GetNormalized<DIMENSION_NO>(rayDirections[rayNo - 1 - rayID]);
+        if (!direction)
         {
-          tree.template CollisionDetection<IS_PARALLEL_EXEC>(entities);
+          continue;
         }
+        rays.push_back(RayND<DIMENSION_NO>{ .Origin = rayOrigins[rayID], .Direction = *direction });
       }
 
-
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void CollisionDetection_WithOtherTree(benchmark::State& state)
+      size_t entityID = 0;
+      for (auto _ : state)
       {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
-
-        size_t entityNo = state.range();
-        auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
-        auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1, 0.05);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree0 = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities0, depth, boxSpace);
-        auto const tree1 = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities1, depth, boxSpace);
-
-        for (auto _ : state)
+        auto const& ray = rays[entityID % rays.size()];
+        if constexpr (IS_FIRST)
         {
-          TreeBoxND<DIMENSION_NO, SPLIT_DEPTH_INCREASEMENT>::CollisionDetection(tree0, entities0, tree1, entities1);
+          benchmark::DoNotOptimize(tree.RayIntersectedFirst(ray.Origin, ray.Direction, entities, 0));
         }
+        else
+        {
+          benchmark::DoNotOptimize(tree.RayIntersectedAll(ray.Origin, ray.Direction, entities, 0));
+        }
+        ++entityID;
       }
+    }
 
+    static void RayIntersectedFirst(benchmark::State& state) { RayIntersectedGeneral<true>(state); }
 
-      template<dim_t DIMENSION_NO>
-      std::optional<PointND<DIMENSION_NO>> GetNormalized(PointND<DIMENSION_NO> const& direction)
-      {
-        auto length2 = 0.0;
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          length2 += direction[dimensionID] * direction[dimensionID];
-        }
-
-        if (length2 == 0)
-        {
-          return std::nullopt;
-        }
-
-        auto normalized = direction;
-        auto const length = std::sqrt(length2);
-        for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
-        {
-          normalized[dimensionID] = direction[dimensionID] / length;
-        }
-
-        return normalized;
-      }
-
-
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT, bool IS_FIRST>
-      static void RayIntersectedGeneral(benchmark::State& state)
-      {
-        constexpr bool DO_SPLIT_PARENT_ENTITIES = SPLIT_DEPTH_INCREASEMENT > 0;
-        constexpr dim_t DIMENSION_NO = 3;
-        constexpr depth_t depth = 8;
-
-        size_t entityNo = state.range();
-
-        auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 2, 0.02);
-        auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-        auto const tree = TreeBoxND<DIMENSION_NO, DO_SPLIT_PARENT_ENTITIES>(entities, depth, boxSpace);
-
-        size_t constexpr rayNo = 100;
-        auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo, 3);
-        auto const rayDirections = GeneratePointsRandom<DIMENSION_NO>(rayNo, 4);
-
-        auto rays = std::vector<RayND<DIMENSION_NO>>{};
-        for (size_t rayID = 0; rayID < rayNo; ++rayID)
-        {
-          auto const direction = GetNormalized<DIMENSION_NO>(rayDirections[rayNo - 1 - rayID]);
-          if (!direction)
-          {
-            continue;
-          }
-          rays.push_back(RayND<DIMENSION_NO>{ .Origin = rayOrigins[rayID], .Direction = *direction });
-        }
-
-        size_t entityID = 0;
-        for (auto _ : state)
-        {
-          auto const& ray = rays[entityID % rays.size()];
-          if constexpr (IS_FIRST)
-          {
-            benchmark::DoNotOptimize(tree.RayIntersectedFirst(ray.Origin, ray.Direction, entities, 0));
-          }
-          else
-          {
-            benchmark::DoNotOptimize(tree.RayIntersectedAll(ray.Origin, ray.Direction, entities, 0));
-          }
-          ++entityID;
-        }
-      }
-
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void RayIntersectedFirst(benchmark::State& state)
-      {
-        RayIntersectedGeneral<SPLIT_DEPTH_INCREASEMENT, true>(state);
-      }
-
-      template<uint32_t SPLIT_DEPTH_INCREASEMENT>
-      static void RayIntersectedAll(benchmark::State& state)
-      {
-        RayIntersectedGeneral<SPLIT_DEPTH_INCREASEMENT, false>(state);
-      }
-    } // namespace Box
-  } // namespace Benchmarks
-} // namespace
+    static void RayIntersectedAll(benchmark::State& state) { RayIntersectedGeneral<false>(state); }
+  }; // struct BoxBenchmarks
+} // namespace Benchmarks
 
 BENCHMARK(Benchmarks::Base::GetNodeID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GetDepthID)->Arg(1000)->Unit(benchmark::kNanosecond);
-BENCHMARK(Benchmarks::Base::GetNodeEntities)->Arg(10000)->Arg(100000)->Unit(benchmark::kNanosecond);
+// BENCHMARK(Benchmarks::Base::GetNodeEntities)->Arg(10000)->Arg(100000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetPointGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetBoxGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
-BENCHMARK(Benchmarks::Point::Create<3, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::Create<3, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::Create<6, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::Create<6, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::InsertToLeaf)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::InsertWithRebalancing)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::InsertUnique)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::Update)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::Contains)->Arg(1000)->Arg(10000);
-BENCHMARK(Benchmarks::Point::RangeSearch)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
-BENCHMARK(Benchmarks::Point::GetNearestNeighbors)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::GetNearestNeighbors<6>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::GetNearestNeighbors<63>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Point::FrustumCulling)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Create<3, 0, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Create<3, 0, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Create<3, 1, false>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Create<3, 1, true>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::InsertToLeaf<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::InsertToLeaf<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::InsertWithRebalancing<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::InsertWithRebalancing<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Update<0>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::Update<1>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::PickSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
-BENCHMARK(Benchmarks::Box::PickSearch<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
-BENCHMARK(Benchmarks::Box::RangeSearch<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
-BENCHMARK(Benchmarks::Box::RangeSearch<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);
-BENCHMARK(Benchmarks::Box::FrustumCulling<0>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::FrustumCulling<1>)->Arg(1000)->Arg(10000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection<0, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection<0, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection<1, false>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection<1, true>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::CollisionDetection_WithOtherTree<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::RayIntersectedFirst<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::RayIntersectedFirst<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::RayIntersectedAll<0>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
-BENCHMARK(Benchmarks::Box::RayIntersectedAll<1>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kMillisecond);
 
+static constexpr auto unit = benchmark::kMicrosecond;
+
+
+// Point tree dynamic-only benchmarks
+#define POINT_BENCHMARKS_DYN_FUNCS_Dynamic(NAME)                                                                                                            \
+  BENCHMARK(Benchmarks::NAME::Insert__Bulk<3, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  BENCHMARK(Benchmarks::NAME::Insert__Bulk<3, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  BENCHMARK(Benchmarks::NAME::Insert__RebalanceMode)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(unit);                               \
+  BENCHMARK(Benchmarks::NAME::InsertIntoLeaf)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(unit);                                      \
+  BENCHMARK(Benchmarks::NAME::InsertUnique)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(unit);                                        \
+  BENCHMARK(Benchmarks::NAME::Update)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(unit);
+#define POINT_BENCHMARKS_DYN_FUNCS_Static(NAME)
+
+// Box tree dynamic-only benchmarks (InsertToLeaf instead of InsertIntoLeaf/InsertUnique)
+#define BOX_BENCHMARKS_DYN_FUNCS_Dynamic(NAME)                                                                                                              \
+  BENCHMARK(Benchmarks::NAME::Insert__Bulk<3, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  BENCHMARK(Benchmarks::NAME::Insert__Bulk<3, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  BENCHMARK(Benchmarks::NAME::InsertToLeaf)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(unit);                                        \
+  BENCHMARK(Benchmarks::NAME::Insert__RebalanceMode)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(unit);                               \
+  BENCHMARK(Benchmarks::NAME::Update)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Unit(unit);
+#define BOX_BENCHMARKS_DYN_FUNCS_Static(NAME)
+
+#define POINT_BENCHMARKS(NAME, IS_DYN, NODE_STORAGE, USE_REVERSE_MAPPING, USE_PMR)                                                                    \
+  namespace Benchmarks                                                                                                                                \
+  {                                                                                                                                                   \
+    using NAME = PointBenchmarks<TreeType::IS_DYN, NODE_STORAGE, USE_REVERSE_MAPPING>;                                                                \
+  }                                                                                                                                                   \
+  BENCHMARK(Benchmarks::NAME::Create<3, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  BENCHMARK(Benchmarks::NAME::Create<3, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  BENCHMARK(Benchmarks::NAME::Create__OversizedModelspace<3, SeqExec>)                                                                                \
+    ->Arg(10)                                                                                                                                         \
+    ->Arg(20)                                                                                                                                         \
+    ->Arg(50)                                                                                                                                         \
+    ->Arg(100)                                                                                                                                        \
+    ->Arg(1000)                                                                                                                                       \
+    ->Arg(10000)                                                                                                                                      \
+    ->Arg(100000)                                                                                                                                     \
+    ->Arg(1000000)                                                                                                                                    \
+    ->Unit(unit);                                                                                                                                     \
+  BENCHMARK(Benchmarks::NAME::Create__OversizedModelspace<3, ParExec>)                                                                                \
+    ->Arg(10)                                                                                                                                         \
+    ->Arg(20)                                                                                                                                         \
+    ->Arg(50)                                                                                                                                         \
+    ->Arg(100)                                                                                                                                        \
+    ->Arg(1000)                                                                                                                                       \
+    ->Arg(10000)                                                                                                                                      \
+    ->Arg(100000)                                                                                                                                     \
+    ->Arg(1000000)                                                                                                                                    \
+    ->Unit(unit);                                                                                                                                     \
+  BENCHMARK(Benchmarks::NAME::Create<6, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  BENCHMARK(Benchmarks::NAME::Create<6, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
+  POINT_BENCHMARKS_DYN_FUNCS_##IS_DYN(NAME) BENCHMARK(Benchmarks::NAME::RangeSearch)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);                   \
+  BENCHMARK(Benchmarks::NAME::GetNearestNeighbors)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);                                         \
+  BENCHMARK(Benchmarks::NAME::GetNearestNeighbors<6>)->Arg(1000)->Arg(10000)->Unit(unit);                                                             \
+  BENCHMARK(Benchmarks::NAME::FrustumCulling)->Arg(1000)->Arg(10000)->Unit(unit);
+
+#define BOX_BENCHMARKS(NAME, TREE_TYPE, LOOSE_MODE, NODE_STORAGE, USE_REVERSE_MAPPING, USE_PMR)                                                                          \
+  namespace Benchmarks                                                                                                                                                   \
+  {                                                                                                                                                                      \
+    using NAME = BoxBenchmarks<TreeType::TREE_TYPE, LOOSE_MODE, NODE_STORAGE, USE_REVERSE_MAPPING>;                                                                      \
+  }                                                                                                                                                                      \
+  BENCHMARK(Benchmarks::NAME::Create<3, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMicrosecond); \
+  BENCHMARK(Benchmarks::NAME::Create<3, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMicrosecond); \
+  BENCHMARK(Benchmarks::NAME::Create__OversizedModelspace<3, SeqExec>)                                                                                                   \
+    ->Arg(10)                                                                                                                                                            \
+    ->Arg(20)                                                                                                                                                            \
+    ->Arg(50)                                                                                                                                                            \
+    ->Arg(100)                                                                                                                                                           \
+    ->Arg(1000)                                                                                                                                                          \
+    ->Arg(10000)                                                                                                                                                         \
+    ->Arg(100000)                                                                                                                                                        \
+    ->Arg(1000000)                                                                                                                                                       \
+    ->Unit(benchmark::kMicrosecond);                                                                                                                                     \
+  BENCHMARK(Benchmarks::NAME::Create__OversizedModelspace<3, ParExec>)                                                                                                   \
+    ->Arg(10)                                                                                                                                                            \
+    ->Arg(20)                                                                                                                                                            \
+    ->Arg(50)                                                                                                                                                            \
+    ->Arg(100)                                                                                                                                                           \
+    ->Arg(1000)                                                                                                                                                          \
+    ->Arg(10000)                                                                                                                                                         \
+    ->Arg(100000)                                                                                                                                                        \
+    ->Arg(1000000)                                                                                                                                                       \
+    ->Unit(unit);                                                                                                                                                        \
+  BOX_BENCHMARKS_DYN_FUNCS_##TREE_TYPE(NAME) BENCHMARK(Benchmarks::NAME::PickSearch)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);                                      \
+  BENCHMARK(Benchmarks::NAME::RangeSearch)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000);                                                                                \
+  BENCHMARK(Benchmarks::NAME::FrustumCulling)->Arg(1000)->Arg(10000)->Unit(unit);                                                                                        \
+  BENCHMARK(Benchmarks::NAME::CollisionDetection<SeqExec>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);                                                    \
+  BENCHMARK(Benchmarks::NAME::CollisionDetection<ParExec>)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);                                                    \
+  BENCHMARK(Benchmarks::NAME::CollisionDetection__WithOtherTree)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);                                              \
+  BENCHMARK(Benchmarks::NAME::RayIntersectedFirst)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);                                                            \
+  BENCHMARK(Benchmarks::NAME::RayIntersectedAll)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);
+
+POINT_BENCHMARKS(DynamicPointTree__MinPoint_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MinPoint, false, false);
+POINT_BENCHMARKS(DynamicPointTree__MBR_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MBR, false, false);
+POINT_BENCHMARKS(StaticPointTree__MBR_Regular_WithoutReverseMap, Static, NodeGeometryStorage::MBR, false, false);
+POINT_BENCHMARKS(DynamicPointTree__MinPoint_Regular_WithReverseMap, Dynamic, NodeGeometryStorage::MinPoint, true, false);
+POINT_BENCHMARKS(DynamicPointTree__MBR_Regular_WithReverseMap, Dynamic, NodeGeometryStorage::MBR, true, false);
+POINT_BENCHMARKS(StaticPointTree__MBR_Regular_WithReverseMap, Static, NodeGeometryStorage::MBR, true, false);
+
+
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithoutReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithoutReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithoutReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithoutReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MBR, true, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MBR, true, false);
+
+
+BOX_BENCHMARKS(StaticBoxTree__MinPoint_Regular_WithoutReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(StaticBoxTree__MinPoint_Loose_WithoutReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(StaticBoxTree__MBR_Regular_WithoutReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(StaticBoxTree__MBR_Loose_WithoutReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
+
+BOX_BENCHMARKS(StaticBoxTree__MinPoint_Regular_WithReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(StaticBoxTree__MinPoint_Loose_WithReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(StaticBoxTree__MBR_Regular_WithReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MBR, true, false);
+BOX_BENCHMARKS(StaticBoxTree__MBR_Loose_WithReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MBR, true, false);
 // Run the benchmark
 BENCHMARK_MAIN();
