@@ -38,11 +38,10 @@ The `EntityAdapter` also may contain container mutation functions. These are use
 
 For a full reference implementation, see [entity_adapter.h](../include/orthotree/core/entity_adapter.h) which defines `EntityAdapterDefault`, `PointEntitySpanAdapter`, `BoxEntitySpanAdapter`, and map-based variants.
 
-// properly phrase this:
-`IS_ENTITY_KEYED`: Entity adapter is designed for both map-based and span-based entity storage, latter does not require keying. 
-* If IS_ENTITY_KEYED is true, it means Entity contains the key (e.g., std::pair<EntityID, Entity>).
-* If IS_ENTITY_KEYED is false, it means EntityID is an integer type, (e.g., std::vector<Entity> or std::map<EntityID, Entity>), and a continuous indexing is required. That means, removal needs to decrement the EntityID of the following elements. Insertion used indexing may rely on the size of the entity container.
-
+`ENTITY_ID_STRATEGY` [EntityIdStrategy]: Entity adapter is designed for both map-based and span-based entity storage, latter does not require keying. 
+* `ContiguousIndex`: [default for span-based storage] Index-based ID, and the tree actively maintains the continuity of indexes (e.g. by decrementing the EntityID of the following elements on removal). Index-based storage is typically implemented using `std::vector` or `std::span`.
+* `StableIndex`: Index-based ID, contiguous upon creation, but removals may create "holes", keeping remaining indexes stable. Index-based storage is typically implemented using `std::vector` or `std::span`, but indexing in the tree will not be mutated on removal.
+* `EntityKeyed`: [default for map-based storage] The entity itself contains the ID. (e.g., std::pair<EntityID, Entity> in an std::unordered_map entity container)
 
 ### Geometrical system adapting
 
@@ -50,9 +49,103 @@ A geometrical system simply represents the mathematical types (Vector/Point, Box
 
 Geometrical elements should be constructible using user-provided functions (e.g., as defined in the `BaseGeometryAdapterConcept`).
 
-For an integration example using standard bounding boxes and custom points, you can review the unit tests in `tests/unittests/example.tests.cpp`.
+For an integration example using standard bounding boxes and custom points, you can review the adapters (E.g., [adapters/xyz.h](../include/orthotree/adapters/xyz.h)).
 
-// adapter examples should be moved here from the ../README.md  
+```C++
+#include "orthotree/adapters/general.h"
+#include "orthotree/adapters/octree.h"
+
+
+using xy_geometry_type = BasicTypesXYZ::float_t;
+using XYPoint2D = BasicTypesXYZ::Point2D;
+using XYBoundingBox2D = BasicTypesXYZ::BoundingBox2D;
+using XYRay2D = BasicTypesXYZ::Ray2D;
+using XYPlane2D = BasicTypesXYZ::Plane2D;
+
+struct XYBaseGeometryAdapter
+{
+  using Scalar = xy_geometry_type;
+  using FloatScalar = xy_geometry_type;
+  using Vector = XYPoint2D;
+  using Box = XYBoundingBox2D;
+  using Ray = XYRay2D;
+  using Plane = XYPlane2D;
+
+  static constexpr dim_t DIMENSION_NO = 2;
+  static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
+  static constexpr XYPoint2D MakePoint() noexcept { return {}; };
+  static constexpr XYBoundingBox2D MakeBox() noexcept { return {}; };
+
+  static constexpr xy_geometry_type GetPointC(XYPoint2D const& pt, dim_t dimensionID)
+  {
+    switch (dimensionID)
+    {
+    case 0: return pt.x;
+    case 1: return pt.y;
+    default: assert(false); std::terminate();
+    }
+  }
+
+  static constexpr void SetPointC(XYPoint2D& pt, dim_t dimensionID, xy_geometry_type value)
+  {
+    switch (dimensionID)
+    {
+    case 0: pt.x = value; break;
+    case 1: pt.y = value; break;
+    default: assert(false); std::terminate();
+    }
+  }
+
+
+  static constexpr void SetBoxMinC(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { 
+    SetPointC(box.Min, dimensionID, value); 
+  }
+  static constexpr void SetBoxMaxC(XYBoundingBox2D& box, dim_t dimensionID, xy_geometry_type value) { 
+    SetPointC(box.Max, dimensionID, value); 
+  }
+  static constexpr xy_geometry_type GetBoxMinC(XYBoundingBox2D const& box, dim_t dimensionID) { 
+    return GetPointC(box.Min, dimensionID); 
+  }
+  static constexpr xy_geometry_type GetBoxMaxC(XYBoundingBox2D const& box, dim_t dimensionID) { 
+    return GetPointC(box.Max, dimensionID); 
+  }
+
+  static constexpr XYPoint2D const& GetRayDirection(XYRay2D const& ray) noexcept { return ray.Heading; }
+  static constexpr XYPoint2D const& GetRayOrigin(XYRay2D const& ray) noexcept { return ray.BasePoint; }
+
+  static constexpr XYPoint2D const& GetPlaneNormal(XYPlane2D const& plane) noexcept { return plane.Normal; }
+  static constexpr xy_geometry_type GetPlaneOrigoDistance(XYPlane2D const& plane) noexcept { return plane.OrigoDistance; }
+};
+
+using XYGeometryAdapter = GeneralGeometryAdapter<XYBaseGeometryAdapter>;
+
+
+using QuadtreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYPoint2D>, XYGeometryAdapter, PointConfiguration<>>;
+
+template<bool IS_LOOSE_TREE = true>
+using QuadtreeBox = OrthoTreeBase<BoxEntitySpanAdapter<XYBoundingBox2D>, XYGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
+
+```
+
+Default geometrical base elements
+```C++
+  using BaseGeometryType = double;
+  using Vector1D = OrthoTree::VectorND<1, BaseGeometryType>;
+  using Vector2D = OrthoTree::VectorND<2, BaseGeometryType>;
+  using Vector3D = OrthoTree::VectorND<3, BaseGeometryType>;
+  using Point1D = OrthoTree::PointND<1, BaseGeometryType>;
+  using Point2D = OrthoTree::PointND<2, BaseGeometryType>;
+  using Point3D = OrthoTree::PointND<3, BaseGeometryType>;
+  using BoundingBox1D = OrthoTree::BoundingBoxND<1, BaseGeometryType>;
+  using BoundingBox2D = OrthoTree::BoundingBoxND<2, BaseGeometryType>;
+  using BoundingBox3D = OrthoTree::BoundingBoxND<3, BaseGeometryType>;
+  using Ray2D = OrthoTree::RayND<2, BaseGeometryType>;
+  using Ray3D = OrthoTree::RayND<3, BaseGeometryType>;
+  using Plane2D = OrthoTree::PlaneND<2, BaseGeometryType>;
+  using Plane3D = OrthoTree::PlaneND<3, BaseGeometryType>;
+```
+
 
 ### Included geometry adapters
 The following geometry adapters are included in the library:
@@ -78,7 +171,7 @@ The library defines a `BASE_TOLERANCE` trait in the adapters to handle the stand
 ### Configuration
 `ALLOW_OUT_OF_SPACE_INSERTION`: [default: true] If true, the tree will allow insertion of entities that are outside the tree's bounding box. This can be useful for dynamic datasets where the tree's bounding box needs to grow with the data. Out of space entities are stored in the root. Real size of the tree will be adjusted due to the elements. If false, insertion will fail if the entity is outside the tree's bounding box.
 
-`LOOSE_FACTOR`: [default: 2.0] **Looseness factor**, a loose tree enlarges each node's bounding box by a factor, so that an entity can fit entirely within a single node even if it straddles a split boundary. `1.0` means no enlargement (regular, tight octree). `2.0` (the recommended value for box trees with ray-picking) doubles each node's size.
+`LOOSE_FACTOR`: [default: 2.0] **Looseness factor**, a loose tree enlarges each node's bounding box by a factor, so that an entity can fit entirely within a single node even if it straddles a split boundary. `1.0` means no enlargement (regular, tight octree). `2.0` (the recommended value for box trees with ray-picking) doubles each node's size. For AABB-based trees 2.0 loose tree is the default.
    * *Advantage*: faster insertion and better spatial locality for overlapping geometries, because the elements could be inserted into the level of the tree where they fit by size, not by position. 
    * *Disadvantage*: during queries, more nodes may be visited due to overlapping node boundaries, increasing query cost. To counteract this, **MBR** *node geometry storage* could be used. See `NODE_GEOMETRY_STORAGE`.
 
@@ -127,7 +220,7 @@ The dynamic tree and container offer various ways to insert elements, depending 
 
 `Create()` and the parameterized constructors are designed for bulk insertion (e.g., opening a model with a huge dataset, followed by smaller edits later). Using `ExecutionTags::Parallel`, the creation process can be effectively multi-threaded.
 
-### Insert / InsertIntoLeaf
+### Insert() / InsertIntoLeaf()
 
 > [!WARNING]
 > Insert functions (other than bulk insert) should only be used *after* `Init()` or `Create()`. These initialization functions define the initial tree spatial boundaries (modelspace domain). 
@@ -140,14 +233,28 @@ Insertion logic revolves around handling node overflows:
   * `InsertionMode::LowestLeaf`: Inserts the element into the bottom-most leaf node that geographically houses it.
   * `InsertionMode::ExistingLeaf`: Inserts the element into the deepest already-existing leaf node, avoiding the creation of deeper nodes.
 
-High-level wrappers like the `OrthoTreeContainer` typically use the `Add()` or `Update()` interface, taking the `InsertionMode` enum as a parameter to route internally to `Insert()` or `InsertIntoLeaf()`.
+Recommended insert usage:
+```C++
+  Point3D p = {};
+  auto entityID = workingPoints.size();
+  if (coreTree.Insert(entityID, p, workingPoints))
+    workingPoints.push_back(p);
+```
+
 > [!WARNING]
 > Do not intermix `Insert()` with `InsertIntoLeaf()` calls. `Insert()` will not split a node if it already has child nodes. Since `InsertIntoLeaf(LowestLeaf)` unconditionally creates child nodes, subsequent overflow-based splits for parent elements might not trigger. Furthermore, `Insert()` assumes that only the currently inserted element causes an overflow, whereas `InsertIntoLeaf(ExistingLeaf)` can silently overflow nodes with multiple elements.
+
+High-level wrappers like the `OrthoTreeContainer` typically use the `Add()` or `Update()` interface, taking the `InsertionMode` enum as a parameter to route internally to `Insert()` or `InsertIntoLeaf()`.
+
+Managed tree example:
+```C++
+  std::optional<EntityID> entityID = managedTree.Add(Point3D{...}/*, InsertionMode::Balanced*/);
+```
 
 ### Bulk Insertion
 There is an `Insert` overload intended for bulk-insertion purposes. Passing an array or range of elements to `Insert` performantly integrates everything into the tree simultaneously, significantly reducing initialization and loading times.
 
-### InsertUnique
+### InsertUnique()
 
 `InsertUnique()` adds an element only if an overlapping geometry is not already present in the tree. Because it iterates existing geometry to ensure uniqueness, you must execute the verification *before* adding the geometry to your underlying storage.
 
