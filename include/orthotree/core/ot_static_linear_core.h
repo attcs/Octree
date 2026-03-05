@@ -388,18 +388,23 @@ namespace OrthoTree
              entityCount < std::numeric_limits<typename TNodeStorage::EntitySegment::Length>::max();
     }
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 11
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
     constexpr NodeID CreateNode(SI::Location location, uint32_t nodeEntityBeginID, uint32_t nodeEntityCount, uint32_t childNodeCount, MGSI const& spaceIndexing)
     {
       auto const nodeID = static_cast<NodeID>(m_nodeDepthIDs.size());
 
-      m_nodeDepthIDs.emplace_back(static_cast<uint8_t>(location.GetDepthID()));
+      m_nodeDepthIDs.push_back(static_cast<uint8_t>(location.GetDepthID()));
       std::visit(
         [&](auto& nodes) {
           using NodeStorage = std::decay_t<decltype(nodes)>;
           using EntitySegment = typename NodeStorage::EntitySegment;
           using NodeSegmentIndex = typename NodeStorage::NodeSegmentIndex;
 
-          nodes.nodeEntitySegment.emplace_back(
+          nodes.nodeEntitySegment.push_back(
             EntitySegment{ static_cast<typename EntitySegment::Begin>(nodeEntityBeginID), static_cast<typename EntitySegment::Length>(nodeEntityCount) });
 
           // Child node segment is filled if there are child nodes. Leaf nodes' segments are not created to save space, and GetNodeChildren() returns empty view for them.
@@ -413,11 +418,14 @@ namespace OrthoTree
 
       if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
       {
-        m_nodeGeometry.emplace_back();
+        m_nodeGeometry.push_back({});
       }
       InitNodeGeometry(nodeID, location, spaceIndexing);
       return nodeID;
     }
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 11
+#pragma GCC diagnostic pop
+#endif
 
     // Build the tree in depth-first order
     template<bool ARE_LOCATIONS_SORTED>
