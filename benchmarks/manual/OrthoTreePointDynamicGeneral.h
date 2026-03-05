@@ -17,7 +17,7 @@ template<
   typename TRay,
   typename TPlane, 
   typename TScalar = double,
-  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>>
+  typename adaptor_type = OrthoTree::GeneralGeometryAdapterTemplate<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>>
 class OrthoTreePointDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << DIMENSION_NO;
@@ -123,7 +123,7 @@ public:
     return tree;
   }
 
-  size_t GetNodeSize() const
+  size_t GetNodeCount() const
   {
     return std::ranges::count_if(vNode, [](auto const& node) -> bool { return node.get(); });
   }
@@ -139,7 +139,7 @@ template<
   typename TRay,
   typename TPlane,
   typename TScalar = double,
-  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>>
+  typename adaptor_type = OrthoTree::GeneralGeometryAdapterTemplate<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>>
 class OrthoTreeBoxDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << DIMENSION_NO;
@@ -266,7 +266,7 @@ public:
     return tree;
   }
 
-  size_t GetNodeSize() const
+  size_t GetNodeCount() const
   {
     return std::ranges::count_if(vNode, [](auto const& node) -> bool { return node.get(); });
   }

@@ -46,17 +46,17 @@ std::vector<PointND<DIMENSION_NO>> GeneratePointsRandom(size_t pointsNo, int see
 template<dim_t DIMENSION_NO>
 size_t CreateTreePoint(depth_t depth, std::span<PointND<DIMENSION_NO> const> const& aPoint, bool fPar = false)
 {
-  using TreePoint = TreePointND<DIMENSION_NO>;
+  using TreePoint = OrthoTreePointND<DIMENSION_NO>;
   auto box = BoundingBoxND<DIMENSION_NO>{};
   box.Max.fill(rMax);
 
   auto nt = TreePoint{};
   if (fPar)
-    TreePoint::template Create<true>(nt, aPoint, depth, box);
+    TreePoint::template Create<ExecutionTags::Parallel>(nt, aPoint, depth, box);
   else
     TreePoint::Create(nt, aPoint, depth, box);
 
-  return nt.GetNodes().size();
+  return nt.GetNodeCount();
 }
 
 
