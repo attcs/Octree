@@ -25,6 +25,7 @@ For ease of use, the library provides several aliases ([core/aliases.h](../inclu
 * **Error handling**: OrthoTree is designed as a `noexcept`-only library. All public interfaces are marked `noexcept`, and no exceptions are thrown internally. If memory allocation fails (e.g., `std::bad_alloc`), the program will terminate. User-provided callbacks (entity testers, traversal procedures, priority calculators) **must not throw exceptions**; doing so will result in `std::terminate` being called.
 Errors are typically communicated through `std::optional` wrapped results or error capable structs as return values.
 * Header only implementation.
+* Node interface is not public by default.
 
 ## Adapt to your use-case
 
@@ -46,6 +47,171 @@ For a full reference implementation, see [entity_adapter.h](../include/orthotree
 * `ContiguousIndex`: [default for span-based storage] Index-based ID, and the tree actively maintains the continuity of indexes (e.g. by decrementing the EntityID of the following elements on removal). Index-based storage is typically implemented using `std::vector` or `std::span`.
 * `StableIndex`: Index-based ID, contiguous upon creation, but removals may create "holes", keeping remaining indexes stable. Index-based storage is typically implemented using `std::vector` or `std::span`, but indexing in the tree will not be mutated on removal.
 * `EntityKeyed`: [default for map-based storage] The entity itself contains the ID. (e.g., std::pair<EntityID, Entity> in an std::unordered_map entity container)
+
+<details><summary>Complex adapter example</summary>
+
+
+```C++
+    // Non-default constructible geometry
+    struct RigidPoint
+    {
+      float x, y;
+      RigidPoint() = delete;
+      constexpr RigidPoint(float x, float y)
+      : x(x)
+      , y(y)
+      {}
+    };
+
+    struct RigidBox
+    {
+      RigidPoint Min, Max;
+      RigidBox() = delete;
+      constexpr RigidBox(RigidPoint min, RigidPoint max)
+      : Min(min)
+      , Max(max)
+      {}
+    };
+
+    // Complex EntityID
+    struct GameObjectID
+    {
+      int teamId;
+      int unitId;
+      auto operator<=>(GameObjectID const&) const = default;
+    };
+
+    struct GameObjectIDHash
+    {
+      std::size_t operator()(GameObjectID const& id) const noexcept { return std::hash<int>()(id.teamId) ^ (std::hash<int>()(id.unitId) << 1); }
+    };
+
+    // Abstract Move-Only Entity
+    class IGameObject
+    {
+    public:
+      virtual ~IGameObject() = default;
+      virtual RigidBox const& GetBounds() const = 0;
+    };
+
+    class Enemy : public IGameObject
+    {
+      RigidBox bounds;
+      // +visibility, etc
+
+    public:
+      Enemy(RigidBox b)
+      : bounds(std::move(b))
+      {}
+      Enemy(Enemy const&) = delete;
+      Enemy& operator=(Enemy const&) = delete;
+      Enemy(Enemy&&) = default;
+      Enemy& operator=(Enemy&&) = default;
+
+      virtual RigidBox const& GetBounds() const override { return bounds; }
+    };
+
+    // Geometry adapter
+    struct CustomRigidGeometryAdapter
+    {
+      using Scalar = float;
+      using FloatScalar = float;
+      using Vector = RigidPoint;
+      using Box = RigidBox;
+      struct Ray
+      {
+        RigidPoint Origin;
+        RigidPoint Direction;
+      };
+      struct Plane
+      {
+        float OrigoDistance;
+        RigidPoint Normal;
+      };
+
+      static constexpr OrthoTree::dim_t DIMENSION_NO = 2;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
+      static constexpr Vector MakePoint() noexcept { return RigidPoint(0.0f, 0.0f); };
+      static constexpr Box MakeBox() noexcept { return RigidBox(RigidPoint(0.0f, 0.0f), RigidPoint(0.0f, 0.0f)); };
+
+      static constexpr float GetPointC(RigidPoint const& pt, OrthoTree::dim_t i) noexcept { return i == 0 ? pt.x : pt.y; }
+      static constexpr void SetPointC(RigidPoint& pt, OrthoTree::dim_t i, float v) noexcept
+      {
+        if (i == 0)
+          pt.x = v;
+        else
+          pt.y = v;
+      }
+
+      static constexpr void SetBoxMinC(RigidBox& box, OrthoTree::dim_t i, float v) noexcept { SetPointC(box.Min, i, v); }
+      static constexpr void SetBoxMaxC(RigidBox& box, OrthoTree::dim_t i, float v) noexcept { SetPointC(box.Max, i, v); }
+      static constexpr float GetBoxMinC(RigidBox const& box, OrthoTree::dim_t i) noexcept { return GetPointC(box.Min, i); }
+      static constexpr float GetBoxMaxC(RigidBox const& box, OrthoTree::dim_t i) noexcept { return GetPointC(box.Max, i); }
+
+      static constexpr Vector const& GetRayDirection(Ray const& ray) noexcept { return ray.Direction; }
+      static constexpr Vector const& GetRayOrigin(Ray const& ray) noexcept { return ray.Origin; }
+
+      static constexpr Vector const& GetPlaneNormal(Plane const& plane) noexcept { return plane.Normal; }
+      static constexpr Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return plane.OrigoDistance; }
+    };
+
+    using CustomGeometryAdapter = OrthoTree::GeneralGeometryAdapter<CustomRigidGeometryAdapter>;
+
+    // EntityAdapter
+    using GameObjectContainer = std::unordered_map<GameObjectID, std::unique_ptr<IGameObject>, GameObjectIDHash>;
+    using GameObjectContainerView = GameObjectContainer const&;
+
+    struct GameObjectEntityAdapter
+    {
+      using EntityContainer = GameObjectContainer;
+      using EntityContainerView = GameObjectContainerView;
+      using Entity = std::pair<GameObjectID const, std::unique_ptr<IGameObject>>;
+      using EntityID = GameObjectID;
+      using Geometry = RigidBox;
+      using Hash = GameObjectIDHash;
+
+      static constexpr OrthoTree::GeometryType GEOMETRY_TYPE = OrthoTree::GeometryType::Box;
+      static constexpr OrthoTree::EntityIdStrategy ENTITY_ID_STRATEGY = OrthoTree::EntityIdStrategy::EntityKeyed;
+
+      static Entity const& GetEntity(EntityContainerView entities, EntityID const& entityID) noexcept { return *entities.find(entityID); }
+      static constexpr EntityID GetEntityID(Entity const& entity) noexcept { return entity.first; }
+      static constexpr EntityID GetEntityID(EntityContainerView /*entities*/, Entity const& entity) noexcept { return entity.first; }
+
+      static Geometry const& GetGeometry(EntityContainerView entities, EntityID const& entityID) noexcept
+      {
+        return entities.at(entityID)->GetBounds();
+      }
+      static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return entity.second->GetBounds(); }
+
+      static std::size_t GetEntityCount(EntityContainerView entities) noexcept { return entities.size(); }
+
+      static EntityID Insert(EntityContainer& entities, Entity&& entity) noexcept
+      {
+        auto [it, _] = entities.emplace(std::move(entity));
+        return it->first;
+      }
+
+      static void Erase(EntityContainer& entities, EntityID entityID) noexcept { entities.erase(entityID); }
+
+      static auto Exchange(EntityContainer& entities, EntityID entityID, Entity&& entity) noexcept
+      {
+        auto it = entities.find(entityID);
+        return Entity{ entityID, std::exchange(it->second, std::forward<decltype(entity.second)>(entity.second)) };
+      }
+
+      static void Clear(EntityContainer& entities) noexcept { entities.clear(); }
+
+      static bool Contains(EntityContainer& entities, EntityID entityID) noexcept { return entities.contains(entityID); }
+    };
+
+
+    using QuadtreeGameObjects = OrthoTree::OrthoTreeBase<GameObjectEntityAdapter, CustomGeometryAdapter, OrthoTree::BoxConfiguration<true>>;
+    using QuadtreeGameObjectsM = OrthoTreeManaged<QuadtreeGameObjects>;
+
+```
+</details>
+
 
 ### Geometrical system adapting
 
@@ -193,7 +359,7 @@ The library defines a `BASE_TOLERANCE` trait in the adapters to handle the stand
 
 `USE_REVERSE_MAPPING`: [default: true] **Reverse mapping**, when enabled, maintains a secondary map from each `EntityID` directly to its containing node. This makes `Erase()` and `Update()` O(1) instead of O(N), at the cost of additional memory. Recommended for dynamic datasets with frequent removals or large entity number. Static tree ignores this flag. It has large impact on creation/insertion time and memory usage.
 > [!TIP]
-> If the original entity is still available at the time of the `Update()`/`Erase()` (`Managed` types has this capability), it can be used to find the related node in O(1) time, it may be more advantageous for the overall system performance than the reverse-mapping.
+> If the original entity is still available at the time of the `Update()`/`Erase()` (`Managed` types have this capability), it can be used to find the related node in O(1) time, it may be more advantageous for the overall system performance than the reverse-mapping.
 
 `UMapNodeContainer` / `MapNodeContainer`: **Custom node containers**, by default, the tree nodes are stored in an `std::unordered_map` under 16D, above `std::map`. This can be replaced with any drop-in compatible associative container (e.g., Abseil's `flat_hash_map`) by overriding the `UMapNodeContainer` template alias in a custom `Configuration`.
 
@@ -281,8 +447,8 @@ if (tree.InsertUnique(newEntityID, newEntityGeometry, storedEntities, tolerance)
 
 `Erase()` removes the `EntityID` from the tree, `Update()` removes from old node and add to the new node.
 The following strategies are used:
-* If `USE_REVERSE_MAPPING` is active in the `Configuration`: Related node can be found in O(1) time.
-* If the original entity is supplied to the function: Related node can be found in O(1) time.
+* If `USE_REVERSE_MAPPING` is active in the `Configuration`: Related node can be found in `O(1)` time.
+* If the original entity is supplied to the function: Related node can be found in `O(1)` time.
 * If there is no additional information: Linear search will happen `O(N)`.
 Using wrappers like `OrthoTreeManaged` will securely update / erase the entity from both your underlying collection and the tree structure simultaneously.
 
@@ -327,11 +493,11 @@ OrthoTree implements several ready-made, highly-optimized spatial queries out-of
 * **Collision Detection**: `CollisionDetection(...)` Retrieves pairs of entities whose geometrical boundaries intersect.
 * **KNN**: `GetNearestNeighbors(point, k, ...)` Finds the k-closest entities to a given point. For boxes, it considers optimistic and pessimistic distances, which could result in more than k entities that surely contain the real k-closest entities after precise tests.
 * **Pick Search**: `PickSearch(point, ...)` Finds entities containing a given point.
-* **Raycasting**: `RayIntersectedAll(ray, ...)` or `RayIntersectedFirst(ray, ...)` finds intersections along a ray.
+* **Raycasting**: `RayIntersectedAll(ray, ...)` or `RayIntersectedFirst(ray, ...)` finds intersections along a ray within a conical tolerance.
 * **Plane Search**: `PlaneSearch(plane, ...)` Finds entities intersected by a hyperplane.
 * **Frustum Culling**: `FrustumCulling(planes, ...)` Finds entities within or intersected by a set of boundary planes.
 
-### Query()
+### `Query()`
 The generic `Query` interface allows for complex, multi-condition searches. You can combine multiple search criteria (Range, Frustum, Custom Testers) using logical AND or OR.
 
 ```cpp

@@ -7,7 +7,7 @@ What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree <b
 What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curve <br>
 What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 
-[CHANGELOG](./CHANGELOG.md) | [DOCUMENTATION](./docs/README.md) | [BENCHMARKS](https://attcs.github.io/Octree/dev/bench/)
+[CHANGELOG](./CHANGELOG.md) | [DOCUMENTATION](./docs/README.md) | [BENCHMARKS](https://attcs.github.io/Octree/dev/docs/benchmark_viewer.html)
 
 ## Features
 * Adaptable to any existing geometric system
@@ -46,11 +46,11 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
 * Use `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if some of the underlying geometrical elements were changed or reordered
 * Use `InsertUnique()` if tolerance-based unique insertion is needed for points
-* Use `InsertWithRebalance()` for rebalancing the tree during insertion
+* Use `Insert()` for split overflown nodes during entity insertion
 * Use `Managed` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
 * Use `CollisionDetection()` member function for bounding box overlap examination.
-* Use `VisitNodes()` / `VisitNodesInDFS()` to traverse the tree from up to down (former is breadth-first search) with user-defined `selector()` and `procedure()`.
-* Use `GetNearestNeighbors()` for kNN search in point-based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
+* Use `TraverseNodesBreadthFirst()` / `TraverseNodesDepthFirst()` / `TraverseEntitiesByPriority()` to traverse the tree from up to down (former is breadth-first search) with user-defined `procedure()`.
+* Use `GetNearestNeighbors()` for kNN search. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
 * Use `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
 
 ## Notes
@@ -86,10 +86,10 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
     * Custom keyed: `QuadtreePointMap`, `OctreePointMap`, `QuadtreeBoxMap`, `OctreeBoxMap`
 * `Managed` types:
   * Static:
-    * Contiguous: `StaticQuadtreePointM`, `StaticOctreePointM`, `StaticQuadtreeBoxM`,`StaticOctreeBoxM`,  `StaticTreePointManagedND<dim, ...>`, `StaticTreeBoxManagedND<dim, ...>`
+    * Contiguous: `StaticQuadtreePointM`, `StaticOctreePointM`, `StaticQuadtreeBoxM`,`StaticOctreeBoxM`,  `StaticOrthoTreePointManagedND<dim, ...>`, `StaticOrthoTreeBoxManagedND<dim, ...>`
     * Custom keyed: `StaticQuadtreePointMapM`, `StaticOctreePointMapM`, `StaticQuadtreeBoxMapM`, `StaticOctreeBoxMapM`
   * Dynamic:
-    * Contiguous: `QuadtreePointM`, `OctreePointM`, `QuadtreeBoxM`, `OctreeBoxM`, `TreePointManagedND<dim, ...>`, `TreeBoxManagedND<dim, ...>`
+    * Contiguous: `QuadtreePointM`, `OctreePointM`, `QuadtreeBoxM`, `OctreeBoxM`, `OrthoTreePointManagedND<dim, ...>`, `OrthoTreeBoxManagedND<dim, ...>`
     * Custom keyed: `QuadtreePointMapM`, `OctreePointMapM`, `QuadtreeBoxMapM`, `OctreeBoxMapM`
 
 See the full list of the default aliases in [core/aliases.h](./include/orthotree/core/aliases.h)
@@ -163,7 +163,7 @@ Usage of Managed types (Recommended)
         , OctreeBox::DEFAULT_MAX_ELEMENT
       );
 
-      auto octreeUsingCreate = OctreeBoxM::Create<true>(boxes, 3);
+      auto octreeUsingCreate = OctreeBoxM::Create<ParExec>(boxes, 3);
     }
 
     
@@ -239,20 +239,3 @@ Usage of Core types
     
 For more examples, see the unit tests. E.g., [example.tests.cpp](./tests/unittests/example.tests.cpp).
 <div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/quadtree_example.PNG " align="center" height="300"></div>
-
-
-
-
-## Benchmarks
-Octree creation for 3 point sets using different placing strategy, and Cylindrical point set generation time:<br>
-<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/octree_point_perf_3sets.png" align="center"></div>
-<br><br>
-Octree creation for 3 box sets using different placing strategy, and Cylindrical box set generation time:<br><br>
-<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/octree_box_perf_3sets.png" align="center"></div>
-<br><br>
-Collision detection:<br><br>
-<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/collisiondetection.png" align="center"></div>
-<br>
-<br>
-*CPU: AMD Ryzen 5 5600X 6-Core @ 3.70GHz, CPU benchmark: 22146
-
