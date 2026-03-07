@@ -276,7 +276,7 @@ if (tree.InsertUnique(newEntityID, newEntityGeometry, storedEntities, tolerance)
 
 It returns `true` if the entity was updated, `false` otherwise. 
 * If the entity is not found, it returns `false`.
-* If the entity is not in the handled range with `ALLOW_OUT_OF_SPACE_INSERTION` disabled, it returns `false`.
+* If `ALLOW_OUT_OF_SPACE_INSERTION` is disabled and the entity is not in the handled range, it returns `false`, and the original entity is removed.
 
 > [!CAUTION]
 > Do not update the entity in your underlying storage before calling `Update()`. Provide the potential new geometry directly to the function instead. It could cause issues during node overflow. 

@@ -325,10 +325,6 @@ namespace OrthoTree
         isInserted = m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(m_entities, entityID), insertionMode);
       }
 
-      // restore the original state
-      if (!isInserted)
-        EA::Exchange(m_entities, entityID, std::move(oldEntity));
-
       return isInserted;
     }
 
@@ -352,9 +348,7 @@ namespace OrthoTree
         isInserted = m_tree.Update(entityID, EA::GetGeometry(oldEntity), EA::GetGeometry(m_entities, entityID), insertionMode);
       }
 
-      // restore the original state
-      if (!isInserted)
-        EA::Exchange(m_entities, entityID, std::move(oldEntity));
+      // failed core update: the original element is not in the tree anymore, therefore restoration would cause data inconsistency between the tree and m_entities.
 
       return isInserted;
     }

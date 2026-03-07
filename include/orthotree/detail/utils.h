@@ -412,19 +412,17 @@ namespace OrthoTree::detail
     container.clear();
   }
 
-  constexpr auto erase(auto& container, auto const& element) noexcept
+  template<typename T, std::integral TIndex>
+  constexpr auto erase(std::vector<T>& container, TIndex index) noexcept
   {
-    return container.erase(element);
+    return container.erase(container.begin() + static_cast<std::size_t>(index));
   }
 
-  template<typename TContainer, typename TValue>
-    requires(!requires(TContainer& c, TValue const& v) { c.erase(v); })
-  constexpr auto erase(TContainer& container, TValue const& element) noexcept
+  template<typename TContainer, typename TKey>
+    requires(requires(TContainer& c, TKey const& k) { c.erase(k); })
+  constexpr auto erase(TContainer& container, TKey const& element) noexcept
   {
-    auto const it = std::remove(container.begin(), container.end(), element);
-    auto const count = std::distance(it, container.end());
-    container.erase(it, container.end());
-    return count;
+    return container.erase(element);
   }
 
   template<typename TContainer, typename TValue>

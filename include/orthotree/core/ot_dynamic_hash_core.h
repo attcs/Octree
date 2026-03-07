@@ -1801,10 +1801,14 @@ namespace OrthoTree
           return false;
       }
 
-      if (!EraseBase<false>(entityID))
+      if (!EraseBase<true>(entityID))
         return false;
 
-      return InsertIntoLeaf(entityID, newEntityGeometry, insertionMode);
+      bool isInserted = InsertIntoLeaf(entityID, newEntityGeometry, insertionMode);
+      if (!isInserted)
+        ErasePostUpdate<false>(entityID); // Finish the erase if the update is failed due to out-of-space insertion.
+
+      return isInserted;
     }
 
     // Update id by the new bounding box information and the erase part is aided by the old bounding box geometry data
@@ -1820,20 +1824,28 @@ namespace OrthoTree
       }
       else
       {
-        if (!EraseBase<false>(entityID, oldEntityGeometry))
+        if (!EraseBase<true>(entityID, oldEntityGeometry))
           return false; // entityID was not registered previously.
 
-        return InsertIntoLeaf(entityID, newEntityGeometry, insertionMode);
+        bool isInserted = InsertIntoLeaf(entityID, newEntityGeometry, insertionMode);
+        if (!isInserted)
+          ErasePostUpdate<false>(entityID); // Finish the erase if the update is failed due to out-of-space insertion.
+
+        return isInserted;
       }
     }
 
     // Update id with rebalancing by the new bounding box information
     bool Update(EntityID entityID, EA::Geometry const& newEntityGeometry, EntityContainerView entities) noexcept
     {
-      if (!EraseBase<false>(entityID))
+      if (!EraseBase<true>(entityID))
         return false;
 
-      return Insert(entityID, newEntityGeometry, entities);
+      bool isInserted = Insert(entityID, newEntityGeometry, entities);
+      if (!isInserted)
+        ErasePostUpdate<false>(entityID); // Finish the erase if the update is failed due to out-of-space insertion.
+
+      return isInserted;
     }
 
     // Update id with rebalancing by the new bounding box information and the erase part is aided by the old bounding box geometry data
@@ -1845,10 +1857,14 @@ namespace OrthoTree
       }
       else
       {
-        if (!EraseBase<false>(entityID, oldEntityGeometry))
+        if (!EraseBase<true>(entityID, oldEntityGeometry))
           return false; // entityID was not registered previously.
 
-        return Insert(entityID, newEntityGeometry, entities);
+        auto isInserted = Insert(entityID, newEntityGeometry, entities);
+        if (!isInserted)
+          ErasePostUpdate<false>(entityID); // Finish the erase if the update is failed due to out-of-space insertion.
+
+        return isInserted;
       }
     }
 
@@ -2007,7 +2023,27 @@ namespace OrthoTree
       }
     }
 
-    template<bool DECREASE_ENTITY_IDS = EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>
+    template<bool IS_PART_OF_UPDATE = false>
+    constexpr void ErasePostUpdate(EntityID entityID) noexcept
+    {
+      if constexpr (IS_PART_OF_UPDATE)
+      {
+        if constexpr (CONFIG::USE_REVERSE_MAPPING)
+        {
+          if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
+            detail::erase(m_reverseMap, entityID);
+        }
+      }
+      else
+      {
+        if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex)
+          DecreaseEntityIDs(entityID);
+        else if constexpr (CONFIG::USE_REVERSE_MAPPING && EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
+          detail::erase(m_reverseMap, entityID);
+      }
+    }
+
+    template<bool IS_PART_OF_UPDATE = false>
     constexpr bool EraseBase(EntityID entityID) noexcept
     {
       bool isErased = false;
@@ -2021,9 +2057,6 @@ namespace OrthoTree
         auto nodeIt = m_nodes.find(*pNodeID);
         if (!RemoveNodeEntity(nodeIt->second, entityID))
           return false;
-
-        if constexpr (EA::ENTITY_ID_STRATEGY != EntityIdStrategy::StableIndex)
-          detail::erase(m_reverseMap, entityID);
 
         RemoveNodeIfPossible(nodeIt);
         isErased = true;
@@ -2044,15 +2077,11 @@ namespace OrthoTree
       if (!isErased)
         return false;
 
-      if constexpr (DECREASE_ENTITY_IDS)
-      {
-        DecreaseEntityIDs(entityID);
-      }
-
+      ErasePostUpdate<IS_PART_OF_UPDATE>(entityID);
       return true;
     }
 
-    template<bool DECREASE_ENTITY_IDS = EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex>
+    template<bool IS_PART_OF_UPDATE = false>
     constexpr bool EraseBase(EntityID entitiyID, EA::Geometry const& entityGeometry) noexcept
     {
       auto nodeIt = GetNodeIt(entityGeometry);
@@ -2068,24 +2097,16 @@ namespace OrthoTree
       }
 
       RemoveNodeIfPossible(nodeIt);
-
-      if constexpr (DECREASE_ENTITY_IDS)
-      {
-        DecreaseEntityIDs(entitiyID);
-      }
-
+      ErasePostUpdate<IS_PART_OF_UPDATE>(entitiyID);
       return true;
     }
 
   public: // Entity handling
     // Erase entity via reverse mapping or brute force search. Reverse mapping is recommended.
-    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase < EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex > (entityID); }
+    constexpr bool Erase(EntityID entityID) noexcept { return EraseBase(entityID); }
 
     // Erase id, aided with the original geometry. Reverse mapping is not used in this function, consider its usage, with the alternative Erase().
-    constexpr bool Erase(EntityID entityID, EA::Geometry const& entityGeometry) noexcept
-    {
-      return EraseBase < EA::ENTITY_ID_STRATEGY == EntityIdStrategy::ContiguousIndex > (entityID, entityGeometry);
-    }
+    constexpr bool Erase(EntityID entityID, EA::Geometry const& entityGeometry) noexcept { return EraseBase(entityID, entityGeometry); }
 
   public: // Search functions
     bool Contains(EA::Geometry const& geometry, EntityContainerView entities, TFloatScalar tolerance = GA::BASE_TOLERANCE) const noexcept
