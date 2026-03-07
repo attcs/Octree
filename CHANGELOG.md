@@ -12,11 +12,11 @@ Interface changes
 * `TFloatScalar` is introduced: integer based geometry calculation is very hectic. Internal calculation uses this type and tolerances.
 * EntityAdapter is introduced: this allows any type of system adoption. For more details see the [EntityAdapter](./include/orthotree/core/entity_adapter.h).
 * Configuration is introduced. For more details see the [configuration.h](./include/orthotree/core/configuration.h).
-* Loose octree is implemented.
-* Split strategy is removed completely: Last iteration (single depth split) was an inferior solution in every aspect.
+* `Container` types are renamed to `Managed`, and `C` postfix is changed to `M`
+* Split strategy is removed completely: Last iteration (single depth split) was an inferior solution in every aspect to the regular octree. Loose tree is introduces instead.
 * `Visit*()` functions are changed: `TraverseNodesBreadthFirst()`/`TraverseNodesDepthFirst()`/`TraverseNodesByPriority()`. 
   Only one lambda is required which 
-  * input is `NodeValue` (currently std::pair<const NodeID, Node>, but do not rely on in long term), other API function are available to ask node geometry data and entities (`GetNodeMinPoint()`, `GetNodeHSize()`, `GetNodeEntities()`).
+  * input is `NodeValue` (currently std::pair<const NodeID, Node>, but do not rely on in long term), other API function are available to ask node geometry data and entities (`GetNodeMinPoint()`, `GetNodeSize()`, `GetNodeEntities()`).
   * must return `TraverseControl` enum to control the traverse.
 * Out of modelspace entities handling now is configurable. Default behavior is changed to allow.
   * Allow = true [Default]: OoM entities will be placed in the Root. Root bounding box will be changed to enclose the new entity.
@@ -28,7 +28,7 @@ Interface changes
 * `Query()` function is added for complex combined queries: simultanious frustum culling, plane intersection, range search and custom tester.
 * Custom template `EntityTester`-s were added to queries. (Both entityID/Entity and geometry-related testers are allowed.)
 * `RangeSearch()` function is changes: `isFullyContain` template parameter is removed and `RangeSearchMode` enum is added as function parameter.
-* `bool`-flagged pararellism parameters are replaced with `ExecutionTags` enum.
+* `bool`-flagged pararellism parameters are replaced with `ExecutionTags`.
 * Required adapter includes are added to the public headers. For custom include path, a build macro is available. (E.g. Eigen: `#define ORTHOTREE_EIGEN_INCLUDE <my_vendor/Eigen/Geometry>`)
 
 New features
@@ -40,6 +40,7 @@ New features
 Miscellaneous
 * Code is restructured from single to multi header structure.
 * Double precision is used in grid calculation for float32 based geometry with larger depth to avoid numerical issues.
+* `RayInsersection` functions was not prepared for fast-math compiler options, it is fixed.
  
 Performance improvements
 * Loose octree has major performance advantage for picking.

@@ -769,7 +769,7 @@ namespace OrthoTree
       {
         auto const orphanNodeID = orphanNodes[i];
         auto& [parentNodeID, parentNode] = *GetParentIt(orphanNodeID);
-        auto const childID = SI::GetChildID2(parentNodeID, orphanNodeID);
+        auto const childID = SI::GetNonDirectChildID(parentNodeID, orphanNodeID);
 
         if (parentNode.HasChild(childID))
         {
@@ -780,7 +780,7 @@ namespace OrthoTree
           if (orphanNodeID == lcaNodeID)
           {
             auto& orphanNode = m_nodes.at(orphanNodeID);
-            auto const childIDOfOrphanNode = SI::GetChildID2(orphanNodeID, childNodeID);
+            auto const childIDOfOrphanNode = SI::GetNonDirectChildID(orphanNodeID, childNodeID);
             if (orphanNode.HasChild(childIDOfOrphanNode))
               orphanNodes.push_back(orphanNode.GetChild(childIDOfOrphanNode));
 
@@ -791,8 +791,8 @@ namespace OrthoTree
             auto [lcaIt, _] = m_nodes.try_emplace(lcaNodeID);
             InitNodeGeometry(&*lcaIt);
             auto& lcaNode = lcaIt->second;
-            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
-            lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, orphanNodeID), orphanNodeID);
+            lcaNode.LinkChild(SI::GetNonDirectChildID(lcaNodeID, childNodeID), childNodeID);
+            lcaNode.LinkChild(SI::GetNonDirectChildID(lcaNodeID, orphanNodeID), orphanNodeID);
           }
         }
         else
@@ -1236,7 +1236,7 @@ namespace OrthoTree
       InitNodeGeometry(&*nodeIt);
 
       auto& [parentNodeID, parentNode] = *GetParentIt(nodeID);
-      auto const childID = SI::GetChildID2(parentNodeID, nodeID);
+      auto const childID = SI::GetNonDirectChildID(parentNodeID, nodeID);
 
       if (!parentNode.HasChild(childID))
       {
@@ -1251,7 +1251,7 @@ namespace OrthoTree
 
       if (nodeID == lcaNodeID)
       {
-        nodeIt->second.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
+        nodeIt->second.LinkChild(SI::GetNonDirectChildID(lcaNodeID, childNodeID), childNodeID);
         return nodeIt;
       }
       else
@@ -1260,8 +1260,8 @@ namespace OrthoTree
         InitNodeGeometry(&*lcaIt);
 
         auto& lcaNode = lcaIt->second;
-        lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, childNodeID), childNodeID);
-        lcaNode.LinkChild(SI::GetChildID2(lcaNodeID, nodeID), nodeID);
+        lcaNode.LinkChild(SI::GetNonDirectChildID(lcaNodeID, childNodeID), childNodeID);
+        lcaNode.LinkChild(SI::GetNonDirectChildID(lcaNodeID, nodeID), nodeID);
 
         if constexpr (detail::is_reference_stable_v<decltype(m_nodes)>)
           return nodeIt;
@@ -1613,7 +1613,7 @@ namespace OrthoTree
           nodeIt = GetParentIt(entityNodeID);
           if (nodeIt->second.IsAnyChildExist())
           {
-            auto const childID = SI::GetChildID2(nodeIt->first, entityNodeID);
+            auto const childID = SI::GetNonDirectChildID(nodeIt->first, entityNodeID);
             auto const childGenerator = typename SI::ChildKeyGenerator(nodeIt->first);
             auto const childNodeID = childGenerator.GetChildNodeKey(childID);
 
@@ -2004,7 +2004,7 @@ namespace OrthoTree
         auto parentNodeIt = GetParentIt(nodeID);
 
         auto& [parentNodeID, parentNode] = *parentNodeIt;
-        parentNode.UnlinkChild(SI::GetChildID2(parentNodeID, nodeID));
+        parentNode.UnlinkChild(SI::GetNonDirectChildID(parentNodeID, nodeID));
         m_nodes.erase(nodeIt);
 
         nodeIt = parentNodeIt;

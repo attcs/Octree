@@ -72,7 +72,7 @@ namespace OrthoTree
 
     // It determines the internal location data type sizes.
     // In 3D, 21: (maximum allowed depth for 3D), LocationID is an uint64_t, Location's size is over 64bit. Resolution: for 1km model-space is 0.5mm
-    // In 3D, 19: Location's size is 57bit. Resolution: for 1km model-space is 20mm
+    // In 3D, 19: Location's size is 57bit. Compact location storage is used for 3D. Resolution: for 1km model-space is 20mm
     // In 3D, 10: LocationID is an uint32_t, Location's size is over 32bit. Resolution: for 1km model-space is 1m
     // In 3D, 8: LocationID is an uint32_t, Location's size is 32bit. Resolution: for 1km model-space is 4m
     static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 19 };
@@ -80,7 +80,7 @@ namespace OrthoTree
     static constexpr NodeGeometryStorage NODE_GEOMETRY_STORAGE = NODE_GEOMETRY_STORAGE_;
 
     // Target number of elements in nodes
-    static constexpr std::size_t DEFAULT_TARGET_ELEMENT_NUM_IN_NODES = 20; // TODO: set to 16
+    static constexpr std::size_t DEFAULT_TARGET_ELEMENT_NUM_IN_NODES = 16;
 
     // Associative container used for node storage (default: std::unordered_map)
     // Pointer-stability is checked via detail::is_reference_stable(), non-std containers are handled as non-pointer-stable.

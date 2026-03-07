@@ -248,9 +248,6 @@ namespace OrthoTree::detail
       return (childKey >> shift) == possibleAncestorKey;
     }
 
-    // TODO: remove
-    static constexpr LocationID GetParentGridID(LocationIDCR locationID) noexcept { return locationID >> DIMENSION_NO; }
-
     static constexpr depth_t GetDepthID(NodeID key) noexcept
     {
       if constexpr (IS_LINEAR_TREE)
@@ -592,7 +589,6 @@ namespace OrthoTree::detail
 
     static constexpr ChildID CastMortonIDToChildID(LinearLocationID morton) noexcept { return morton; }
 
-    // TODO: remove?
     static ChildID GetChildID(NodeIDCR key) noexcept
     {
       if constexpr (IS_LINEAR_TREE)
@@ -612,8 +608,7 @@ namespace OrthoTree::detail
       }
     }
 
-    // TODO: rename
-    static ChildID GetChildID2(NodeIDCR parentNodeID, NodeID childNodeID) noexcept
+    static ChildID GetNonDirectChildID(NodeIDCR parentNodeID, NodeID childNodeID) noexcept
     {
       auto const parentDepthID = GetDepthID(parentNodeID);
       auto const childDepthID = GetDepthID(childNodeID);

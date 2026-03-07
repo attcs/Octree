@@ -303,19 +303,6 @@ namespace OrthoTree::detail
   }
 
   template<typename TContainer, typename TKey, typename TValue>
-  constexpr auto exchange(TContainer& container, TKey key, TValue&& value) noexcept
-  {
-    if constexpr (requires { container.extract(key); } && requires { value.second; })
-    {
-      return std::pair{ key, std::exchange(container.at(key), value.second) };
-    }
-    else
-    {
-      return std::exchange(detail::at(container, key), std::forward<TValue>(value));
-    }
-  }
-
-  template<typename TContainer, typename TKey, typename TValue>
   constexpr void set(TContainer& continer, TKey key, TValue&& value) noexcept
   {
     continer[key] = std::forward<TValue>(value);

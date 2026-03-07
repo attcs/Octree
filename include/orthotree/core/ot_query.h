@@ -1040,13 +1040,6 @@ namespace OrthoTree
       return value == 0 ? -tolerance : (value * (TFloatScalar(1.0) - tolerance));
     }
 
-    // TODO: remove? lower is not used
-    struct FarthestDistance
-    {
-      TFloatScalar lower;
-      TFloatScalar upper;
-    };
-
     struct EntityDistance
     {
       EntityID entityID;
@@ -1071,7 +1064,7 @@ namespace OrthoTree
       EntityContainerView entities,
       TFloatScalar tolerance,
       EntityDistances& neighborEntities,
-      FarthestDistance& farthestEntityDistance) noexcept
+      TFloatScalar& farthestEntityDistance) noexcept
     {
       auto neighborEntitiesPessimisticMaxHeap = std::vector<TFloatScalar>{};
 
@@ -1092,7 +1085,7 @@ namespace OrthoTree
           static_assert(false, "Unsupported geometry type for kNN!");
         }
 
-        if (pbd.min >= farthestEntityDistance.upper)
+        if (pbd.min >= farthestEntityDistance)
           continue;
 
         if constexpr (!std::is_same_v<TEntityDistanceFn, std::monostate>)
@@ -1114,7 +1107,7 @@ namespace OrthoTree
             else
               pbd.min = entityDistanceResult;
 
-            if (pbd.min >= farthestEntityDistance.upper)
+            if (pbd.min >= farthestEntityDistance)
               continue;
 
             pbd.minMax = pbd.min;
@@ -1132,11 +1125,7 @@ namespace OrthoTree
           std::ranges::make_heap(neighborEntities.optimistic);
           std::ranges::make_heap(neighborEntities.pessimistic);
 
-          farthestEntityDistance.upper = GetValueWithToleranceUpper(neighborEntities.pessimistic[0].distance, tolerance);
-          if constexpr (EA ::GEOMETRY_TYPE == GeometryType::Point)
-            farthestEntityDistance.lower = farthestEntityDistance.upper;
-          else
-            farthestEntityDistance.lower = GetValueWithToleranceLower(neighborEntities.pessimistic[0].distance, tolerance);
+          farthestEntityDistance = GetValueWithToleranceUpper(neighborEntities.pessimistic[0].distance, tolerance);
         }
         else
         {
@@ -1148,18 +1137,12 @@ namespace OrthoTree
 
           auto nthFarthestEntityDistanceLimit = GetValueWithToleranceUpper(neighborEntities.pessimistic.front().distance, tolerance);
 
-          if (nthFarthestEntityDistanceLimit < farthestEntityDistance.upper)
+          if (nthFarthestEntityDistanceLimit < farthestEntityDistance)
           {
-            farthestEntityDistance.upper = nthFarthestEntityDistanceLimit;
-            if constexpr (EA::GEOMETRY_TYPE == GeometryType::Point)
-              farthestEntityDistance.lower = farthestEntityDistance.upper;
-            else if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
-              farthestEntityDistance.lower = GetValueWithToleranceLower(neighborEntities.pessimistic.front().distance, tolerance);
-            else
-              static_assert(false);
+            farthestEntityDistance = nthFarthestEntityDistanceLimit;
 
             bool pessimisticRemoved = false;
-            while (neighborEntities.optimistic.front().distance > farthestEntityDistance.upper)
+            while (neighborEntities.optimistic.front().distance > farthestEntityDistance)
             {
               auto const removedEntityID = neighborEntities.optimistic.front().entityID;
               auto const it =
@@ -1240,13 +1223,11 @@ namespace OrthoTree
       neighborEntities.pessimistic.reserve(neighborCount);
 
       // farthestEntityDistance already contains the numerical tolerance
-      auto farthestEntityDistance =
-        FarthestDistance{ {},
-                          maxDistanceWithin == std::numeric_limits<TScalar>::max() ? std::numeric_limits<TScalar>::max()
-                                                                                   : GetValueWithToleranceUpper(maxDistanceWithin, tolerance) };
+      auto farthestEntityDistance = maxDistanceWithin == std::numeric_limits<TScalar>::max() ? TFloatScalar(std::numeric_limits<TScalar>::max())
+                                                                                             : GetValueWithToleranceUpper(maxDistanceWithin, tolerance);
       TraverseNodesByPriority(
         [&, this](auto const nodeValue, TFloatScalar nodeDistance) -> TraverseControl {
-          if (nodeDistance >= farthestEntityDistance.upper)
+          if (nodeDistance >= farthestEntityDistance)
             return TraverseControl::Terminate;
 
           AddEntityDistance(
@@ -1256,7 +1237,7 @@ namespace OrthoTree
         },
         [&, this](auto const nodeValue) -> std::optional<TFloatScalar> {
           auto wallDistance = GetNodeWallDistance(searchPoint, nodeValue, true);
-          if (wallDistance >= farthestEntityDistance.upper)
+          if (wallDistance >= farthestEntityDistance)
             return std::nullopt;
 
           return wallDistance;

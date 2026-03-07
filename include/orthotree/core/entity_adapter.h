@@ -144,7 +144,14 @@ namespace OrthoTree
     // Exchange (replace) the entity at the given EntityID with a new value. The EntityID does not change.
     static constexpr auto Exchange(EntityContainer& entities, EntityID entityID, auto&& entity) noexcept
     {
-      return detail::exchange(entities, entityID, std::forward<decltype(entity)>(entity));
+      if constexpr (ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
+      {
+        return Entity{ entityID, std::exchange(entities.find(entityID)->second, std::forward<decltype(entity.second)>(entity.second)) };
+      }
+      else
+      {
+        return std::exchange(detail::at(entities, entityID), std::forward<decltype(entity)>(entity));
+      }
     }
 
     // Clear all entities from the container.
