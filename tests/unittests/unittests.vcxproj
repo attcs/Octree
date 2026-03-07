@@ -201,6 +201,15 @@
     <ClInclude Include="..\..\include\orthotree\adapters\glm.h" />
     <ClInclude Include="..\..\include\orthotree\adapters\unreal.h" />
     <ClInclude Include="..\..\include\orthotree\adapters\xyz.h" />
+    <ClInclude Include="..\..\include\orthotree\core\aliases.h" />
+    <ClInclude Include="..\..\include\orthotree\core\build_config.h" />
+    <ClInclude Include="..\..\include\orthotree\core\configuration.h" />
+    <ClInclude Include="..\..\include\orthotree\core\entity_adapter.h" />
+    <ClInclude Include="..\..\include\orthotree\core\ot_base.h" />
+    <ClInclude Include="..\..\include\orthotree\core\ot_dynamic_hash_core.h" />
+    <ClInclude Include="..\..\include\orthotree\core\ot_query.h" />
+    <ClInclude Include="..\..\include\orthotree\core\ot_static_linear_core.h" />
+    <ClInclude Include="..\..\include\orthotree\core\types.h" />
     <ClInclude Include="..\..\include\orthotree\detail\bitset_arithmetic.h" />
     <ClInclude Include="..\..\include\orthotree\detail\common.h" />
     <ClInclude Include="..\..\include\orthotree\detail\configuration.h" />

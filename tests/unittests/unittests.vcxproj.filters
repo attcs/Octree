@@ -22,6 +22,9 @@
     <Filter Include="Header Files\include\adapters">
       <UniqueIdentifier>{099ca9bf-a918-4773-9f94-4d11cb47ae53}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\include\core">
+      <UniqueIdentifier>{212419f3-0818-40f6-9ab2-8e781e1fc29c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="general.tests.cpp">
@@ -54,9 +57,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\orthotree\octree.h">
-      <Filter>Header Files\include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\orthotree\core\ot_managed.h">
       <Filter>Header Files\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\orthotree\detail\bitset_arithmetic.h">
@@ -124,6 +124,36 @@
     </ClInclude>
     <ClInclude Include="..\..\include\orthotree\detail\si_mortongrid.h">
       <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\aliases.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\build_config.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\configuration.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\entity_adapter.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_base.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_dynamic_hash_core.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_query.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_static_linear_core.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\types.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_managed.h">
+      <Filter>Header Files\include\core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

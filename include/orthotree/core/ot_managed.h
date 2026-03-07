@@ -29,12 +29,9 @@ SOFTWARE.
 //////////////////////////////////////////////////////////////////////////
 
 
-#include "adapters/general.h"
-
-#include "core/aliases.h"
-#include "core/types.h"
-
-#include "detail/common.h"
+#include "../adapters/general.h"
+#include "../core/types.h"
+#include "../detail/common.h"
 
 
 #include <utility>

@@ -4518,7 +4518,7 @@ namespace LongIntAdaptor
       if (boxes.empty())
         return;
 
-      using Tree = TreeBoxManagedND<3, true, float>;
+      using Tree = OrthoTreeBoxManagedND<3, true, float>;
       auto const tree = Tree(boxes, 4, std::nullopt, 21, false);
 
       const auto boxOfTree = tree.GetCore().GetBox();
@@ -5511,7 +5511,7 @@ namespace GeneralTest
   public:
     TEST_METHOD(ContainerAdd_SpanOfGeometry_2D)
     {
-      using Container = TreeBoxManagedND<2>;
+      using Container = OrthoTreeBoxManagedND<2>;
       using Box = BoundingBoxND<2>;
 
       auto container = Container();
@@ -5534,7 +5534,7 @@ namespace GeneralTest
 
     TEST_METHOD(ContainerAdd_VectorOfGeometry_3D)
     {
-      using Container = TreeBoxManagedND<3>;
+      using Container = OrthoTreeBoxManagedND<3>;
       using Box = BoundingBoxND<3>;
 
       auto container = Container();
@@ -5557,7 +5557,7 @@ namespace GeneralTest
 
     TEST_METHOD(ContainerAdd_VectorOfGeometry_6D)
     {
-      using Container = TreePointManagedND<6>;
+      using Container = OrthoTreePointManagedND<6>;
       using Point = PointND<6>;
 
       auto container = Container();
@@ -5580,7 +5580,7 @@ namespace GeneralTest
 
     TEST_METHOD(ContainerAdd_SpanOfGeometry_12D)
     {
-      using Container = TreePointManagedND<12>;
+      using Container = OrthoTreePointManagedND<12>;
       using Point = PointND<12>;
 
       auto container = Container();
