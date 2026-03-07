@@ -214,6 +214,7 @@ Recommended usage: The Configuration parameters could be changed time-to-time, t
 ### Compile-time flags
 Configuration can be further tuned using macros defined in [build_config.h](../include/orthotree/core/build_config.h). Define these before including the library headers:
 * `ORTHOTREE__PUBLIC_NODE_INTERFACE`: Expose node-related internal functions.
+* `ORTHOTREE__PUBLIC_LINEARDATA_INTERFACE`: Expose linear internal data on static trees.
 * `ORTHOTREE__DEBUG_CHECKS`: Enable internal debug assertions.
 * `ORTHOTREE__USE_PMR`: Force use of Polymorphic Memory Resources (default for MSVC) with the default Configuration.
 * `ORTHOTREE__DISABLE_PMR`: Disable PMR usage on all platforms.

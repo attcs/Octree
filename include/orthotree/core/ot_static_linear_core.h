@@ -628,5 +628,15 @@ namespace OrthoTree
     {
       return tree.Create<TExecMode>(entities, maxDepthIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
     }
+
+#ifdef ORTHOTREE__PUBLIC_LINEARDATA_INTERFACE
+  public:
+#else
+  protected:
+#endif
+    auto const& GetNodes() const noexcept { return m_nodes; }
+    auto const& GetNodeGeometries() const noexcept { return m_nodeGeometry; }
+    auto const& GetNodeDepthIDs() const noexcept { return m_nodeDepthIDs; }
+    auto const& GetEntityStorage() const noexcept { return m_entityStorage; }
   };
 } // namespace OrthoTree

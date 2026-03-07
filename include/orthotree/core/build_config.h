@@ -42,6 +42,9 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 // By default, the node interface is not available. Use this macro to make node-related functions public.
 #define ORTHOTREE__PUBLIC_NODE_INTERFACE
 
+// By default, the linear data interface is not available. Use this macro to make linear data-related functions public on Static Orthotrees.
+#define ORTHOTREE__PUBLIC_LINEARDATA_INTERFACE
+
 // Enable debug checks
 #define ORTHOTREE__DEBUG_CHECKS
 */
