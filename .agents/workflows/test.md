@@ -12,3 +12,4 @@ To run the project's unit tests, follow these steps:
 - For GCC: `powershell -ExecutionPolicy Bypass -File ./tests/gcc/test_gcc.ps1`
 
 Ensure you are in the project root directory before running these commands.
+DO NOT RUN TESTS PROACTIVELY.
