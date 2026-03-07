@@ -496,7 +496,7 @@ namespace OrthoTree::detail
           auto const isNanCompnent = std::fabs(nd) < 2.0 * std::numeric_limits<Geometry>::epsilon();
           boxPickTester->m_inverseDirection[dimensionID] = isNanCompnent ? std::numeric_limits<Geometry>::quiet_NaN() : (Geometry(1) / nd);
           boxPickTester->m_signInfo.set(dimensionID, nd < 0);
-
+          boxPickTester->m_isZeroDirection.set(dimensionID, isNanCompnent);
           boxPickTester->m_hasNaNComponent |= isNanCompnent;
         }
 
@@ -567,6 +567,9 @@ namespace OrthoTree::detail
       template<bool isConeToleranceConsidered = true>
       constexpr std::optional<PickResult> BoxHitTest(const Vector& minDifference, const Vector& maxDifference) const noexcept
       {
+        std::optional pickResult =
+          PickResult{ .enterDistance = -std::numeric_limits<Geometry>::max(), .exitDistance = std::numeric_limits<Geometry>::max() };
+
         // plane distances
         std::array<Vector, 2> pd;
         detail::static_for<DIMENSION_NO>(
@@ -574,17 +577,16 @@ namespace OrthoTree::detail
         detail::static_for<DIMENSION_NO>(
           [&](dim_t dimensionID) noexcept { pd[1][dimensionID] = maxDifference[dimensionID] * m_inverseDirection[dimensionID]; });
 
-        std::optional pickResult =
-          PickResult{ .enterDistance = -std::numeric_limits<Geometry>::max(), .exitDistance = std::numeric_limits<Geometry>::max() };
-
         // Find the largest entering distance and the smallest exiting distance. fmax/fmin handles NaN correctly.
         if (m_hasNaNComponent)
         {
           detail::static_for<DIMENSION_NO>([&](dim_t dimensionID) noexcept {
-            pickResult->enterDistance = std::fmax(pickResult->enterDistance, pd[m_signInfo[dimensionID]][dimensionID]);
+            if (!m_isZeroDirection.test(dimensionID))
+              pickResult->enterDistance = std::fmax(pickResult->enterDistance, pd[m_signInfo[dimensionID]][dimensionID]);
           });
           detail::static_for<DIMENSION_NO>([&](dim_t dimensionID) noexcept {
-            pickResult->exitDistance = std::fmin(pickResult->exitDistance, pd[1 - m_signInfo[dimensionID]][dimensionID]);
+            if (!m_isZeroDirection.test(dimensionID))
+              pickResult->exitDistance = std::fmin(pickResult->exitDistance, pd[1 - m_signInfo[dimensionID]][dimensionID]);
           });
         }
         else
@@ -631,7 +633,7 @@ namespace OrthoTree::detail
         {
           for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
           {
-            if (!std::isnan(m_inverseDirection[dimensionID]))
+            if (!m_isZeroDirection.test(dimensionID))
               continue;
 
             if (minDifference[dimensionID] > exitTolerance || maxDifference[dimensionID] < -exitTolerance)
@@ -651,7 +653,8 @@ namespace OrthoTree::detail
       Vector m_normalizedDirection;
       Geometry m_minTolerance;
       Geometry m_toleranceIncrement;
-      std::bitset<DIMENSION_NO> m_signInfo;
+      std::bitset<DIMENSION_NO> m_signInfo = {};
+      std::bitset<DIMENSION_NO> m_isZeroDirection = {};
       bool m_hasNaNComponent = false;
     };
   };
