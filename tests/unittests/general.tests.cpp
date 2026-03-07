@@ -998,7 +998,7 @@ namespace GeneralTest
       });
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 6, 4, 5, 0, 1, 3 });
+      Assert::IsTrue(ids == vector<EntityID>{ 6, 4, 5, 0, 2, 1, 3 });
     }
 
     TEST_METHOD(UpdateIndexes__Swap3And6)
@@ -1066,12 +1066,12 @@ namespace GeneralTest
           { 3, 6 },
           { 4, 5 },
           { 5, 1 },
-          { 1, 6 },
+          { 1, 4 },
       });
 
       auto const ids = tree.GetEntitiesBreadthFirst();
 
-      Assert::IsTrue(ids == vector<EntityID>{ 3, 5, 1, 0, 2, 6 }); // instead of { 6, 4, 5, 0, 1, 2, 3 }
+      Assert::IsTrue(ids == vector<EntityID>{ 3, 5, 1, 0, 4, 2, 6 }); // instead of { 6, 4, 5, 0, 1, 2, 3 }
     }
 
     TEST_METHOD(Clear__EmptyRootRemains)

@@ -84,8 +84,7 @@ void testCompilePoint()
     tree.UpdateIndexes(
       {
         { 1, 3 },
-        { 3, 4 },
-        { 4, 1 }
+        { 3, 1 },
     });
     tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
@@ -247,8 +246,7 @@ void testCompileBox()
     tree.UpdateIndexes(
       {
         { 1, 3 },
-        { 3, 4 },
-        { 4, 1 }
+        { 3, 1 },
     });
     tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
