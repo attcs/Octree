@@ -34,7 +34,7 @@ if (ENABLE_OPTIMIZATIONS)
             $<$<CONFIG:Debug>:/Od /Zi /D_DEBUG>
         )
         target_compile_options(benchmarks PRIVATE 
-            $<$<CONFIG:Release>: /O2 /fp:fast>
+            $<$<CONFIG:Release>: /O2 /fp:fast /bigobj>
         )
     endif()
 endif()
