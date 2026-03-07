@@ -458,289 +458,228 @@ namespace AdaptorTest
   } // namespace XYZAdaptorTest
 
 
-  // TODO: rethink
-  /*
-  namespace AbstractAdaptorTest
+  namespace GameEngineAdaptorTest
   {
-    // User-defined geometrical objects
-
-    struct MyPoint2DBase
+    // 1. Non-default constructible geometry
+    struct RigidPoint
     {
-      float x;
-      float y;
-
-      MyPoint2DBase(float x, float y)
+      float x, y;
+      RigidPoint() = delete;
+      constexpr RigidPoint(float x, float y)
       : x(x)
       , y(y)
       {}
-      virtual ~MyPoint2DBase() {}
-
-      virtual float GetDistance() const = 0;
     };
 
-    struct MyPoint2DConcrete1 : MyPoint2DBase
+    struct RigidBox
     {
-      using MyPoint2DBase::MyPoint2DBase;
-
-      virtual float GetDistance() const override { return x + y; };
-    };
-
-    struct MyPoint2DConcrete2 : MyPoint2DBase
-    {
-      using MyPoint2DBase::MyPoint2DBase;
-
-      virtual float GetDistance() const override { return std::sqrt(x * x + y * y); };
-    };
-
-    struct MyBox2DBase
-    {
-      std::unique_ptr<MyPoint2DBase> Min, Max;
-
-      MyBox2DBase() = default;
-      MyBox2DBase(std::unique_ptr<MyPoint2DBase>&& minPoint, std::unique_ptr<MyPoint2DBase>&& maxPoint)
-      : Min(std::move(minPoint))
-      , Max(std::move(maxPoint))
-      {}
-
-      virtual ~MyBox2DBase() {}
-      virtual float GetSize() const = 0;
-    };
-
-    struct MyBox2DConcrete1 : MyBox2DBase
-    {
-      using MyBox2DBase::MyBox2DBase;
-      virtual float GetSize() const override { return Max->x - Min->x; }
-    };
-
-    struct MyBox2DConcrete2 : MyBox2DBase
-    {
-      using MyBox2DBase::MyBox2DBase;
-      virtual float GetSize() const override { return Max->y - Min->y; }
-    };
-
-    struct MyRay2DBase
-    {
-      std::unique_ptr<MyPoint2DBase> Origin, Direction;
-    };
-    struct MyPlane2DBase
-    {
-      float OrigoDistance;
-      std::unique_ptr<MyPoint2DBase> Normal;
-
-      MyPlane2DBase(float origoDistance, std::unique_ptr<MyPoint2DBase> normal)
-      : OrigoDistance(origoDistance)
-      , Normal(std::move(normal))
+      RigidPoint Min, Max;
+      RigidBox() = delete;
+      constexpr RigidBox(RigidPoint min, RigidPoint max)
+      : Min(min)
+      , Max(max)
       {}
     };
 
+    // 2. Abstract Move-Only Entity
+    struct GameObjectID
+    {
+      int teamId;
+      int unitId;
+      auto operator<=>(GameObjectID const&) const = default;
+    };
 
-    // Adapter
+    struct GameObjectIDHash
+    {
+      std::size_t operator()(GameObjectID const& id) const noexcept { return std::hash<int>()(id.teamId) ^ (std::hash<int>()(id.unitId) << 1); }
+    };
 
-    struct CustomBaseGeometryAdapter
+    class IGameObject
+    {
+    public:
+      virtual ~IGameObject() = default;
+      virtual RigidBox const& GetBounds() const = 0;
+    };
+
+    class Enemy : public IGameObject
+    {
+      RigidBox bounds;
+      // +visibility, etc
+
+    public:
+      Enemy(RigidBox b)
+      : bounds(std::move(b))
+      {}
+      Enemy(Enemy const&) = delete;
+      Enemy& operator=(Enemy const&) = delete;
+      Enemy(Enemy&&) = default;
+      Enemy& operator=(Enemy&&) = default;
+
+      virtual RigidBox const& GetBounds() const override { return bounds; }
+    };
+
+    // 3. Adapter for the geometry
+    struct CustomRigidGeometryAdapter
     {
       using Scalar = float;
       using FloatScalar = float;
-      using Vector = MyPoint2DBase*;
-      using Box = MyBox2DBase*;
-      using Ray = MyRay2DBase;
-      using Plane = MyPlane2DBase;
+      using Vector = RigidPoint;
+      using Box = RigidBox;
+      struct Ray
+      {
+        RigidPoint Origin;
+        RigidPoint Direction;
+      };
+      struct Plane
+      {
+        float OrigoDistance;
+        RigidPoint Normal;
+      };
 
-      static constexpr dim_t DIMENSION_NO = 2;
+      static constexpr OrthoTree::dim_t DIMENSION_NO = 2;
       static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
 
-      static constexpr Vector MakePoint() noexcept { return {}; };
-      static constexpr Box MakeBox() noexcept { return {}; };
+      static constexpr Vector MakePoint() noexcept { return RigidPoint(0.0f, 0.0f); };
+      static constexpr Box MakeBox() noexcept { return RigidBox(RigidPoint(0.0f, 0.0f), RigidPoint(0.0f, 0.0f)); };
 
-      static float GetPointC(MyPoint2DBase const* pt, OrthoTree::dim_t i)
+      static constexpr float GetPointC(RigidPoint const& pt, OrthoTree::dim_t i) noexcept { return i == 0 ? pt.x : pt.y; }
+      static constexpr void SetPointC(RigidPoint& pt, OrthoTree::dim_t i, float v) noexcept
       {
-        switch (i)
-        {
-        case 0: return pt->x;
-        case 1: return pt->y;
-        default: assert(false); return pt->x;
-        }
+        if (i == 0)
+          pt.x = v;
+        else
+          pt.y = v;
       }
 
-      static void SetPointC(MyPoint2DBase* pt, OrthoTree::dim_t i, float v)
-      {
-        switch (i)
-        {
-        case 0: pt->x = v; break;
-        case 1: pt->y = v; break;
-        default: assert(false);
-        }
-      }
+      static constexpr void SetBoxMinC(RigidBox& box, OrthoTree::dim_t i, float v) noexcept { SetPointC(box.Min, i, v); }
+      static constexpr void SetBoxMaxC(RigidBox& box, OrthoTree::dim_t i, float v) noexcept { SetPointC(box.Max, i, v); }
+      static constexpr float GetBoxMinC(RigidBox const& box, OrthoTree::dim_t i) noexcept { return GetPointC(box.Min, i); }
+      static constexpr float GetBoxMaxC(RigidBox const& box, OrthoTree::dim_t i) noexcept { return GetPointC(box.Max, i); }
 
-      static void SetBoxMinC(MyBox2DBase* box, dim_t i, float v) { SetPointC(box->Min.get(), i, v); }
-      static void SetBoxMaxC(MyBox2DBase* box, dim_t i, float v) { SetPointC(box->Max.get(), i, v); }
-      static float GetBoxMinC(MyBox2DBase const* box, dim_t i) { return GetPointC(box->Min.get(), i); }
-      static float GetBoxMaxC(MyBox2DBase const* box, dim_t i) { return GetPointC(box->Max.get(), i); }
+      static constexpr Vector const& GetRayDirection(Ray const& ray) noexcept { return ray.Direction; }
+      static constexpr Vector const& GetRayOrigin(Ray const& ray) noexcept { return ray.Origin; }
 
-      static MyPoint2DBase* GetRayDirection(MyRay2DBase const& ray) { return ray.Direction.get(); }
-      static MyPoint2DBase* GetRayOrigin(MyRay2DBase const& ray) { return ray.Origin.get(); }
-
-      static MyPoint2DBase* GetPlaneNormal(MyPlane2DBase const& plane) { return plane.Normal.get(); }
-      static float GetPlaneOrigoDistance(MyPlane2DBase const& plane) { return plane.OrigoDistance; }
+      static constexpr Vector const& GetPlaneNormal(Plane const& plane) noexcept { return plane.Normal; }
+      static constexpr Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return plane.OrigoDistance; }
     };
 
-    using MyPoint2DPtr = MyPoint2DBase*;
-    using MyBox2DPtr = MyBox2DBase*;
-    using CustomGeometryAdapter = OrthoTree::GeneralGeometryAdapter<CustomBaseGeometryAdapter>;
+    using CustomGeometryAdapter = OrthoTree::GeneralGeometryAdapter<CustomRigidGeometryAdapter>;
 
+    // 4. EntityAdapter for std::unique_ptr<IGameObject>
+    using GameObjectContainer = std::unordered_map<GameObjectID, std::unique_ptr<IGameObject>, GameObjectIDHash>;
+    using GameObjectContainerView = GameObjectContainer const&;
 
-    // Tailored Quadtree objects
+    struct GameObjectEntityAdapter
+    {
+      using EntityContainer = GameObjectContainer;
+      using EntityContainerView = GameObjectContainerView;
+      using Entity = std::pair<GameObjectID const, std::unique_ptr<IGameObject>>;
+      using EntityID = GameObjectID;
+      using Geometry = RigidBox;
+      using Hash = GameObjectIDHash;
 
-    using QuadtreePointCustom = OrthoTree::OrthoTreeBase<PointEntitySpanAdapter<MyPoint2DBase*>, CustomGeometryAdapter, PointConfiguration<>>;
+      static constexpr OrthoTree::GeometryType GEOMETRY_TYPE = OrthoTree::GeometryType::Box;
+      static constexpr OrthoTree::EntityIdStrategy ENTITY_ID_STRATEGY = OrthoTree::EntityIdStrategy::EntityKeyed;
 
-    using QuadtreeBoxCustom = OrthoTree::OrthoTreeBase<BoxEntitySpanAdapter<MyBox2DBase*>, CustomGeometryAdapter, BoxConfiguration<true>>;
-    using QuadtreeBoxCustomC = OrthoTreeManaged<QuadtreeBoxCustom>;
+      static Entity const& GetEntity(EntityContainerView entities, EntityID const& entityID) noexcept { return *entities.find(entityID); }
+      static constexpr EntityID GetEntityID(Entity const& entity) noexcept { return entity.first; }
+      static constexpr EntityID GetEntityID(EntityContainerView /*entities*/, Entity const& entity) noexcept { return entity.first; }
 
-    TEST_CLASS(AbstractAdaptorTest)
+      static Geometry const& GetGeometry(EntityContainerView entities, EntityID const& entityID) noexcept
+      {
+        return entities.at(entityID)->GetBounds();
+      }
+      static constexpr Geometry const& GetGeometry(Entity const& entity) noexcept { return entity.second->GetBounds(); }
+
+      static std::size_t GetEntityCount(EntityContainerView entities) noexcept { return entities.size(); }
+
+      static EntityID Insert(EntityContainer& entities, Entity&& entity) noexcept
+      {
+        auto [it, _] = entities.emplace(std::move(entity));
+        return it->first;
+      }
+
+      static void Erase(EntityContainer& entities, EntityID entityID) noexcept { entities.erase(entityID); }
+
+      static auto Exchange(EntityContainer& entities, EntityID entityID, Entity&& entity) noexcept
+      {
+        auto it = entities.find(entityID);
+        return Entity{ entityID, std::exchange(it->second, std::forward<decltype(entity.second)>(entity.second)) };
+      }
+
+      static void Clear(EntityContainer& entities) noexcept { entities.clear(); }
+
+      static bool Contains(EntityContainer& entities, EntityID entityID) noexcept { return entities.contains(entityID); }
+    };
+
+    // 5. Quadtree
+    using QuadtreeGameObjects = OrthoTree::OrthoTreeBase<GameObjectEntityAdapter, CustomGeometryAdapter, OrthoTree::BoxConfiguration<true>>;
+    using QuadtreeGameObjectsM = OrthoTreeManaged<QuadtreeGameObjects>;
+
+    TEST_CLASS(GameEngineAdaptorTest)
     {
     public:
-      TEST_METHOD(PointGeneral2D)
+      TEST_METHOD(EnemyObjects)
       {
-        using EntityID = QuadtreePointCustom::EntityID;
-
-        auto vptOwner = std::vector<std::unique_ptr<MyPoint2DBase>>{};
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 0.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(2.0f, 2.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(3.0f, 3.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(4.0f, 4.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(0.0f, 1.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(0.0f, 4.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(4.0f, 0.0f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(1.5f, 1.5f));
-        vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete2>(1.0f, 1.5f));
-
-        auto vptView = std::vector<MyPoint2DBase*>{};
-        std::ranges::transform(vptOwner, std::back_inserter(vptView), [](auto& ppt) { return ppt.get(); });
-
-        auto tree = QuadtreePointCustom(vptView, 3, std::nullopt, 1);
-
-        auto entityIDsInBFS = tree.GetEntitiesBreadthFirst();
-        auto entityIDsInDFS = tree.GetEntitiesDepthFirst();
-
-        auto searchBox = std::make_unique<MyBox2DConcrete1>();
-        searchBox->Min = std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f);
-        searchBox->Max = std::make_unique<MyPoint2DConcrete2>(2.0f, 2.0f);
-        auto pointsInSearchBox = tree.RangeSearch(searchBox.get(), vptView);
-
-        auto sqrt2Reciproc = float(1.0 / sqrt(2.0));
-        auto planeNormal = std::make_unique<MyPoint2DConcrete2>(sqrt2Reciproc, sqrt2Reciproc);
-        auto pointsInPlane = tree.PlaneSearch(2.6f, planeNormal.get(), vptView, 0.3f);
-
-        auto planesForFustrum = std::vector<MyPlane2DBase>{};
-        planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(-1.0f, 0.0f) });
-        planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(0.0f, -1.0f) });
-        planesForFustrum.push_back({ -2.0f, std::make_unique<MyPoint2DConcrete1>(+1.0f, 0.0f) });
-        auto pointsInFrustum = tree.FrustumCulling(planesForFustrum, vptView, 0.01f);
-
-        auto const n = EntityID(vptView.size());
-        vptView.emplace_back(vptOwner.emplace_back(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.1f)).get());
-        tree.InsertIntoLeaf(n, vptOwner.back().get());
-        tree.Erase(0, vptOwner.front().get());
-        auto entityIDsInDFS_AfterErase = tree.GetEntitiesDepthFirst();
-
-        auto searchPoint = std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f);
-        auto entityIDsKNN = tree.GetNearestNeighbors(searchPoint.get(), 3, vptView);
-
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 0, 1, 2, 3, 6, 9, 10 }, pointsInSearchBox));
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 3, 7, 8 }, pointsInPlane));
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 2, 11, 10 }, entityIDsKNN));
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 0, 1, 2, 3, 6, 9, 10 }, pointsInFrustum));
-
-        Assert::IsTrue(std::vector<EntityID>{ 8, 7, 0, 1, 6, 3, 2, 10, 9, 4, 5 } == entityIDsInBFS);
-        Assert::IsTrue(std::vector<EntityID>{ 0, 1, 6, 2, 10, 9, 8, 7, 3, 4, 5 } == entityIDsInDFS);
-        Assert::IsTrue(std::vector<EntityID>{ 1, 6, 2, 11, 10, 9, 8, 7, 3, 4, 5 } == entityIDsInDFS_AfterErase);
-      } // namespace AbstractAdaptorTest
-
-      TEST_METHOD(BoxGeneral2DC_Example2)
-      {
-        using EntityID = QuadtreeBoxCustomC::EntityID;
-
-        auto boxes = std::vector<std::unique_ptr<MyBox2DBase>>{};
-        boxes.emplace_back(
-          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(0.0f, 0.0f), std::make_unique<MyPoint2DConcrete2>(1.0f, 1.0f)));
-        boxes.emplace_back(
-          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f), std::make_unique<MyPoint2DConcrete2>(2.0f, 2.0f)));
-        boxes.emplace_back(
-          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(2.0f, 2.0f), std::make_unique<MyPoint2DConcrete2>(3.0f, 3.0f)));
-        boxes.emplace_back(
-          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(3.0f, 3.0f), std::make_unique<MyPoint2DConcrete2>(4.0f, 4.0f)));
-        boxes.emplace_back(
-          std::make_unique<MyBox2DConcrete1>(std::make_unique<MyPoint2DConcrete1>(1.2f, 1.2f), std::make_unique<MyPoint2DConcrete2>(2.8f, 2.8f)));
-
-        auto boxesView = std::vector<MyBox2DBase*>{};
-        std::ranges::transform(boxes, std::back_inserter(boxesView), [](auto& ppt) { return ppt.get(); });
-
-        auto quadtree = QuadtreeBoxCustomC(
-          boxesView,
-          3,            // max depth
-          std::nullopt, // user-provided bounding Box for all
-          1,            // max element in a node
-          false         // parallel calculation option
-        );
-
-        auto collidingIDPairs = quadtree.CollisionDetection(); //: { {1,4}, {2,4} }
-
-        auto searchBox = MyBox2DConcrete1(std::make_unique<MyPoint2DConcrete1>(1.0f, 1.0f), std::make_unique<MyPoint2DConcrete1>(3.1f, 3.1f));
-
-        // Boxes within the range
-        auto insideBoxIDs = quadtree.RangeSearch(&searchBox); //: { 1, 2, 4 }
-
-        auto overlappingBoxIDs = quadtree.RangeSearch(&searchBox, RangeSearchMode::Overlap); //: { 1, 2, 3, 4 }
-
-        // Picked boxes
-        auto pickPoint = MyPoint2DConcrete1(2.5f, 2.5f);
-        auto pickedIDs = quadtree.PickSearch(&pickPoint); //: { 2, 4 }
-
-        // Ray intersections
-        auto rayBasePoint = std::make_unique<MyPoint2DConcrete1>(1.5f, 2.5f);
-        auto rayHeading = MyPoint2DConcrete1(3.0f / std::sqrtf(10.0f), 1.0f / std::sqrtf(10.0f));
-        auto firstIntersectedBoxes = quadtree.RayIntersectedFirst(rayBasePoint.get(), &rayHeading, 0.01f); //: {2, 4}
-        auto intersectedPoints = quadtree.RayIntersectedAll(rayBasePoint.get(), &rayHeading, 0.01f);       //: { 2, 3, 4 } in distance order!
-
-        // Plane
-        auto sqrt2 = sqrtf(2.0);
-        auto sqrt2Reciproc = 1.0f / sqrt2;
-
-        // Cross-point of the planes: 2;2;2
-        auto frustumBoundaryPlanes = std::vector<MyPlane2DBase>();
-        frustumBoundaryPlanes.emplace_back(2 * sqrt2, std::make_unique<MyPoint2DConcrete1>(sqrt2Reciproc, sqrt2Reciproc));
-        frustumBoundaryPlanes.emplace_back(2.0f, std::make_unique<MyPoint2DConcrete1>(0.0f, -1.0f));
-
-        auto boxesInFrustum = quadtree.FrustumCulling(frustumBoundaryPlanes, 0.01f);
-
-        // Collect all IDs in breadth/depth first order
-        auto entityIDsInDFS = quadtree.GetEntitiesBreadthFirst();
-        auto entityIDsInBFS = quadtree.GetEntitiesDepthFirst();
-
-        Assert::IsTrue(
-          std::ranges::is_permutation(
-            std::vector<std::pair<EntityID, EntityID>>{
-              { 1, 4 },
-              { 2, 4 }
+        auto objects = GameObjectContainer();
+        objects.emplace(
+          GameObjectID{
+            1, 1
         },
-            collidingIDPairs));
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 1, 2, 4 }, insideBoxIDs));
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 1, 2, 3, 4 }, overlappingBoxIDs));
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 2, 4 }, pickedIDs));
-        Assert::AreEqual<size_t>(2, firstIntersectedBoxes.size());
-        Assert::AreEqual(EntityID(2), firstIntersectedBoxes[0]);
-        Assert::AreEqual(EntityID(4), firstIntersectedBoxes[1]);
+          std::make_unique<Enemy>(RigidBox{ RigidPoint{ 0.0f, 0.0f }, RigidPoint{ 1.0f, 1.0f } }));
+        objects.emplace(
+          GameObjectID{
+            1, 2
+        },
+          std::make_unique<Enemy>(RigidBox{ RigidPoint{ 1.0f, 1.0f }, RigidPoint{ 2.0f, 2.0f } }));
+        objects.emplace(
+          GameObjectID{
+            2, 1
+        },
+          std::make_unique<Enemy>(RigidBox{ RigidPoint{ 2.0f, 2.0f }, RigidPoint{ 3.0f, 3.0f } }));
+        objects.emplace(
+          GameObjectID{
+            2, 2
+        },
+          std::make_unique<Enemy>(RigidBox{ RigidPoint{ 3.0f, 3.0f }, RigidPoint{ 4.0f, 4.0f } }));
+        objects.emplace(
+          GameObjectID{
+            3, 1
+        },
+          std::make_unique<Enemy>(RigidBox{ RigidPoint{ 1.2f, 1.2f }, RigidPoint{ 2.8f, 2.8f } }));
 
-        Assert::IsTrue(std::ranges::is_permutation(std::vector<EntityID>{ 1, 2, 4 }, boxesInFrustum));
+        auto const& view = objects;
+        auto tree = QuadtreeGameObjects(view, 3, std::nullopt, 1, false);
 
-        Assert::IsTrue(std::vector<EntityID>{ 2, 3, 4 } == intersectedPoints);
-        Assert::IsTrue(std::vector<EntityID>{ 4, 0, 1, 2, 3 } == entityIDsInDFS);
-        Assert::IsTrue(std::vector<EntityID>{ 4, 0, 1, 2, 3 } == entityIDsInBFS);
+        auto searchBox = RigidBox(RigidPoint(1.0f, 1.0f), RigidPoint(3.1f, 3.1f));
+        auto insideBoxIDs = tree.RangeSearch(searchBox, view);
+
+        Assert::AreEqual<size_t>(3, insideBoxIDs.size());
+
+        // OrthoTreeManaged with move semantics!
+        auto treeManaged = QuadtreeGameObjectsM(std::move(objects), 3, std::nullopt, 1, false);
+        Assert::AreEqual<size_t>(0, objects.size()); // should be moved!
+
+        treeManaged.Add(
+          {
+            GameObjectID{                        4,                        1 },
+            std::make_unique<Enemy>(RigidBox{ RigidPoint{ 1.5f, 1.5f }, RigidPoint{ 1.6f, 1.6f } }
+            )
+        },
+          OrthoTree::InsertionMode::ExistingLeaf);
+
+        auto overlappingIDs = treeManaged.RangeSearch(searchBox, OrthoTree::RangeSearchMode::Overlap);
+        auto expectedIDs = std::vector<GameObjectID>{
+          { 1, 2 },
+          { 2, 1 },
+          { 2, 2 },
+          { 3, 1 },
+          { 4, 1 }
+        };
+        Assert::IsTrue(std::ranges::is_permutation(expectedIDs, overlappingIDs));
       }
     };
-  } // namespace AbstractAdaptorTest
-  */
+  } // namespace GameEngineAdaptorTest
 
   namespace UnrealAdaptorTest
   {
