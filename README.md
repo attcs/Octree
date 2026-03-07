@@ -4,7 +4,8 @@
 Lightweight, parallelizable C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
 <br>
 What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree <br>
-What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curve
+What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curve <br>
+What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 
 [CHANGELOG](./CHANGELOG.md) | [DOCUMENTATION](./docs/README.md) | [BENCHMARKS](https://attcs.github.io/Octree/dev/bench/)
 
@@ -24,10 +25,10 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
   * Plane intersection
   * Frustum culling
 * Collision detection
-* Addition entity testers for the search functions
+* Additional entity testers for the search functions
 * Nodes can be accessed in O(1) time
 * Search is accelerated by Morton Z curve based location code
-* Both the non-owning `Core` and the `Container` wrapper is provided
+* Both the non-owning `Core` and the `Managed` wrappers are provided
 
 ## Limitations
 * Maximum number of dimensions is 63.
@@ -38,15 +39,15 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
-* Decide to let the geometry management for octree or not. `Container` types could manage the geometries life-cycle, meanwhile the `non-container` types are just update the relevant metadata about the changes.
+* Decide to let the geometry management for octree or not. `Managed` types could manage the geometries life-cycle, meanwhile the `non-managed` types are just update the relevant metadata about the changes.
 * Use `PAR_EXEC` tag as first parameter of constructor for parallel execution
 * Use `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Use `PlaneSearch()` / `PlaneIntersection()` / `PlanePositiveSegmentation()` member functions for hyperplane related searches
 * Use `FrustumCulling()` to get entities in the multi-plane-bounded space/frustum
-* Use `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if the some of the underlying geometrical elements were changed or reordered
+* Use `Core` edit functions `Insert()`, `Update()`, `UpdateIndexes()`, `Erase()` if some of the underlying geometrical elements were changed or reordered
 * Use `InsertUnique()` if tolerance-based unique insertion is needed for points
 * Use `InsertWithRebalance()` for rebalancing the tree during insertion
-* Use `Container` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
+* Use `Managed` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
 * Use `CollisionDetection()` member function for bounding box overlap examination.
 * Use `VisitNodes()` / `VisitNodesInDFS()` to traverse the tree from up to down (former is breadth-first search) with user-defined `selector()` and `procedure()`.
 * Use `GetNearestNeighbors()` for kNN search in point-based tree. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
@@ -55,17 +56,15 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 ## Notes
 * Header only implementation.
 * Point and Bounding box-based solutions are distinguished.
-* Core types store only the entity ids, use Container types to store. Core types advantages: not copying and managing the entity information; disadvantages: this information may have to be provided again for the member function call.
+* Core types store only the entity ids; use Managed types to manage both the tree and the original entity data.
 * Naming
-  * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxM`).
+  * Managed types have "M" postfix (e.g., `OctreeBoxM`).
   * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapM`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contiguous container.
-  * `s` means adjustable `LOOSE_TREE` for box-types.
-* If `int` is preferred for indexing instead of `std::size_t`, declare `#define ORTHOTREE_INDEX_T__INT`.
+  * `s` means adjustable `LOOSE_TREE` for box-types (e.g., `OctreeBoxCs`).
 * For box types 2.0 loose tree is the default.
 * Edit functions are available but not recommended to fully build the tree with them.
 * If less element is collected in a node than the max element then the child node won't be created.
-* The underlying container is a hash-table (`std::unordered_map`) under 16D, which only stores the id-s and the bounding box of the child nodes.
-* Original geometry data is not stored, so any search function needs them as an input.
+* Original geometry data is not stored in Core types, so any search function needs them as an input.
 * Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3, AppleClang 16.0.0
 
 ## Attached adapters
@@ -78,61 +77,33 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * `struct{x,y,z}`: 2D, 3D; (adaptor.xyz.h)
 
 ## Major aliases in OrthoTree
-```C++
-  /// Core types
+* `Core` types
+  * Static: 
+    * Contiguous: `StaticQuadtreePoint`, `StaticOctreePoint`, `StaticOrthoTreePointND<dim, ...>`, `StaticQuadtreeBox`, `StaticOctreeBox`, `StaticOrthoTreeBoxND<dim, ...>`
+    * Custom keyed: `StaticQuadtreePointMap`, `StaticOctreePointMap`, `StaticQuadtreeBoxMap`, `StaticOctreeBoxMap`
+  * Dynamic:
+    * Contiguous: `QuadtreePoint`, `OctreePoint`, `OrthoTreePointND<dim, ...>`, `QuadtreeBox`, `OctreeBox`, `OrthoTreeBoxND<dim, ...>`
+    * Custom keyed: `QuadtreePointMap`, `OctreePointMap`, `QuadtreeBoxMap`, `OctreeBoxMap`
+* `Managed` types:
+  * Static:
+    * Contiguous: `StaticQuadtreePointM`, `StaticOctreePointM`, `StaticQuadtreeBoxM`,`StaticOctreeBoxM`,  `StaticTreePointManagedND<dim, ...>`, `StaticTreeBoxManagedND<dim, ...>`
+    * Custom keyed: `StaticQuadtreePointMapM`, `StaticOctreePointMapM`, `StaticQuadtreeBoxMapM`, `StaticOctreeBoxMapM`
+  * Dynamic:
+    * Contiguous: `QuadtreePointM`, `OctreePointM`, `QuadtreeBoxM`, `OctreeBoxM`, `TreePointManagedND<dim, ...>`, `TreeBoxManagedND<dim, ...>`
+    * Custom keyed: `QuadtreePointMapM`, `OctreePointMapM`, `QuadtreeBoxMapM`, `OctreeBoxMapM`
 
-  // Quadtree for points
-  using QuadtreePoint = TreePointND<2, BaseGeometryType>;
-
-  // Quadtree for bounding boxes
-  using QuadtreeBox = TreeBoxND<2, 2, BaseGeometryType>;
-
-  // Octree for points
-  using OctreePoint = TreePointND<3, BaseGeometryType>;
-
-  // Octree for bounding boxes
-  using OctreeBox = TreeBoxND<3, 2, BaseGeometryType>;
-
-  // Hexatree for points
-  using HexatreePoint = TreePointND<4, BaseGeometryType>;
-
-  // Hexatree for bounding boxes
-  using HexatreeBox = TreeBoxND<4, 2, BaseGeometryType>;
-
-  // NTrees for higher dimensions
-  using TreePoint16D = TreePointND<16, BaseGeometryType>;
-  using TreeBox16D = TreeBoxND<16, 2, BaseGeometryType>;
-
-
-  /// Container types
-
-  // Quadtree for points
-  using QuadtreePointM = TreePointManagedND<2, BaseGeometryType>;
-
-  // Quadtree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBoxCs = TreeBoxManagedND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
-  using QuadtreeBoxM = TreeBoxManagedND<2, true, BaseGeometryType>;
-
-  // Octree for points
-  using OctreePointM = TreePointManagedND<3, BaseGeometryType>;
-
-  // Octree for bounding boxes
-  template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using OctreeBoxCs = TreeBoxManagedND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
-  using OctreeBoxM = TreeBoxManagedND<3, true, BaseGeometryType>;
-```
+See the full list of the default aliases in [core/aliases.h](./include/orthotree/core/aliases.h)
 
 ## Basic examples
 
-Usage of Container types
+Usage of Managed types (Recommended)
 ```C++
     #include "octree.h"
     using namespace OrthoTree;
     
     // Example #1: Octree for points
     {
-      auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
+      auto constexpr points = std::array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
       auto const octree = OctreePointM(points, 3 /*max depth*/);
 
       auto const searchBox = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
@@ -146,7 +117,7 @@ Usage of Container types
     
     // Example #2: Quadtree for bounding boxes
     {
-      auto boxes = vector
+      auto boxes = std::vector
       {
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
         BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
@@ -179,7 +150,7 @@ Usage of Container types
     
     // Example #3: Parallel creation of octree for bounding boxes
     {
-      auto boxes = vector
+      auto boxes = std::vector
       { 
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } } 
         /* and more... */
@@ -222,7 +193,7 @@ Usage of Core types
     
     // Example #1: Octree for points
     {
-      auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
+      auto constexpr points = std::array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
       auto const octree = OctreePoint(points, 3 /*max depth*/);
 
       auto const searchBox = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
@@ -235,7 +206,7 @@ Usage of Core types
     
     // Example #2: Quadtree for bounding boxes
     {
-      auto boxes = vector
+      auto boxes = std::vector
       {
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
         BoundingBox2D{ { 1.0, 1.0 }, { 2.0, 2.0 } },
@@ -266,7 +237,7 @@ Usage of Core types
     }
 ```
     
-For more examples, see the unit tests.
+For more examples, see the unit tests. E.g., [example.tests.cpp](./tests/unittests/example.tests.cpp).
 <div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/quadtree_example.PNG " align="center" height="300"></div>
 
 

@@ -411,4 +411,52 @@ namespace OrthoTree
   using OctreeBoxUDMapCs = TreeBoxContainerNDUD<3, IS_LOOSE_TREE, BaseGeometryType, EntityContainer>;
   template<typename EntityContainer>
   using OctreeBoxUDMapC = TreeBoxContainerNDUD<3, true, BaseGeometryType, EntityContainer>;
+
+
+  // Static Managed types
+
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using StaticTreePointManagedND = OrthoTreeManaged<StaticOrthoTreePointND<DIMENSION_NO, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using StaticTreeBoxManagedND = OrthoTreeManaged<StaticOrthoTreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+
+
+  // Static Managed Dualtree for points
+  using StaticDualtreePointM = StaticTreePointManagedND<1, BaseGeometryType>;
+
+  // Static Managed Dualtree for bounding boxes
+  using StaticDualtreeBoxM = StaticTreeBoxManagedND<1, true, BaseGeometryType>;
+
+  // Static Managed Quadtree for points
+  using StaticQuadtreePointM = StaticTreePointManagedND<2, BaseGeometryType>;
+
+  // Static Managed Quadtree for bounding boxes
+  using StaticQuadtreeBoxM = StaticTreeBoxManagedND<2, true, BaseGeometryType>;
+
+  // Static Managed Octree for points
+  using StaticOctreePointM = StaticTreePointManagedND<3, BaseGeometryType>;
+
+  // Static Managed Octree for bounding boxes
+  using StaticOctreeBoxM = StaticTreeBoxManagedND<3, true, BaseGeometryType>;
+
+
+  // Static Managed std::unordered_map-based Dualtree for points
+  using StaticDualtreePointMapM = StaticTreePointManagedND<1, BaseGeometryType, false>;
+
+  // Static Managed std::unordered_map-based Dualtree for bounding boxes
+  using StaticDualtreeBoxMapM = StaticTreeBoxManagedND<1, true, BaseGeometryType, false>;
+
+  // Static Managed std::unordered_map-based Quadtree for points
+  using StaticQuadtreePointMapM = StaticTreePointManagedND<2, BaseGeometryType, false>;
+
+  // Static Managed std::unordered_map-based Quadtree for bounding boxes
+  using StaticQuadtreeBoxMapM = StaticTreeBoxManagedND<2, true, BaseGeometryType, false>;
+
+  // Static Managed std::unordered_map-based Octree for points
+  using StaticOctreePointMapM = StaticTreePointManagedND<3, BaseGeometryType, false>;
+
+  // Static Managed std::unordered_map-based Octree for bounding boxes
+  using StaticOctreeBoxMapM = StaticTreeBoxManagedND<3, true, BaseGeometryType, false>;
+
 } // namespace OrthoTree

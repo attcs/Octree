@@ -6,21 +6,25 @@ OrthoTree is a generic geometric data structure that represents coordinate space
 For ease of use, the library provides several aliases ([core/aliases.h](../include/orthotree/core/aliases.h)) for common configurations (e.g., `OctreePoint`, `OctreeBox`, `QuadtreePoint`, `QuadtreeBox`).
 
 ## Code structure
+* **octree.h**: Main header file. 
 * **Static Core** (`ot_static_linear_core.h`): An immutable, linear memory layout tree. It is built once and cannot be modified (no insertion/removal after build), but it provides the highest cache coherency and fastest query performance. Best for static environments and one-time spatial setups. It aims minimal memory footprint. E.g: `StaticOctreeBox`
 * **Dynamic Core** (`ot_dynamic_hash_core.h`): A mutable tree structure based on a hashing approach. It allows adding, removing, and updating entities dynamically at runtime. Best for changing environments, simulators, and physics engines. E.g: `DynamicOctreeBox`/`OctreeBox`
 * **Query** layer (`ot_query.h`): It is an additional layer on top of the cores. Contains the geometric search algorithms that operate on the trees, such as Range search, Collision detection, K-Nearest Neighbors (KNN), and Raycasting. With the proper interface it can be used for other types of Cores (e.g., BVH, RTree, etc.).
-* **Container** (`octree_managed.h`): High-level wrapper classes (e.g., `OctreePointM`) that manage both the tree structure and the user's entity storage. They provide a simpler, object-oriented API for interacting with the tree.
+* **Managed** (`ot_managed.h`): High-level wrapper classes (e.g., `OctreePointM`) that manage both the tree structure and the user's entity storage. They provide a simpler, object-oriented API for interacting with the tree.
 * **Adapters** (`adapters/*.h`): Adapters map user-defined or third-party geometric types (vector, box) to the generic concepts required by OrthoTree. Ready-made adapters exist for GLM, Eigen, Unreal, CGAL, etc.
+* **`core/`**: Strongly connected Core functionalities for internal use.
+* **`detail/`**: Other utilities.
 
 > [!CAUTION]
 > **Core types**: Tree cores do not store `Entities`, just `EntityID`s. Usage requires attention to the proper updating order: if element geometries are modified before calling `Update` or `Insert`, the overflowing mechanism may find elements that do not geographically fit in the current node.
 > **Typical issues**: Modifying an element's geometry without updating the tree, forgetting to add an element, or overwriting an existing entity's geometry before it is removed from the tree.
 > Debug asserts will try to guide you in the case of misuse, with messages like: *"Existing entities are out-of-sync with the tree. Client code may have modified the geometry of the existing entities without updating the tree."*
-> **Recommendation**: It is safer to use the `Container` wrapper types, which manage this fragility automatically.
+> **Recommendation**: It is safer to use the `Managed` wrapper types, which manage this fragility automatically.
 
 ### Design notes
-**Error handling**: OrthoTree is designed as a `noexcept`-only library. All public interfaces are marked `noexcept`, and no exceptions are thrown internally. If memory allocation fails (e.g., `std::bad_alloc`), the program will terminate. User-provided callbacks (entity testers, traversal procedures, priority calculators) **must not throw exceptions**; doing so will result in `std::terminate` being called.
+* **Error handling**: OrthoTree is designed as a `noexcept`-only library. All public interfaces are marked `noexcept`, and no exceptions are thrown internally. If memory allocation fails (e.g., `std::bad_alloc`), the program will terminate. User-provided callbacks (entity testers, traversal procedures, priority calculators) **must not throw exceptions**; doing so will result in `std::terminate` being called.
 Errors are typically communicated through `std::optional` wrapped results or error capable structs as return values.
+* Header only implementation.
 
 ## Adapt to your use-case
 
@@ -175,7 +179,7 @@ The library defines a `BASE_TOLERANCE` trait in the adapters to handle the stand
    * *Advantage*: faster insertion and better spatial locality for overlapping geometries, because the elements could be inserted into the level of the tree where they fit by size, not by position. 
    * *Disadvantage*: during queries, more nodes may be visited due to overlapping node boundaries, increasing query cost. To counteract this, **MBR** *node geometry storage* could be used. See `NODE_GEOMETRY_STORAGE`.
 
-`DEFAULT_TARGET_ELEMENT_NUM_IN_NODES`: Target element count in the nodes. It controls the node overlfow behavior. 
+`DEFAULT_TARGET_ELEMENT_NUM_IN_NODES`: Target element count in the nodes. It controls the node overflow behavior. 
   * Small number causes deeper tree, slowing down the creation and the searches
   * Large number causes too many tests during the searches.
 
@@ -183,19 +187,21 @@ The library defines a `BASE_TOLERANCE` trait in the adapters to handle the stand
   * `None`:     Node does not contain geometry information, every geometry queries requires its calculation.
   * `MinPoint`: Node contains only the min-point. Node sizes are stored level-wise.
   * `MBR`:      Node contains the min-point and the size of the *minimal bounding rectangle*. It requires calculation on every insertion. 
-                Entity removal does not effect. Recommended for Loose trees, where the node overlapping would be large. MBR is continously grows until the size limit of the node.
+                Entity removal does not shrink it. Recommended for Loose trees, where the node overlapping would be large. MBR continuously grows until the size limit of the node.
 
 `MAX_ALLOWED_DEPTH_ID`: [default: 19] Compile-time hard depth limit of the tree. It determines type of the LocationID (uint32_t or uint64_t) and certain internal simplifications. Runtime `maxDepthID` is also still available to customize the same tree type for the task.
 
-`USE_REVERSE_MAPPING`: [default: true] **Reverse mapping**, when enabled, maintains a secondary map from each `EntityID` directly to its containing node. This makes `Erase()` and `Update()` O(1) instead of O(N), at the cost of additional memory. Recommended for dynamic datasets with frequent removals or large entity number. Static tree ignores this flag. It has large impact on creation time and memory usage.
+`USE_REVERSE_MAPPING`: [default: true] **Reverse mapping**, when enabled, maintains a secondary map from each `EntityID` directly to its containing node. This makes `Erase()` and `Update()` O(1) instead of O(N), at the cost of additional memory. Recommended for dynamic datasets with frequent removals or large entity number. Static tree ignores this flag. It has large impact on creation/insertion time and memory usage.
+> [!TIP]
+> If the original entity is still available at the time of the `Update()`/`Erase()` (`Managed` types has this capability), it can be used to find the related node in O(1) time, it may be more advantageous for the overall system performance than the reverse-mapping.
 
-`UMapNodeContainer` / `MapNodeContainer`: **Custom node containers**, by default, the tree nodes are stored in an `std::unordered_map`. This can be replaced with any drop-in compatible associative container (e.g., Abseil's `flat_hash_map`) by overriding the `UMapNodeContainer` template alias in a custom `Configuration`.
+`UMapNodeContainer` / `MapNodeContainer`: **Custom node containers**, by default, the tree nodes are stored in an `std::unordered_map` under 16D, above `std::map`. This can be replaced with any drop-in compatible associative container (e.g., Abseil's `flat_hash_map`) by overriding the `UMapNodeContainer` template alias in a custom `Configuration`.
 
 While the `OrthoTree::detail` namespace is reserved for internal implementation details, SFINAE can be utilized as a fallback to extend support for custom container-related functions.
 
 For latest version with the all available parameters see the [configuration.h](../include/orthotree/core/configuration.h).
 
-Recommended usage: The Configuration parameters could be changed time-to-time, the recommended usage is inheritation with overrided parameters.
+Recommended usage: The Configuration parameters could be changed time-to-time, the recommended usage is inheritance with overridden parameters.
 ```C++
   struct UserDefinedConfigurationForBox : Configuration<2.0>
   {
@@ -216,13 +222,13 @@ Configuration can be further tuned using macros defined in [build_config.h](../i
 
 ## Creation, Insertion and Updates
 
-The dynamic tree and container offer various ways to insert elements, depending on the need for maintaining balance and uniqueness.
+The dynamic tree and managed container offer various ways to insert elements, depending on the need for maintaining balance and uniqueness.
 
-### Creation
+### `Create()`/ Constructors
 
 `Create()` and the parameterized constructors are designed for bulk insertion (e.g., opening a model with a huge dataset, followed by smaller edits later). Using `ExecutionTags::Parallel`, the creation process can be effectively multi-threaded.
 
-### Insert() / InsertIntoLeaf()
+### `Insert()` / `InsertIntoLeaf()`
 
 > [!WARNING]
 > Insert functions (other than bulk insert) should only be used *after* `Init()` or `Create()`. These initialization functions define the initial tree spatial boundaries (modelspace domain). 
@@ -230,7 +236,7 @@ The dynamic tree and container offer various ways to insert elements, depending 
 
 Insertion logic revolves around handling node overflows:
 * `Insert()` provides the standard insertion method, automatically rebalancing and splitting the tree when nodes overflow. 
-* `InsertIntoLeaf()` allows forcing elements into leaf nodes without node splitting. It behavior is governed by the `InsertionMode` enum:
+* `InsertIntoLeaf()` allows forcing elements into leaf nodes without node splitting. Its behavior is governed by the `InsertionMode` enum:
   * `InsertionMode::Balanced`: Uses standard balanced `Insert()` (Not applicable directly to `InsertIntoLeaf()`, but used as the default enum option in containers).
   * `InsertionMode::LowestLeaf`: Inserts the element into the bottom-most leaf node that geographically houses it.
   * `InsertionMode::ExistingLeaf`: Inserts the element into the deepest already-existing leaf node, avoiding the creation of deeper nodes.
@@ -253,10 +259,10 @@ Managed tree example:
   std::optional<EntityID> entityID = managedTree.Add(Point3D{...}/*, InsertionMode::Balanced*/);
 ```
 
-### Bulk Insertion
+### Bulk `Insert()`
 There is an `Insert` overload intended for bulk-insertion purposes. Passing an array or range of elements to `Insert` performantly integrates everything into the tree simultaneously, significantly reducing initialization and loading times.
 
-### InsertUnique()
+### `InsertUnique()`
 
 `InsertUnique()` adds an element only if an overlapping geometry is not already present in the tree. Because it iterates existing geometry to ensure uniqueness, you must execute the verification *before* adding the geometry to your underlying storage.
 
@@ -270,9 +276,15 @@ if (tree.InsertUnique(newEntityID, newEntityGeometry, storedEntities, tolerance)
   storedEntities.emplace_back(newEntityGeometry);
 ```
 
-### Update
+### `Update()` / `Erase()`
 
-`Update()` updates an entity in the tree. In a Dynamic Core, this requires traversing down to the leaf node holding the entity unless `USE_REVERSE_MAPPING` is active in the `Configuration`. Using wrappers like `OrthoTreeManaged` will securely update the entity from both your underlying collection and the tree structure simultaneously.
+`Erase()` removes the `EntityID` from the tree, `Update()` removes from old node and add to the new node.
+The following strategies are used:
+* If `USE_REVERSE_MAPPING` is active in the `Configuration`: Related node can be found in O(1) time.
+* If the original entity is supplied to the function: Related node can be found in O(1) time.
+* If there is no additional information: Linear search will happen `O(N)`.
+Using wrappers like `OrthoTreeManaged` will securely update / erase the entity from both your underlying collection and the tree structure simultaneously.
+
 
 It returns `true` if the entity was updated, `false` otherwise. 
 * If the entity is not found, it returns `false`.
@@ -287,11 +299,6 @@ for (int entityID = 0; entityID < updatePointsNo; ++entityID)
   if (tree.Update(entityID, workingPoints[entityID], updatePoints[entityID], workingPoints))
     workingPoints[entityID] = updatePoints[entityID];
 ```
-
-
-### Remove
-
-`Erase()` removes an entity from the tree. In a Dynamic Core, this requires traversing down to the leaf node holding the entity unless `USE_REVERSE_MAPPING` is active in the `Configuration`. Using wrappers like `OrthoTreeManaged` will securely erase the entity from both your underlying collection and the tree structure simultaneously.
 
 ## Querying
 
@@ -308,7 +315,7 @@ OrthoTree supports various tester signatures for different query types:
 To accomplish this, you can provide an **Entity Tester** (e.g., a lambda) passed to the query function that acts as a custom filter.
 
 ```cpp
-auto activeEntities = treeContainer.RangeSearch(searchBox, entities, [&](EntityID id) {
+auto activeEntities = managedTree.RangeSearch(searchBox, RangeSearchMode::Inside, GA::BASE_TOLERANCE, [&](EntityID id) {
   return storedEntities[id].isActive; // only include active entities
 });
 ```
@@ -317,7 +324,7 @@ auto activeEntities = treeContainer.RangeSearch(searchBox, entities, [&](EntityI
 OrthoTree implements several ready-made, highly-optimized spatial queries out-of-the-box:
 * **Range Search**: `RangeSearch(range, ...)` Finds entities that overlap or are entirely within a bounding box.
 * **Collision Detection**: `CollisionDetection(...)` Retrieves pairs of entities whose geometrical boundaries intersect.
-* **KNN**: `GetNearestNeighbors(point, k, ...)` Finds the k-closest entities to a given point. For boxes, it consider optimistic and pessimistic distance, that could result more than k entities, that surely contains the real k-closest entities with preceise tests.
+* **KNN**: `GetNearestNeighbors(point, k, ...)` Finds the k-closest entities to a given point. For boxes, it considers optimistic and pessimistic distances, which could result in more than k entities that surely contain the real k-closest entities after precise tests.
 * **Pick Search**: `PickSearch(point, ...)` Finds entities containing a given point.
 * **Raycasting**: `RayIntersectedAll(ray, ...)` or `RayIntersectedFirst(ray, ...)` finds intersections along a ray.
 * **Plane Search**: `PlaneSearch(plane, ...)` Finds entities intersected by a hyperplane.
@@ -334,7 +341,7 @@ auto conditions = std::vector<OctreeBox::QueryCondition>{
 // Combined with logical AND by default
 auto results = tree.Query(conditions, entities); 
 
-// alternatve:
+// alternative:
 auto results = tree.Query(std::array{
   OctreeBox::ByWithin(boundingBox1),
   OctreeBox::ByOverlaps(boundingBox2),
