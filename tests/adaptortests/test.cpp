@@ -2,7 +2,6 @@
 
 // clang-format off
 #include "orthotree/octree.h"
-#include "orthotree/octree_managed.h"
 
 // Boost
 #include "orthotree/adapters/boost.h"
@@ -329,7 +328,7 @@ namespace
     tree.Erase(0, points[0]);
     auto const entityIDsInDFS_AfterErase_Actual = tree.GetEntitiesDepthFirst();
     auto const entityIDsInDFS_AfterErase_Expected = std::vector<EntityID>{ 0, 7, 9, 8, 6, 5, 4, 1, 2, 3 };
-    
+
     auto pointsAfterErase = std::span(points).subspan(1);
     auto const entityIDsKNNActual = tree.GetNearestNeighbors(pointOfkNN, 3, pointsAfterErase);
     auto const entityIDsKNNExpected = std::vector<EntityID>{ 0, 9, 8, 7 };
@@ -409,7 +408,7 @@ namespace
     };
     auto const frustumPlanes = std::vector{
       Plane{ GeometryA(2.0 * sqrt2),    Vector{ sqrt2Reciproc, sqrt2Reciproc } },
-      Plane{         GeometryA(-2.0), Vector{ GeometryA(0.0), GeometryA(-1.0) } }
+      Plane{        GeometryA(-2.0), Vector{ GeometryA(0.0), GeometryA(-1.0) } }
     };
 
     std::size_t boxNo = boxes.size();

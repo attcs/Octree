@@ -84,11 +84,10 @@ SOFTWARE.
 
 #include "core/ot_query.h"
 
+#include "core/ot_managed.h"
+
 #include "adapters/general.h"
 
 #include "core/aliases.h"
-#include "octree_managed.h"
-
-
 
 #include "detail/undefs.h"

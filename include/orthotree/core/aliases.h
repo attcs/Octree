@@ -30,8 +30,10 @@ SOFTWARE.
 #include "../core/entity_adapter.h"
 
 #include "../core/ot_dynamic_hash_core.h"
+#include "../core/ot_managed.h"
 #include "../core/ot_query.h"
 #include "../core/ot_static_linear_core.h"
+
 
 #include "../adapters/general.h"
 
@@ -327,4 +329,86 @@ namespace OrthoTree
   template<bool IS_LOOSE_TREE, typename EntityAdapter>
   using StaticOctreeBoxsUDMap = StaticTreeBoxEAND<3, IS_LOOSE_TREE, BaseGeometryType, EntityAdapter>;
 
+  // Managed types
+
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using TreePointManagedND = OrthoTreeManaged<OrthoTreePointND<DIMENSION_NO, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
+  using TreeBoxManagedND = OrthoTreeManaged<OrthoTreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+
+  template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer>
+  using TreePointContainerNDUD = OrthoTreeManaged<OrthoTreePointNDUD<DIMENSION_NO, TScalar, TEntityContainer>>;
+
+  template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer>
+  using TreeBoxContainerNDUD = OrthoTreeManaged<OrthoTreeBoxNDUD<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TEntityContainer>>;
+
+  // Dualtree for points
+  using DualtreePointM = TreePointManagedND<1, BaseGeometryType>;
+
+  // Dualtree for bounding boxes
+  template<bool IS_LOOSE_TREE = true>
+  using DualtreeBoxCs = TreeBoxManagedND<1, IS_LOOSE_TREE, BaseGeometryType>;
+  using DualtreeBoxM = TreeBoxManagedND<1, true, BaseGeometryType>;
+
+  // Quadtree for points
+  using QuadtreePointM = TreePointManagedND<2, BaseGeometryType>;
+
+  // Quadtree for bounding boxes
+  template<bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxCs = TreeBoxManagedND<2, IS_LOOSE_TREE, BaseGeometryType>;
+  using QuadtreeBoxM = TreeBoxManagedND<2, true, BaseGeometryType>;
+
+  // Octree for points
+  using OctreePointM = TreePointManagedND<3, BaseGeometryType>;
+
+  // Octree for bounding boxes
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxCs = TreeBoxManagedND<3, IS_LOOSE_TREE, BaseGeometryType>;
+  using OctreeBoxM = TreeBoxManagedND<3, true, BaseGeometryType>;
+
+
+  // std::unordered_map-based Dualtree for points
+  using DualtreePointMapM = TreePointManagedND<1, BaseGeometryType, false>;
+
+  // std::unordered_map-based Dualtree for bounding boxes
+  template<bool IS_LOOSE_TREE = true>
+  using DualtreeBoxMapCs = TreeBoxManagedND<1, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using DualtreeBoxMapM = TreeBoxManagedND<1, true, BaseGeometryType, false>;
+
+  // std::unordered_map-based Quadtree for points
+  using QuadtreePointMapM = TreePointManagedND<2, BaseGeometryType, false>;
+
+  // std::unordered_map-based Quadtree for bounding boxes
+  template<bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxMapCs = TreeBoxManagedND<2, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using QuadtreeBoxMapM = TreeBoxManagedND<2, true, BaseGeometryType, false>;
+
+  // std::unordered_map-based Octree for points
+  using OctreePointMapM = TreePointManagedND<3, BaseGeometryType, false>;
+
+  // std::unordered_map-based Octree for bounding boxes
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxMapCs = TreeBoxManagedND<3, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using OctreeBoxMapM = TreeBoxManagedND<3, true, BaseGeometryType, false>;
+
+  // User-defined container-based Quadtree for points
+  template<typename EntityContainer>
+  using QuadtreePointUDMapC = TreePointContainerNDUD<2, BaseGeometryType, EntityContainer>;
+
+  // User-defined container-based Quadtree for bounding boxes
+  template<typename EntityContainer, bool IS_LOOSE_TREE = true>
+  using QuadtreeBoxUDMapCs = TreeBoxContainerNDUD<2, IS_LOOSE_TREE, BaseGeometryType, EntityContainer>;
+  template<typename EntityContainer>
+  using QuadtreeBoxUDMapC = TreeBoxContainerNDUD<2, true, BaseGeometryType, EntityContainer>;
+
+  // User-defined container-based Octree for points
+  template<typename EntityContainer>
+  using OctreePointUDMapC = TreePointContainerNDUD<3, BaseGeometryType, EntityContainer>;
+
+  // User-defined container-based Octree for bounding boxes
+  template<typename EntityContainer, bool IS_LOOSE_TREE = true>
+  using OctreeBoxUDMapCs = TreeBoxContainerNDUD<3, IS_LOOSE_TREE, BaseGeometryType, EntityContainer>;
+  template<typename EntityContainer>
+  using OctreeBoxUDMapC = TreeBoxContainerNDUD<3, true, BaseGeometryType, EntityContainer>;
 } // namespace OrthoTree
