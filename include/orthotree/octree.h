@@ -87,7 +87,7 @@ SOFTWARE.
 #include "adapters/general.h"
 
 #include "core/aliases.h"
-#include "octree_container.h"
+#include "octree_managed.h"
 
 
 

@@ -255,7 +255,7 @@ namespace RandomTests
       auto const boxes = CreateBoxes_Random<DIMENSION_NO, TScalar>(boxesNo, rMin, rMax);
 
       auto const treeCore = OrthoTree::OrthoTreePointND<DIMENSION_NO, TScalar>(points);
-      auto const treeContainer = OrthoTree::TreePointContainerND<DIMENSION_NO, TScalar>(points);
+      auto const treeContainer = OrthoTree::TreePointManagedND<DIMENSION_NO, TScalar>(points);
 
       for (auto const& box : boxes)
       {
@@ -313,7 +313,7 @@ namespace RandomTests
       auto const searchBoxes = CreateBoxes_Random<DIMENSION_NO, TScalar>(searchboxNo, rMin, rMax);
 
       auto const treeCore = OrthoTree::OrthoTreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar>(entityBoxes);
-      auto const treeContainer = OrthoTree::TreeBoxContainerND<DIMENSION_NO, IS_LOOSE_TREE, TScalar>(entityBoxes);
+      auto const treeContainer = OrthoTree::TreeBoxManagedND<DIMENSION_NO, IS_LOOSE_TREE, TScalar>(entityBoxes);
       for (auto const& searchBox : searchBoxes)
       {
         auto elementIDsTreeCore = treeCore.RangeSearch(searchBox, entityBoxes, RangeSearchMode::Overlap);

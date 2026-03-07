@@ -504,7 +504,7 @@ namespace GeneralTest
 
     TEST_METHOD(InitThenInsert)
     {
-      auto tree = DualtreeBoxC{};
+      auto tree = DualtreeBoxM{};
       auto const handledSpaceDomain = BoundingBox1D{ -2, +2 };
       tree.Init(handledSpaceDomain, 3, 1);
 
@@ -889,7 +889,7 @@ namespace GeneralTest
     {
       auto const handledSpaceDomain = BoundingBox1D{ -2, +2 };
 
-      auto tree = DualtreeBoxC{};
+      auto tree = DualtreeBoxM{};
       tree.Reset();
       tree.Init(handledSpaceDomain, 10, 4);
       auto const isErased = tree.Erase(0);
@@ -993,7 +993,8 @@ namespace GeneralTest
       auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes(
         {
-          { 2, std::nullopt }
+          { 2, 1 },
+          { 1, 2 }
       });
 
       auto const ids = tree.GetEntitiesBreadthFirst();
@@ -1061,11 +1062,11 @@ namespace GeneralTest
       auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
       tree.UpdateIndexes(
         {
-          { 6,            3 },
-          { 3,            6 },
-          { 4,            5 },
-          { 5,            1 },
-          { 1, std::nullopt },
+          { 6, 3 },
+          { 3, 6 },
+          { 4, 5 },
+          { 5, 1 },
+          { 1, 6 },
       });
 
       auto const ids = tree.GetEntitiesBreadthFirst();
@@ -1967,7 +1968,7 @@ namespace Tree1DTest
       auto const idsOr = tree.Query<LogicalOperator::Or>(conditions, vpt);
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 3, 4, 5, 6, 7, 8 }, idsOr));
 
-      auto const treeC = QuadtreePointC(vpt, 3, std::nullopt, 1);
+      auto const treeC = QuadtreePointM(vpt, 3, std::nullopt, 1);
       auto const idsAndC = treeC.Query(conditions);
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 7, 8 }, idsAndC));
     }
@@ -2459,7 +2460,7 @@ namespace Tree2DTest
         Point3D{ 5.0,  0.0, 1.00999 }
       };
 
-      auto const tree = OctreePointC(vpt, 3, std::nullopt, 2);
+      auto const tree = OctreePointM(vpt, 3, std::nullopt, 2);
 
       auto const ids = tree.PlaneSearch(4.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01);
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids));
@@ -2708,7 +2709,7 @@ namespace Tree2DTest
       inspection_space.Min = inspection_space_min;
       inspection_space.Max = inspection_space_max;
 
-      auto tree = QuadtreePointC(poses, 9, inspection_space);
+      auto tree = QuadtreePointM(poses, 9, inspection_space);
 
       auto neighbors = tree.GetNearestNeighbors(search_point, 1);
       Assert::AreEqual<EntityID>(EntityID(std::distance(poses.begin(), itMin)), neighbors[0]);
@@ -3049,7 +3050,7 @@ namespace Tree2DTest
         BoundingBox3D{ { 1.2, 1.2, -1.1 },  { 2.8, 2.8, 1.1 } }
       };
 
-      auto const octreebox = OctreeBoxC(boxes, 3, std::nullopt, 2);
+      auto const octreebox = OctreeBoxM(boxes, 3, std::nullopt, 2);
       auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01);
 
       Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{}, intersectedBoxes));
@@ -3598,11 +3599,11 @@ namespace LongIntAdaptor
   template<dim_t N>
   using OrthoTreePointCustom = OrthoTreeBase<PointEntitySpanAdapter<CustomVectorTypeND<N>>, CustomGeometryAdapter<N>, PointConfiguration<>>;
   template<dim_t N>
-  using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeContainer<OrthoTreePointCustom<N>>;
+  using OrthoTreePointContainerCustom = OrthoTree::OrthoTreeManaged<OrthoTreePointCustom<N>>;
   template<dim_t N, bool IS_LOOSE_TREE = true>
   using OrthoTreeBoxCustom = OrthoTreeBase<BoxEntitySpanAdapter<CustomBoundingBoxND<N>>, CustomGeometryAdapter<N>, BoxConfiguration<IS_LOOSE_TREE>>;
   template<dim_t N>
-  using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeContainer<OrthoTreeBoxCustom<N>>;
+  using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeManaged<OrthoTreeBoxCustom<N>>;
 
 
   TEST_CLASS(LongIntTest)
@@ -4517,7 +4518,7 @@ namespace LongIntAdaptor
       if (boxes.empty())
         return;
 
-      using Tree = TreeBoxContainerND<3, true, float>;
+      using Tree = TreeBoxManagedND<3, true, float>;
       auto const tree = Tree(boxes, 4, std::nullopt, 21, false);
 
       const auto boxOfTree = tree.GetCore().GetBox();
@@ -4829,7 +4830,7 @@ namespace EntityAdapterFlexibilityTest
   using MoveOnlyOctreeCore =
     OrthoTreeBase<MoveOnlyEntityAdapter, GeneralGeometryAdapterTemplate<3, Point3D, BoundingBox3D, Ray3D, Plane3D>, PointConfiguration<>>;
 
-  using MoveOnlyOctreeContainer = OrthoTreeContainer<MoveOnlyOctreeCore>;
+  using MoveOnlyOctreeContainer = OrthoTreeManaged<MoveOnlyOctreeCore>;
 
 
   // ============================================================
@@ -4865,7 +4866,7 @@ namespace EntityAdapterFlexibilityTest
   using StrongIDOctreeCore =
     OrthoTreeBase<StrongIDEntityAdapter, GeneralGeometryAdapterTemplate<3, Point3D, BoundingBox3D, Ray3D, Plane3D>, PointConfiguration<>>;
 
-  using StrongIDOctreeContainer = OrthoTreeContainer<StrongIDOctreeCore>;
+  using StrongIDOctreeContainer = OrthoTreeManaged<StrongIDOctreeCore>;
 
 
   TEST_CLASS(EntityAdapterFlexibilityTests)
@@ -5004,9 +5005,9 @@ namespace EntityAdapterFlexibilityTest
     }
 
     // ----------------------------------------------------------
-    // Move-only entity: OrthoTreeContainer usage
+    // Move-only entity: OrthoTreeManaged usage
     // This is expected to FAIL or require container changes
-    // because OrthoTreeContainer copies/moves the container
+    // because OrthoTreeManaged copies/moves the container
     // ----------------------------------------------------------
     TEST_METHOD(MoveOnlyEntity_ContainerCreate)
     {
@@ -5186,7 +5187,7 @@ namespace EntityAdapterFlexibilityTest
     }
 
     // ----------------------------------------------------------
-    // Non-default-constructible EntityID: OrthoTreeContainer usage
+    // Non-default-constructible EntityID: OrthoTreeManaged usage
     // This exercises the container's Add/Erase/Update paths
     // ----------------------------------------------------------
     TEST_METHOD(StrongEntityID_ContainerCreate)
@@ -5505,12 +5506,12 @@ namespace GeneralTest
     }
   };
 
-  TEST_CLASS(OrthoTreeContainerAddTest)
+  TEST_CLASS(OrthoTreeManagedAddTest)
   {
   public:
     TEST_METHOD(ContainerAdd_SpanOfGeometry_2D)
     {
-      using Container = TreeBoxContainerND<2>;
+      using Container = TreeBoxManagedND<2>;
       using Box = BoundingBoxND<2>;
 
       auto container = Container();
@@ -5533,7 +5534,7 @@ namespace GeneralTest
 
     TEST_METHOD(ContainerAdd_VectorOfGeometry_3D)
     {
-      using Container = TreeBoxContainerND<3>;
+      using Container = TreeBoxManagedND<3>;
       using Box = BoundingBoxND<3>;
 
       auto container = Container();
@@ -5556,7 +5557,7 @@ namespace GeneralTest
 
     TEST_METHOD(ContainerAdd_VectorOfGeometry_6D)
     {
-      using Container = TreePointContainerND<6>;
+      using Container = TreePointManagedND<6>;
       using Point = PointND<6>;
 
       auto container = Container();
@@ -5579,7 +5580,7 @@ namespace GeneralTest
 
     TEST_METHOD(ContainerAdd_SpanOfGeometry_12D)
     {
-      using Container = TreePointContainerND<12>;
+      using Container = TreePointManagedND<12>;
       using Point = PointND<12>;
 
       auto container = Container();

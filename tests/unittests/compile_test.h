@@ -83,8 +83,9 @@ void testCompilePoint()
     tree.Update(3, vpt[3], vpt[4]);
     tree.UpdateIndexes(
       {
-        { 1, std::nullopt },
-        { 3,            4 }
+        { 1, 3 },
+        { 3, 4 },
+        { 4, 1 }
     });
     tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
@@ -245,8 +246,9 @@ void testCompileBox()
     tree.Update(3, boxes[3], boxes[4]);
     tree.UpdateIndexes(
       {
-        { 1, std::nullopt },
-        { 3,            4 }
+        { 1, 3 },
+        { 3, 4 },
+        { 4, 1 }
     });
     tree.Move({ 1.0, 1.0 }, TExecMode{});
     tree.Clear();
@@ -387,12 +389,12 @@ void testCompileBoxMap()
 }
 
 template<OrthoTree::dim_t N, typename TExecMode, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
-void testCompilePointC()
+void testCompilePointM()
 {
   using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
-  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreePointND<N, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>>;
+  using OT = OrthoTree::OrthoTreeManaged<OrthoTree::OrthoTreePointND<N, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>>;
 
   auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
 
@@ -457,13 +459,13 @@ void testCompilePointC()
 }
 
 template<OrthoTree::dim_t N, typename TExecMode, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
-void testCompilePointMapC()
+void testCompilePointMapM()
 {
   using Point = OrthoTree::PointND<N>;
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, Point>;
-  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreePointNDUD<N, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>>;
+  using OT = OrthoTree::OrthoTreeManaged<OrthoTree::OrthoTreePointNDUD<N, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>>;
 
   auto const vpt = Map{
     { 10, Point{ 0.0 } },
@@ -529,11 +531,11 @@ void testCompilePointMapC()
 }
 
 template<OrthoTree::dim_t N, typename TExecMode, bool IS_LOOSE_TREE = true, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MBR>
-void testCompileBoxC()
+void testCompileBoxM()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
-  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreeBoxND<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>>;
+  using OT = OrthoTree::OrthoTreeManaged<OrthoTree::OrthoTreeBoxND<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, true, NODE_GEOMETRY_STORAGE>>;
 
   auto constexpr boxes = std::array{
     BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -599,12 +601,12 @@ void testCompileBoxC()
 }
 
 template<OrthoTree::dim_t N, typename TExecMode, bool IS_LOOSE_TREE = true, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE = OrthoTree::NodeGeometryStorage::MBR>
-void testCompileBoxMapC()
+void testCompileBoxMapM()
 {
   using BoundingBox = OrthoTree::BoundingBoxND<N>;
   using Plane = OrthoTree::PlaneND<N>;
   using Map = std::unordered_map<int, BoundingBox>;
-  using OT = OrthoTree::OrthoTreeContainer<OrthoTree::OrthoTreeBoxNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>>;
+  using OT = OrthoTree::OrthoTreeManaged<OrthoTree::OrthoTreeBoxNDUD<N, IS_LOOSE_TREE, OrthoTree::BaseGeometryType, Map, NODE_GEOMETRY_STORAGE>>;
 
   auto const boxes = Map{
     {  5, BoundingBox{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
@@ -723,43 +725,43 @@ void testCompileBoxBatchDimension()
 
   // Container types
   {
-    testCompilePointC<2, TExecMode, NODE_GEOMETRY_STORAGE>();
-    testCompilePointC<3, TExecMode, NODE_GEOMETRY_STORAGE>();
-    // testCompilePointC<4, TExecMode, NODE_GEOMETRY_STORAGE>();
-    // testCompilePointC<5, TExecMode, NODE_GEOMETRY_STORAGE>();
-    testCompilePointC<6, TExecMode, NODE_GEOMETRY_STORAGE>();
-    // testCompilePointC<7, TExecMode, NODE_GEOMETRY_STORAGE>();
-    // testCompilePointC<8, TExecMode, NODE_GEOMETRY_STORAGE>();
-    // testCompilePointC<12, TExecMode, NODE_GEOMETRY_STORAGE>();
-    // testCompilePointC<16, TExecMode, NODE_GEOMETRY_STORAGE>();
-    testCompilePointC<31, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointM<2, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointM<3, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointM<4, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointM<5, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointM<6, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointM<7, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointM<8, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointM<12, TExecMode, NODE_GEOMETRY_STORAGE>();
+    // testCompilePointM<16, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointM<31, TExecMode, NODE_GEOMETRY_STORAGE>();
     if constexpr (isPlatform64)
     {
-      testCompilePointC<32, TExecMode, NODE_GEOMETRY_STORAGE>();
-      testCompilePointC<63, TExecMode, NODE_GEOMETRY_STORAGE>();
+      testCompilePointM<32, TExecMode, NODE_GEOMETRY_STORAGE>();
+      testCompilePointM<63, TExecMode, NODE_GEOMETRY_STORAGE>();
     }
-    testCompilePointMapC<2, TExecMode, NODE_GEOMETRY_STORAGE>();
-    testCompilePointMapC<3, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointMapM<2, TExecMode, NODE_GEOMETRY_STORAGE>();
+    testCompilePointMapM<3, TExecMode, NODE_GEOMETRY_STORAGE>();
 
-    testCompileBoxC<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    testCompileBoxC<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    // testCompileBoxC<4, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    // testCompileBoxC<5, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    testCompileBoxC<6, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    // testCompileBoxC<7, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    // testCompileBoxC<8, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    // testCompileBoxC<12, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    // testCompileBoxC<16, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    testCompileBoxC<31, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxM<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxM<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxM<4, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxM<5, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxM<6, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxM<7, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxM<8, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxM<12, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    // testCompileBoxM<16, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxM<31, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
 
     if constexpr (isPlatform64)
     {
-      testCompileBoxC<32, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-      testCompileBoxC<63, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+      testCompileBoxM<32, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+      testCompileBoxM<63, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     }
 
-    testCompileBoxMapC<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
-    testCompileBoxMapC<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxMapM<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
+    testCompileBoxMapM<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
   }
 }
 

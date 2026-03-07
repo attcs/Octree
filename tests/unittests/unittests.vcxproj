@@ -215,7 +215,7 @@
     <ClInclude Include="..\..\include\orthotree\detail\utils.h" />
     <ClInclude Include="..\..\include\orthotree\detail\zip_view.h" />
     <ClInclude Include="..\..\include\orthotree\octree.h" />
-    <ClInclude Include="..\..\include\orthotree\octree_container.h" />
+    <ClInclude Include="..\..\include\orthotree\octree_managed.h" />
     <ClInclude Include="compile_test.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

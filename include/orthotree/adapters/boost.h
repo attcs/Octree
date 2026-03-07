@@ -250,7 +250,7 @@ namespace boost::geometry
   // Container types
 
   template<int DIMENSION_NO, typename TScalar = double>
-  using orthotree_point_c_t = OrthoTree::OrthoTreeContainer<orthotree_point_t<DIMENSION_NO, TScalar>>;
+  using orthotree_point_c_t = OrthoTree::OrthoTreeManaged<orthotree_point_t<DIMENSION_NO, TScalar>>;
 
   using quadtree_point_c_d = orthotree_point_c_t<2, double>;
   using quadtree_point_c_f = orthotree_point_c_t<2, float>;
@@ -264,7 +264,7 @@ namespace boost::geometry
 
 
   template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
-  using orthotree_box_c_t = OrthoTree::OrthoTreeContainer<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar>>;
+  using orthotree_box_c_t = OrthoTree::OrthoTreeManaged<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar>>;
 
   template<bool IS_LOOSE_TREE = true>
   using quadtree_box_c_ds = orthotree_box_c_t<2, IS_LOOSE_TREE, double>;
@@ -316,7 +316,7 @@ namespace boost::geometry
   // Container types
 
   template<int DIMENSION_NO, typename TScalar = double>
-  using orthotree_point_map_c_t = OrthoTree::OrthoTreeContainer<orthotree_point_t<DIMENSION_NO, TScalar, pointmap_container<DIMENSION_NO, TScalar>>>;
+  using orthotree_point_map_c_t = OrthoTree::OrthoTreeManaged<orthotree_point_t<DIMENSION_NO, TScalar, pointmap_container<DIMENSION_NO, TScalar>>>;
 
   using quadtree_point_map_c_d = orthotree_point_map_c_t<2, double>;
   using quadtree_point_map_c_f = orthotree_point_map_c_t<2, float>;
@@ -331,7 +331,7 @@ namespace boost::geometry
 
   template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
   using orthotree_box_map_c_t =
-    OrthoTree::OrthoTreeContainer<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar, boxmap_container<DIMENSION_NO, TScalar>>>;
+    OrthoTree::OrthoTreeManaged<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar, boxmap_container<DIMENSION_NO, TScalar>>>;
 
   template<bool IS_LOOSE_TREE = true>
   using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, IS_LOOSE_TREE, double>;

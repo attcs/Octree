@@ -217,11 +217,11 @@ namespace XYZ
   template<bool IS_LOOSE_TREE = true>
   using QuadtreeBox = OrthoTreeBase<BoxEntitySpanAdapter<XYBoundingBox2D>, XYGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
-  using QuadtreePointC = OrthoTreeContainer<QuadtreePoint>;
+  using QuadtreePointM = OrthoTreeManaged<QuadtreePoint>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxCs = OrthoTreeContainer<QuadtreeBox<IS_LOOSE_TREE>>;
-  using QuadtreeBoxC = QuadtreeBoxCs<true>;
+  using QuadtreeBoxCs = OrthoTreeManaged<QuadtreeBox<IS_LOOSE_TREE>>;
+  using QuadtreeBoxM = QuadtreeBoxCs<true>;
 
   using OctreePoint = OrthoTreeBase<PointEntitySpanAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration<>>;
 
@@ -229,11 +229,11 @@ namespace XYZ
   using OctreeBox = OrthoTreeBase<BoxEntitySpanAdapter<XYZBoundingBox3D>, XYZGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
 
-  using OcreePointC = OrthoTreeContainer<OctreePoint>;
+  using OcreePointC = OrthoTreeManaged<OctreePoint>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxCs = OrthoTreeContainer<OctreeBox<IS_LOOSE_TREE>>;
-  using OctreeBoxC = OctreeBoxCs<true>;
+  using OctreeBoxCs = OrthoTreeManaged<OctreeBox<IS_LOOSE_TREE>>;
+  using OctreeBoxM = OctreeBoxCs<true>;
 
 
   // Map types
@@ -245,20 +245,20 @@ namespace XYZ
   template<bool IS_LOOSE_TREE = true>
   using QuadtreeBoxMap = OrthoTreeBase<BoxEntityMapAdapter<XYBoundingBox2D>, XYGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
-  using QuadtreePointMapC = OrthoTreeContainer<QuadtreePointMap>;
+  using QuadtreePointMapM = OrthoTreeManaged<QuadtreePointMap>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxMapCs = OrthoTreeContainer<QuadtreeBoxMap<IS_LOOSE_TREE>>;
-  using QuadtreeBoxMapC = QuadtreeBoxMapCs<true>;
+  using QuadtreeBoxMapCs = OrthoTreeManaged<QuadtreeBoxMap<IS_LOOSE_TREE>>;
+  using QuadtreeBoxMapM = QuadtreeBoxMapCs<true>;
 
   using OctreePointMap = OrthoTreeBase<PointEntityMapAdapter<XYZPoint3D>, XYZGeometryAdapter, PointConfiguration<>>;
 
   template<bool IS_LOOSE_TREE = true>
   using OctreeBoxMap = OrthoTreeBase<BoxEntityMapAdapter<XYZBoundingBox3D>, XYZGeometryAdapter, BoxConfiguration<IS_LOOSE_TREE>>;
 
-  using OcreePointMapC = OrthoTreeContainer<OctreePointMap>;
+  using OcreePointMapC = OrthoTreeManaged<OctreePointMap>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxMapCs = OrthoTreeContainer<OctreeBoxMap<IS_LOOSE_TREE>>;
-  using OctreeBoxMapC = OctreeBoxMapCs<true>;
+  using OctreeBoxMapCs = OrthoTreeManaged<OctreeBoxMap<IS_LOOSE_TREE>>;
+  using OctreeBoxMapM = OctreeBoxMapCs<true>;
 } // namespace XYZ

@@ -101,7 +101,7 @@ namespace Example
         Point3D{ 1, 1, 1 },
         Point3D{ 2, 2, 2 }
       };
-      auto const octree = OctreePointC(points, 3 /*max depth*/);
+      auto const octree = OctreePointM(points, 3 /*max depth*/);
 
       auto const searchBox = BoundingBox3D{
         { 0.5, 0.5, 0.5 },
@@ -129,7 +129,7 @@ namespace Example
         BoundingBox2D{ { 0.1, 0.1 }, { 0.9, 0.9 } }
       };
 
-      auto quadtree = QuadtreeBoxC(
+      auto quadtree = QuadtreeBoxM(
         boxes,
         3 // max depth
         ,
@@ -180,11 +180,11 @@ namespace Example
       };
       // Using ctor
       {
-        auto octreeBox = OctreeBoxC(PAR_EXEC, boxes, 3, std::nullopt, OctreeBox::CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES);
+        auto octreeBox = OctreeBoxM(PAR_EXEC, boxes, 3, std::nullopt, OctreeBox::CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES);
       }
       // Using Create
       {
-        auto octreeBox = OctreeBoxC::Create<ExecutionTags::Parallel>(boxes, 3);
+        auto octreeBox = OctreeBoxM::Create<ExecutionTags::Parallel>(boxes, 3);
       }
       // or
       // OrthoTreeBoxND<3>::template Create<true>(boxes, 3);

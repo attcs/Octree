@@ -9,7 +9,7 @@ For ease of use, the library provides several aliases ([core/aliases.h](../inclu
 * **Static Core** (`ot_static_linear_core.h`): An immutable, linear memory layout tree. It is built once and cannot be modified (no insertion/removal after build), but it provides the highest cache coherency and fastest query performance. Best for static environments and one-time spatial setups. It aims minimal memory footprint. E.g: `StaticOctreeBox`
 * **Dynamic Core** (`ot_dynamic_hash_core.h`): A mutable tree structure based on a hashing approach. It allows adding, removing, and updating entities dynamically at runtime. Best for changing environments, simulators, and physics engines. E.g: `DynamicOctreeBox`/`OctreeBox`
 * **Query** layer (`ot_query.h`): It is an additional layer on top of the cores. Contains the geometric search algorithms that operate on the trees, such as Range search, Collision detection, K-Nearest Neighbors (KNN), and Raycasting. With the proper interface it can be used for other types of Cores (e.g., BVH, RTree, etc.).
-* **Container** (`octree_container.h`): High-level wrapper classes (e.g., `OctreePointC`) that manage both the tree structure and the user's entity storage. They provide a simpler, object-oriented API for interacting with the tree.
+* **Container** (`octree_managed.h`): High-level wrapper classes (e.g., `OctreePointM`) that manage both the tree structure and the user's entity storage. They provide a simpler, object-oriented API for interacting with the tree.
 * **Adapters** (`adapters/*.h`): Adapters map user-defined or third-party geometric types (vector, box) to the generic concepts required by OrthoTree. Ready-made adapters exist for GLM, Eigen, Unreal, CGAL, etc.
 
 > [!CAUTION]
@@ -32,9 +32,9 @@ An entity typically consists of its geometry (e.g., a bounding box) and potentia
 
 To bridge this gap, OrthoTree tracks entities using an `EntityID`. The client stores the metadata directly, and uses the `EntityID` returned by queries to access it.
 * `EntityID` must be *trivially copyable*, but it does not need to be *default constructible*. It is typically a fundamental integer type or a lightweight handle, but it can be any type that can be *hash-able* with a client-provided `hash` function. *It is recommended to use the smallest possible type to minimize memory usage.*
-* The `Entity` itself must be *movable* if the `OrthoTreeContainer` is used, enabling construction and reorganization of the tree internals.
+* The `Entity` itself must be *movable* if the `OrthoTreeManaged` is used, enabling construction and reorganization of the tree internals.
 
-The `EntityAdapter` also may contain container mutation functions. These are used by `OrthoTreeContainer` internally to know how to insert, append, or assign elements into the specific custom container type used by the client.
+The `EntityAdapter` also may contain container mutation functions. These are used by `OrthoTreeManaged` internally to know how to insert, append, or assign elements into the specific custom container type used by the client.
 
 For a full reference implementation, see [entity_adapter.h](../include/orthotree/core/entity_adapter.h) which defines `EntityAdapterDefault`, `PointEntitySpanAdapter`, `BoxEntitySpanAdapter`, and map-based variants.
 
@@ -191,6 +191,8 @@ The library defines a `BASE_TOLERANCE` trait in the adapters to handle the stand
 
 `UMapNodeContainer` / `MapNodeContainer`: **Custom node containers**, by default, the tree nodes are stored in an `std::unordered_map`. This can be replaced with any drop-in compatible associative container (e.g., Abseil's `flat_hash_map`) by overriding the `UMapNodeContainer` template alias in a custom `Configuration`.
 
+While the `OrthoTree::detail` namespace is reserved for internal implementation details, SFINAE can be utilized as a fallback to extend support for custom container-related functions.
+
 For latest version with the all available parameters see the [configuration.h](../include/orthotree/core/configuration.h).
 
 Recommended usage: The Configuration parameters could be changed time-to-time, the recommended usage is inheritation with overrided parameters.
@@ -244,7 +246,7 @@ Recommended insert usage:
 > [!WARNING]
 > Do not intermix `Insert()` with `InsertIntoLeaf()` calls. `Insert()` will not split a node if it already has child nodes. Since `InsertIntoLeaf(LowestLeaf)` unconditionally creates child nodes, subsequent overflow-based splits for parent elements might not trigger. Furthermore, `Insert()` assumes that only the currently inserted element causes an overflow, whereas `InsertIntoLeaf(ExistingLeaf)` can silently overflow nodes with multiple elements.
 
-High-level wrappers like the `OrthoTreeContainer` typically use the `Add()` or `Update()` interface, taking the `InsertionMode` enum as a parameter to route internally to `Insert()` or `InsertIntoLeaf()`.
+High-level wrappers like the `OrthoTreeManaged` typically use the `Add()` or `Update()` interface, taking the `InsertionMode` enum as a parameter to route internally to `Insert()` or `InsertIntoLeaf()`.
 
 Managed tree example:
 ```C++
@@ -270,7 +272,7 @@ if (tree.InsertUnique(newEntityID, newEntityGeometry, storedEntities, tolerance)
 
 ### Update
 
-`Update()` updates an entity in the tree. In a Dynamic Core, this requires traversing down to the leaf node holding the entity unless `USE_REVERSE_MAPPING` is active in the `Configuration`. Using wrappers like `OrthoTreeContainer` will securely update the entity from both your underlying collection and the tree structure simultaneously.
+`Update()` updates an entity in the tree. In a Dynamic Core, this requires traversing down to the leaf node holding the entity unless `USE_REVERSE_MAPPING` is active in the `Configuration`. Using wrappers like `OrthoTreeManaged` will securely update the entity from both your underlying collection and the tree structure simultaneously.
 
 It returns `true` if the entity was updated, `false` otherwise. 
 * If the entity is not found, it returns `false`.
@@ -289,7 +291,7 @@ for (int entityID = 0; entityID < updatePointsNo; ++entityID)
 
 ### Remove
 
-`Erase()` removes an entity from the tree. In a Dynamic Core, this requires traversing down to the leaf node holding the entity unless `USE_REVERSE_MAPPING` is active in the `Configuration`. Using wrappers like `OrthoTreeContainer` will securely erase the entity from both your underlying collection and the tree structure simultaneously.
+`Erase()` removes an entity from the tree. In a Dynamic Core, this requires traversing down to the leaf node holding the entity unless `USE_REVERSE_MAPPING` is active in the `Configuration`. Using wrappers like `OrthoTreeManaged` will securely erase the entity from both your underlying collection and the tree structure simultaneously.
 
 ## Querying
 

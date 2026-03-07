@@ -57,8 +57,8 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 * Point and Bounding box-based solutions are distinguished.
 * Core types store only the entity ids, use Container types to store. Core types advantages: not copying and managing the entity information; disadvantages: this information may have to be provided again for the member function call.
 * Naming
-  * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxC`).
-  * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapC`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contiguous container.
+  * Container types have "C" postfix (e.g.: core `OctreeBox`'s container is `OctreeBoxM`).
+  * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapM`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contiguous container.
   * `s` means adjustable `LOOSE_TREE` for box-types.
 * If `int` is preferred for indexing instead of `std::size_t`, declare `#define ORTHOTREE_INDEX_T__INT`.
 * For box types 2.0 loose tree is the default.
@@ -70,7 +70,7 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
 
 ## Attached adapters
 * Default: 2D, 3D...63D; `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
-* CGAL: 2D, 3D; `CGAL::OctreePoint`, `OctreeBox`, `OctreePointC`, `OctreeBoxC`, etc. (adaptor.cgal.h)
+* CGAL: 2D, 3D; `CGAL::OctreePoint`, `OctreeBox`, `OctreePointM`, `OctreeBoxM`, etc. (adaptor.cgal.h)
 * Eigen: 2D, 3D; `Eigen::OctreePoint3d`, `OctreePointC3d`, `OctreeBox3d`, `OctreeBoxC3d`, etc. (adaptor.eigen.h)
 * glm: 2D, 3D, 4D; `glm::octree_point`, `octree_box`, `octree_point_c`, `octree_box_c`, etc. (adaptor.glm.h)
 * Unreal Engine: 2D, 3D; `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
@@ -107,20 +107,20 @@ What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curv
   /// Container types
 
   // Quadtree for points
-  using QuadtreePointC = TreePointContainerND<2, BaseGeometryType>;
+  using QuadtreePointM = TreePointManagedND<2, BaseGeometryType>;
 
   // Quadtree for bounding boxes
   template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using QuadtreeBoxCs = TreeBoxContainerND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
-  using QuadtreeBoxC = TreeBoxContainerND<2, true, BaseGeometryType>;
+  using QuadtreeBoxCs = TreeBoxManagedND<2, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  using QuadtreeBoxM = TreeBoxManagedND<2, true, BaseGeometryType>;
 
   // Octree for points
-  using OctreePointC = TreePointContainerND<3, BaseGeometryType>;
+  using OctreePointM = TreePointManagedND<3, BaseGeometryType>;
 
   // Octree for bounding boxes
   template<bool DO_SPLIT_PARENT_ENTITIES = true>
-  using OctreeBoxCs = TreeBoxContainerND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
-  using OctreeBoxC = TreeBoxContainerND<3, true, BaseGeometryType>;
+  using OctreeBoxCs = TreeBoxManagedND<3, DO_SPLIT_PARENT_ENTITIES, BaseGeometryType>;
+  using OctreeBoxM = TreeBoxManagedND<3, true, BaseGeometryType>;
 ```
 
 ## Basic examples
@@ -133,7 +133,7 @@ Usage of Container types
     // Example #1: Octree for points
     {
       auto constexpr points = array{ Point3D{0,0,0}, Point3D{1,1,1}, Point3D{2,2,2} };
-      auto const octree = OctreePointC(points, 3 /*max depth*/);
+      auto const octree = OctreePointM(points, 3 /*max depth*/);
 
       auto const searchBox = BoundingBox3D{ {0.5, 0.5, 0.5}, {2.5, 2.5, 2.5} };
       auto const pointIDs = octree.RangeSearch(searchBox); //: { 1, 2 }
@@ -155,7 +155,7 @@ Usage of Container types
         BoundingBox2D{ { 1.2, 1.2 }, { 2.8, 2.8 } }
       };
 
-      auto quadtree = QuadtreeBoxC(boxes
+      auto quadtree = QuadtreeBoxM(boxes
         , 3            // max depth
         , std::nullopt // user-provided bounding Box for all
         , 1            // max element in a node 
@@ -185,14 +185,14 @@ Usage of Container types
         /* and more... */
       };
 
-      auto octreeUsingCtor = OctreeBoxC(PAR_EXEC
+      auto octreeUsingCtor = OctreeBoxM(PAR_EXEC
         , boxes
         , 3
         , std::nullopt
         , OctreeBox::DEFAULT_MAX_ELEMENT
       );
 
-      auto octreeUsingCreate = OctreeBoxC::Create<true>(boxes, 3);
+      auto octreeUsingCreate = OctreeBoxM::Create<true>(boxes, 3);
     }
 
     

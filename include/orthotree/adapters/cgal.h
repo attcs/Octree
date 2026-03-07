@@ -206,15 +206,15 @@ namespace CGAL
 
   // Container types
 
-  using QuadtreePointC = OrthoTree::OrthoTreeContainer<QuadtreePoint>;
-  using OctreePointC = OrthoTree::OrthoTreeContainer<OctreePoint>;
+  using QuadtreePointM = OrthoTree::OrthoTreeManaged<QuadtreePoint>;
+  using OctreePointM = OrthoTree::OrthoTreeManaged<OctreePoint>;
 
   template<bool IS_LOOSE_TREE>
-  using QuadtreeBoxCs = OrthoTree::OrthoTreeContainer<QuadtreeBoxs<IS_LOOSE_TREE>>;
-  using QuadtreeBoxC = QuadtreeBoxCs<true>;
+  using QuadtreeBoxCs = OrthoTree::OrthoTreeManaged<QuadtreeBoxs<IS_LOOSE_TREE>>;
+  using QuadtreeBoxM = QuadtreeBoxCs<true>;
   template<bool IS_LOOSE_TREE>
-  using OctreeBoxCs = OrthoTree::OrthoTreeContainer<OctreeBoxs<IS_LOOSE_TREE>>;
-  using OctreeBoxC = OctreeBoxCs<true>;
+  using OctreeBoxCs = OrthoTree::OrthoTreeManaged<OctreeBoxs<IS_LOOSE_TREE>>;
+  using OctreeBoxM = OctreeBoxCs<true>;
 
 
   // Map types
@@ -246,13 +246,13 @@ namespace CGAL
 
   // Container types
 
-  using QuadtreePointMapC = OrthoTree::OrthoTreeContainer<QuadtreePointMap>;
-  using OctreePointMapC = OrthoTree::OrthoTreeContainer<OctreePointMap>;
+  using QuadtreePointMapM = OrthoTree::OrthoTreeManaged<QuadtreePointMap>;
+  using OctreePointMapM = OrthoTree::OrthoTreeManaged<OctreePointMap>;
 
   template<bool IS_LOOSE_TREE>
-  using QuadtreeBoxMapCs = OrthoTree::OrthoTreeContainer<QuadtreeBoxsMap<IS_LOOSE_TREE>>;
-  using QuadtreeBoxMapC = QuadtreeBoxMapCs<true>;
+  using QuadtreeBoxMapCs = OrthoTree::OrthoTreeManaged<QuadtreeBoxsMap<IS_LOOSE_TREE>>;
+  using QuadtreeBoxMapM = QuadtreeBoxMapCs<true>;
   template<bool IS_LOOSE_TREE>
-  using OctreeBoxMapCs = OrthoTree::OrthoTreeContainer<OctreeBoxsMap<IS_LOOSE_TREE>>;
-  using OctreeBoxMapC = OctreeBoxMapCs<true>;
+  using OctreeBoxMapCs = OrthoTree::OrthoTreeManaged<OctreeBoxsMap<IS_LOOSE_TREE>>;
+  using OctreeBoxMapM = OctreeBoxMapCs<true>;
 } // namespace CGAL

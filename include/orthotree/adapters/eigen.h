@@ -184,16 +184,16 @@ namespace Eigen
 
 
   template<typename TScalar, int AmbientDim>
-  using OrthoTreeContainerPointC = OrthoTree::OrthoTreeContainer<EigenOrthoTreePointSpan<TScalar, AmbientDim>>;
+  using OrthoTreeManagedPoint = OrthoTree::OrthoTreeManaged<EigenOrthoTreePointSpan<TScalar, AmbientDim>>;
 
   template<typename TScalar, int AmbientDim, bool IS_LOOSE_TREE = true>
-  using OrthoTreeContainerBoxC = OrthoTree::OrthoTreeContainer<EigenOrthoTreeBoxSpan<TScalar, AmbientDim, IS_LOOSE_TREE>>;
+  using OrthoTreeManagedBox = OrthoTree::OrthoTreeManaged<EigenOrthoTreeBoxSpan<TScalar, AmbientDim, IS_LOOSE_TREE>>;
 
   template<typename TScalar, int AmbientDim, bool IS_LOOSE_TREE = true, typename TContainer = std::unordered_map<OrthoTree::index_t, AlignedBox<TScalar, AmbientDim>>>
-  using OrthoTreeContainerPointMapC = OrthoTree::OrthoTreeContainer<EigenOrthoTreePointMap<TScalar, AmbientDim, TContainer>>;
+  using OrthoTreeManagedPointMap = OrthoTree::OrthoTreeManaged<EigenOrthoTreePointMap<TScalar, AmbientDim, TContainer>>;
 
   template<typename TScalar, int AmbientDim, bool IS_LOOSE_TREE = true, typename TContainer = std::unordered_map<OrthoTree::index_t, AlignedBox<TScalar, AmbientDim>>>
-  using OrthoTreeContainerBoxMapC = OrthoTree::OrthoTreeContainer<EigenOrthoTreeBoxMap<TScalar, AmbientDim, IS_LOOSE_TREE, TContainer>>;
+  using OrthoTreeManagedBoxMap = OrthoTree::OrthoTreeManaged<EigenOrthoTreeBoxMap<TScalar, AmbientDim, IS_LOOSE_TREE, TContainer>>;
 
   // Non-owning types
   using QuadtreePoint2f = EigenOrthoTreePointSpan<float, 2>;
@@ -221,29 +221,29 @@ namespace Eigen
   using OctreeBox3d = OctreeBox3ds<true>;
 
   // Container types
-  using QuadtreePointC2f = OrthoTreeContainerPointC<float, 2>;
+  using QuadtreePointMd2f = OrthoTreeManagedPoint<float, 2>;
 
-  using QuadtreePointC2d = OrthoTreeContainerPointC<double, 2>;
+  using QuadtreePointM2d = OrthoTreeManagedPoint<double, 2>;
 
-  using OctreePointC3f = OrthoTreeContainerPointC<float, 3>;
+  using OctreePointM3f = OrthoTreeManagedPoint<float, 3>;
 
-  using OctreePointC3d = OrthoTreeContainerPointC<double, 3>;
-
-  template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxC2fs = OrthoTreeContainerBoxC<float, 2, IS_LOOSE_TREE>;
-  using QuadtreeBoxC2f = QuadtreeBoxC2fs<true>;
+  using OctreePointM3d = OrthoTreeManagedPoint<double, 3>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxC2ds = OrthoTreeContainerBoxC<double, 2, IS_LOOSE_TREE>;
-  using QuadtreeBoxC2d = QuadtreeBoxC2ds<true>;
+  using QuadtreeBoxM2fs = OrthoTreeManagedBox<float, 2, IS_LOOSE_TREE>;
+  using QuadtreeBoxM2f = QuadtreeBoxM2fs<true>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxC3fs = OrthoTreeContainerBoxC<float, 3, IS_LOOSE_TREE>;
-  using OctreeBoxC3f = OctreeBoxC3fs<true>;
+  using QuadtreeBoxM2ds = OrthoTreeManagedBox<double, 2, IS_LOOSE_TREE>;
+  using QuadtreeBoxM2d = QuadtreeBoxM2ds<true>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxC3ds = OrthoTreeContainerBoxC<double, 3, IS_LOOSE_TREE>;
-  using OctreeBoxC3d = OctreeBoxC3ds<true>;
+  using OctreeBoxM3fs = OrthoTreeManagedBox<float, 3, IS_LOOSE_TREE>;
+  using OctreeBoxM3f = OctreeBoxM3fs<true>;
+
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxM3ds = OrthoTreeManagedBox<double, 3, IS_LOOSE_TREE>;
+  using OctreeBoxM3d = OctreeBoxM3ds<true>;
 
 
   // Map types
@@ -274,27 +274,27 @@ namespace Eigen
   using OctreeBox3Mapd = OctreeBox3Mapds<true>;
 
   // Container types
-  using QuadtreePointCMap2f = OrthoTreeContainerPointMapC<float, 2>;
+  using QuadtreePointManagedMap2f = OrthoTreeManagedPointMap<float, 2>;
 
-  using QuadtreePointCMap2d = OrthoTreeContainerPointMapC<double, 2>;
+  using QuadtreePointManagedMap2d = OrthoTreeManagedPointMap<double, 2>;
 
-  using OctreePointCMap3f = OrthoTreeContainerPointMapC<float, 3>;
+  using OctreePointManagedMap3f = OrthoTreeManagedPointMap<float, 3>;
 
-  using OctreePointCMap3d = OrthoTreeContainerPointMapC<double, 3>;
-
-  template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxCMap2fs = OrthoTreeContainerBoxMapC<float, 2, IS_LOOSE_TREE>;
-  using QuadtreeBoxCMap2f = QuadtreeBoxCMap2fs<true>;
+  using OctreePointManagedMap3d = OrthoTreeManagedPointMap<double, 3>;
 
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxCMap2ds = OrthoTreeContainerBoxMapC<double, 2, IS_LOOSE_TREE>;
-  using QuadtreeBoxCMap2d = QuadtreeBoxCMap2ds<true>;
+  using QuadtreeBoxManagedMap2fs = OrthoTreeManagedBoxMap<float, 2, IS_LOOSE_TREE>;
+  using QuadtreeBoxManagedMap2f = QuadtreeBoxManagedMap2fs<true>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxCMap3fs = OrthoTreeContainerBoxMapC<float, 3, IS_LOOSE_TREE>;
-  using OctreeBoxCMap3f = OctreeBoxCMap3fs<true>;
+  using QuadtreeBoxManagedMap2ds = OrthoTreeManagedBoxMap<double, 2, IS_LOOSE_TREE>;
+  using QuadtreeBoxManagedMap2d = QuadtreeBoxManagedMap2ds<true>;
 
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxC3Mapds = OrthoTreeContainerBoxMapC<double, 3, IS_LOOSE_TREE>;
-  using OctreeBoxC3Mapd = OctreeBoxC3Mapds<true>;
+  using OctreeBoxManagedMap3fs = OrthoTreeManagedBoxMap<float, 3, IS_LOOSE_TREE>;
+  using OctreeBoxManagedMap3f = OctreeBoxManagedMap3fs<true>;
+
+  template<bool IS_LOOSE_TREE = true>
+  using OctreeBoxManagedMap3ds = OrthoTreeManagedBoxMap<double, 3, IS_LOOSE_TREE>;
+  using OctreeBoxManagedMap3d = OctreeBoxManagedMap3ds<true>;
 } // namespace Eigen

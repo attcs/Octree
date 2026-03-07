@@ -555,36 +555,36 @@ using FOctreeBox3f = OrthoTree::UnrealAdapter::OctreeBoxTemplate<float, FVector3
 
 // Orthotree Container Types
 
-using FQuadtreePointC = OrthoTree::OrthoTreeContainer<FQuadtreePoint>;
+using FQuadtreePointC = OrthoTree::OrthoTreeManaged<FQuadtreePoint>;
 using FQuadtreePoint2DC = FQuadtreePointC;
-using FQuadtreePoint2fC = OrthoTree::OrthoTreeContainer<FQuadtreePoint2f>;
+using FQuadtreePoint2fC = OrthoTree::OrthoTreeManaged<FQuadtreePoint2f>;
 
-using FOctreePointC = OrthoTree::OrthoTreeContainer<FOctreePoint>;
-using FOctreePoint3dC = OrthoTree::OrthoTreeContainer<FOctreePoint3d>;
-using FOctreePoint3fC = OrthoTree::OrthoTreeContainer<FOctreePoint3f>;
+using FOctreePointC = OrthoTree::OrthoTreeManaged<FOctreePoint>;
+using FOctreePoint3dC = OrthoTree::OrthoTreeManaged<FOctreePoint3d>;
+using FOctreePoint3fC = OrthoTree::OrthoTreeManaged<FOctreePoint3f>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxs<IS_LOOSE_TREE>>;
+using FQuadtreeBoxCs = OrthoTree::OrthoTreeManaged<FQuadtreeBoxs<IS_LOOSE_TREE>>;
 using FQuadtreeBoxC = FQuadtreeBoxCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBox2DCs = OrthoTree::OrthoTreeContainer<FQuadtreeBox2Ds<IS_LOOSE_TREE>>;
+using FQuadtreeBox2DCs = OrthoTree::OrthoTreeManaged<FQuadtreeBox2Ds<IS_LOOSE_TREE>>;
 using FQuadtreeBox2DC = FQuadtreeBox2DCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBox2fCs = OrthoTree::OrthoTreeContainer<FQuadtreeBox2fs<IS_LOOSE_TREE>>;
+using FQuadtreeBox2fCs = OrthoTree::OrthoTreeManaged<FQuadtreeBox2fs<IS_LOOSE_TREE>>;
 using FQuadtreeBox2fC = FQuadtreeBox2fCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxCs = OrthoTree::OrthoTreeContainer<FOctreeBoxs<IS_LOOSE_TREE>>;
+using FOctreeBoxCs = OrthoTree::OrthoTreeManaged<FOctreeBoxs<IS_LOOSE_TREE>>;
 using FOctreeBoxC = FOctreeBoxCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBox3dCs = OrthoTree::OrthoTreeContainer<FOctreeBox3ds<IS_LOOSE_TREE>>;
+using FOctreeBox3dCs = OrthoTree::OrthoTreeManaged<FOctreeBox3ds<IS_LOOSE_TREE>>;
 using FOctreeBox3dC = FOctreeBox3dCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBox3fCs = OrthoTree::OrthoTreeContainer<FOctreeBox3fs<IS_LOOSE_TREE>>;
+using FOctreeBox3fCs = OrthoTree::OrthoTreeManaged<FOctreeBox3fs<IS_LOOSE_TREE>>;
 using FOctreeBox3fC = FOctreeBox3fCs<true>;
 
 
@@ -627,34 +627,34 @@ using FOctreeBoxMap3fs = OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<float, F
 using FOctreeBoxMap3f = OrthoTree::UnrealAdapter::OctreeBoxMapTemplate<float, FVector3f, FBox3f, FRay, FPlane, true, FContainer<FBox3f>>;
 
 
-using FQuadtreePointMapC = OrthoTree::OrthoTreeContainer<FQuadtreePointMap>;
+using FQuadtreePointMapC = OrthoTree::OrthoTreeManaged<FQuadtreePointMap>;
 using FQuadtreePointMap2DC = FQuadtreePointMapC;
-using FQuadtreePointMap2fC = OrthoTree::OrthoTreeContainer<FQuadtreePointMap2f>;
+using FQuadtreePointMap2fC = OrthoTree::OrthoTreeManaged<FQuadtreePointMap2f>;
 
-using FOctreePointMapC = OrthoTree::OrthoTreeContainer<FOctreePointMap>;
-using FOctreePointMap3dC = OrthoTree::OrthoTreeContainer<FOctreePointMap3d>;
-using FOctreePointMap3fC = OrthoTree::OrthoTreeContainer<FOctreePointMap3f>;
+using FOctreePointMapC = OrthoTree::OrthoTreeManaged<FOctreePointMap>;
+using FOctreePointMap3dC = OrthoTree::OrthoTreeManaged<FOctreePointMap3d>;
+using FOctreePointMap3fC = OrthoTree::OrthoTreeManaged<FOctreePointMap3f>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxMapCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxsMap<IS_LOOSE_TREE>>;
+using FQuadtreeBoxMapCs = OrthoTree::OrthoTreeManaged<FQuadtreeBoxsMap<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMapC = FQuadtreeBoxMapCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxMap2DCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxMap2Ds<IS_LOOSE_TREE>>;
+using FQuadtreeBoxMap2DCs = OrthoTree::OrthoTreeManaged<FQuadtreeBoxMap2Ds<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMap2DC = FQuadtreeBoxMap2DCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FQuadtreeBoxMap2fCs = OrthoTree::OrthoTreeContainer<FQuadtreeBoxMap2fs<IS_LOOSE_TREE>>;
+using FQuadtreeBoxMap2fCs = OrthoTree::OrthoTreeManaged<FQuadtreeBoxMap2fs<IS_LOOSE_TREE>>;
 using FQuadtreeBoxMap2fC = FQuadtreeBoxMap2fCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMapCs = OrthoTree::OrthoTreeContainer<FOctreeBoxsMap<IS_LOOSE_TREE>>;
+using FOctreeBoxMapCs = OrthoTree::OrthoTreeManaged<FOctreeBoxsMap<IS_LOOSE_TREE>>;
 using FOctreeBoxMapC = FOctreeBoxMapCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMap3dCs = OrthoTree::OrthoTreeContainer<FOctreeBoxMap3ds<IS_LOOSE_TREE>>;
+using FOctreeBoxMap3dCs = OrthoTree::OrthoTreeManaged<FOctreeBoxMap3ds<IS_LOOSE_TREE>>;
 using FOctreeBoxMap3dC = FOctreeBoxMap3dCs<true>;
 
 template<bool IS_LOOSE_TREE = true>
-using FOctreeBoxMap3fCs = OrthoTree::OrthoTreeContainer<FOctreeBoxMap3fs<IS_LOOSE_TREE>>;
+using FOctreeBoxMap3fCs = OrthoTree::OrthoTreeManaged<FOctreeBoxMap3fs<IS_LOOSE_TREE>>;
 using FOctreeBoxMap3fC = FOctreeBoxMap3fCs<true>;

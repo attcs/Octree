@@ -233,7 +233,7 @@ namespace AdaptorTest
 
       TEST_METHOD(BoxGeneral2DC_Example2)
       {
-        using EntityID = Eigen::QuadtreeBoxC2d::EntityID;
+        using EntityID = Eigen::QuadtreeBoxM2d::EntityID;
 
         auto boxes = std::vector{ Eigen::AlignedBox2d(Eigen::Vector2d(0.0, 0.0), Eigen::Vector2d(1.0, 1.0)),
                                   Eigen::AlignedBox2d(Eigen::Vector2d(1.0, 1.0), Eigen::Vector2d(2.0, 2.0)),
@@ -241,7 +241,7 @@ namespace AdaptorTest
                                   Eigen::AlignedBox2d(Eigen::Vector2d(3.0, 3.0), Eigen::Vector2d(4.0, 4.0)),
                                   Eigen::AlignedBox2d(Eigen::Vector2d(1.2, 1.2), Eigen::Vector2d(2.8, 2.8)) };
 
-        auto quadtree = Eigen::QuadtreeBoxC2d(
+        auto quadtree = Eigen::QuadtreeBoxM2d(
           boxes,
           3 // max depth
           ,
@@ -375,7 +375,7 @@ namespace AdaptorTest
 
       TEST_METHOD(BoxGeneral2DC_Example2)
       {
-        using EntityID = XYZ::QuadtreeBoxC::EntityID;
+        using EntityID = XYZ::QuadtreeBoxM::EntityID;
 
         auto boxes = std::vector{
           BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 0.0f, 0.0f }, BasicTypesXYZ::Point2D{ 1.0f, 1.0f } },
@@ -385,7 +385,7 @@ namespace AdaptorTest
           BasicTypesXYZ::BoundingBox2D{ BasicTypesXYZ::Point2D{ 1.2f, 1.2f }, BasicTypesXYZ::Point2D{ 2.8f, 2.8f } }
         };
 
-        auto quadtree = XYZ::QuadtreeBoxC(
+        auto quadtree = XYZ::QuadtreeBoxM(
           boxes,
           3 // max depth
           ,
@@ -593,7 +593,7 @@ namespace AdaptorTest
     using QuadtreePointCustom = OrthoTree::OrthoTreeBase<PointEntitySpanAdapter<MyPoint2DBase*>, CustomGeometryAdapter, PointConfiguration<>>;
 
     using QuadtreeBoxCustom = OrthoTree::OrthoTreeBase<BoxEntitySpanAdapter<MyBox2DBase*>, CustomGeometryAdapter, BoxConfiguration<true>>;
-    using QuadtreeBoxCustomC = OrthoTreeContainer<QuadtreeBoxCustom>;
+    using QuadtreeBoxCustomC = OrthoTreeManaged<QuadtreeBoxCustom>;
 
     TEST_CLASS(AbstractAdaptorTest)
     {

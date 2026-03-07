@@ -44,7 +44,7 @@ SOFTWARE.
 namespace OrthoTree
 {
   template<typename TOrthoTreeCore>
-  class OrthoTreeContainer
+  class OrthoTreeManaged
   {
   public:
     using CONFIG = typename TOrthoTreeCore::CONFIG;
@@ -69,11 +69,11 @@ namespace OrthoTree
     EntityContainer m_entities;
 
   public: // Constructors
-    constexpr explicit OrthoTreeContainer() noexcept = default;
+    constexpr explicit OrthoTreeManaged() noexcept = default;
 
     // Constructor for any contiguous container with runtime parallel parameter
     template<typename TExecMode = SeqExec>
-    explicit OrthoTreeContainer(
+    explicit OrthoTreeManaged(
       std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
@@ -90,7 +90,7 @@ namespace OrthoTree
 
     // Constructor for any copyable container with runtime parallel parameter
     template<typename TExecMode = SeqExec>
-    explicit OrthoTreeContainer(
+    explicit OrthoTreeManaged(
       EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
@@ -106,7 +106,7 @@ namespace OrthoTree
 
     // Constructor for any movable container with runtime parallel parameter
     template<typename TExecMode = SeqExec>
-    explicit OrthoTreeContainer(
+    explicit OrthoTreeManaged(
       EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
@@ -122,7 +122,7 @@ namespace OrthoTree
 
     // Constructor for any contiguous container with compile-time parallel parameter
     template<typename TExecMode>
-    explicit OrthoTreeContainer(
+    explicit OrthoTreeManaged(
       TExecMode execMode,
       std::span<Entity const> const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
@@ -140,7 +140,7 @@ namespace OrthoTree
 
     // Constructor for any copyable container compile-time parallel parameter
     template<typename TExecMode>
-    explicit OrthoTreeContainer(
+    explicit OrthoTreeManaged(
       TExecMode execMode,
       EntityContainer const& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
@@ -157,7 +157,7 @@ namespace OrthoTree
 
     // Constructor for any movable container with compile-time parallel parameter
     template<typename TExecMode>
-    explicit OrthoTreeContainer(
+    explicit OrthoTreeManaged(
       TExecMode execMode,
       EntityContainer&& geometryCollection,
       std::optional<depth_t> maxDepthID = std::nullopt,
@@ -173,7 +173,7 @@ namespace OrthoTree
     }
 
     template<typename TExecMode = SeqExec>
-    static OrthoTreeContainer Create(
+    static OrthoTreeManaged Create(
       std::span<Entity const> const& entities,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
@@ -181,35 +181,35 @@ namespace OrthoTree
       TExecMode execMode = {}) noexcept
       requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
     {
-      auto otc = OrthoTreeContainer();
+      auto otc = OrthoTreeManaged();
       otc.m_entities = std::vector(entities.begin(), entities.end());
       TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
       return otc;
     }
 
     template<typename TExecMode = SeqExec>
-    static OrthoTreeContainer Create(
+    static OrthoTreeManaged Create(
       EntityContainer const& entities,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
     {
-      auto otc = OrthoTreeContainer();
+      auto otc = OrthoTreeManaged();
       otc.m_entities = entities;
       TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
       return otc;
     }
 
     template<typename TExecMode = SeqExec>
-    static OrthoTreeContainer Create(
+    static OrthoTreeManaged Create(
       EntityContainer&& entities,
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
     {
-      auto otc = OrthoTreeContainer();
+      auto otc = OrthoTreeManaged();
       otc.m_entities = std::move(entities);
       TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxDepthID, std::move(boxSpace), maxElementNoInNode, execMode);
       return otc;
@@ -569,7 +569,7 @@ namespace OrthoTree
 
     // Collision detection with another tree
     std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
-      OrthoTreeContainer const& otherTree,
+      OrthoTreeManaged const& otherTree,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) const noexcept
     {
@@ -578,8 +578,8 @@ namespace OrthoTree
 
     // Collision detection between trees
     static std::vector<std::pair<EntityID, EntityID>> CollisionDetection(
-      OrthoTreeContainer const& leftTree,
-      OrthoTreeContainer const& rightTree,
+      OrthoTreeManaged const& leftTree,
+      OrthoTreeManaged const& rightTree,
       TFloatScalar tolerance = GA::BASE_TOLERANCE,
       std::optional<FCollisionDetector> const& collisionDetector = std::nullopt) noexcept
     {
@@ -751,65 +751,65 @@ namespace OrthoTree
   };
 
   template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
-  using TreePointContainerND = OrthoTreeContainer<OrthoTreePointND<DIMENSION_NO, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+  using TreePointManagedND = OrthoTreeManaged<OrthoTreePointND<DIMENSION_NO, TScalar, IS_CONTIOGUOS_CONTAINER>>;
 
   template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true>
-  using TreeBoxContainerND = OrthoTreeContainer<OrthoTreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar, IS_CONTIOGUOS_CONTAINER>>;
+  using TreeBoxManagedND = OrthoTreeManaged<OrthoTreeBoxND<DIMENSION_NO, IS_LOOSE_TREE, TScalar, IS_CONTIOGUOS_CONTAINER>>;
 
   template<dim_t DIMENSION_NO, typename TScalar, typename TEntityContainer>
-  using TreePointContainerNDUD = OrthoTreeContainer<OrthoTreePointNDUD<DIMENSION_NO, TScalar, TEntityContainer>>;
+  using TreePointContainerNDUD = OrthoTreeManaged<OrthoTreePointNDUD<DIMENSION_NO, TScalar, TEntityContainer>>;
 
   template<dim_t DIMENSION_NO, bool IS_LOOSE_TREE, typename TScalar, typename TEntityContainer>
-  using TreeBoxContainerNDUD = OrthoTreeContainer<OrthoTreeBoxNDUD<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TEntityContainer>>;
+  using TreeBoxContainerNDUD = OrthoTreeManaged<OrthoTreeBoxNDUD<DIMENSION_NO, IS_LOOSE_TREE, TScalar, TEntityContainer>>;
 
   // Dualtree for points
-  using DualtreePointC = TreePointContainerND<1, BaseGeometryType>;
+  using DualtreePointM = TreePointManagedND<1, BaseGeometryType>;
 
   // Dualtree for bounding boxes
   template<bool IS_LOOSE_TREE = true>
-  using DualtreeBoxCs = TreeBoxContainerND<1, IS_LOOSE_TREE, BaseGeometryType>;
-  using DualtreeBoxC = TreeBoxContainerND<1, true, BaseGeometryType>;
+  using DualtreeBoxCs = TreeBoxManagedND<1, IS_LOOSE_TREE, BaseGeometryType>;
+  using DualtreeBoxM = TreeBoxManagedND<1, true, BaseGeometryType>;
 
   // Quadtree for points
-  using QuadtreePointC = TreePointContainerND<2, BaseGeometryType>;
+  using QuadtreePointM = TreePointManagedND<2, BaseGeometryType>;
 
   // Quadtree for bounding boxes
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxCs = TreeBoxContainerND<2, IS_LOOSE_TREE, BaseGeometryType>;
-  using QuadtreeBoxC = TreeBoxContainerND<2, true, BaseGeometryType>;
+  using QuadtreeBoxCs = TreeBoxManagedND<2, IS_LOOSE_TREE, BaseGeometryType>;
+  using QuadtreeBoxM = TreeBoxManagedND<2, true, BaseGeometryType>;
 
   // Octree for points
-  using OctreePointC = TreePointContainerND<3, BaseGeometryType>;
+  using OctreePointM = TreePointManagedND<3, BaseGeometryType>;
 
   // Octree for bounding boxes
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxCs = TreeBoxContainerND<3, IS_LOOSE_TREE, BaseGeometryType>;
-  using OctreeBoxC = TreeBoxContainerND<3, true, BaseGeometryType>;
+  using OctreeBoxCs = TreeBoxManagedND<3, IS_LOOSE_TREE, BaseGeometryType>;
+  using OctreeBoxM = TreeBoxManagedND<3, true, BaseGeometryType>;
 
 
   // std::unordered_map-based Dualtree for points
-  using DualtreePointMapC = TreePointContainerND<1, BaseGeometryType, false>;
+  using DualtreePointMapM = TreePointManagedND<1, BaseGeometryType, false>;
 
   // std::unordered_map-based Dualtree for bounding boxes
   template<bool IS_LOOSE_TREE = true>
-  using DualtreeBoxMapCs = TreeBoxContainerND<1, IS_LOOSE_TREE, BaseGeometryType, false>;
-  using DualtreeBoxMapC = TreeBoxContainerND<1, true, BaseGeometryType, false>;
+  using DualtreeBoxMapCs = TreeBoxManagedND<1, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using DualtreeBoxMapM = TreeBoxManagedND<1, true, BaseGeometryType, false>;
 
   // std::unordered_map-based Quadtree for points
-  using QuadtreePointMapC = TreePointContainerND<2, BaseGeometryType, false>;
+  using QuadtreePointMapM = TreePointManagedND<2, BaseGeometryType, false>;
 
   // std::unordered_map-based Quadtree for bounding boxes
   template<bool IS_LOOSE_TREE = true>
-  using QuadtreeBoxMapCs = TreeBoxContainerND<2, IS_LOOSE_TREE, BaseGeometryType, false>;
-  using QuadtreeBoxMapC = TreeBoxContainerND<2, true, BaseGeometryType, false>;
+  using QuadtreeBoxMapCs = TreeBoxManagedND<2, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using QuadtreeBoxMapM = TreeBoxManagedND<2, true, BaseGeometryType, false>;
 
   // std::unordered_map-based Octree for points
-  using OctreePointMapC = TreePointContainerND<3, BaseGeometryType, false>;
+  using OctreePointMapM = TreePointManagedND<3, BaseGeometryType, false>;
 
   // std::unordered_map-based Octree for bounding boxes
   template<bool IS_LOOSE_TREE = true>
-  using OctreeBoxMapCs = TreeBoxContainerND<3, IS_LOOSE_TREE, BaseGeometryType, false>;
-  using OctreeBoxMapC = TreeBoxContainerND<3, true, BaseGeometryType, false>;
+  using OctreeBoxMapCs = TreeBoxManagedND<3, IS_LOOSE_TREE, BaseGeometryType, false>;
+  using OctreeBoxMapM = TreeBoxManagedND<3, true, BaseGeometryType, false>;
 
   // User-defined container-based Quadtree for points
   template<typename EntityContainer>

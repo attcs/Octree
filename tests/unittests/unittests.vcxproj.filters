@@ -56,7 +56,7 @@
     <ClInclude Include="..\..\include\orthotree\octree.h">
       <Filter>Header Files\include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\orthotree\octree_container.h">
+    <ClInclude Include="..\..\include\orthotree\octree_managed.h">
       <Filter>Header Files\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\orthotree\detail\bitset_arithmetic.h">

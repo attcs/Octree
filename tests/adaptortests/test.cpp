@@ -2,7 +2,7 @@
 
 // clang-format off
 #include "orthotree/octree.h"
-#include "orthotree/octree_container.h"
+#include "orthotree/octree_managed.h"
 
 // Boost
 #include "orthotree/adapters/boost.h"
@@ -516,7 +516,7 @@ namespace XYZAdapter
 
   TEST(XYZ_ContainerTest, Box2D)
   {
-    containerBoxTest2D<XYZ::QuadtreeBoxC>();
+    containerBoxTest2D<XYZ::QuadtreeBoxM>();
   }
 } // namespace XYZAdapter
 
@@ -542,7 +542,7 @@ namespace CGALAdapter
 
   TEST(CGAL_ContainerTest, Box2D)
   {
-    containerBoxTest2D<CGAL::QuadtreeBoxC>();
+    containerBoxTest2D<CGAL::QuadtreeBoxM>();
   }
 } // namespace CGALAdapter
 
@@ -555,7 +555,7 @@ namespace EigenAdapter
 
   TEST(Eigen_ContainerTest, Box2D)
   {
-    containerBoxTest2D<Eigen::QuadtreeBoxC2d>();
+    containerBoxTest2D<Eigen::QuadtreeBoxM2d>();
   }
 } // namespace EigenAdapter
 
