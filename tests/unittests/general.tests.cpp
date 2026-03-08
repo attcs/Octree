@@ -5438,8 +5438,8 @@ namespace GeneralTest
         2);
 
       auto const newEntities = std::vector<std::pair<EntityID, Box>>{
-        { 10, { { 1.0, 1.0, 1.0 }, { 2.0, 2.0, 2.0 } } },
-        { 20, { { 3.0, 3.0, 3.0 }, { 4.0, 4.0, 4.0 } } }
+        { 1, { { 1.0, 1.0, 1.0 }, { 2.0, 2.0, 2.0 } } },
+        { 0, { { 3.0, 3.0, 3.0 }, { 4.0, 4.0, 4.0 } } }
       };
 
       auto const existing = std::vector<Box>{};

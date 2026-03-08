@@ -35,6 +35,7 @@ SOFTWARE.
 #include "../detail/zip_view.h"
 
 #include "configuration.h"
+#include "entity_adapter.h"
 #include "ot_base.h"
 #include "types.h"
 
@@ -802,126 +803,145 @@ namespace OrthoTree
       }
     }
 
+    template<typename TNewEntities, typename TExecMode = SeqExec>
     constexpr void UpdateNodeGeometry(
-      [[maybe_unused]] std::vector<std::pair<NodeID, uint32_t>> const& changedNodes,
-      [[maybe_unused]] auto const& newEntities,
-      [[maybe_unused]] std::size_t existingEntityNum) noexcept
+      [[maybe_unused]] std::vector<std::pair<typename SI::Location, std::size_t>> changedNodes,
+      [[maybe_unused]] TNewEntities const& newEntities,
+      [[maybe_unused]] std::size_t existingEntityNum,
+      [[maybe_unused]] TExecMode execMode = {}) noexcept
     {
       if constexpr (CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR)
       {
         if (changedNodes.empty())
           return;
 
-        auto newEntitiesMap = std::unordered_map<EntityID, EntityGeometry>();
-        newEntitiesMap.reserve(newEntities.size());
-        std::for_each(newEntities.begin(), newEntities.end(), [&](auto const& item) {
-          using T = std::remove_cvref_t<decltype(item)>;
-          if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed && std::is_convertible_v<T, typename EA::Entity>)
+        std::sort(changedNodes.begin(), changedNodes.end(), [](auto const& lhs, auto const& rhs) {
+          return SI::Location::template IsLess<true>(lhs.first, rhs.first);
+        });
+        auto const& changedNodesInDFS = changedNodes;
+
+        auto entityGeometries =
+          std::conditional_t<EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed, std::unordered_map<EntityID, EntityGeometry>, std::vector<EntityGeometry>>{};
+        detail::reserve(entityGeometries, detail::size(newEntities));
+
+        EXEC_POL_DEF(epu);
+        if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
+        {
+          std::for_each(newEntities.begin(), newEntities.end(), [&](auto const& item) {
+            using T = std::remove_cvref_t<decltype(item)>;
+            if constexpr (std::is_convertible_v<T, typename EA::Entity>)
+            {
+              entityGeometries.try_emplace(EA::GetEntityID(item), EA::GetGeometry(item));
+            }
+            else if constexpr (requires(T v) {
+                                 []<typename U>(U&& u) {
+                                   auto [a, b] = u;
+                                 }(v);
+                               })
+            {
+              auto const& [entityID, entityGeometry] = item;
+              entityGeometries.try_emplace(static_cast<EntityID>(entityID), entityGeometry);
+            }
+            else
+            {
+              static_assert(false, "EntityID cannot be determined for non-keyed entities in a non-contiguous container.");
+            }
+          });
+        }
+        else
+        {
+          entityGeometries.resize(detail::size(newEntities));
+          std::for_each(EXEC_POL_ADD(epu) newEntities.begin(), newEntities.end(), [&](auto const& item) {
+            using T = std::remove_cvref_t<decltype(item)>;
+
+            if constexpr (std::is_convertible_v<T, typename EA::Geometry>)
+            {
+              entityGeometries[detail::getKeyPart(newEntities, item)] = item;
+            }
+            else if constexpr (requires(T v) {
+                                 []<typename U>(U&& u) {
+                                   auto [a, b] = u;
+                                 }(v);
+                               })
+            {
+              auto const& [entityID, entityGeometry] = item;
+              assert(entityID >= existingEntityNum);
+              entityGeometries[entityID - existingEntityNum] = entityGeometry;
+            }
+            else
+            {
+              static_assert(false, "EntityID cannot be determined for non-keyed entities in a non-contiguous container.");
+            }
+          });
+        }
+
+        auto getNewEntityGeometry = [&](EntityID id) -> EntityGeometry const& {
+          if constexpr (EA::ENTITY_ID_STRATEGY == EntityIdStrategy::EntityKeyed)
+            return entityGeometries.at(id);
+          else
+            return entityGeometries[id - existingEntityNum];
+        };
+
+        // Reverse DFS order
+        int changedNodesInDFSIndex = int(changedNodesInDFS.size() - 1);
+        for (int i = changedNodesInDFSIndex; i >= 0; --i)
+        {
+          auto const& [location, beginID] = changedNodesInDFS[i];
+          auto const nodeID = m_spaceIndexing.GetNodeID(location);
+          auto lcaNodeID = i == 0 ? GetRootNodeID() : SI::GetLowestCommonAncestor(changedNodesInDFS[i - 1].first, location, Base::GetMaxDepthID());
+
+          auto nodeIt = m_nodes.find(nodeID);
+
+          auto const& entityIDs = GetNodeEntities(&*nodeIt);
+          auto& nodeGeometry = nodeIt->second.GetGeometry();
+          bool const isInitialized = IsNodeGeometryInitialized(nodeGeometry);
+
+          bool nodeChanged = false;
+          typename IGM::Box nodeBox;
+          if (isInitialized)
           {
-            newEntitiesMap.try_emplace(EA::GetEntityID(item), EA::GetGeometry(item));
-          }
-          else if constexpr (std::is_convertible_v<T, typename EA::Geometry> && std::ranges::contiguous_range<decltype(newEntities)>)
-          {
-            auto const entityID = static_cast<EntityID>(existingEntityNum + detail::getID(newEntities, item));
-            newEntitiesMap.try_emplace(entityID, item);
-          }
-          else if constexpr (requires(T v) {
-                               []<typename U>(U&& u) {
-                                 auto [a, b] = u;
-                               }(v);
-                             })
-          {
-            auto const& [entityID, entityGeometry] = item;
-            newEntitiesMap.try_emplace(static_cast<EntityID>(entityID), entityGeometry);
+            auto const& [minPoint, size] = nodeGeometry;
+            nodeBox = typename IGM::Box{ minPoint, IGM::Add(minPoint, size) };
           }
           else
           {
-            static_assert(false, "EntityID cannot be determined for non-keyed entities in a non-contiguous container.");
-          }
-        });
-
-
-        // Sort changed nodes by depth (deepest first) so children are processed before parents.
-        auto sortedNodes = std::vector<std::pair<NodeID, uint32_t>>(changedNodes.begin(), changedNodes.end());
-        std::sort(sortedNodes.begin(), sortedNodes.end(), [](auto const& a, auto const& b) {
-          return SI::GetDepthID(a.first) > SI::GetDepthID(b.first);
-        });
-
-        // Track already-visited nodes to avoid redundant recomputation
-        auto visited = std::unordered_set<NodeID>();
-        visited.reserve(changedNodes.size() * 2);
-
-        // Queue of ancestor nodes that need recomputation (populated during processing)
-        auto ancestorQueue = std::vector<NodeID>();
-
-        // Phase 1: Process directly changed nodes (deepest first)
-        for (auto const [nodeID, beginID] : sortedNodes)
-        {
-          if (!visited.insert(nodeID).second)
-            continue;
-
-          auto nodeIt = m_nodes.find(nodeID);
-          if (nodeIt == m_nodes.end())
-            continue;
-
-          auto nodeBox = IGM::BoxInvertedInit();
-
-          // Union with all children's existing boxes
-          for (auto const& childNodeID : GetNodeChildren(&*nodeIt))
-          {
-            auto const childIt = m_nodes.find(childNodeID);
-            if (childIt != m_nodes.end() && IsNodeGeometryInitialized(childIt->second.GetGeometry()))
-            {
-              auto const childBox = GetNodeBox(&*childIt);
-              IGM::UniteInBoxAD(nodeBox, childBox);
-            }
+            nodeBox = IGM::BoxInvertedInit();
+            nodeChanged = true;
           }
 
-          // Union with all entities
-          auto const& entityIDs = GetNodeEntities(&*nodeIt);
+          auto const nodeBoxOriginal = nodeBox;
           for (auto it = std::next(entityIDs.begin(), beginID); it != entityIDs.end(); ++it)
-            IGM::UniteInBoxAD(nodeBox, newEntitiesMap.at(*it));
+            IGM::UniteInBoxAD(nodeBox, getNewEntityGeometry(*it));
 
-          nodeIt->second.GetGeometry() = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+          // it is possible that it is a new Parent node (LCA), it should update by all children
+          for (auto const& childNodeID : GetNodeChildren(&*nodeIt))
+            IGM::UniteInBoxAD(nodeBox, GetNodeBox(GetNodeValue(childNodeID)));
 
-          // Schedule parent for recomputation
-          auto parentIt = GetParentIt(nodeID);
-          if (parentIt != m_nodes.end())
-            ancestorQueue.push_back(parentIt->first);
-        }
+          nodeChanged = nodeChanged || (nodeBoxOriginal.Min != nodeBox.Min || nodeBoxOriginal.Max != nodeBox.Max);
+          if (nodeChanged)
+            nodeIt->second.GetGeometry() = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
 
-        // Phase 2: Propagate upward through ancestors
-        for (std::size_t i = 0; i < ancestorQueue.size(); ++i)
-        {
-          auto const ancestorNodeID = ancestorQueue[i];
-          if (!visited.insert(ancestorNodeID).second)
-            continue;
-
-          auto ancestorIt = m_nodes.find(ancestorNodeID);
-          if (ancestorIt == m_nodes.end())
-            continue;
-
-          auto nodeBox = IGM::BoxInvertedInit();
-
-          // Union with all children
-          for (auto const& childNodeID : GetNodeChildren(&*ancestorIt))
+          NodeID workingNodeID = nodeID;
+          typename IGM::Box workingBox = nodeBox;
+          while (nodeChanged && workingNodeID != GetRootNodeID())
           {
-            auto const childIt = m_nodes.find(childNodeID);
-            if (childIt != m_nodes.end() && IsNodeGeometryInitialized(childIt->second.GetGeometry()))
-            {
-              auto const childBox = GetNodeBox(&*childIt);
-              IGM::UniteInBoxAD(nodeBox, childBox);
-            }
+            auto parentNodeIt = GetParentIt(m_nodes, workingNodeID);
+            auto const parentNodeID = parentNodeIt->first;
+            auto parentNodeBox = GetNodeBox(&*parentNodeIt);
+            auto const parentNodeBoxOriginal = parentNodeBox;
+
+            IGM::UniteInBoxAD(parentNodeBox, workingBox);
+            nodeChanged = (parentNodeBoxOriginal.Min != parentNodeBox.Min || parentNodeBoxOriginal.Max != parentNodeBox.Max);
+
+            if (nodeChanged)
+              parentNodeIt->second.GetGeometry() = { parentNodeBox.Min, IGM::Sub(parentNodeBox.Max, parentNodeBox.Min) };
+
+            if (parentNodeID == lcaNodeID || SI::GetDepthID(parentNodeID) < SI::GetDepthID(lcaNodeID))
+              break;
+
+            workingNodeID = parentNodeID;
+            workingBox = parentNodeBox;
           }
-
-          // Union with own entities is not needed since it is done in phase 1
-
-          ancestorIt->second.GetGeometry() = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
-
-          // Schedule parent for recomputation
-          auto parentIt = GetParentIt(ancestorNodeID);
-          if (parentIt != m_nodes.end())
-            ancestorQueue.push_back(parentIt->first);
         }
       }
     }
@@ -970,9 +990,6 @@ namespace OrthoTree
       auto const maxElementNo = Base::GetMaxElementNum();
       auto const existingEntityNum = EA::GetEntityCount(existingEntities);
 
-      if constexpr (CONFIG::USE_REVERSE_MAPPING)
-        detail::resize(m_reverseMap, existingEntityNum + newEntityCount);
-
       // Morton code creation
       auto buffer = std::vector<EntityData>(newEntityCount);
       EXEC_POL_DEF(ept); // GCC 11.3
@@ -1002,6 +1019,7 @@ namespace OrthoTree
         }
       });
 
+      // Check if all entities are within the tree bounds
       bool isAllEntitiesInserted = true;
       if constexpr (!CONFIG::ALLOW_OUT_OF_SPACE_INSERTION)
       {
@@ -1023,6 +1041,8 @@ namespace OrthoTree
         }
       }
 
+      if constexpr (CONFIG::USE_REVERSE_MAPPING)
+        detail::resize(m_reverseMap, existingEntityNum + newEntityCount);
 
       // Configurable digit width
       // Considering 32kB L1 cache with 64B width cache lines: 512 cache lines total is the limit.
@@ -1120,7 +1140,7 @@ namespace OrthoTree
 
       // Emit range as a single node using precomputed LCA fold. Zero scan.
       auto orphanNodes = std::vector<NodeID>{};
-      auto changedNodes = std::vector<std::pair<NodeID, uint32_t>>{};
+      auto changedNodes = std::vector<std::pair<Location, std::size_t>>{};
 
       auto const emitCluster = [&](uint32_t begin, uint32_t end, Location const& location) {
         auto const elementNum = end - begin;
@@ -1131,7 +1151,7 @@ namespace OrthoTree
         auto [it, isInserted] = m_nodes.try_emplace(nodeID);
         auto& entitySegment = it->second.GetEntitySegment();
         auto existingElementNum = entitySegment.segment.size();
-        changedNodes.emplace_back(nodeID, int32_t(existingElementNum));
+        changedNodes.emplace_back(location, existingElementNum);
 
         if (isInserted)
         {
@@ -1210,7 +1230,7 @@ namespace OrthoTree
         if (elementNum <= kSortThreshold)
         {
           std::sort(buffer.begin() + w.begin, buffer.begin() + w.end, [](EntityData const& a, EntityData const& b) {
-            return SI::Location::template IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(a.location, b.location);
+            return Location::template IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(a.location, b.location);
           });
           emitSortedRange(w.begin, w.end);
         }
@@ -1221,7 +1241,7 @@ namespace OrthoTree
       }
 
       LinkOrphanNodes(std::move(orphanNodes));
-      UpdateNodeGeometry(changedNodes, newEntities, existingEntityNum);
+      UpdateNodeGeometry(changedNodes, newEntities, existingEntityNum, execMode);
 
       return isAllEntitiesInserted;
     }

@@ -110,6 +110,8 @@ namespace OrthoTree::detail
           return leftLocation.locationID < rightLocation.locationID;
         }
       }
+
+      constexpr bool operator==(GeneralLocationData rhs) const noexcept { return locationID == rhs.locationID && depthID == rhs.depthID; }
     };
 
     struct CompactLocationData
@@ -136,6 +138,8 @@ namespace OrthoTree::detail
       {
         return leftLocation.locationAndDepthID < rightLocation.locationAndDepthID;
       }
+
+      constexpr bool operator==(CompactLocationData rhs) const noexcept { return locationAndDepthID == rhs.locationAndDepthID; }
     };
 
   public:
@@ -157,6 +161,8 @@ namespace OrthoTree::detail
       constexpr LocationID GetLocationID() const noexcept { return locationData.GetLocationID(); }
 
       constexpr bool operator<(Location const& rightLocation) const noexcept { return IsLess<true>(*this, rightLocation); }
+
+      constexpr bool operator==(Location const& rightLocation) const noexcept { return locationData == rightLocation.locationData; }
 
       template<bool IS_ELEMENT_DEPTH_SPECIFIC = true>
       static constexpr bool IsLess(Location const& leftLocation, Location const& rightLocation) noexcept
@@ -316,6 +322,25 @@ namespace OrthoTree::detail
       // ceil
       auto const differentLevelNum = (differentBitWidth + DIMENSION_NO - 1) / DIMENSION_NO;
       return nodeID1 >> (differentLevelNum * DIMENSION_NO);
+    }
+
+    static constexpr NodeID GetLowestCommonAncestor(Location location1, Location location2, depth_t maxDepthID) noexcept
+    {
+      if (location1 == location2)
+        return GetNodeID(location1, maxDepthID);
+
+      auto const depthID1 = location1.GetDepthID();
+      auto const depthID2 = location2.GetDepthID();
+
+      auto locationID = location1.GetLocationID();
+      LocationID const differentNodeBits = locationID ^ location2.GetLocationID();
+      auto const differentBitWidth = detail::bit_width(differentNodeBits);
+
+      // ceil
+      auto const differentLevelNum = depth_t((differentBitWidth + DIMENSION_NO - 1) / DIMENSION_NO);
+      auto depthID = std::min(std::min(depthID1, depthID2), maxDepthID - differentLevelNum);
+      auto levelID = maxDepthID - depthID;
+      return GetNodeID(locationID >> (levelID * DIMENSION_NO), depthID);
     }
 
     template<bool IS_ELEMENT_DEPTH_SPECIFIC = true>
