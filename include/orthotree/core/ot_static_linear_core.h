@@ -585,7 +585,10 @@ namespace OrthoTree
       if constexpr (ARE_LOCATIONS_SORTED)
       {
         EXEC_POL_DEF(eps); // GCC 11.3
-        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), endIt, [](Location const& l, Location const& r) { return l.first < r.first; });
+        std::sort(EXEC_POL_ADD(eps) locationsZip.begin(), endIt, [](auto const& l, auto const& r) {
+          using std::get;
+          return get<0>(l) < get<0>(r);
+        });
       }
 
       auto const maxNodeCount = GetMaxPossibleNodeCount(entityCount);

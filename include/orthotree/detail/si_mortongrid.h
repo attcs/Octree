@@ -80,7 +80,8 @@ namespace OrthoTree::detail
         if (centerGridID[0] == INVALID_GRIDID) [[unlikely]]
           return GetInvalidLocation();
 
-        return typename SI::Location(SI::Encode(centerGridID), m_maxDepthID - levelID);
+        auto const shift = levelID * DIMENSION_NO;
+        return typename SI::Location(SI::Encode(centerGridID) >> shift << shift, m_maxDepthID - levelID);
       }
       else
       {

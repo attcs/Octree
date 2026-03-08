@@ -28,6 +28,7 @@ SOFTWARE.
 #include <concepts>
 #include <iterator>
 #include <ranges>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -103,6 +104,32 @@ namespace OrthoTree::detail
       auto val2 = std::move(*left.m_it2);
       *left.m_it2 = std::move(*right.m_it2);
       *right.m_it2 = std::move(val2);
+    }
+
+    // Tuple protocol for std::get compatibility
+    template<std::size_t I>
+    friend constexpr auto get(proxy_reference const& p) noexcept -> std::conditional_t<I == 0, R1, R2>
+    {
+      if constexpr (I == 0)
+        return p.GetFirst();
+      else
+        return p.GetSecond();
+    }
+    template<std::size_t I>
+    friend constexpr auto get(proxy_reference& p) noexcept -> std::conditional_t<I == 0, R1, R2>
+    {
+      if constexpr (I == 0)
+        return p.GetFirst();
+      else
+        return p.GetSecond();
+    }
+    template<std::size_t I>
+    friend constexpr auto get(proxy_reference&& p) noexcept -> std::conditional_t<I == 0, R1, R2>
+    {
+      if constexpr (I == 0)
+        return p.GetFirst();
+      else
+        return p.GetSecond();
     }
 
   private:
@@ -189,6 +216,21 @@ namespace OrthoTree::detail
     constexpr bool operator>(const zip_iterator& other) const noexcept { return it1_ > other.it1_; }
     constexpr bool operator<=(const zip_iterator& other) const noexcept { return it1_ <= other.it1_; }
     constexpr bool operator>=(const zip_iterator& other) const noexcept { return it1_ >= other.it1_; }
+    // Required for std::iter_swap to work correctly with proxy_reference Without this, algorithms using move-based swap corrupt data because
+    // proxy_reference is a reference type (points to data) not a value type.
+    friend constexpr void iter_swap(zip_iterator const& left, zip_iterator const& right) noexcept
+    {
+      using std::swap;
+      swap(*left.it1_, *right.it1_);
+      swap(*left.it2_, *right.it2_);
+    }
+    // Required for algorithms that use iter_move (C++20 ranges)
+    friend constexpr auto iter_move(zip_iterator const& it) noexcept
+    {
+      using T1 = typename std::iterator_traits<It1>::value_type;
+      using T2 = typename std::iterator_traits<It2>::value_type;
+      return std::pair<T1, T2>{ std::move(*it.it1_), std::move(*it.it2_) };
+    }
 
   private:
     It1 it1_;
