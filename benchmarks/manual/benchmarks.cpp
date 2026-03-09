@@ -1,19 +1,23 @@
 // benchmarks.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
-#include <fstream>
 #include <chrono>
 #include <execution>
-#include <span>
+#include <fstream>
 #include <functional>
+#include <iostream>
 #include <numbers>
-#include <vector>
 #include <random>
+#include <span>
+#include <vector>
 
-#include "../../octree.h"
-#include "generators.h"
+
+#define ORTHOTREE__PUBLIC_NODE_INTERFACE
+#include "orthotree/octree.h"
+
 #include "OrthoTreePointDynamicGeneral.h"
+#include "generators.h"
+
 
 using namespace std::chrono;
 using namespace std;
@@ -41,8 +45,11 @@ namespace
 
   using time_unit = milliseconds;
 
-  using Adaptor = AdaptorGeneral<N, PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
-  auto constexpr degree_to_rad(double degree) { return degree / 180.0 * std::numbers::pi; }
+  using GeometryAdapter = GeneralGeometryAdapterTemplate<N, PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>;
+  auto constexpr degree_to_rad(double degree)
+  {
+    return degree / 180.0 * std::numbers::pi;
+  }
 
 
   template<dim_t DIMENSION_NO, size_t nNumber>
@@ -75,7 +82,6 @@ namespace
       for (size_t iRemain = 1; iNumber < nNumber; ++iNumber, ++iRemain)
         for (dim_t iDim = 0; iDim < DIMENSION_NO; ++iDim)
           aPoint[iNumber][iDim] = rMax - iRemain * rStep;
-
     }
 
     std::random_device rd;
@@ -123,7 +129,6 @@ namespace
 
     return aPoint;
   }
-
 
 
   template<dim_t DIMENSION_NO, size_t nNumber>
@@ -225,14 +230,13 @@ namespace
           aBox[iNumber].Min[iDim] = double(rand() % 100) * 0.01 * (rMax - 2.0 * rUnit) + rUnit - rSize / 2.0;
 
         aBox[iNumber].Max = CreateBoxMax(aBox[iNumber].Min, rSize);
-
       }
     }
 
     return aBox;
   }
 
-  template <typename TVector, typename TBox, typename TRay, typename TPlane>
+  template<typename TVector, typename TBox, typename TRay, typename TPlane>
   vector<vector<std::size_t>> RangeSearchNaive(span<TBox const> const& vSearchBox, span<TBox const> const& vBox)
   {
     auto const n = vBox.size();
@@ -244,7 +248,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, TVector, TBox, TRay, TPlane>::AreBoxesOverlapped(boxSearch, vBox[i], false))
+        if (GeneralGeometryAdapterTemplate<N, TVector, TBox, TRay, TPlane>::AreBoxesOverlapped(boxSearch, vBox[i], false))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
@@ -260,11 +264,10 @@ namespace
 
     auto vvidCollision = vector<vector<std::size_t>>(vidCheck.size());
     auto ep = execution_policy_type{};
-    std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](auto const idCheck) -> vector<std::size_t>
-    {
+    std::transform(ep, std::begin(vidCheck), std::end(vidCheck), std::begin(vvidCollision), [&](auto const idCheck) -> vector<std::size_t> {
       auto sidFound = vector<std::size_t>();
       for (size_t i = idCheck + 1; i < nEntity; ++i)
-        if (AdaptorGeneral<N, TVector, TBox, TRay, TPlane>::AreBoxesOverlapped(vBox[idCheck], vBox[i], false))
+        if (GeneralGeometryAdapterTemplate<N, TVector, TBox, TRay, TPlane>::AreBoxesOverlapped(vBox[idCheck], vBox[i], false))
           sidFound.emplace_back(i);
 
       return sidFound;
@@ -294,7 +297,7 @@ namespace
       vElementByBox.reserve(50);
 
       for (size_t i = 0; i < n; ++i)
-        if (AdaptorGeneral<N, TVector, TBox, TRay, TPlane>::DoesBoxContainPoint(boxSearch, vPoint[i]))
+        if (GeneralGeometryAdapterTemplate<N, TVector, TBox, TRay, TPlane>::DoesBoxContainPoint(boxSearch, vPoint[i]))
           vElementByBox.emplace_back(i);
     }
     return vElementFound;
@@ -308,7 +311,7 @@ namespace
     box.Max.fill(rMax);
 
     auto const nt = OrthoTreePointDynamicND<DIMENSION_NO>::Create(aPoint, depth, box, 11);
-    return nt.GetNodeSize();
+    return nt.GetNodeCount();
   }
 
 
@@ -316,18 +319,18 @@ namespace
   static size_t TreeBoxCreate(depth_t depth, std::span<BoundingBoxND<DIMENSION_NO> const> const& aBox, bool fPar = false)
   {
     auto constexpr nSplit = 0;
-    using TreeBox = TreeBoxND<DIMENSION_NO, nSplit>;
+    using TreeBox = OrthoTreeBoxND<DIMENSION_NO, nSplit>;
 
     auto box = BoundingBoxND<DIMENSION_NO>{};
     box.Max.fill(rMax);
 
     auto nt = TreeBox{};
     if (fPar)
-      TreeBox::template Create<true>(nt, aBox, depth, box);
+      TreeBox::template Create<ExecutionTags::Parallel>(nt, aBox, depth, box);
     else
       TreeBox::Create(nt, aBox, depth, box);
 
-    return nt.GetNodes().size();
+    return nt.GetNodeCount();
   }
 
   template<dim_t DIMENSION_NO>
@@ -337,9 +340,9 @@ namespace
     box.Max.fill(rMax);
 
     auto nt = OrthoTreeBoxDynamicND<DIMENSION_NO>::Create(aBox, depth, box, 11);
-    return nt.GetNodeSize();
+    return nt.GetNodeCount();
   }
-  
+
 
   void display_time(microseconds const& time)
   {
@@ -383,25 +386,20 @@ namespace
     display_time(tDur);
     std::cout << "\n";
 
-    report
-      << szName << szSeparator
-      << 1 << szSeparator
-      << string("seq") << szSeparator
-      << M * N1M << szSeparator
-      << microseconds_to_double(tDur) << szSeparator
-      << szNewLine
-      ;
+    report << szName << szSeparator << 1 << szSeparator << string("seq") << szSeparator << M * N1M << szSeparator << microseconds_to_double(tDur)
+           << szSeparator << szNewLine;
 
     return product;
   }
 
 
   auto constexpr aSizeNonLog = array{ 50, 100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 7000, 8000, 10000 };
-  //auto constexpr aSizeNonLog = array{ 10000 };
+  // auto constexpr aSizeNonLog = array{ 10000 };
 
   auto constexpr nSizeNonLog = aSizeNonLog.size();
-  auto constexpr aRepeatNonLog = array{ 100 * NR, 100 * NR, 50*NR, 10 * NR, 10 * NR, 5 * NR, 5 * NR, 5 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR };
-  //auto constexpr aRepeatNonLog = array{ 1 * NR };
+  auto constexpr aRepeatNonLog =
+    array{ 100 * NR, 100 * NR, 50 * NR, 10 * NR, 10 * NR, 5 * NR, 5 * NR, 5 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR, 1 * NR };
+  // auto constexpr aRepeatNonLog = array{ 1 * NR };
 
   static_assert(nSizeNonLog == aRepeatNonLog.size());
 
@@ -418,7 +416,8 @@ namespace
     auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (auto const fPar : { false, true })
       for (size_t iSize = 0; iSize < nSizeLog; ++iSize)
-        vTask.push_back(MeasurementTask<PointND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, fPar, sPoint.subspan(0, aSizeLog[iSize]), CreateTreePoint<N> });
+        vTask.push_back(
+          MeasurementTask<PointND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, fPar, sPoint.subspan(0, aSizeLog[iSize]), CreateTreePoint<N> });
 
     return vTask;
   }
@@ -428,7 +427,9 @@ namespace
   {
     auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
-      vTask.push_back(MeasurementTask<PointND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepth, false, sPoint.subspan(0, aSizeNonLog[iSize]), CreateTreePoint<N> });
+      vTask.push_back(
+        MeasurementTask<PointND<N>>{
+          szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepth, false, sPoint.subspan(0, aSizeNonLog[iSize]), CreateTreePoint<N> });
 
     return vTask;
   }
@@ -439,7 +440,9 @@ namespace
   {
     auto vTask = vector<MeasurementTask<PointND<N>>>();
     for (size_t iSize = 0; iSize < nSizeLog; ++iSize)
-      vTask.push_back(MeasurementTask<PointND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, false, sPoint.subspan(0, aSizeLog[iSize]), TreePointNaiveCreate<N> });
+      vTask.push_back(
+        MeasurementTask<PointND<N>>{
+          szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, false, sPoint.subspan(0, aSizeLog[iSize]), TreePointNaiveCreate<N> });
 
     return vTask;
   }
@@ -449,7 +452,9 @@ namespace
   {
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (size_t iSize = 0; iSize < nSizeLog; ++iSize)
-      vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, false, sBox.subspan(0, aSizeLog[iSize]), TreeBoxDynCreate<N> });
+      vTask.push_back(
+        MeasurementTask<BoundingBoxND<N>>{
+          szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, false, sBox.subspan(0, aSizeLog[iSize]), TreeBoxDynCreate<N> });
 
     return vTask;
   }
@@ -473,28 +478,33 @@ namespace
             nDepthActual = 4;
           else if (aSizeNonLog[iSize] <= 10000)
             nDepthActual = 5;
-          else 
+          else
             nDepthActual = 6;
         }
-        vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeNonLog[iSize], aRepeatNonLog[iSize], nDepthActual, fPar, aBox_.subspan(0, aSizeNonLog[iSize]), [](depth_t nDepth_, span<BoundingBoxND<N> const> const& aBox, bool fPar)
-        {
-          auto constexpr DO_SPLIT_PARENT_ENTITIES = true;
-          using TreeBox = TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>;
-          auto nt = TreeBox{};
-          if (fPar)
-          {
-            TreeBox::template Create<true>(nt, aBox, nDepth_, boxMax);
-            auto const vPair = nt.template CollisionDetection<true>(aBox);
-            return vPair.size();
-          }
-          else
-          {
-            TreeBox::Create(nt, aBox, nDepth_, boxMax);
-            auto const vPair = nt.CollisionDetection(aBox);
-            return vPair.size();
-          }          
-        } 
-        });
+        vTask.push_back(
+          MeasurementTask<BoundingBoxND<N>>{ szName,
+                                             aSizeNonLog[iSize],
+                                             aRepeatNonLog[iSize],
+                                             nDepthActual,
+                                             fPar,
+                                             aBox_.subspan(0, aSizeNonLog[iSize]),
+                                             [](depth_t nDepth_, span<BoundingBoxND<N> const> const& aBox, bool fPar) {
+                                               auto constexpr IS_LOOSE_TREE = true;
+                                               using TreeBox = OrthoTreeBoxND<N, IS_LOOSE_TREE>;
+                                               auto nt = TreeBox{};
+                                               if (fPar)
+                                               {
+                                                 TreeBox::template Create<ExecutionTags::Parallel>(nt, aBox, nDepth_, boxMax);
+                                                 auto const vPair = nt.template CollisionDetection<ExecutionTags::Parallel>(aBox);
+                                                 return vPair.size();
+                                               }
+                                               else
+                                               {
+                                                 TreeBox::Create(nt, aBox, nDepth_, boxMax);
+                                                 auto const vPair = nt.CollisionDetection(aBox);
+                                                 return vPair.size();
+                                               }
+                                             } });
       }
     return vTask;
   }
@@ -519,26 +529,27 @@ namespace
         else
           nDepthActual = 6;
       }
-      vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName,
-                                                         aSizeNonLog[iSize],
-                                                         aRepeatNonLog[iSize],
-                                                         nDepthActual,
-                                                         false,
-                                                         aBox_.subspan(0, aSizeNonLog[iSize]),
-                                                         [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar) {
-                                                           auto constexpr DO_SPLIT_PARENT_ENTITIES = true;
-                                                           auto nt = TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>{};
-                                                           TreeBoxND<N, DO_SPLIT_PARENT_ENTITIES>::Create(nt, aBox, nDepth, boxMax);
-                                                           size_t nFound = 0;
-                                                           auto const n = aBox.size();
-                                                           for (size_t i = 0; i < n; ++i)
-                                                           {
-                                                             auto const vElem = nt.template RangeSearch<false>(aBox[i], aBox);
-                                                             nFound += vElem.size();
-                                                             assert(vElem.size());
-                                                           }
-                                                           return nFound;
-                                                         } });
+      vTask.push_back(
+        MeasurementTask<BoundingBoxND<N>>{ szName,
+                                           aSizeNonLog[iSize],
+                                           aRepeatNonLog[iSize],
+                                           nDepthActual,
+                                           false,
+                                           aBox_.subspan(0, aSizeNonLog[iSize]),
+                                           [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar) {
+                                             auto constexpr IS_LOOSE_TREE = true;
+                                             auto nt = OrthoTreeBoxND<N, IS_LOOSE_TREE>{};
+                                             OrthoTreeBoxND<N, IS_LOOSE_TREE>::Create(nt, aBox, nDepth, boxMax);
+                                             size_t nFound = 0;
+                                             auto const n = aBox.size();
+                                             for (size_t i = 0; i < n; ++i)
+                                             {
+                                               auto const vElem = nt.RangeSearch(aBox[i], aBox, RangeSearchMode::Overlap);
+                                               nFound += vElem.size();
+                                               assert(vElem.size());
+                                             }
+                                             return nFound;
+                                           } });
     }
     return vTask;
   }
@@ -548,20 +559,22 @@ namespace
   {
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
-      vTask.push_back(MeasurementTask<BoundingBoxND<N>>
-        { szName, aSizeNonLog[iSize], std::max(1, aRepeatNonLog[iSize] / 50), nDepth, false, aBox_.subspan(0, aSizeNonLog[iSize])
-        , [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
-          {
-            auto const vvElem = RangeSearchNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox, aBox);
+      vTask.push_back(
+        MeasurementTask<BoundingBoxND<N>>{ szName,
+                                           aSizeNonLog[iSize],
+                                           std::max(1, aRepeatNonLog[iSize] / 50),
+                                           nDepth,
+                                           false,
+                                           aBox_.subspan(0, aSizeNonLog[iSize]),
+                                           [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar) {
+                                             auto const vvElem = RangeSearchNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox, aBox);
 
-            size_t nFound = 0;
-            for (auto const& vElem : vvElem)
-              nFound += vElem.size();
+                                             size_t nFound = 0;
+                                             for (auto const& vElem : vvElem)
+                                               nFound += vElem.size();
 
-            return nFound;
-          }
-        }
-      );
+                                             return nFound;
+                                           } });
 
     return vTask;
   }
@@ -571,23 +584,27 @@ namespace
   {
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (size_t iSize = 0; iSize < nSizeNonLog; ++iSize)
-      vTask.push_back(MeasurementTask<BoundingBoxND<N>>
-    { szName, aSizeNonLog[iSize], std::max(1, aRepeatNonLog[iSize] / 50), 0, false, aBox_.subspan(0, aSizeNonLog[iSize])
-        , [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar)
-    {
-      if (!fPar)
-      {
-        auto const vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox);
-        return vvElem.size();
-      }
-      else
-      {
-        auto const vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>, std::execution::parallel_unsequenced_policy>(aBox);
-        return vvElem.size();
-      }
-    }
-    }
-    );
+      vTask.push_back(
+        MeasurementTask<BoundingBoxND<N>>{
+          szName,
+          aSizeNonLog[iSize],
+          std::max(1, aRepeatNonLog[iSize] / 50),
+          0,
+          false,
+          aBox_.subspan(0, aSizeNonLog[iSize]),
+          [](depth_t nDepth, span<BoundingBoxND<N> const> const& aBox, bool fPar) {
+            if (!fPar)
+            {
+              auto const vvElem = SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>>(aBox);
+              return vvElem.size();
+            }
+            else
+            {
+              auto const vvElem =
+                SelfConflicthNaive<PointND<N>, BoundingBoxND<N>, RayND<N>, PlaneND<N>, std::execution::parallel_unsequenced_policy>(aBox);
+              return vvElem.size();
+            }
+          } });
 
     return vTask;
   }
@@ -599,7 +616,9 @@ namespace
     auto vTask = vector<MeasurementTask<BoundingBoxND<N>>>();
     for (auto const fPar : { false, true })
       for (size_t iSize = 0; iSize < nSizeLog; ++iSize)
-        vTask.push_back(MeasurementTask<BoundingBoxND<N>>{ szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, fPar, sBox.subspan(0, aSizeLog[iSize]), TreeBoxCreate<N> });
+        vTask.push_back(
+          MeasurementTask<BoundingBoxND<N>>{
+            szName, aSizeLog[iSize], aRepeatLog[iSize], nDepth, fPar, sBox.subspan(0, aSizeLog[iSize]), TreeBoxCreate<N> });
 
     return vTask;
   }
@@ -624,24 +643,17 @@ namespace
     {
       auto const szPar = (task.fParallel ? string("par") : string("unseq"));
       std::cout << "Create tree for: " << task.szDisplay << " " << task.nDataSize << " " << szPar << " Repeat: " << task.nRepeat << "...";
-      auto const[tDur, nNode] = Measure(task.nRepeat, [&task]{ return task.Run(); });
+      auto const [tDur, nNode] = Measure(task.nRepeat, [&task] { return task.Run(); });
 
       std::cout << " Finished. ";
       display_time(tDur);
       std::cout << szNewLine;
 
-      report
-        << task.szDisplay << szSeparator
-        << task.nRepeat << szSeparator
-        << szPar << szSeparator
-        << task.nDataSize << szSeparator
-        << microseconds_to_double(tDur) << szSeparator
-        << nNode << szSeparator
-        << szNewLine
-        ;
+      report << task.szDisplay << szSeparator << task.nRepeat << szSeparator << szPar << szSeparator << task.nDataSize << szSeparator
+             << microseconds_to_double(tDur) << szSeparator << nNode << szSeparator << szNewLine;
     }
   }
-}
+} // namespace
 
 
 int main()
@@ -650,8 +662,8 @@ int main()
 
   ofstream report;
   report.open("report.csv");
-  
-  auto constexpr nDepth = depth_t{ 5 }; 
+
+  auto constexpr nDepth = depth_t{ 5 };
   {
     auto const szName = string("Diagonally placed points");
     auto const aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
@@ -668,14 +680,16 @@ int main()
 
   {
     auto const szName = string("Cylindrical semi-random placed points");
-    auto const aPointDiag_100M = GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_CylindricalSemiRandom<N, 100 * N1M>(); }, szName, 100, report);
+    auto const aPointDiag_100M =
+      GenerateGeometry<N, vector<PointND<N>>>([&] { return CreatePoints_CylindricalSemiRandom<N, 100 * N1M>(); }, szName, 100, report);
     auto const vTask = GeneratePointTasks<N>(nDepth, szName, aPointDiag_100M);
     RunTasks(vTask, report);
   }
-  
+
   {
     auto const szName = string("Diagonally placed boxes");
-    auto const aPointDiag_100M = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
+    auto const aPointDiag_100M =
+      GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_Diagonal<N, 100 * N1M>(); }, szName, 100, report);
     auto const vTask = GenerateBoxTasks<N>(nDepth, szName, aPointDiag_100M);
     RunTasks(vTask, report);
   }
@@ -689,11 +703,12 @@ int main()
 
   {
     auto const szName = string("Cylindrical semi-random placed boxes");
-    auto const aPointDiag_100M = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_CylindricalSemiRandom<N, 100 * N1M>(); }, szName, 100, report);
+    auto const aPointDiag_100M =
+      GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_CylindricalSemiRandom<N, 100 * N1M>(); }, szName, 100, report);
     auto const vTask = GenerateBoxTasks<N>(nDepth, szName, aPointDiag_100M);
     RunTasks(vTask, report);
   }
-  
+
   // Morton vs Dynamic
   {
     auto const szName = string("Cylindrical semi-random placed points Morton vs Dynamic");
@@ -702,7 +717,7 @@ int main()
 
     auto const vTaskMortonP = GeneratePointTasks<N>(nDepth, "Morton point", aPoint);
     auto const vTaskDynP = GeneratePointDynTasks_NonLog<N>(nDepth, "Dynamic point", aPoint);
-    
+
     auto const vTaskMortonB = GenerateBoxTasks<N>(nDepth, "Morton box", aBox);
     auto const vTaskDynB = GenerateBoxDynTasks_NonLog<N>(nDepth, "Dynamic box", aBox);
 
@@ -710,13 +725,13 @@ int main()
     RunTasks(vTaskDynP, report);
     RunTasks(vTaskMortonB, report);
     RunTasks(vTaskDynB, report);
-
   }
-  
+
   // Collision detection
   {
     auto const szName = string("Search: Cylindrical semi-random placed point NoPt/NoBox:100%");
-    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>([&] { return CreateBoxes_CylindricalSemiRandom<N, static_cast<size_t>(aSizeNonLog.back())>(); }, szName, aSizeNonLog.back(), report);
+    auto const aBox = GenerateGeometry<N, vector<BoundingBoxND<N>>>(
+      [&] { return CreateBoxes_CylindricalSemiRandom<N, static_cast<size_t>(aSizeNonLog.back())>(); }, szName, aSizeNonLog.back(), report);
     auto const vTaskBruteForce = SelfConflictBruteForceBoxTasks<N>("Box self conflict by brute force", aBox);
     auto const vTaskTreeCollisionDetection = CollisionDetectionBoxTasks<N>(3, "Box self conflict by octree", aBox);
     auto const vTaskTreeSearch = SearchTreeBoxTasks<N>(5, "Box search by octree", aBox);
@@ -725,6 +740,6 @@ int main()
     RunTasks(vTaskTreeCollisionDetection, report);
     RunTasks(vTaskTreeSearch, report);
   }
-  
+
   report.close();
 }

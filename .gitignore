@@ -4,17 +4,23 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 # User-specific files
+*.TMP
 *.rsuser
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
+.clangd
 benchmarks/*.csv
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
+.trash/
+.vscode/
 
 # Mono auto generated files
 mono_crash.*
+
+CMakeFiles/
 
 # Build results
 [Dd]ebug/

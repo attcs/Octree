@@ -4,7 +4,7 @@
 #include <memory>
 #include <span>
 
-#include "../../octree.h"
+#include "orthotree/octree.h"
 
 using namespace std;
 using namespace OrthoTree;
@@ -16,8 +16,8 @@ template<
   typename TBox,
   typename TRay,
   typename TPlane, 
-  typename TGeometry = double,
-  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
+  typename TScalar = double,
+  typename adaptor_type = OrthoTree::GeneralGeometryAdapterTemplate<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>>
 class OrthoTreePointDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << DIMENSION_NO;
@@ -84,8 +84,8 @@ private:
 
     for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
     {
-      AD::SetBoxMinC(ext, dimensionID, std::numeric_limits<TGeometry>::max());
-      AD::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
+      AD::SetBoxMinC(ext, dimensionID, std::numeric_limits<TScalar>::max());
+      AD::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TScalar>::lowest());
     }
 
     return ext;
@@ -123,7 +123,7 @@ public:
     return tree;
   }
 
-  size_t GetNodeSize() const
+  size_t GetNodeCount() const
   {
     return std::ranges::count_if(vNode, [](auto const& node) -> bool { return node.get(); });
   }
@@ -138,8 +138,8 @@ template<
   typename TBox,
   typename TRay,
   typename TPlane,
-  typename TGeometry = double,
-  typename adaptor_type = OrthoTree::AdaptorGeneral<DIMENSION_NO, TVector, TBox, TRay, TPlane, TGeometry>>
+  typename TScalar = double,
+  typename adaptor_type = OrthoTree::GeneralGeometryAdapterTemplate<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>>
 class OrthoTreeBoxDynamicGeneral
 {
   static size_t constexpr _nChild = 1 << DIMENSION_NO;
@@ -226,8 +226,8 @@ private:
 
     for (dim_t dimensionID = 0; dimensionID < DIMENSION_NO; ++dimensionID)
     {
-      AD::SetBoxMinC(ext, dimensionID, std::numeric_limits<TGeometry>::max());
-      AD::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TGeometry>::lowest());
+      AD::SetBoxMinC(ext, dimensionID, std::numeric_limits<TScalar>::max());
+      AD::SetBoxMaxC(ext, dimensionID, std::numeric_limits<TScalar>::lowest());
     }
 
     return ext;
@@ -266,7 +266,7 @@ public:
     return tree;
   }
 
-  size_t GetNodeSize() const
+  size_t GetNodeCount() const
   {
     return std::ranges::count_if(vNode, [](auto const& node) -> bool { return node.get(); });
   }

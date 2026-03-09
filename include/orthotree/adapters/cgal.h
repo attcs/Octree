@@ -1,0 +1,258 @@
+#pragma once
+/*
+MIT License
+
+Copyright (c) 2021 Attila Csikós
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+#include "../octree.h"
+
+// Define ORTHOTREE_CGAL_INCLUDE if your CGAL installation is in a non-standard location and include the following headers manually.
+// Example: -DORTHOTREE_CGAL_INCLUDE
+#ifndef ORTHOTREE_CGAL_INCLUDE
+#include <CGAL/Bbox_2.h>
+#include <CGAL/Bbox_3.h>
+#include <CGAL/Cartesian.h>
+#include <CGAL/Origin.h>
+#include <CGAL/Plane_3.h>
+#include <CGAL/Point_2.h>
+#include <CGAL/Point_3.h>
+#include <CGAL/Ray_2.h>
+#include <CGAL/Ray_3.h>
+#include <CGAL/basic.h>
+#include <CGAL/cartesian.h>
+#endif
+
+namespace CGAL
+{
+  // 2d Hyperplane
+  struct Plane_2
+  {
+    double offset; // n1*x + n2*y + offset = 0
+    Point_2<Cartesian<double>> normal;
+  };
+} // namespace CGAL
+
+
+namespace OrthoTree
+{
+  namespace CGALAdapter
+  {
+    struct BaseGeometryAdapter2D
+    {
+      using Scalar = double;
+      using FloatScalar = double;
+      using Vector = CGAL::Point_2<CGAL::Cartesian<Scalar>>;
+      using Box = CGAL::Bbox_2;
+      using Ray = CGAL::Ray_2<CGAL::Cartesian<Scalar>>;
+      using Plane = CGAL::Plane_2;
+
+      static constexpr dim_t DIMENSION_NO = 2;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
+      static Vector MakePoint() noexcept { return {}; };
+      static Box MakeBox() noexcept { return {}; };
+
+      static Scalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+      static void SetPointC(Vector& point, dim_t dimensionID, Scalar value) noexcept
+      {
+        if (dimensionID == 0)
+          point = Vector(value, point.y());
+        else
+          point = Vector(point.x(), value);
+      }
+
+      static Scalar GetBoxMinC(Box const& box, dim_t dimensionID) noexcept { return box.min(dimensionID); }
+      static Scalar GetBoxMaxC(Box const& box, dim_t dimensionID) noexcept { return box.max(dimensionID); }
+      static void SetBoxMinC(Box& box, dim_t dimensionID, Scalar value) noexcept
+      {
+        if (dimensionID == 0)
+          box = Box(value, box.ymin(), box.xmax(), box.ymax());
+        else
+          box = Box(box.xmin(), value, box.xmax(), box.ymax());
+      }
+      static void SetBoxMaxC(Box& box, dim_t dimensionID, Scalar value) noexcept
+      {
+        if (dimensionID == 0)
+          box = Box(box.xmin(), box.ymin(), value, box.ymax());
+        else
+          box = Box(box.xmin(), box.ymin(), box.xmax(), value);
+      }
+
+      static Vector GetRayDirection(Ray const& ray) noexcept
+      {
+        auto const direction = ray.to_vector();
+        return Vector(direction.x(), direction.y());
+      }
+      static Vector GetRayOrigin(Ray const& ray) noexcept { return ray.source(); }
+
+      static Vector const& GetPlaneNormal(Plane const& plane) noexcept { return plane.normal; }
+      static Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return -plane.offset; }
+    };
+
+    using CGALGeometryAdapter2D = GeneralGeometryAdapter<BaseGeometryAdapter2D>;
+
+
+    struct BaseGeometryAdapter3D
+    {
+      using Scalar = double;
+      using FloatScalar = double;
+      using Vector = CGAL::Point_3<CGAL::Cartesian<Scalar>>;
+      using Box = CGAL::Bbox_3;
+      using Ray = CGAL::Ray_3<CGAL::Cartesian<Scalar>>;
+      using Plane = CGAL::Plane_3<CGAL::Cartesian<Scalar>>;
+
+      static constexpr dim_t DIMENSION_NO = 3;
+      static constexpr FloatScalar BASE_TOLERANCE = std::numeric_limits<FloatScalar>::epsilon() * FloatScalar(10);
+
+      static Vector MakePoint() noexcept { return {}; };
+      static Box MakeBox() noexcept { return {}; };
+
+      static Scalar GetPointC(Vector const& point, dim_t dimensionID) noexcept { return point[dimensionID]; }
+      static void SetPointC(Vector& point, dim_t dimensionID, Scalar value) noexcept
+      {
+        switch (dimensionID)
+        {
+        case 0: point = Vector(value, point.y(), point.z()); return;
+        case 1: point = Vector(point.x(), value, point.z()); return;
+        case 2: point = Vector(point.x(), point.y(), value); return;
+        }
+        assert(false);
+        std::terminate();
+      }
+
+      static Scalar GetBoxMinC(Box const& box, dim_t dimensionID) noexcept { return box.min(dimensionID); }
+      static Scalar GetBoxMaxC(Box const& box, dim_t dimensionID) noexcept { return box.max(dimensionID); }
+      static void SetBoxMinC(Box& box, dim_t dimensionID, Scalar value) noexcept
+      {
+        switch (dimensionID)
+        {
+        case 0: box = Box(value, box.ymin(), box.zmin(), box.xmax(), box.ymax(), box.zmax()); return;
+        case 1: box = Box(box.xmin(), value, box.zmin(), box.xmax(), box.ymax(), box.zmax()); return;
+        case 2: box = Box(box.xmin(), box.ymin(), value, box.xmax(), box.ymax(), box.zmax()); return;
+        }
+        assert(false);
+        std::terminate();
+      }
+
+      static void SetBoxMaxC(Box& box, dim_t dimensionID, Scalar value) noexcept
+      {
+        switch (dimensionID)
+        {
+        case 0: box = Box(box.xmin(), box.ymin(), box.zmin(), value, box.ymax(), box.zmax()); return;
+        case 1: box = Box(box.xmin(), box.ymin(), box.zmin(), box.xmax(), value, box.zmax()); return;
+        case 2: box = Box(box.xmin(), box.ymin(), box.zmin(), box.xmax(), box.ymax(), value); return;
+        }
+        assert(false);
+        std::terminate();
+      }
+
+      static Vector GetRayDirection(Ray const& ray) noexcept
+      {
+        auto const direction = ray.to_vector();
+        return Vector(direction.x(), direction.y(), direction.z());
+      }
+      static Vector GetRayOrigin(Ray const& ray) noexcept { return ray.source(); }
+
+      static Vector GetPlaneNormal(Plane const& plane) noexcept { return Vector(plane.a(), plane.b(), plane.c()); }
+      static Scalar GetPlaneOrigoDistance(Plane const& plane) noexcept { return -plane.d(); }
+    };
+
+    using CGALGeometryAdapter3D = GeneralGeometryAdapter<BaseGeometryAdapter3D>;
+  } // namespace CGALAdapter
+} // namespace OrthoTree
+
+namespace CGAL
+{
+  using namespace OrthoTree::CGALAdapter;
+
+  // Core types
+  using QuadtreePoint =
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration<>>;
+
+  using OctreePoint =
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntitySpanAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration<>>;
+
+  template<bool IS_LOOSE_TREE>
+  using QuadtreeBoxs =
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntitySpanAdapter<CGAL::Bbox_2>, CGALGeometryAdapter2D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
+
+  using QuadtreeBox = QuadtreeBoxs<true>;
+
+  template<bool IS_LOOSE_TREE>
+  using OctreeBoxs =
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntitySpanAdapter<CGAL::Bbox_3>, CGALGeometryAdapter3D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
+
+  using OctreeBox = OctreeBoxs<true>;
+
+
+  // Container types
+
+  using QuadtreePointM = OrthoTree::OrthoTreeManaged<QuadtreePoint>;
+  using OctreePointM = OrthoTree::OrthoTreeManaged<OctreePoint>;
+
+  template<bool IS_LOOSE_TREE>
+  using QuadtreeBoxCs = OrthoTree::OrthoTreeManaged<QuadtreeBoxs<IS_LOOSE_TREE>>;
+  using QuadtreeBoxM = QuadtreeBoxCs<true>;
+  template<bool IS_LOOSE_TREE>
+  using OctreeBoxCs = OrthoTree::OrthoTreeManaged<OctreeBoxs<IS_LOOSE_TREE>>;
+  using OctreeBoxM = OctreeBoxCs<true>;
+
+
+  // Map types
+
+  template<typename T>
+  using CGALContainer = std::unordered_map<std::size_t, T>;
+
+  // Core types
+  using QuadtreePointMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_2<CGAL::Cartesian<double>>>, CGALGeometryAdapter2D, OrthoTree::PointConfiguration<>>;
+
+
+  using OctreePointMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::PointEntityMapAdapter<CGAL::Point_3<CGAL::Cartesian<double>>>, CGALGeometryAdapter3D, OrthoTree::PointConfiguration<>>;
+
+
+  template<bool IS_LOOSE_TREE>
+  using QuadtreeBoxsMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntityMapAdapter<CGAL::Bbox_2>, CGALGeometryAdapter2D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
+
+  using QuadtreeBoxMap = QuadtreeBoxs<true>;
+
+  template<bool IS_LOOSE_TREE>
+  using OctreeBoxsMap =
+    OrthoTree::OrthoTreeBase<OrthoTree::BoxEntityMapAdapter<CGAL::Bbox_3>, CGALGeometryAdapter3D, OrthoTree::BoxConfiguration<IS_LOOSE_TREE>>;
+
+  using OctreeBoxMap = OctreeBoxsMap<true>;
+
+
+  // Container types
+
+  using QuadtreePointMapM = OrthoTree::OrthoTreeManaged<QuadtreePointMap>;
+  using OctreePointMapM = OrthoTree::OrthoTreeManaged<OctreePointMap>;
+
+  template<bool IS_LOOSE_TREE>
+  using QuadtreeBoxMapCs = OrthoTree::OrthoTreeManaged<QuadtreeBoxsMap<IS_LOOSE_TREE>>;
+  using QuadtreeBoxMapM = QuadtreeBoxMapCs<true>;
+  template<bool IS_LOOSE_TREE>
+  using OctreeBoxMapCs = OrthoTree::OrthoTreeManaged<OctreeBoxsMap<IS_LOOSE_TREE>>;
+  using OctreeBoxMapM = OctreeBoxMapCs<true>;
+} // namespace CGAL

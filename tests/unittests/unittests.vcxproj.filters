@@ -1,0 +1,165 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\include">
+      <UniqueIdentifier>{ced7ebab-3f27-484e-9f5e-0ebc276e227f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\include\detail">
+      <UniqueIdentifier>{9de3b7d1-307f-4375-8c8f-26b81af53f59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\include\adapters">
+      <UniqueIdentifier>{099ca9bf-a918-4773-9f94-4d11cb47ae53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\include\core">
+      <UniqueIdentifier>{212419f3-0818-40f6-9ab2-8e781e1fc29c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="general.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="adapter.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="performance.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="bitset.arithmetic.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="example.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="random.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="compile.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\octree.h">
+      <Filter>Header Files\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\bitset_arithmetic.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\inplace_vector.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\common.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\zip_view.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\memory_resource.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\boost.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\cgal.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\concepts.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\eigen.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\general.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\glm.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\unreal.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\adapters\xyz.h">
+      <Filter>Header Files\include\adapters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\internal_geometry_module.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\si_morton.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\si_grid.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\partitioning.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\undefs.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="compile_test.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\configuration.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\utils.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\detail\si_mortongrid.h">
+      <Filter>Header Files\include\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\aliases.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\build_config.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\configuration.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\entity_adapter.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_base.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_dynamic_hash_core.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_query.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_static_linear_core.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\types.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\ot_managed.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="visualizer.natvis" />
+  </ItemGroup>
+</Project>
