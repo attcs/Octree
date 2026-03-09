@@ -4,12 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Octree Benchmark Viewer</title>
+  <title>Octree Benchmarks</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="benchmarks.js"></script>
   <style>
     :root {
       --bg: #0d1117;
@@ -42,11 +43,17 @@
     header {
       background: var(--s);
       border-bottom: 1px solid var(--bd);
-      padding: 10px 24px;
+      padding: 10px 0;
       position: sticky;
       top: 0;
       z-index: 100;
       backdrop-filter: blur(12px)
+    }
+
+    .hdr-content {
+      max-width: 1700px;
+      margin: 0 auto;
+      padding: 0 24px;
     }
 
     .hdr-top {
@@ -357,18 +364,20 @@
 
 <body>
   <header>
-    <div class="hdr-top">
-      <div class="logo">📊</div>
-      <h1>Octree Benchmark Viewer</h1>
-    </div>
-    <div class="filter-bar" id="filterBar">
-      <span style="font-size:11px;color:var(--tm)">Filter:</span>
+    <div class="hdr-content">
+      <div class="hdr-top">
+        <h1>Octree Benchmarks</h1>
+      </div>
+      <div class="filter-bar" id="filterBar">
+        <span style="font-size:11px;color:var(--tm)">Filter:</span>
+      </div>
     </div>
   </header>
 
   <div class="main">
     <!-- File controls -->
-    <div class="file-row">
+    <!-- File controls (hidden by user request) -->
+    <div class="file-row" style="display: none;">
       <button class="btn-sm accent" onclick="document.getElementById('folderInput').click()">📂 Load Docs
         Folder</button>
       <button class="btn-sm" onclick="document.getElementById('fileInput').click()">⬆ Files</button>
@@ -413,10 +422,7 @@
     const PALETTE = ['#58a6ff', '#3fb950', '#d2a8ff', '#ffa657', '#ff7b72', '#79c0ff', '#56d364', '#f78166', '#e3b341', '#a5d6ff', '#7ee787', '#ffb3d1', '#cae8ff', '#ffd700', '#c9d1d9'];
 
     const KNOWN_FILES = [
-      'bench test.txt',
-      'ethalon 2025-12-15 5058b3090c8b88e405fe2bfddd6c1c872f2b79d2.txt',
-      'ethalon 2026-01-02 (oversized modelspace) 5058b3090c8b88e405fe2bfddd6c1c872f2b79d2.txt',
-      'ethalon 2026-01-02 (oversized modelspace, create d10) 5058b3090c8b88e405fe2bfddd6c1c872f2b79d2.txt',
+      './benchmarks.txt',
     ];
 
     const FILTER_CHIPS = [
@@ -575,15 +581,20 @@
     // ── File loading ──
     async function tryAutoLoad()
     {
+      if (typeof BENCHMARK_DATA !== 'undefined' && BENCHMARK_DATA.length > 50)
+      {
+        loadFile('benchmarks.js', BENCHMARK_DATA);
+      }
+
       for (const name of KNOWN_FILES)
       {
         try
         {
-          const r = await fetch(encodeURIComponent(name));
+          const r = await fetch(name);
           if (!r.ok) continue;
           const text = await r.text();
           if (text.length < 50) continue;
-          addToFileSel(name);
+          loadFile(name, text);
         } catch (e) { }
       }
     }
@@ -595,7 +606,7 @@
       if (loadedFiles.some(f => f.name === name)) return renderCharts();
       try
       {
-        const r = await fetch(encodeURIComponent(name));
+        const r = await fetch(name);
         if (!r.ok) { handleManualFile(name); return; }
         const text = await r.text();
         loadFile(name, text);
@@ -866,7 +877,7 @@
         }
       }
 
-      return groups;
+      return groups.filter(g => g.args.length > 1);
     }
 
     function buildChart(canvas, group, uSel, sSel)
@@ -939,7 +950,7 @@
                 {
                   let l = ctx.dataset.label || '';
                   if (l) l += ': ';
-                  l += ctx.parsed.y.toPrecision(4);
+                  l += ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
                   if (ctx.chart._baselineIdx !== undefined) l += ' (ratio)';
                   else l += ' ' + u;
                   return l;
