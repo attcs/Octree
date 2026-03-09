@@ -135,7 +135,8 @@ namespace OrthoTree
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
     {
-      auto isSuccessfullyInsertedAllElements = Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
+      [[maybe_unused]] auto isSuccessfullyInsertedAllElements =
+        Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
       assert(isSuccessfullyInsertedAllElements);
     }
 
@@ -148,7 +149,8 @@ namespace OrthoTree
       std::optional<TBox> boxSpaceOptional = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
-      auto isSuccessfullyInsertedAllElements = Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
+      [[maybe_unused]] auto isSuccessfullyInsertedAllElements =
+        Create(entities, maxDepthIDIn, std::move(boxSpaceOptional), maxElementNoInNode, execMode);
       assert(isSuccessfullyInsertedAllElements);
     }
 
