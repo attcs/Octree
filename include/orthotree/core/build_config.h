@@ -45,6 +45,9 @@ ORTHOTREE_INDEX_T__INT / ORTHOTREE_INDEX_T__SIZE_T / ORTHOTREE_INDEX_T__UINT_FAS
 // By default, the linear data interface is not available. Use this macro to make linear data-related functions public on Static Orthotrees.
 #define ORTHOTREE__PUBLIC_LINEARDATA_INTERFACE
 
+// Over 4 billion elements in the tree use 64bit index type for memory resource
+#define ORTHOTREE__LARGE_DATASET
+
 // Enable debug checks
 #define ORTHOTREE__DEBUG_CHECKS
 */

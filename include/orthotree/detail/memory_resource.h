@@ -51,7 +51,12 @@ namespace OrthoTree::detail
   class MemoryResource
   {
   public:
+#ifdef ORTHOTREE__LARGE_DATASET
+    using Index = std::uint64_t;
+#else
     using Index = std::uint32_t;
+#endif
+
     using PageID = std::uint32_t;
 
     static constexpr Index INVALID_PAGEID = std::numeric_limits<Index>::max();
@@ -335,6 +340,8 @@ namespace OrthoTree::detail
 
     MemorySegment Allocate(std::size_t capacity) noexcept
     {
+      ORTHOTREE_CRASH_IF(capacity > std::numeric_limits<Index>::max(), "Too many elements. Use ORTHOTREE__LARGE_DATASET!");
+
       auto const capacity_ = Index(capacity);
 
       auto freeSegmentIt = GetFreeSegmentByCapacity(capacity);

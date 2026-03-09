@@ -385,6 +385,7 @@ Configuration can be further tuned using macros defined in [build_config.h](../i
 * `ORTHOTREE__USE_PMR`: Force use of Polymorphic Memory Resources (default for MSVC) with the default Configuration.
 * `ORTHOTREE__DISABLE_PMR`: Disable PMR usage on all platforms.
 * `ORTHOTREE__LOCATIONCODE_32`: Use 32-bit location codes (sufficient for depths < 10, otherwise 64-bit is used).
+* `ORTHOTREE__LARGE_DATASET`: Over 4 billion elements in the tree use 64bit index type for memory resource.
 * `ORTHOTREE_INDEX_T__INT` / `SIZE_T` / `UINT_FAST32_T`: Specify the underlying type for `index_t`.
 
 ## Creation, Insertion and Updates

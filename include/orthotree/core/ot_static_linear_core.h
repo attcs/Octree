@@ -101,7 +101,11 @@ namespace OrthoTree
     struct NodeStorageGeneral
     {
       using NodeSegmentIndex = uint32_t;
+#ifdef ORTHOTREE__LARGE_DATASET
+      using EntitySegment = Segment<uint64_t, uint64_t>;
+#else
       using EntitySegment = Segment<uint32_t, uint32_t>;
+#endif
 
       std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
       std::vector<EntitySegment> nodeEntitySegment;
