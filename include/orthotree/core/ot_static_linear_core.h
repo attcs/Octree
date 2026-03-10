@@ -366,7 +366,7 @@ namespace OrthoTree
       auto const possiblyFullLevels = std::min(Base::GetMaxDepthID(), std::bit_width(entityCount - 1) / GA::DIMENSION_NO);
       auto const maxNodeNumByEntities = calculateNodeNum(possiblyFullLevels) + (Base::GetMaxDepthID() - possiblyFullLevels) * entityCount;
 
-      return std::min(maxNodeNumByEntities, maxNodeNumByMaxDepth);
+      return static_cast<std::size_t>(std::min(maxNodeNumByEntities, maxNodeNumByMaxDepth));
     }
 
     constexpr void InitNodeGeometry(NodeID nodeID, SI::Location location, MGSI const& spaceIndexing) noexcept

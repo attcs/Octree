@@ -146,11 +146,11 @@ namespace OrthoTree
         bool shouldOverwrite = false;
         if constexpr (IS_BITSET_BASED_FLAGS)
         {
-          auto const it = std::ranges::lower_bound(m_childIndex, childID);
+          auto const it = std::ranges::lower_bound(m_childIndex, static_cast<std::size_t>(childID));
           elementID = std::distance(m_childIndex.begin(), it);
           shouldOverwrite = elementID < m_childIndex.size() && m_childIndex[elementID] == childID;
           if (!shouldOverwrite)
-            m_childIndex.insert(it, childID);
+            m_childIndex.insert(it, static_cast<std::size_t>(childID));
         }
         else
         {
@@ -172,7 +172,7 @@ namespace OrthoTree
         std::size_t elementID = 0;
         if constexpr (IS_BITSET_BASED_FLAGS)
         {
-          auto const it = std::ranges::lower_bound(m_childIndex, childID);
+          auto const it = std::ranges::lower_bound(m_childIndex, static_cast<std::size_t>(childID));
           elementID = std::distance(m_childIndex.begin(), it);
         }
         else
@@ -189,7 +189,7 @@ namespace OrthoTree
       {
         if constexpr (IS_BITSET_BASED_FLAGS)
         {
-          return std::ranges::binary_search(m_childIndex, childID);
+          return std::ranges::binary_search(m_childIndex, static_cast<std::size_t>(childID));
         }
         else
         {
@@ -202,7 +202,7 @@ namespace OrthoTree
         std::size_t elementID = 0;
         if constexpr (IS_BITSET_BASED_FLAGS)
         {
-          auto const it = std::ranges::lower_bound(m_childIndex, childID);
+          auto const it = std::ranges::lower_bound(m_childIndex, static_cast<std::size_t>(childID));
           elementID = std::distance(m_childIndex.begin(), it);
           m_childIndex.erase(it);
         }
