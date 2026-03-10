@@ -118,9 +118,9 @@ std::vector<BoundingBoxND<DIMENSION_NO>> GenerateBoxesRandom(size_t nNumber, int
   // 2. Size Distribution: Log-Normal
   // Focuses in the middle, few very large, few extremely small.
   // Centered around a "typical" depth (e.g. Level 8-10) to reach significant depths.
-  double const meanDepth = 14.0;
+  double const meanDepth = 8.0;
   double const targetSize = rMax / std::pow(2.0, meanDepth);
-  std::lognormal_distribution<double> distSize(std::log(targetSize), 1.8);
+  std::lognormal_distribution<double> distSize(std::log(targetSize), 1.0);
 
   size_t iNumber = 1;
 
