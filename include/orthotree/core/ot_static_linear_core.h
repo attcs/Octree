@@ -58,6 +58,8 @@ namespace OrthoTree
     ORTHOTREE_DEPENDENT_TYPES(Base);
 
   public:
+    using SI = typename Base::SI;
+
     using NodeID = uint32_t;
     using NodeIDCR = NodeID;
 

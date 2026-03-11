@@ -92,6 +92,7 @@ namespace OrthoTree
     using EntityID = EA::EntityID;
     using Entity = EA::Entity;
     using EntityGeometry = EA::Geometry;
+    using ChildID = SI::ChildID;
 
   protected:
     constexpr OrthoTreeCoreBase() = default;
@@ -236,7 +237,6 @@ namespace OrthoTree
   using GA = Base::GA;                                          \
   using CONFIG = Base::CONFIG;                                  \
   using IGM = Base::IGM;                                        \
-  using SI = Base::SI;                                          \
   using IGM_Geometry = IGM::Geometry;                           \
                                                                 \
   using TScalar = typename GA::Scalar;                          \
@@ -249,5 +249,7 @@ namespace OrthoTree
   using EntityContainerView = typename EA::EntityContainerView; \
   using EntityID = typename EA::EntityID;                       \
   using Entity = typename EA::Entity;                           \
-  using EntityGeometry = typename EA::Geometry
+  using EntityGeometry = typename EA::Geometry;                  \
+                                                                \
+    using ChildID = Base::ChildID
 } // namespace OrthoTree

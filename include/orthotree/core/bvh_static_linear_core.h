@@ -328,6 +328,7 @@ namespace OrthoTree
     using NodeID = int;
     using NodeIDCR = NodeID;
     using NodeValue = NodeID;
+    using ChildID = NodeID;
 
     using EntityID = EA::EntityID;
     using EntityGeometry = EA::Geometry;
@@ -417,7 +418,7 @@ namespace OrthoTree
 
     constexpr std::size_t GetNodeEntityCount(NodeValue nodeID) const noexcept
     {
-      return std::visit([&](auto const& nodes) { return nodes.nodeEntitySegment[nodeID].length; }, m_nodes);
+      return std::visit([&](auto const& nodes) -> std::size_t { return static_cast<std::size_t>(nodes.nodeEntitySegment[nodeID].length); }, m_nodes);
     }
 
     constexpr SequenceView<NodeID> GetNodeChildren(NodeValue nodeID) const noexcept
@@ -714,6 +715,14 @@ namespace OrthoTree
           }
         }
       }
+    }
+
+    template<typename TNodeStorage>
+    static constexpr bool IsFit(std::size_t entityCount, std::size_t maxNodeCount) noexcept
+    {
+      return maxNodeCount < std::numeric_limits<typename TNodeStorage::NodeSegmentIndex>::max() &&
+             entityCount < std::numeric_limits<typename TNodeStorage::EntitySegment::Begin>::max() &&
+             entityCount < std::numeric_limits<typename TNodeStorage::EntitySegment::Length>::max();
     }
 
   public:

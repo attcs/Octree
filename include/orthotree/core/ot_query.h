@@ -2201,7 +2201,6 @@ namespace OrthoTree
         return true;
 
       // Map octants to children via Geometry
-      using ChildID = typename SI::ChildID;
       auto mapL = std::map<ChildID, NodeID>();
       auto mapR = std::map<ChildID, typename TOtherCore::NodeID>();
 
