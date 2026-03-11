@@ -1,12 +1,21 @@
 #pragma once
 
 #include "../adapters/general.h"
-#include "../detail/freelist_vector.h"
-#include "../detail/inplace_vector.h"
+#include "../core/entity_adapter.h"
+#include "../core/ot_query.h"
+#include "../detail/internal_geometry_module.h"
+#include "../detail/sequence_view.h"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
+#include <limits>
+#include <queue>
+#include <span>
 #include <stack>
-
+#include <variant>
+#include <vector>
+/*
 namespace SpatialIndexing
 {
 
@@ -283,30 +292,47 @@ namespace SpatialIndexing
     }
     void Remove(std::span<ValueType> elements, std::pair<Index, Length> elements) {};
   };
-
-
   // using BVH3D = BoundingVolumeHearchy<AdaptorGeneral3Dd>;
+*/
 
-  class Configuration
+namespace OrthoTree
+{
+  template<int CHILD_NUM_ = 8>
+  struct BVHConfiguration
   {
-    static constexpr int CHILD_NUM = 8;
+    static constexpr int CHILD_NUM = CHILD_NUM_;
     static constexpr std::size_t DEFAULT_TARGET_ELEMENT_NUM_IN_NODES = 16;
+
+    // Required by OrthoTreeQueryBase
+    static constexpr bool IS_HOMOGENEOUS_GEOMETRY = true;
+    static constexpr double LOOSE_FACTOR = 1.0;
+    static constexpr bool ALLOW_OUT_OF_SPACE_INSERTION = true;
+    static constexpr bool USE_REVERSE_MAPPING = false;
+    static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 19 };
+
+    template<typename TKey, typename TValue, typename THash>
+    using UMapNodeContainer = std::unordered_map<TKey, TValue, THash>;
+    template<typename TKey, typename TValue, typename TComp>
+    using MapNodeContainer = std::map<TKey, TValue, TComp>;
   };
 
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
   class BVHStaticLinearCore
   {
-    using IGM = TGeometryAdapter;
+  public:
     using EA = TEntityAdapter;
     using GA = TGeometryAdapter;
     using CONFIG = TConfiguration;
-    
+    using IGM = detail::InternalGeometryModule<TGeometryAdapter>;
+
     using NodeID = int;
+    using NodeIDCR = NodeID;
     using NodeValue = NodeID;
-    using NodeGeometry = IGM::Box;
 
-    using MGSI = typename detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID>;
+    using EntityID = EA::EntityID;
+    using EntityGeometry = EA::Geometry;
 
+  private:
     template<typename TBegin, typename TLength>
     struct Segment
     {
@@ -348,14 +374,17 @@ namespace SpatialIndexing
       std::vector<EntitySegment> nodeEntitySegment;
     };
 
-    using NodeGeometry =
-      std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, std::monostate, std::vector<typename Base::NodeGeometry>>;
+    struct NodeGeometryData
+    {
+      typename IGM::Vector minPoint;
+      typename IGM::Vector size;
+    };
 
   private:
     std::variant<NodeStorage256, NodeStorage65536, NodeStorageGeneral> m_nodes;
     std::vector<uint8_t> m_nodeDepthIDs;
     std::vector<EntityID> m_entityStorage;
-    NodeGeometry m_nodeGeometry;
+    std::vector<NodeGeometryData> m_nodeGeometry;
 
 
   public:
@@ -423,16 +452,395 @@ namespace SpatialIndexing
 
     constexpr decltype(auto) GetNodeSize(NodeValue nodeID) const noexcept { return m_nodeGeometry[nodeID].size; }
 
-    constexpr IGM::Box GetNodeBox(NodeValue nodeID) const noexcept
+    constexpr typename IGM::Box GetNodeBox(NodeValue nodeID) const noexcept
     {
       auto const& [minPoint, size] = m_nodeGeometry[nodeID];
       return { .Min = minPoint, .Max = IGM::Add(minPoint, size) };
     }
 
 
+  private:
+    static constexpr int CHILD_NUM = CONFIG::CHILD_NUM;
+    static constexpr int SAH_BIN_COUNT = 16;
+
+    struct EntityBuildData
+    {
+      EntityID entityID;
+      IGM::Vector center;
+    };
+
+    // Evaluate SAH cost for splitting along a given axis at a given position
+    // Returns the cost = leftArea * leftCount + rightArea * rightCount
+    struct SplitCandidate
+    {
+      typename IGM::Geometry cost = std::numeric_limits<typename IGM::Geometry>::max();
+      typename IGM::Geometry splitPos = {};
+      dim_t axis = 0;
+    };
+
+    static SplitCandidate FindBestSplitAxis(std::span<EntityBuildData> entities, EA::EntityContainerView sourceEntities) noexcept
+    {
+      using Geometry = typename IGM::Geometry;
+
+      struct Bin
+      {
+        uint32_t count = 0;
+        typename IGM::Box bounds;
+        bool initialized = false;
+      };
+
+      SplitCandidate best;
+
+      for (dim_t dimID = 0; dimID < GA::DIMENSION_NO; ++dimID)
+      {
+        // Find bounds of centers along this axis
+        Geometry boundsMin = std::numeric_limits<Geometry>::max();
+        Geometry boundsMax = std::numeric_limits<Geometry>::lowest();
+        for (auto const& ed : entities)
+        {
+          boundsMin = std::min(boundsMin, ed.center[dimID]);
+          boundsMax = std::max(boundsMax, ed.center[dimID]);
+        }
+
+        if (boundsMax - boundsMin < std::numeric_limits<Geometry>::epsilon())
+          continue;
+
+        // Populate bins
+        std::array<Bin, SAH_BIN_COUNT> bins = {};
+        Geometry const scale = Geometry(SAH_BIN_COUNT) / (boundsMax - boundsMin);
+        for (auto const& ed : entities)
+        {
+          int binIdx = std::min(SAH_BIN_COUNT - 1, static_cast<int>((ed.center[dimID] - boundsMin) * scale));
+          ++bins[binIdx].count;
+          auto entityBox = IGM::GetBoxAD(EA::GetGeometry(sourceEntities, ed.entityID));
+          if (!bins[binIdx].initialized)
+          {
+            bins[binIdx].bounds = entityBox;
+            bins[binIdx].initialized = true;
+          }
+          else
+          {
+            IGM::UniteInBoxAD(bins[binIdx].bounds, entityBox);
+          }
+        }
+
+        // Sweep from left and right to compute prefix areas and counts
+        std::array<Geometry, SAH_BIN_COUNT - 1> leftArea, rightArea;
+        std::array<uint32_t, SAH_BIN_COUNT - 1> leftCount, rightCount;
+
+        {
+          typename IGM::Box leftBox = IGM::BoxInvertedInit();
+          uint32_t leftSum = 0;
+          for (int i = 0; i < SAH_BIN_COUNT - 1; ++i)
+          {
+            leftSum += bins[i].count;
+            leftCount[i] = leftSum;
+            if (bins[i].initialized)
+              IGM::UniteInBoxAD(leftBox, bins[i].bounds);
+            leftArea[i] = IGM::GetVolumeAD(leftBox);
+          }
+        }
+        {
+          typename IGM::Box rightBox = IGM::BoxInvertedInit();
+          uint32_t rightSum = 0;
+          for (int i = SAH_BIN_COUNT - 1; i > 0; --i)
+          {
+            rightSum += bins[i].count;
+            rightCount[i - 1] = rightSum;
+            if (bins[i].initialized)
+              IGM::UniteInBoxAD(rightBox, bins[i].bounds);
+            rightArea[i - 1] = IGM::GetVolumeAD(rightBox);
+          }
+        }
+
+        // Evaluate SAH cost for each split plane
+        Geometry const binWidth = (boundsMax - boundsMin) / Geometry(SAH_BIN_COUNT);
+        for (int i = 0; i < SAH_BIN_COUNT - 1; ++i)
+        {
+          if (leftCount[i] == 0 || rightCount[i] == 0)
+            continue;
+
+          Geometry cost = leftCount[i] * leftArea[i] + rightCount[i] * rightArea[i];
+          if (cost < best.cost)
+          {
+            best.cost = cost;
+            best.splitPos = boundsMin + binWidth * Geometry(i + 1);
+            best.axis = dimID;
+          }
+        }
+      }
+
+      return best;
+    }
+
+
+    constexpr NodeID CreateBVHNode(uint8_t depthID, uint32_t nodeEntityBeginID, uint32_t nodeEntityCount, uint32_t childNodeCount) noexcept
+    {
+      auto const nodeID = static_cast<NodeID>(m_nodeDepthIDs.size());
+
+      m_nodeDepthIDs.push_back(depthID);
+      std::visit(
+        [&](auto& nodes) {
+          using NodeStorage = std::decay_t<decltype(nodes)>;
+          using EntitySegment = typename NodeStorage::EntitySegment;
+          using NodeSegmentIndex = typename NodeStorage::NodeSegmentIndex;
+
+          nodes.nodeEntitySegment.push_back(
+            EntitySegment{ static_cast<typename EntitySegment::Begin>(nodeEntityBeginID), static_cast<typename EntitySegment::Length>(nodeEntityCount) });
+
+          if (childNodeCount > 0)
+          {
+            nodes.nodeChildSegmentBegins.resize(nodeID + 2, nodes.nodeChildSegmentBegins.back());
+            nodes.nodeChildSegmentBegins.back() += static_cast<NodeSegmentIndex>(childNodeCount);
+          }
+        },
+        m_nodes);
+
+      if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
+      {
+        m_nodeGeometry.push_back({});
+      }
+
+      return nodeID;
+    }
+
+
+    void BuildBVH(std::vector<EntityBuildData>& buildData, EA::EntityContainerView entities, uint8_t maxDepthID, std::size_t maxElementNoInNode) noexcept
+    {
+      struct NodeProcessingData
+      {
+        uint32_t beginID;
+        uint32_t length;
+        uint8_t depthID;
+      };
+
+      auto nodeQueue = std::queue<NodeProcessingData>();
+      nodeQueue.push({ 0, static_cast<uint32_t>(buildData.size()), 0 });
+
+      while (!nodeQueue.empty())
+      {
+        auto [beginID, length, depthID] = nodeQueue.front();
+        nodeQueue.pop();
+
+        // Leaf condition: few enough entities or max depth reached
+        if (length <= maxElementNoInNode || depthID >= maxDepthID)
+        {
+          CreateBVHNode(depthID, beginID, length, 0);
+          continue;
+        }
+
+        // Find best split axis using SAH
+        auto span = std::span<EntityBuildData>(buildData.data() + beginID, length);
+        auto split = FindBestSplitAxis(span, entities);
+
+        // If no valid split found (all centers coincide), create leaf
+        if (split.cost >= std::numeric_limits<typename IGM::Geometry>::max())
+        {
+          CreateBVHNode(depthID, beginID, length, 0);
+          continue;
+        }
+
+        // Sort entities along the best axis
+        std::sort(span.begin(), span.end(), [axis = split.axis](auto const& a, auto const& b) { return a.center[axis] < b.center[axis]; });
+
+        // Split into CHILD_NUM children
+        // Use equal-count splitting along the sorted axis for multi-way split
+        uint32_t childNodeCount = 0;
+        uint32_t childBeginID = beginID;
+        uint32_t remaining = length;
+
+        for (int childIdx = 0; childIdx < CHILD_NUM && remaining > 0; ++childIdx)
+        {
+          uint32_t childrenLeft = static_cast<uint32_t>(CHILD_NUM - childIdx);
+          uint32_t childLength = (remaining + childrenLeft - 1) / childrenLeft; // ceil division for even distribution
+
+          nodeQueue.push({ childBeginID, childLength, static_cast<uint8_t>(depthID + 1) });
+          ++childNodeCount;
+
+          childBeginID += childLength;
+          remaining -= childLength;
+        }
+
+        // Create the internal node (entities stored in this node = 0, all pushed to children)
+        CreateBVHNode(depthID, beginID, 0, childNodeCount);
+      }
+    }
+
+
+    void InitializeNodeGeometryBVH(EA::EntityContainerView entities) noexcept
+    {
+      if constexpr (std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
+        return;
+      else
+      {
+        auto const nodeCount = static_cast<uint32_t>(m_nodeDepthIDs.size());
+        if (nodeCount == 0)
+          return;
+
+        // Find max depth
+        uint8_t maxDepth = 0;
+        for (uint32_t i = 0; i < nodeCount; ++i)
+          maxDepth = std::max(maxDepth, m_nodeDepthIDs[i]);
+
+        // Group nodes by depth
+        std::vector<std::vector<uint32_t>> nodesAtDepth(maxDepth + 1);
+        for (uint32_t i = 0; i < nodeCount; ++i)
+          nodesAtDepth[m_nodeDepthIDs[i]].push_back(i);
+
+        // Process bottom-up
+        for (int d = static_cast<int>(maxDepth); d >= 0; --d)
+        {
+          for (auto nodeID : nodesAtDepth[d])
+          {
+            auto nodeBox = IGM::BoxInvertedInit();
+
+            std::visit(
+              [&](auto const& nodes) {
+                auto const [entityBeginID, entityLength] = nodes.nodeEntitySegment[nodeID];
+                for (uint32_t j = entityBeginID, endID = entityBeginID + entityLength; j < endID; ++j)
+                  IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, m_entityStorage[j]));
+
+                if (nodes.nodeChildSegmentBegins.size() <= nodeID + 1)
+                  return;
+
+                auto const childBeginNodeID = nodes.nodeChildSegmentBegins[nodeID];
+                auto const childEndNodeID = nodes.nodeChildSegmentBegins[nodeID + 1];
+                for (auto childID = childBeginNodeID; childID < childEndNodeID; ++childID)
+                  IGM::UniteInBoxAD(nodeBox, GetNodeBox(childID));
+              },
+              m_nodes);
+
+            m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+          }
+        }
+      }
+    }
+
   public:
     template<typename TExecMode = SeqExec>
     bool Create(EA::EntityContainerView entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
-    {}
+    {
+      auto const entityCount = entities.size();
+      if (entityCount == 0)
+        return true;
+
+      // Estimate max depth: log_{CHILD_NUM}(entityCount / maxElementNoInNode)
+      auto const maxDepthID = [&]() -> uint8_t {
+        if (entityCount <= maxElementNoInNode)
+          return 1;
+        auto const nLeaf = static_cast<double>(entityCount) / static_cast<double>(maxElementNoInNode);
+        auto const logBase = std::log2(nLeaf) / std::log2(static_cast<double>(CHILD_NUM));
+        return static_cast<uint8_t>(std::clamp(static_cast<int>(std::ceil(logBase)), 2, 20));
+      }();
+
+      // Build entity center data and populate entity storage
+      auto buildData = std::vector<EntityBuildData>(entityCount);
+      m_entityStorage.resize(entityCount);
+
+      for (std::size_t i = 0; i < entityCount; ++i)
+      {
+        auto const& entity = *(entities.begin() + i);
+        auto const entityID = EA::GetEntityID(entities, entity);
+        auto const& geometry = EA::GetGeometry(entity);
+
+        typename IGM::Vector center;
+        if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
+        {
+          for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+            center[d] = (typename IGM::Geometry(GA::GetBoxMinC(geometry, d)) + typename IGM::Geometry(GA::GetBoxMaxC(geometry, d))) *
+                        typename IGM::Geometry(0.5);
+        }
+        else // Point
+        {
+          for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
+            center[d] = typename IGM::Geometry(GA::GetPointC(geometry, d));
+        }
+
+        buildData[i] = { entityID, center };
+        m_entityStorage[i] = entityID;
+      }
+
+      // Initialize node storage variant
+      auto const estimatedNodeCount = std::max<std::size_t>(16, entityCount / std::max<std::size_t>(1, maxElementNoInNode) * 4);
+      if (IsFit<NodeStorage256>(entityCount, estimatedNodeCount))
+        m_nodes = NodeStorage256{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
+      else if (IsFit<NodeStorage65536>(entityCount, estimatedNodeCount))
+        m_nodes = NodeStorage65536{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
+      else
+        m_nodes = NodeStorageGeneral{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
+
+      std::visit(
+        [&](auto& nodes) {
+          nodes.nodeChildSegmentBegins.reserve(estimatedNodeCount);
+          nodes.nodeEntitySegment.reserve(estimatedNodeCount);
+        },
+        m_nodes);
+
+      m_nodeDepthIDs.reserve(estimatedNodeCount);
+      if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
+        m_nodeGeometry.reserve(estimatedNodeCount);
+
+      // Build the BVH
+      BuildBVH(buildData, entities, maxDepthID, maxElementNoInNode);
+
+      // Write back entity IDs in the final sorted order
+      for (std::size_t i = 0; i < entityCount; ++i)
+        m_entityStorage[i] = buildData[i].entityID;
+
+      // Initialize node geometry (MBR) bottom-up
+      InitializeNodeGeometryBVH(entities);
+
+      return true;
+    }
   };
-}; // namespace SpatialIndexing
+
+  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  using BVHStaticLinear = OrthoTreeQueryBase<BVHStaticLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>>;
+
+
+  // BVH aliases
+
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 8>
+  using BVHPointND = BVHStaticLinear<
+    std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>, PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>>>,
+    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
+    BVHConfiguration<CHILD_NUM>>;
+
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 8>
+  using BVHBoxND = BVHStaticLinear<
+    std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>,
+    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
+    BVHConfiguration<CHILD_NUM>>;
+
+  // BVH for points
+  using StaticBVHPoint1D = BVHPointND<1, BaseGeometryType>;
+  using StaticBVHPoint2D = BVHPointND<2, BaseGeometryType>;
+  using StaticBVHPoint3D = BVHPointND<3, BaseGeometryType>;
+  using StaticBVHPoint4D = BVHPointND<4, BaseGeometryType>;
+
+  // BVH for bounding boxes
+  using StaticBVHBox1D = BVHBoxND<1, BaseGeometryType>;
+  using StaticBVHBox2D = BVHBoxND<2, BaseGeometryType>;
+  using StaticBVHBox3D = BVHBoxND<3, BaseGeometryType>;
+  using StaticBVHBox4D = BVHBoxND<4, BaseGeometryType>;
+
+  // BVH with unordered_map entities
+  using StaticBVHPointMap1D = BVHPointND<1, BaseGeometryType, false>;
+  using StaticBVHPointMap2D = BVHPointND<2, BaseGeometryType, false>;
+  using StaticBVHPointMap3D = BVHPointND<3, BaseGeometryType, false>;
+  using StaticBVHPointMap4D = BVHPointND<4, BaseGeometryType, false>;
+  using StaticBVHBoxMap1D = BVHBoxND<1, BaseGeometryType, false>;
+  using StaticBVHBoxMap2D = BVHBoxND<2, BaseGeometryType, false>;
+  using StaticBVHBoxMap3D = BVHBoxND<3, BaseGeometryType, false>;
+  using StaticBVHBoxMap4D = BVHBoxND<4, BaseGeometryType, false>;
+
+  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
+  using StaticBVHNPointND = BVHPointND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
+  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
+  using StaticBVHNBoxND = BVHBoxND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
+
+  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
+  using StaticBVHNPointMapND = BVHPointND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
+  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
+  using StaticBVHNBoxMapND = BVHBoxND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
+} // namespace OrthoTree
