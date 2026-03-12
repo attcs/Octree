@@ -541,8 +541,6 @@ namespace Benchmarks
     template<dim_t DIMENSION_NO, typename TExecMode>
     static void Insert__Bulk(benchmark::State& state)
     {
-      if constexpr (TREE_TYPE == TreeType::StaticBVH)
-        return;
       constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
 
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
@@ -558,9 +556,6 @@ namespace Benchmarks
 
     static void InsertToLeaf(benchmark::State& state)
     {
-      if constexpr (TREE_TYPE == TreeType::StaticBVH)
-        return;
-
       constexpr dim_t DIMENSION_NO = 3;
       constexpr depth_t depth = depthEdit;
 
@@ -587,8 +582,6 @@ namespace Benchmarks
 
     static void Insert__RebalanceMode(benchmark::State& state)
     {
-      if constexpr (TREE_TYPE == TreeType::StaticBVH)
-        return;
       constexpr dim_t DIMENSION_NO = 3;
       constexpr depth_t depth = depthEdit;
 
@@ -616,8 +609,6 @@ namespace Benchmarks
 
     static void Update(benchmark::State& state)
     {
-      if constexpr (TREE_TYPE == TreeType::StaticBVH)
-        return;
       constexpr dim_t DIMENSION_NO = 3;
       constexpr depth_t depth = depthEdit;
 
