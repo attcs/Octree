@@ -25,6 +25,9 @@ namespace OrthoTree
     static constexpr int CHILD_NUM = CHILD_NUM_;
     static constexpr std::size_t DEFAULT_TARGET_ELEMENT_NUM_IN_NODES = 16;
 
+    // SAH bin count. Increasing this value will improve the quality of the BVH but will also increase the creation time.
+    static constexpr int SAH_BIN_COUNT = 16;
+
     // Required by OrthoTreeQueryBase
     static constexpr bool IS_HOMOGENEOUS_GEOMETRY = true;
     static constexpr double LOOSE_FACTOR = 1.0;
@@ -197,7 +200,6 @@ namespace OrthoTree
 
   private:
     static constexpr int CHILD_NUM = CONFIG::CHILD_NUM;
-    static constexpr int SAH_BIN_COUNT = 16;
 
     struct EntityBuildData
     {
@@ -243,17 +245,17 @@ namespace OrthoTree
           continue;
 
         // Populate bins
-        std::array<Bin, SAH_BIN_COUNT> bins;
+        std::array<Bin, CONFIG::SAH_BIN_COUNT> bins;
         for (auto& b : bins)
         {
           b.count = 0;
           b.initialized = false;
         }
 
-        Geometry const scale = Geometry(SAH_BIN_COUNT) / (boundsMax - boundsMin);
+        Geometry const scale = Geometry(CONFIG::SAH_BIN_COUNT) / (boundsMax - boundsMin);
         for (auto const& ed : entities)
         {
-          int binIdx = std::min(SAH_BIN_COUNT - 1, static_cast<int>((ed.center[dimID] - boundsMin) * scale));
+          int binIdx = std::min(CONFIG::SAH_BIN_COUNT - 1, static_cast<int>((ed.center[dimID] - boundsMin) * scale));
           ++bins[binIdx].count;
           auto const& entityBox = ed.box;
           if (!bins[binIdx].initialized)
@@ -268,13 +270,13 @@ namespace OrthoTree
         }
 
         // Sweep from left and right to compute prefix areas and counts
-        std::array<Geometry, SAH_BIN_COUNT - 1> leftArea, rightArea;
-        std::array<uint32_t, SAH_BIN_COUNT - 1> leftCount, rightCount;
+        std::array<Geometry, CONFIG::SAH_BIN_COUNT - 1> leftArea, rightArea;
+        std::array<uint32_t, CONFIG::SAH_BIN_COUNT - 1> leftCount, rightCount;
 
         {
           typename IGM::Box leftBox = IGM::BoxInvertedInit();
           uint32_t leftSum = 0;
-          for (int i = 0; i < SAH_BIN_COUNT - 1; ++i)
+          for (int i = 0; i < CONFIG::SAH_BIN_COUNT - 1; ++i)
           {
             leftSum += bins[i].count;
             leftCount[i] = leftSum;
@@ -286,7 +288,7 @@ namespace OrthoTree
         {
           typename IGM::Box rightBox = IGM::BoxInvertedInit();
           uint32_t rightSum = 0;
-          for (int i = SAH_BIN_COUNT - 1; i > 0; --i)
+          for (int i = CONFIG::SAH_BIN_COUNT - 1; i > 0; --i)
           {
             rightSum += bins[i].count;
             rightCount[i - 1] = rightSum;
@@ -297,8 +299,8 @@ namespace OrthoTree
         }
 
         // Evaluate SAH cost for each split plane
-        Geometry const binWidth = (boundsMax - boundsMin) / Geometry(SAH_BIN_COUNT);
-        for (int i = 0; i < SAH_BIN_COUNT - 1; ++i)
+        Geometry const binWidth = (boundsMax - boundsMin) / Geometry(CONFIG::SAH_BIN_COUNT);
+        for (int i = 0; i < CONFIG::SAH_BIN_COUNT - 1; ++i)
         {
           if (leftCount[i] == 0 || rightCount[i] == 0)
             continue;
