@@ -1,10 +1,14 @@
 #include <iostream>
+#include <type_traits>
 
 #include "external/benchmark/include/benchmark/benchmark.h"
 
 #include "../manual/generators.h"
+#include "orthotree/bvh.h"
 #include "orthotree/octree.h"
-// #include "../unittests/compile_test.h"
+
+#define CONCAT_IMPL(a, b) a##b
+#define CONCAT(a, b) CONCAT_IMPL(a, b)
 
 using namespace OrthoTree;
 
@@ -183,8 +187,9 @@ namespace Benchmarks
 
   enum class TreeType
   {
-    Dynamic,
-    Static
+    DynamicOrtho,
+    StaticOrtho,
+    StaticBVH
   };
 
 
@@ -194,19 +199,19 @@ namespace Benchmarks
     using Config = Configuration<1.0, NODE_GEOMETRY_STORAGE, USE_REVERSE_MAPPING>;
 
     template<dim_t DIMENSION_NO>
-    using DynamicTree = typename OrthoTree::OrthoTreeBase<
+    using DynamicOrthoTree = typename OrthoTree::OrthoTreeBase<
       std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO>>, PointEntityMapAdapter<PointND<DIMENSION_NO>>>,
       GeneralGeometryAdapterND<DIMENSION_NO>,
       Config>;
 
     template<dim_t DIMENSION_NO>
-    using StaticTree = typename OrthoTree::StaticOrthoTreeBase<
+    using StaticOrthoTree = typename OrthoTree::StaticOrthoTreeBase<
       std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO>>, PointEntityMapAdapter<PointND<DIMENSION_NO>>>,
       GeneralGeometryAdapterND<DIMENSION_NO>,
       Config>;
 
     template<dim_t DIMENSION_NO>
-    using Tree = std::conditional_t<TREE_TYPE == TreeType::Static, StaticTree<DIMENSION_NO>, DynamicTree<DIMENSION_NO>>;
+    using Tree = std::conditional_t<TREE_TYPE == TreeType::StaticOrtho, StaticOrthoTree<DIMENSION_NO>, DynamicOrthoTree<DIMENSION_NO>>;
 
     template<dim_t DIMENSION_NO, typename TExecMode>
     static void Create(benchmark::State& state)
@@ -465,19 +470,44 @@ namespace Benchmarks
     using Config = Configuration<LOOSE_MODE == LooseMode::Loose ? 2.0 : 1.0, NODE_GEOMETRY_STORAGE, USE_REVERSE_MAPPING>;
 
     template<dim_t DIMENSION_NO>
-    using DynamicTree = typename OrthoTree::OrthoTreeBase<
+    using DynamicOrthoTree = typename OrthoTree::OrthoTreeBase<
       std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO>>>,
       GeneralGeometryAdapterND<DIMENSION_NO>,
       Config>;
 
     template<dim_t DIMENSION_NO>
-    using StaticTree = typename OrthoTree::StaticOrthoTreeBase<
+    using StaticOrthoTree = typename OrthoTree::StaticOrthoTreeBase<
       std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO>>>,
       GeneralGeometryAdapterND<DIMENSION_NO>,
       Config>;
 
     template<dim_t DIMENSION_NO>
-    using Tree = std::conditional_t<TREE_TYPE == TreeType::Static, StaticTree<DIMENSION_NO>, DynamicTree<DIMENSION_NO>>;
+    using Tree = std::conditional_t<
+      TREE_TYPE == TreeType::StaticBVH,
+      StaticBVHBoxND<DIMENSION_NO>,
+      std::conditional_t<TREE_TYPE == TreeType::StaticOrtho, StaticOrthoTree<DIMENSION_NO>, DynamicOrthoTree<DIMENSION_NO>>>;
+
+    template<dim_t DIM_NO, typename TExecMode, typename TEntities>
+    static auto InitTree(TExecMode const& execMode, TEntities const& entities, depth_t depth, BoundingBoxND<DIM_NO> const& boxSpace)
+    {
+      if constexpr (TREE_TYPE == TreeType::StaticBVH)
+        return StaticBVHBoxND<DIM_NO>(execMode, entities);
+      else if constexpr (TREE_TYPE == TreeType::StaticOrtho)
+        return StaticOrthoTree<DIM_NO>(execMode, entities, depth, boxSpace);
+      else
+        return DynamicOrthoTree<DIM_NO>(execMode, entities, depth, boxSpace);
+    }
+
+    template<dim_t DIM_NO, typename TEntities>
+    static auto InitTree(TEntities const& entities, depth_t depth, BoundingBoxND<DIM_NO> const& boxSpace)
+    {
+      if constexpr (TREE_TYPE == TreeType::StaticBVH)
+        return StaticBVHBoxND<DIM_NO>(entities);
+      else if constexpr (TREE_TYPE == TreeType::StaticOrtho)
+        return StaticOrthoTree<DIM_NO>(entities, depth, boxSpace);
+      else
+        return DynamicOrthoTree<DIM_NO>(entities, depth, boxSpace);
+    }
 
 
     template<dim_t DIMENSION_NO, typename TExecMode>
@@ -490,7 +520,7 @@ namespace Benchmarks
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
       for (auto _ : state)
       {
-        auto const tree = Tree<DIMENSION_NO>(TExecMode{}, entities, depth, boxSpace);
+        auto const tree = InitTree<DIMENSION_NO>(TExecMode{}, entities, depth, boxSpace);
       }
     }
 
@@ -504,13 +534,15 @@ namespace Benchmarks
       auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
       for (auto _ : state)
       {
-        auto const tree = Tree<DIMENSION_NO>(TExecMode{}, entities, depth, boxSpace);
+        auto const tree = InitTree<DIMENSION_NO>(TExecMode{}, entities, depth, boxSpace);
       }
     }
 
     template<dim_t DIMENSION_NO, typename TExecMode>
     static void Insert__Bulk(benchmark::State& state)
     {
+      if constexpr (TREE_TYPE == TreeType::StaticBVH)
+        return;
       constexpr depth_t depth = GetCreationDepth(DIMENSION_NO);
 
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
@@ -519,13 +551,16 @@ namespace Benchmarks
       auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo);
       for (auto _ : state)
       {
-        auto tree = Tree<DIMENSION_NO>(TExecMode{}, {}, depth, boxSpace);
+        auto tree = InitTree<DIMENSION_NO>(TExecMode{}, std::vector<BoundingBoxND<DIMENSION_NO>>{}, depth, boxSpace);
         tree.Insert(entities, std::vector<BoundingBoxND<DIMENSION_NO>>{}, TExecMode{});
       }
     }
 
     static void InsertToLeaf(benchmark::State& state)
     {
+      if constexpr (TREE_TYPE == TreeType::StaticBVH)
+        return;
+
       constexpr dim_t DIMENSION_NO = 3;
       constexpr depth_t depth = depthEdit;
 
@@ -552,6 +587,8 @@ namespace Benchmarks
 
     static void Insert__RebalanceMode(benchmark::State& state)
     {
+      if constexpr (TREE_TYPE == TreeType::StaticBVH)
+        return;
       constexpr dim_t DIMENSION_NO = 3;
       constexpr depth_t depth = depthEdit;
 
@@ -579,6 +616,8 @@ namespace Benchmarks
 
     static void Update(benchmark::State& state)
     {
+      if constexpr (TREE_TYPE == TreeType::StaticBVH)
+        return;
       constexpr dim_t DIMENSION_NO = 3;
       constexpr depth_t depth = depthEdit;
 
@@ -591,7 +630,7 @@ namespace Benchmarks
       auto const updateEntities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1);
       auto const updateEntitiesNo = EntityID(updateEntities.size());
 
-      auto tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+      auto tree = InitTree<DIMENSION_NO>(entities, depth, boxSpace);
       for (auto _ : state)
       {
         for (EntityID entityID = 0; entityID < updateEntitiesNo; ++entityID)
@@ -616,7 +655,7 @@ namespace Benchmarks
 
       auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+      auto const tree = InitTree<DIMENSION_NO>(entities, depth, boxSpace);
 
       constexpr size_t pointNo = 100;
       auto const searchPoints = GeneratePointsRandom<DIMENSION_NO>(pointNo, 1);
@@ -639,7 +678,7 @@ namespace Benchmarks
 
       auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.02);
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+      auto const tree = InitTree<DIMENSION_NO>(entities, depth, boxSpace);
 
       constexpr size_t boxNo = 100;
       auto const searchBoxes = GenerateBoxesRandom<DIMENSION_NO>(boxNo, 1, 0.02);
@@ -662,7 +701,7 @@ namespace Benchmarks
 
       auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+      auto const tree = InitTree<DIMENSION_NO>(entities, depth, boxSpace);
 
       auto const planes = std::vector{
         PlaneND<DIMENSION_NO>{ .OrigoDistance = rMax * 0.9, .Normal = { 1.0, 0.0, 0.0 } },
@@ -685,7 +724,7 @@ namespace Benchmarks
       size_t entityNo = state.range();
       auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+      auto const tree = InitTree<DIMENSION_NO>(entities, depth, boxSpace);
 
       for (auto _ : state)
       {
@@ -703,8 +742,8 @@ namespace Benchmarks
       auto const entities0 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 0, 0.05);
       auto const entities1 = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 1, 0.05);
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-      auto const tree0 = Tree<DIMENSION_NO>(entities0, depth, boxSpace);
-      auto const tree1 = Tree<DIMENSION_NO>(entities1, depth, boxSpace);
+      auto const tree0 = InitTree<DIMENSION_NO>(entities0, depth, boxSpace);
+      auto const tree1 = InitTree<DIMENSION_NO>(entities1, depth, boxSpace);
 
       for (auto _ : state)
       {
@@ -723,7 +762,7 @@ namespace Benchmarks
 
       auto const entities = GenerateBoxesRandom<DIMENSION_NO>(entityNo, 2, 0.02);
       auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
-      auto const tree = Tree<DIMENSION_NO>(entities, depth, boxSpace);
+      auto const tree = InitTree<DIMENSION_NO>(entities, depth, boxSpace);
 
       size_t constexpr rayNo = 100;
       auto const rayOrigins = GeneratePointsRandom<DIMENSION_NO>(rayNo, 3);
@@ -793,7 +832,7 @@ static constexpr auto unit = benchmark::kMicrosecond;
 #define POINT_BENCHMARKS(NAME, IS_DYN, NODE_STORAGE, USE_REVERSE_MAPPING, USE_PMR)                                                                    \
   namespace Benchmarks                                                                                                                                \
   {                                                                                                                                                   \
-    using NAME = PointBenchmarks<TreeType::IS_DYN, NODE_STORAGE, USE_REVERSE_MAPPING>;                                                                \
+    using NAME = PointBenchmarks<TreeType::CONCAT(IS_DYN, Ortho), NODE_STORAGE, USE_REVERSE_MAPPING>;                                                                \
   }                                                                                                                                                   \
   BENCHMARK(Benchmarks::NAME::Create<3, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
   BENCHMARK(Benchmarks::NAME::Create<3, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
@@ -824,10 +863,10 @@ static constexpr auto unit = benchmark::kMicrosecond;
   BENCHMARK(Benchmarks::NAME::GetNearestNeighbors<6>)->Arg(1000)->Arg(10000)->Unit(unit);                                                             \
   BENCHMARK(Benchmarks::NAME::FrustumCulling)->Arg(1000)->Arg(10000)->Unit(unit);
 
-#define BOX_BENCHMARKS(NAME, TREE_TYPE, LOOSE_MODE, NODE_STORAGE, USE_REVERSE_MAPPING, USE_PMR)                                                                          \
+#define BOX_BENCHMARKS(NAME, TREE_TYPE, TREE_IMPL, LOOSE_MODE, NODE_STORAGE, USE_REVERSE_MAPPING, USE_PMR)                                                               \
   namespace Benchmarks                                                                                                                                                   \
   {                                                                                                                                                                      \
-    using NAME = BoxBenchmarks<TreeType::TREE_TYPE, LOOSE_MODE, NODE_STORAGE, USE_REVERSE_MAPPING>;                                                                      \
+    using NAME = BoxBenchmarks<TreeType::CONCAT(TREE_TYPE, TREE_IMPL), LOOSE_MODE, NODE_STORAGE, USE_REVERSE_MAPPING>;                                                   \
   }                                                                                                                                                                      \
   BENCHMARK(Benchmarks::NAME::Create<3, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMicrosecond); \
   BENCHMARK(Benchmarks::NAME::Create<3, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(benchmark::kMicrosecond); \
@@ -860,6 +899,8 @@ static constexpr auto unit = benchmark::kMicrosecond;
   BENCHMARK(Benchmarks::NAME::RayIntersectedFirst)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);                                                            \
   BENCHMARK(Benchmarks::NAME::RayIntersectedAll)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);
 
+BOX_BENCHMARKS(StaticBVHBoxTree__MBR_Regular_WithoutReverseMap, Static, BVH, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+
 POINT_BENCHMARKS(DynamicPointTree__MinPoint_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MinPoint, false, false);
 POINT_BENCHMARKS(DynamicPointTree__MBR_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MBR, false, false);
 POINT_BENCHMARKS(StaticPointTree__MBR_Regular_WithoutReverseMap, Static, NodeGeometryStorage::MBR, false, false);
@@ -868,20 +909,20 @@ POINT_BENCHMARKS(DynamicPointTree__MBR_Regular_WithReverseMap, Dynamic, NodeGeom
 POINT_BENCHMARKS(StaticPointTree__MBR_Regular_WithReverseMap, Static, NodeGeometryStorage::MBR, true, false);
 
 
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithoutReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithoutReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithoutReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithoutReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MinPoint, true, false);
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MinPoint, true, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithReverseMap, Dynamic, LooseMode::Regular, NodeGeometryStorage::MBR, true, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithReverseMap, Dynamic, LooseMode::Loose, NodeGeometryStorage::MBR, true, false);
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithoutReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithoutReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithoutReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithoutReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, true, false);
+BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, true, false);
 
 
-BOX_BENCHMARKS(StaticBoxTree__MinPoint_Regular_WithoutReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(StaticBoxTree__MinPoint_Loose_WithoutReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(StaticBoxTree__MBR_Regular_WithoutReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
-BOX_BENCHMARKS(StaticBoxTree__MBR_Loose_WithoutReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(StaticBoxTree__MinPoint_Regular_WithoutReverseMap, Static, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(StaticBoxTree__MinPoint_Loose_WithoutReverseMap, Static, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(StaticBoxTree__MBR_Regular_WithoutReverseMap, Static, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(StaticBoxTree__MBR_Loose_WithoutReverseMap, Static, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
 
 // Run the benchmark
 BENCHMARK_MAIN();
