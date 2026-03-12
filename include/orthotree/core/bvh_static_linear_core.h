@@ -225,7 +225,6 @@ namespace OrthoTree
       {
         uint32_t count = 0;
         typename IGM::Box bounds;
-        bool initialized = false;
       };
 
       SplitCandidate best;
@@ -249,7 +248,7 @@ namespace OrthoTree
         for (auto& b : bins)
         {
           b.count = 0;
-          b.initialized = false;
+          b.bounds = IGM::BoxInvertedInit();
         }
 
         Geometry const scale = Geometry(CONFIG::SAH_BIN_COUNT) / (boundsMax - boundsMin);
@@ -257,16 +256,7 @@ namespace OrthoTree
         {
           int binIdx = std::min(CONFIG::SAH_BIN_COUNT - 1, static_cast<int>((ed.center[dimID] - boundsMin) * scale));
           ++bins[binIdx].count;
-          auto const& entityBox = ed.box;
-          if (!bins[binIdx].initialized)
-          {
-            bins[binIdx].bounds = entityBox;
-            bins[binIdx].initialized = true;
-          }
-          else
-          {
-            IGM::UniteInBoxAD(bins[binIdx].bounds, entityBox);
-          }
+          IGM::UniteInBoxAD(bins[binIdx].bounds, ed.box);
         }
 
         // Sweep from left and right to compute prefix areas and counts
@@ -280,7 +270,7 @@ namespace OrthoTree
           {
             leftSum += bins[i].count;
             leftCount[i] = leftSum;
-            if (bins[i].initialized)
+            if (bins[i].count > 0)
               IGM::UniteInBoxAD(leftBox, bins[i].bounds);
             leftArea[i] = IGM::GetVolumeAD(leftBox);
           }
@@ -292,7 +282,7 @@ namespace OrthoTree
           {
             rightSum += bins[i].count;
             rightCount[i - 1] = rightSum;
-            if (bins[i].initialized)
+            if (bins[i].count > 0)
               IGM::UniteInBoxAD(rightBox, bins[i].bounds);
             rightArea[i - 1] = IGM::GetVolumeAD(rightBox);
           }
