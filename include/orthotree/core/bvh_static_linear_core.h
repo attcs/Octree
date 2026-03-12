@@ -396,12 +396,9 @@ namespace OrthoTree
           if (subSplit.cost >= std::numeric_limits<typename IGM::Geometry>::max())
             break;
 
-          // Sort this sub-range along the chosen axis
-          std::sort(subSpan.begin(), subSpan.end(), [axis = subSplit.axis](auto const& a, auto const& b) { return a.center[axis] < b.center[axis]; });
-
-          // Find partition point using the SAH split position
+          // Partition this sub-range using the SAH split position
           auto partIt =
-            std::partition_point(subSpan.begin(), subSpan.end(), [&](auto const& ed) { return ed.center[subSplit.axis] < subSplit.splitPos; });
+            std::partition(subSpan.begin(), subSpan.end(), [&](auto const& ed) { return ed.center[subSplit.axis] < subSplit.splitPos; });
           auto leftCount = static_cast<uint32_t>(partIt - subSpan.begin());
 
           // Ensure at least 1 entity on each side
