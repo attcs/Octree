@@ -5,6 +5,7 @@
 #include "../core/ot_query.h"
 #include "../detail/internal_geometry_module.h"
 #include "../detail/sequence_view.h"
+#include "types.h"
 
 #include <algorithm>
 #include <array>
@@ -386,7 +387,7 @@ namespace OrthoTree
     std::vector<uint8_t> m_nodeDepthIDs;
     std::vector<EntityID> m_entityStorage;
     std::vector<NodeGeometryData> m_nodeGeometry;
-
+    depth_t m_maxDepthNo;
 
   public:
     // Default constructor. Requires Create call before usage.
@@ -396,6 +397,14 @@ namespace OrthoTree
     template<typename TExecMode = SeqExec>
     explicit BVHStaticLinearCore(
       EA::EntityContainerView entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
+    {
+      [[maybe_unused]] auto isSuccessfullyInsertedAllElements = Create(entities, maxElementNoInNode, execMode);
+      assert(isSuccessfullyInsertedAllElements);
+    }
+
+    template<typename TExecMode = SeqExec>
+    explicit BVHStaticLinearCore(
+      TExecMode execMode, EA::EntityContainerView entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
       [[maybe_unused]] auto isSuccessfullyInsertedAllElements = Create(entities, maxElementNoInNode, execMode);
       assert(isSuccessfullyInsertedAllElements);
@@ -459,6 +468,9 @@ namespace OrthoTree
       return { .Min = minPoint, .Max = IGM::Add(minPoint, size) };
     }
 
+    constexpr depth_t GetMaxDepthID() const { return m_maxDepthNo - 1; }
+
+    constexpr depth_t GetDepthNo() const { return m_maxDepthNo; }
 
   private:
     static constexpr int CHILD_NUM = CONFIG::CHILD_NUM;
@@ -580,6 +592,8 @@ namespace OrthoTree
       auto const nodeID = static_cast<NodeID>(m_nodeDepthIDs.size());
 
       m_nodeDepthIDs.push_back(depthID);
+      m_maxDepthNo = std::max<depth_t>(m_maxDepthNo, depthID + 1);
+
       std::visit(
         [&](auto& nodes) {
           using NodeStorage = std::decay_t<decltype(nodes)>;
@@ -630,40 +644,76 @@ namespace OrthoTree
           continue;
         }
 
-        // Find best split axis using SAH
-        auto span = std::span<EntityBuildData>(buildData.data() + beginID, length);
-        auto split = FindBestSplitAxis(span, entities);
-
-        // If no valid split found (all centers coincide), create leaf
-        if (split.cost >= std::numeric_limits<typename IGM::Geometry>::max())
+        // Find best split axis using SAH (quick check: is any split possible at all?)
+        auto fullSpan = std::span<EntityBuildData>(buildData.data() + beginID, length);
         {
-          CreateBVHNode(depthID, beginID, length, 0);
-          continue;
+          auto quickCheck = FindBestSplitAxis(fullSpan, entities);
+          if (quickCheck.cost >= std::numeric_limits<typename IGM::Geometry>::max())
+          {
+            CreateBVHNode(depthID, beginID, length, 0);
+            continue;
+          }
         }
 
-        // Sort entities along the best axis
-        std::sort(span.begin(), span.end(), [axis = split.axis](auto const& a, auto const& b) { return a.center[axis] < b.center[axis]; });
-
-        // Split into CHILD_NUM children
-        // Use equal-count splitting along the sorted axis for multi-way split
-        uint32_t childNodeCount = 0;
-        uint32_t childBeginID = beginID;
-        uint32_t remaining = length;
-
-        for (int childIdx = 0; childIdx < CHILD_NUM && remaining > 0; ++childIdx)
+        // Greedy recursive binary SAH splitting for multi-way BVH.
+        // Iteratively pick the sub-range with the most entities and binary-split it
+        // using a fresh SAH evaluation, until we have CHILD_NUM sub-ranges.
+        struct SubRange
         {
-          uint32_t childrenLeft = static_cast<uint32_t>(CHILD_NUM - childIdx);
-          uint32_t childLength = (remaining + childrenLeft - 1) / childrenLeft; // ceil division for even distribution
+          uint32_t beginID;
+          uint32_t length;
+        };
 
-          nodeQueue.push({ childBeginID, childLength, static_cast<uint8_t>(depthID + 1) });
-          ++childNodeCount;
+        std::array<SubRange, CHILD_NUM> subRanges;
+        int rangeCount = 1;
+        subRanges[0] = { beginID, length };
 
-          childBeginID += childLength;
-          remaining -= childLength;
+        while (rangeCount < CHILD_NUM)
+        {
+          // Find the sub-range with the most entities
+          int bestIdx = 0;
+          for (int i = 1; i < rangeCount; ++i)
+            if (subRanges[i].length > subRanges[bestIdx].length)
+              bestIdx = i;
+
+          auto& r = subRanges[bestIdx];
+          if (r.length <= 1)
+            break;
+
+          auto subSpan = std::span<EntityBuildData>(buildData.data() + r.beginID, r.length);
+          auto subSplit = FindBestSplitAxis(subSpan, entities);
+
+          if (subSplit.cost >= std::numeric_limits<typename IGM::Geometry>::max())
+            break;
+
+          // Sort this sub-range along the chosen axis
+          std::sort(subSpan.begin(), subSpan.end(), [axis = subSplit.axis](auto const& a, auto const& b) { return a.center[axis] < b.center[axis]; });
+
+          // Find partition point using the SAH split position
+          auto partIt =
+            std::partition_point(subSpan.begin(), subSpan.end(), [&](auto const& ed) { return ed.center[subSplit.axis] < subSplit.splitPos; });
+          auto leftCount = static_cast<uint32_t>(partIt - subSpan.begin());
+
+          // Ensure at least 1 entity on each side
+          leftCount = std::clamp(leftCount, uint32_t(1), r.length - 1);
+
+          // Replace current range with left half, append right half
+          uint32_t origBegin = r.beginID;
+          uint32_t origLength = r.length;
+          r = { origBegin, leftCount };
+          subRanges[rangeCount] = { origBegin + leftCount, origLength - leftCount };
+          ++rangeCount;
         }
+
+        // Sort sub-ranges by beginID to maintain contiguous order for BFS
+        std::sort(subRanges.begin(), subRanges.begin() + rangeCount, [](auto const& a, auto const& b) { return a.beginID < b.beginID; });
+
+        // Enqueue children
+        for (int i = 0; i < rangeCount; ++i)
+          nodeQueue.push({ subRanges[i].beginID, subRanges[i].length, static_cast<uint8_t>(depthID + 1) });
 
         // Create the internal node (entities stored in this node = 0, all pushed to children)
-        CreateBVHNode(depthID, beginID, 0, childNodeCount);
+        CreateBVHNode(depthID, beginID, 0, static_cast<uint32_t>(rangeCount));
       }
     }
 
@@ -809,47 +859,47 @@ namespace OrthoTree
 
   // BVH aliases
 
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 8>
-  using BVHPointND = BVHStaticLinear<
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 2>
+  using StaticBVHPointND = BVHStaticLinear<
     std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>, PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>>>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
     BVHConfiguration<CHILD_NUM>>;
 
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 8>
-  using BVHBoxND = BVHStaticLinear<
+  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 2>
+  using StaticBVHBoxND = BVHStaticLinear<
     std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>,
     GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
     BVHConfiguration<CHILD_NUM>>;
 
   // BVH for points
-  using StaticBVHPoint1D = BVHPointND<1, BaseGeometryType>;
-  using StaticBVHPoint2D = BVHPointND<2, BaseGeometryType>;
-  using StaticBVHPoint3D = BVHPointND<3, BaseGeometryType>;
-  using StaticBVHPoint4D = BVHPointND<4, BaseGeometryType>;
+  using StaticBVHPoint1D = StaticBVHPointND<1, BaseGeometryType>;
+  using StaticBVHPoint2D = StaticBVHPointND<2, BaseGeometryType>;
+  using StaticBVHPoint3D = StaticBVHPointND<3, BaseGeometryType>;
+  using StaticBVHPoint4D = StaticBVHPointND<4, BaseGeometryType>;
 
   // BVH for bounding boxes
-  using StaticBVHBox1D = BVHBoxND<1, BaseGeometryType>;
-  using StaticBVHBox2D = BVHBoxND<2, BaseGeometryType>;
-  using StaticBVHBox3D = BVHBoxND<3, BaseGeometryType>;
-  using StaticBVHBox4D = BVHBoxND<4, BaseGeometryType>;
+  using StaticBVHBox1D = StaticBVHBoxND<1, BaseGeometryType>;
+  using StaticBVHBox2D = StaticBVHBoxND<2, BaseGeometryType>;
+  using StaticBVHBox3D = StaticBVHBoxND<3, BaseGeometryType>;
+  using StaticBVHBox4D = StaticBVHBoxND<4, BaseGeometryType>;
 
   // BVH with unordered_map entities
-  using StaticBVHPointMap1D = BVHPointND<1, BaseGeometryType, false>;
-  using StaticBVHPointMap2D = BVHPointND<2, BaseGeometryType, false>;
-  using StaticBVHPointMap3D = BVHPointND<3, BaseGeometryType, false>;
-  using StaticBVHPointMap4D = BVHPointND<4, BaseGeometryType, false>;
-  using StaticBVHBoxMap1D = BVHBoxND<1, BaseGeometryType, false>;
-  using StaticBVHBoxMap2D = BVHBoxND<2, BaseGeometryType, false>;
-  using StaticBVHBoxMap3D = BVHBoxND<3, BaseGeometryType, false>;
-  using StaticBVHBoxMap4D = BVHBoxND<4, BaseGeometryType, false>;
+  using StaticBVHPointMap1D = StaticBVHPointND<1, BaseGeometryType, false>;
+  using StaticBVHPointMap2D = StaticBVHPointND<2, BaseGeometryType, false>;
+  using StaticBVHPointMap3D = StaticBVHPointND<3, BaseGeometryType, false>;
+  using StaticBVHPointMap4D = StaticBVHPointND<4, BaseGeometryType, false>;
+  using StaticBVHBoxMap1D = StaticBVHBoxND<1, BaseGeometryType, false>;
+  using StaticBVHBoxMap2D = StaticBVHBoxND<2, BaseGeometryType, false>;
+  using StaticBVHBoxMap3D = StaticBVHBoxND<3, BaseGeometryType, false>;
+  using StaticBVHBoxMap4D = StaticBVHBoxND<4, BaseGeometryType, false>;
 
   template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNPointND = BVHPointND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
+  using StaticBVHNPointND = StaticBVHPointND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
   template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNBoxND = BVHBoxND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
+  using StaticBVHNBoxND = StaticBVHBoxND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
 
   template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNPointMapND = BVHPointND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
+  using StaticBVHNPointMapND = StaticBVHPointND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
   template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNBoxMapND = BVHBoxND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
+  using StaticBVHNBoxMapND = StaticBVHBoxND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
 } // namespace OrthoTree

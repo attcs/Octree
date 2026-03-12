@@ -14,7 +14,7 @@ namespace BVHTests
 {
   TEST_CLASS(BVHStaticLinearTests)
   {
-    static constexpr std::size_t MAX_ELEMENT_NUM = 4;
+    static constexpr std::size_t MAX_ELEMENT_NUM = 2;
 
     template<typename TCore>
     static std::vector<index_t> CollectAllEntities(TCore const& bvh)
@@ -61,7 +61,7 @@ namespace BVHTests
       };
       auto const N = boxes.size();
       StaticBVHBox3D bvh;
-      bvh.Create(std::span<BoundingBox3D const>(boxes), MAX_ELEMENT_NUM);
+      bvh.Create(boxes, MAX_ELEMENT_NUM);
       Assert::IsTrue(bvh.GetNodeCount() > 0);
 
       auto ids = CollectAllEntities(bvh);
@@ -126,7 +126,7 @@ namespace BVHTests
         { { 14.0 }, { 15.0 } },
       };
       StaticBVHBox1D bvh;
-      bvh.Create(std::span<BoundingBox1D const>(boxes), MAX_ELEMENT_NUM);
+      bvh.Create(boxes, 2);
       Assert::IsTrue(bvh.GetNodeCount() >= 1);
 
       auto ids = CollectAllEntities(bvh);
