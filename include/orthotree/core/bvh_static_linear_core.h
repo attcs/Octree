@@ -19,7 +19,7 @@
 
 namespace OrthoTree
 {
-  template<int CHILD_NUM_ = 2>
+  template<int CHILD_NUM_ = 8>
   struct BVHConfiguration
   {
     static constexpr int CHILD_NUM = CHILD_NUM_;
@@ -105,10 +105,9 @@ namespace OrthoTree
 
   private:
     std::variant<NodeStorage256, NodeStorage65536, NodeStorageGeneral> m_nodes;
-    std::vector<uint8_t> m_nodeDepthIDs;
     std::vector<EntityID> m_entityStorage;
     std::vector<NodeGeometryData> m_nodeGeometry;
-    depth_t m_maxDepthNo;
+    depth_t m_maxDepthNo = 0;
 
   public:
     // Default constructor. Requires Create call before usage.
@@ -144,7 +143,10 @@ namespace OrthoTree
 
     constexpr NodeID GetNodeValue(NodeID nodeID) const noexcept { return nodeID; }
 
-    constexpr std::size_t GetNodeCount() const noexcept { return m_nodeDepthIDs.size(); }
+    constexpr std::size_t GetNodeCount() const noexcept
+    {
+      return std::visit([&](auto const& nodes) -> std::size_t { return nodes.nodeEntitySegment.size(); }, m_nodes);
+    }
 
     constexpr std::size_t GetNodeEntityCount(NodeValue nodeID) const noexcept
     {
@@ -201,6 +203,7 @@ namespace OrthoTree
     {
       EntityID entityID;
       IGM::Vector center;
+      typename IGM::Box box;
     };
 
     // Evaluate SAH cost for splitting along a given axis at a given position
@@ -212,7 +215,7 @@ namespace OrthoTree
       dim_t axis = 0;
     };
 
-    static SplitCandidate FindBestSplitAxis(std::span<EntityBuildData> entities, EA::EntityContainerView sourceEntities) noexcept
+    static SplitCandidate FindBestSplitAxis(std::span<EntityBuildData> entities) noexcept
     {
       using Geometry = typename IGM::Geometry;
 
@@ -240,13 +243,19 @@ namespace OrthoTree
           continue;
 
         // Populate bins
-        std::array<Bin, SAH_BIN_COUNT> bins = {};
+        std::array<Bin, SAH_BIN_COUNT> bins;
+        for (auto& b : bins)
+        {
+          b.count = 0;
+          b.initialized = false;
+        }
+
         Geometry const scale = Geometry(SAH_BIN_COUNT) / (boundsMax - boundsMin);
         for (auto const& ed : entities)
         {
           int binIdx = std::min(SAH_BIN_COUNT - 1, static_cast<int>((ed.center[dimID] - boundsMin) * scale));
           ++bins[binIdx].count;
-          auto entityBox = IGM::GetBoxAD(EA::GetGeometry(sourceEntities, ed.entityID));
+          auto const& entityBox = ed.box;
           if (!bins[binIdx].initialized)
           {
             bins[binIdx].bounds = entityBox;
@@ -310,9 +319,8 @@ namespace OrthoTree
 
     constexpr NodeID CreateBVHNode(uint8_t depthID, uint32_t nodeEntityBeginID, uint32_t nodeEntityCount, uint32_t childNodeCount) noexcept
     {
-      auto const nodeID = static_cast<NodeID>(m_nodeDepthIDs.size());
+      auto const nodeID = static_cast<NodeID>(GetNodeCount());
 
-      m_nodeDepthIDs.push_back(depthID);
       m_maxDepthNo = std::max<depth_t>(m_maxDepthNo, depthID + 1);
 
       std::visit(
@@ -365,17 +373,6 @@ namespace OrthoTree
           continue;
         }
 
-        // Find best split axis using SAH (quick check: is any split possible at all?)
-        auto fullSpan = std::span<EntityBuildData>(buildData.data() + beginID, length);
-        {
-          auto quickCheck = FindBestSplitAxis(fullSpan, entities);
-          if (quickCheck.cost >= std::numeric_limits<typename IGM::Geometry>::max())
-          {
-            CreateBVHNode(depthID, beginID, length, 0);
-            continue;
-          }
-        }
-
         // Greedy recursive binary SAH splitting for multi-way BVH.
         // Iteratively pick the sub-range with the most entities and binary-split it
         // using a fresh SAH evaluation, until we have CHILD_NUM sub-ranges.
@@ -402,7 +399,7 @@ namespace OrthoTree
             break;
 
           auto subSpan = std::span<EntityBuildData>(buildData.data() + r.beginID, r.length);
-          auto subSplit = FindBestSplitAxis(subSpan, entities);
+          auto subSplit = FindBestSplitAxis(subSpan);
 
           if (subSplit.cost >= std::numeric_limits<typename IGM::Geometry>::max())
             break;
@@ -426,6 +423,13 @@ namespace OrthoTree
           ++rangeCount;
         }
 
+        if (rangeCount == 1)
+        {
+          // No split was possible at all
+          CreateBVHNode(depthID, beginID, length, 0);
+          continue;
+        }
+
         // Sort sub-ranges by beginID to maintain contiguous order for BFS
         std::sort(subRanges.begin(), subRanges.begin() + rangeCount, [](auto const& a, auto const& b) { return a.beginID < b.beginID; });
 
@@ -445,45 +449,32 @@ namespace OrthoTree
         return;
       else
       {
-        auto const nodeCount = static_cast<uint32_t>(m_nodeDepthIDs.size());
+        auto const nodeCount = static_cast<uint32_t>(GetNodeCount());
         if (nodeCount == 0)
           return;
 
-        // Find max depth
-        uint8_t maxDepth = 0;
-        for (uint32_t i = 0; i < nodeCount; ++i)
-          maxDepth = std::max(maxDepth, m_nodeDepthIDs[i]);
-
-        // Group nodes by depth
-        std::vector<std::vector<uint32_t>> nodesAtDepth(maxDepth + 1);
-        for (uint32_t i = 0; i < nodeCount; ++i)
-          nodesAtDepth[m_nodeDepthIDs[i]].push_back(i);
-
-        // Process bottom-up
-        for (int d = static_cast<int>(maxDepth); d >= 0; --d)
+        // Process bottom-up based on BFS property (childID > parentID)
+        for (int nodeID = static_cast<int>(nodeCount) - 1; nodeID >= 0; --nodeID)
         {
-          for (auto nodeID : nodesAtDepth[d])
-          {
-            auto nodeBox = IGM::BoxInvertedInit();
+          auto nodeBox = IGM::BoxInvertedInit();
 
-            std::visit(
-              [&](auto const& nodes) {
-                auto const [entityBeginID, entityLength] = nodes.nodeEntitySegment[nodeID];
-                for (uint32_t j = entityBeginID, endID = entityBeginID + entityLength; j < endID; ++j)
-                  IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, m_entityStorage[j]));
+          std::visit(
+            [&](auto const& nodes) {
+              auto const [entityBeginID, entityLength] = nodes.nodeEntitySegment[nodeID];
+              for (uint32_t j = entityBeginID, endID = entityBeginID + entityLength; j < endID; ++j)
+                IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, m_entityStorage[j]));
 
-                if (nodes.nodeChildSegmentBegins.size() <= nodeID + 1)
-                  return;
+              if (nodes.nodeChildSegmentBegins.size() <= static_cast<size_t>(nodeID) + 1)
+                return;
 
-                auto const childBeginNodeID = nodes.nodeChildSegmentBegins[nodeID];
-                auto const childEndNodeID = nodes.nodeChildSegmentBegins[nodeID + 1];
-                for (auto childID = childBeginNodeID; childID < childEndNodeID; ++childID)
-                  IGM::UniteInBoxAD(nodeBox, GetNodeBox(childID));
-              },
-              m_nodes);
+              auto const childBeginNodeID = nodes.nodeChildSegmentBegins[nodeID];
+              auto const childEndNodeID = nodes.nodeChildSegmentBegins[nodeID + 1];
+              for (auto childID = childBeginNodeID; childID < childEndNodeID; ++childID)
+                IGM::UniteInBoxAD(nodeBox, GetNodeBox(childID));
+            },
+            m_nodes);
 
-            m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
-          }
+          m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
         }
       }
     }
@@ -503,6 +494,8 @@ namespace OrthoTree
       auto const entityCount = entities.size();
       if (entityCount == 0)
         return true;
+
+      m_maxDepthNo = 0;
 
       // Estimate max depth: log_{CHILD_NUM}(entityCount / maxElementNoInNode)
       auto const maxDepthID = [&]() -> uint8_t {
@@ -524,6 +517,8 @@ namespace OrthoTree
         auto const& geometry = EA::GetGeometry(entity);
 
         typename IGM::Vector center;
+        auto const entityBox = IGM::GetBoxAD(geometry);
+
         if constexpr (EA::GEOMETRY_TYPE == GeometryType::Box)
         {
           for (dim_t d = 0; d < GA::DIMENSION_NO; ++d)
@@ -536,7 +531,7 @@ namespace OrthoTree
             center[d] = typename IGM::Geometry(GA::GetPointC(geometry, d));
         }
 
-        buildData[i] = { entityID, center };
+        buildData[i] = { entityID, center, entityBox };
         m_entityStorage[i] = entityID;
       }
 
@@ -556,7 +551,6 @@ namespace OrthoTree
         },
         m_nodes);
 
-      m_nodeDepthIDs.reserve(estimatedNodeCount);
       if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
         m_nodeGeometry.reserve(estimatedNodeCount);
 
