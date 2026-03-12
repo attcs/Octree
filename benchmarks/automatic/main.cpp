@@ -883,9 +883,5 @@ BOX_BENCHMARKS(StaticBoxTree__MinPoint_Loose_WithoutReverseMap, Static, LooseMod
 BOX_BENCHMARKS(StaticBoxTree__MBR_Regular_WithoutReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
 BOX_BENCHMARKS(StaticBoxTree__MBR_Loose_WithoutReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
 
-BOX_BENCHMARKS(StaticBoxTree__MinPoint_Regular_WithReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MinPoint, true, false);
-BOX_BENCHMARKS(StaticBoxTree__MinPoint_Loose_WithReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MinPoint, true, false);
-BOX_BENCHMARKS(StaticBoxTree__MBR_Regular_WithReverseMap, Static, LooseMode::Regular, NodeGeometryStorage::MBR, true, false);
-BOX_BENCHMARKS(StaticBoxTree__MBR_Loose_WithReverseMap, Static, LooseMode::Loose, NodeGeometryStorage::MBR, true, false);
 // Run the benchmark
 BENCHMARK_MAIN();
