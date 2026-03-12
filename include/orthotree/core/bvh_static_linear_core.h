@@ -110,6 +110,7 @@ namespace OrthoTree
     std::variant<NodeStorage256, NodeStorage65536, NodeStorageGeneral> m_nodes;
     std::vector<EntityID> m_entityStorage;
     std::vector<NodeGeometryData> m_nodeGeometry;
+    std::vector<uint8_t> m_nodeDepthIDs;
     depth_t m_maxDepthNo = 0;
 
   public:
@@ -217,7 +218,8 @@ namespace OrthoTree
       dim_t axis = 0;
     };
 
-    static SplitCandidate FindBestSplitAxis(std::span<EntityBuildData> entities) noexcept
+    template<typename TExecMode = SeqExec>
+    static SplitCandidate FindBestSplitAxis(std::span<EntityBuildData const> entities, TExecMode execMode = {}) noexcept
     {
       using Geometry = typename IGM::Geometry;
 
@@ -314,20 +316,19 @@ namespace OrthoTree
       auto const nodeID = static_cast<NodeID>(GetNodeCount());
 
       m_maxDepthNo = std::max<depth_t>(m_maxDepthNo, depthID + 1);
+      m_nodeDepthIDs.push_back(depthID);
 
       std::visit(
         [&](auto& nodes) {
           using NodeStorage = std::decay_t<decltype(nodes)>;
-          using EntitySegment = typename NodeStorage::EntitySegment;
-          using NodeSegmentIndex = typename NodeStorage::NodeSegmentIndex;
-
           nodes.nodeEntitySegment.push_back(
-            EntitySegment{ static_cast<typename EntitySegment::Begin>(nodeEntityBeginID), static_cast<typename EntitySegment::Length>(nodeEntityCount) });
+            typename NodeStorage::EntitySegment{ static_cast<typename NodeStorage::EntitySegment::Begin>(nodeEntityBeginID),
+                                                 static_cast<typename NodeStorage::EntitySegment::Length>(nodeEntityCount) });
 
           if (childNodeCount > 0)
           {
             nodes.nodeChildSegmentBegins.resize(nodeID + 2, nodes.nodeChildSegmentBegins.back());
-            nodes.nodeChildSegmentBegins.back() += static_cast<NodeSegmentIndex>(childNodeCount);
+            nodes.nodeChildSegmentBegins.back() += static_cast<typename NodeStorage::NodeSegmentIndex>(childNodeCount);
           }
         },
         m_nodes);
@@ -341,7 +342,8 @@ namespace OrthoTree
     }
 
 
-    void BuildBVH(std::vector<EntityBuildData>& buildData, EA::EntityContainerView entities, uint8_t maxDepthID, std::size_t maxElementNoInNode) noexcept
+    template<typename TExecMode = SeqExec>
+    void BuildBVH(std::vector<EntityBuildData>& buildData, EA::EntityContainerView entities, uint8_t maxDepthID, std::size_t maxElementNoInNode, TExecMode execMode = {}) noexcept
     {
       struct NodeProcessingData
       {
@@ -350,89 +352,166 @@ namespace OrthoTree
         uint8_t depthID;
       };
 
-      auto nodeQueue = std::queue<NodeProcessingData>();
-      nodeQueue.push({ 0, static_cast<uint32_t>(buildData.size()), 0 });
-
-      while (!nodeQueue.empty())
+      if constexpr (std::is_same_v<TExecMode, SeqExec>)
       {
-        auto [beginID, length, depthID] = nodeQueue.front();
-        nodeQueue.pop();
+        std::queue<NodeProcessingData> q;
+        q.push({ 0, static_cast<uint32_t>(buildData.size()), 0 });
 
-        // Leaf condition: few enough entities or max depth reached
-        if (length <= maxElementNoInNode || depthID >= maxDepthID)
+        while (!q.empty())
         {
-          CreateBVHNode(depthID, beginID, length, 0);
-          continue;
+          auto const r = q.front();
+          q.pop();
+
+          if (r.length <= maxElementNoInNode || r.depthID >= maxDepthID)
+          {
+            CreateBVHNode(r.depthID, r.beginID, r.length, 0);
+            continue;
+          }
+
+          struct SubRange
+          {
+            uint32_t beginID;
+            uint32_t length;
+          };
+          std::array<SubRange, CHILD_NUM> subRanges;
+          subRanges[0] = { r.beginID, r.length };
+          int rangeCount = 1;
+
+          while (rangeCount < CHILD_NUM)
+          {
+            int bestIdx = 0;
+            for (int k = 1; k < rangeCount; ++k)
+              if (subRanges[k].length > subRanges[bestIdx].length)
+                bestIdx = k;
+
+            auto& sub = subRanges[bestIdx];
+            if (sub.length <= 1)
+              break;
+
+            auto subSpan = std::span<EntityBuildData>(buildData.data() + sub.beginID, sub.length);
+            auto split = FindBestSplitAxis(subSpan, SeqExec{});
+            if (split.cost >= std::numeric_limits<typename IGM::Geometry>::max())
+              break;
+
+            auto partIt = std::partition(subSpan.begin(), subSpan.end(), [&](auto const& ed) { return ed.center[split.axis] < split.splitPos; });
+            uint32_t leftCount = static_cast<uint32_t>(partIt - subSpan.begin());
+            leftCount = std::clamp(leftCount, uint32_t(1), sub.length - 1);
+
+            uint32_t origBegin = sub.beginID;
+            uint32_t origLength = sub.length;
+            sub = { origBegin, leftCount };
+            subRanges[rangeCount] = { origBegin + leftCount, origLength - leftCount };
+            ++rangeCount;
+          }
+
+          if (rangeCount == 1)
+          {
+            CreateBVHNode(r.depthID, r.beginID, r.length, 0);
+          }
+          else
+          {
+            std::sort(subRanges.begin(), subRanges.begin() + rangeCount, [](auto const& a, auto const& b) { return a.beginID < b.beginID; });
+            CreateBVHNode(r.depthID, r.beginID, 0, static_cast<uint32_t>(rangeCount));
+            for (int i = 0; i < rangeCount; ++i)
+              q.push({ subRanges[i].beginID, subRanges[i].length, static_cast<uint8_t>(r.depthID + 1) });
+          }
         }
+      }
+      else
+      {
+        std::vector<NodeProcessingData> currentLevel;
+        currentLevel.push_back({ 0, static_cast<uint32_t>(buildData.size()), 0 });
 
-        // Greedy recursive binary SAH splitting for multi-way BVH.
-        // Iteratively pick the sub-range with the most entities and binary-split it
-        // using a fresh SAH evaluation, until we have CHILD_NUM sub-ranges.
-        struct SubRange
+        while (!currentLevel.empty())
         {
-          uint32_t beginID;
-          uint32_t length;
-        };
+          struct SubRange
+          {
+            uint32_t beginID;
+            uint32_t length;
+          };
+          struct SplitResult
+          {
+            std::array<SubRange, CHILD_NUM> subRanges;
+            int rangeCount = 1;
+            bool isLeaf = false;
+          };
 
-        std::array<SubRange, CHILD_NUM> subRanges;
-        int rangeCount = 1;
-        subRanges[0] = { beginID, length };
+          std::vector<SplitResult> results(currentLevel.size());
 
-        while (rangeCount < CHILD_NUM)
-        {
-          // Find the sub-range with the most entities
-          int bestIdx = 0;
-          for (int i = 1; i < rangeCount; ++i)
-            if (subRanges[i].length > subRanges[bestIdx].length)
-              bestIdx = i;
+          EXEC_POL_DEF(epl);
+          auto const indices = SequenceView<std::size_t>(0, currentLevel.size());
+          std::for_each(EXEC_POL_ADD(epl) indices.begin(), indices.end(), [&](std::size_t i) {
+            auto const& r = currentLevel[i];
+            auto& res = results[i];
 
-          auto& r = subRanges[bestIdx];
-          if (r.length <= 1)
-            break;
+            if (r.length <= maxElementNoInNode || r.depthID >= maxDepthID)
+            {
+              res.isLeaf = true;
+              return;
+            }
 
-          auto subSpan = std::span<EntityBuildData>(buildData.data() + r.beginID, r.length);
-          auto subSplit = FindBestSplitAxis(subSpan);
+            res.subRanges[0] = { r.beginID, r.length };
+            while (res.rangeCount < CHILD_NUM)
+            {
+              int bestIdx = 0;
+              for (int k = 1; k < res.rangeCount; ++k)
+                if (res.subRanges[k].length > res.subRanges[bestIdx].length)
+                  bestIdx = k;
 
-          if (subSplit.cost >= std::numeric_limits<typename IGM::Geometry>::max())
-            break;
+              auto& sub = res.subRanges[bestIdx];
+              if (sub.length <= 1)
+                break;
 
-          // Partition this sub-range using the SAH split position
-          auto partIt =
-            std::partition(subSpan.begin(), subSpan.end(), [&](auto const& ed) { return ed.center[subSplit.axis] < subSplit.splitPos; });
-          auto leftCount = static_cast<uint32_t>(partIt - subSpan.begin());
+              auto subSpan = std::span<EntityBuildData>(buildData.data() + sub.beginID, sub.length);
+              auto split = FindBestSplitAxis(subSpan, execMode);
+              if (split.cost >= std::numeric_limits<typename IGM::Geometry>::max())
+                break;
 
-          // Ensure at least 1 entity on each side
-          leftCount = std::clamp(leftCount, uint32_t(1), r.length - 1);
+              auto partIt = std::partition(subSpan.begin(), subSpan.end(), [&](auto const& ed) { return ed.center[split.axis] < split.splitPos; });
+              uint32_t leftCount = static_cast<uint32_t>(partIt - subSpan.begin());
+              leftCount = std::clamp(leftCount, uint32_t(1), sub.length - 1);
 
-          // Replace current range with left half, append right half
-          uint32_t origBegin = r.beginID;
-          uint32_t origLength = r.length;
-          r = { origBegin, leftCount };
-          subRanges[rangeCount] = { origBegin + leftCount, origLength - leftCount };
-          ++rangeCount;
+              uint32_t origBegin = sub.beginID;
+              uint32_t origLength = sub.length;
+              sub = { origBegin, leftCount };
+              res.subRanges[res.rangeCount] = { origBegin + leftCount, origLength - leftCount };
+              ++res.rangeCount;
+            }
+
+            if (res.rangeCount == 1)
+            {
+              res.isLeaf = true;
+            }
+            else
+            {
+              std::sort(res.subRanges.begin(), res.subRanges.begin() + res.rangeCount, [](auto const& a, auto const& b) { return a.beginID < b.beginID; });
+            }
+          });
+
+          std::vector<NodeProcessingData> nextLevel;
+          for (std::size_t i = 0; i < currentLevel.size(); ++i)
+          {
+            auto const& r = currentLevel[i];
+            auto const& res = results[i];
+            if (res.isLeaf)
+            {
+              CreateBVHNode(r.depthID, r.beginID, r.length, 0);
+            }
+            else
+            {
+              CreateBVHNode(r.depthID, r.beginID, 0, static_cast<uint32_t>(res.rangeCount));
+              for (int j = 0; j < res.rangeCount; ++j)
+                nextLevel.push_back({ res.subRanges[j].beginID, res.subRanges[j].length, static_cast<uint8_t>(r.depthID + 1) });
+            }
+          }
+          currentLevel = std::move(nextLevel);
         }
-
-        if (rangeCount == 1)
-        {
-          // No split was possible at all
-          CreateBVHNode(depthID, beginID, length, 0);
-          continue;
-        }
-
-        // Sort sub-ranges by beginID to maintain contiguous order for BFS
-        std::sort(subRanges.begin(), subRanges.begin() + rangeCount, [](auto const& a, auto const& b) { return a.beginID < b.beginID; });
-
-        // Enqueue children
-        for (int i = 0; i < rangeCount; ++i)
-          nodeQueue.push({ subRanges[i].beginID, subRanges[i].length, static_cast<uint8_t>(depthID + 1) });
-
-        // Create the internal node (entities stored in this node = 0, all pushed to children)
-        CreateBVHNode(depthID, beginID, 0, static_cast<uint32_t>(rangeCount));
       }
     }
 
 
-    void InitializeNodeGeometryBVH(EA::EntityContainerView entities) noexcept
+    template<typename TExecMode = SeqExec>
+    void InitializeNodeGeometryBVH(EA::EntityContainerView entities, TExecMode execMode = {}) noexcept
     {
       if constexpr (std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
         return;
@@ -442,9 +521,13 @@ namespace OrthoTree
         if (nodeCount == 0)
           return;
 
-        // Process bottom-up based on BFS property (childID > parentID)
-        for (int nodeID = static_cast<int>(nodeCount) - 1; nodeID >= 0; --nodeID)
-        {
+        // Group nodes by depth for safe parallel/iterative bottom-up processing
+        auto const maxDepth = GetMaxDepthID();
+        std::vector<std::vector<uint32_t>> nodesAtDepth(maxDepth + 1);
+        for (uint32_t i = 0; i < nodeCount; ++i)
+          nodesAtDepth[m_nodeDepthIDs[i]].push_back(i);
+
+        auto const processNode = [&](uint32_t nodeID) {
           auto nodeBox = IGM::BoxInvertedInit();
 
           std::visit(
@@ -464,6 +547,17 @@ namespace OrthoTree
             m_nodes);
 
           m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+        };
+
+        // Process depths bottom-up
+        for (int d = static_cast<int>(maxDepth); d >= 0; --d)
+        {
+          auto const& currentLevelNodes = nodesAtDepth[d];
+          if (currentLevelNodes.empty())
+            continue;
+
+          EXEC_POL_DEF(ep);
+          std::for_each(EXEC_POL_ADD(ep) currentLevelNodes.begin(), currentLevelNodes.end(), processNode);
         }
       }
     }
@@ -499,8 +593,9 @@ namespace OrthoTree
       auto buildData = std::vector<EntityBuildData>(entityCount);
       m_entityStorage.resize(entityCount);
 
-      for (std::size_t i = 0; i < entityCount; ++i)
-      {
+      EXEC_POL_DEF(epb);
+      auto const entityIndices = SequenceView<std::size_t>(0, entityCount);
+      std::for_each(EXEC_POL_ADD(epb) entityIndices.begin(), entityIndices.end(), [&](std::size_t i) {
         auto const& entity = *(entities.begin() + i);
         auto const entityID = EA::GetEntityID(entities, entity);
         auto const& geometry = EA::GetGeometry(entity);
@@ -522,7 +617,7 @@ namespace OrthoTree
 
         buildData[i] = { entityID, center, entityBox };
         m_entityStorage[i] = entityID;
-      }
+      });
 
       // Initialize node storage variant
       auto const estimatedNodeCount = std::max<std::size_t>(16, entityCount / std::max<std::size_t>(1, maxElementNoInNode) * 4);
@@ -540,18 +635,21 @@ namespace OrthoTree
         },
         m_nodes);
 
+      m_nodeDepthIDs.reserve(estimatedNodeCount);
       if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
         m_nodeGeometry.reserve(estimatedNodeCount);
 
       // Build the BVH
-      BuildBVH(buildData, entities, maxDepthID, maxElementNoInNode);
+      BuildBVH(buildData, entities, maxDepthID, maxElementNoInNode, execMode);
 
       // Write back entity IDs in the final sorted order
-      for (std::size_t i = 0; i < entityCount; ++i)
+      EXEC_POL_DEF(epw);
+      std::for_each(EXEC_POL_ADD(epw) entityIndices.begin(), entityIndices.end(), [&](std::size_t i) {
         m_entityStorage[i] = buildData[i].entityID;
+      });
 
       // Initialize node geometry (MBR) bottom-up
-      InitializeNodeGeometryBVH(entities);
+      InitializeNodeGeometryBVH(entities, execMode);
 
       return true;
     }
