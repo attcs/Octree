@@ -838,13 +838,13 @@
         return { title: fn, subtitle: sub, args, datasets };
       });
 
-      // Special comparison: Create vs Insert__Bulk
+      // Special comparison: Create__OversizedModelspace vs Insert__Bulk
       if (fbs.includes('Create') && fbs.includes('Insert__Bulk'))
       {
-        const compRows = data.filter(b => b.funcBase === 'Create' || b.funcBase === 'Insert__Bulk');
+        const compRows = data.filter(b => b.funcBase === 'Create__OversizedModelspace' || b.funcBase === 'Insert__Bulk');
         const configs = [...new Set(compRows.map(b => b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx))];
         const sharedConfigs = configs.filter(c =>
-          compRows.some(b => b.funcBase === 'Create' && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === c) &&
+          compRows.some(b => b.funcBase === 'Create__OversizedModelspace' && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === c) &&
           compRows.some(b => b.funcBase === 'Insert__Bulk' && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === c)
         );
 
@@ -856,18 +856,18 @@
           sharedConfigs.forEach((sc, ci) =>
           {
             const color = PALETTE[ci % PALETTE.length];
-            ['Create', 'Insert__Bulk'].forEach(fb =>
+            ['Create__OversizedModelspace', 'Insert__Bulk'].forEach(fb =>
             {
               const pts = rows.filter(b => b.funcBase === fb && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === sc);
               if (!pts.length) return;
               const vals = args.map(a => { const m = pts.find(b => b.arg === a); return m ? m.timeNs : null; });
               const b = pts[0];
-              let lbl = b.treeName + ' (' + (fb === 'Create' ? 'Create' : 'Bulk') + ')';
+              let lbl = b.treeName + ' (' + (fb === 'Create__OversizedModelspace' ? 'Create__OversizedModelspace' : 'Bulk') + ')';
               if (b.execMode) lbl += ' [' + b.execMode + ']';
               datasets.push({
-                label: lbl, data: vals, borderColor: color, borderDash: fb === 'Create' ? [] : [5, 5],
+                label: lbl, data: vals, borderColor: color, borderDash: fb === 'Create__OversizedModelspace' ? [] : [5, 5],
                 backgroundColor: color + '22', pointBackgroundColor: color, borderWidth: 2,
-                pointRadius: 4, pointStyle: fb === 'Create' ? 'circle' : 'triangle',
+                pointRadius: 4, pointStyle: fb === 'Create__OversizedModelspace' ? 'circle' : 'triangle',
                 tension: 0.25, fill: false, spanGaps: true,
                 _treeName: b.treeName, _execMode: b.execMode
               });
