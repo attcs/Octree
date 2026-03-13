@@ -432,6 +432,7 @@
       { group: 'mode', items: ['Loose', 'Regular'] },
       { group: 'map', items: ['WithReverseMap', 'WithoutReverseMap'] },
       { group: 'exec', items: ['Seq', 'Par'] },
+      { group: 'treetype', items: ['Octree', 'BVH'] },
     ];
 
     const PRESETS = [
@@ -519,6 +520,8 @@
                 if (item === 'Point') return full.includes('pointtree');
                 if (item === 'Box') return full.includes('boxtree');
                 if (item === 'WithReverseMap') return full.includes('withreversemap') && !full.includes('withoutreversemap');
+                if (item === 'Octree') return full.includes('octree') || full.includes('orthotree') || (!full.includes('bvh') && !full.startsWith('base::'));
+                if (item === 'BVH') return full.includes('bvh');
                 return full.includes(il);
               });
               if (matchingItems.length > 0)
