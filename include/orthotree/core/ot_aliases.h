@@ -30,9 +30,10 @@ SOFTWARE.
 #include "../core/entity_adapter.h"
 
 #include "../core/ot_dynamic_hash_core.h"
+#include "../core/ot_static_linear_core.h"
+
 #include "../core/ot_managed.h"
 #include "../core/ot_query.h"
-#include "../core/ot_static_linear_core.h"
 
 
 #include "../adapters/general.h"
