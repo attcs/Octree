@@ -39,6 +39,45 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Language standard: C++20 or above
 * Parallel execution via the `PAR_EXEC` tag requires support for `std::execution` policies (usually requiring TBB on Linux and macOS).
 
+## Installation
+
+### CMake (FetchContent)
+You can include OrthoTree in your project using CMake's FetchContent:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  OrthoTree
+  GIT_REPOSITORY https://github.com/attcs/Octree.git
+  GIT_TAG v3.1.0 # Or use a specific commit hash
+)
+FetchContent_MakeAvailable(OrthoTree)
+
+target_link_libraries(your_project PRIVATE OrthoTree::OrthoTree)
+```
+
+### CPM
+Or using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake):
+
+```cmake
+CPMAddPackage(
+  NAME OrthoTree
+  GITHUB_REPOSITORY attcs/Octree
+  GIT_TAG v3.1.0
+)
+
+target_link_libraries(your_project PRIVATE OrthoTree::OrthoTree)
+```
+
+### Manual Installation
+Since it's a header-only library, you can also just download the `include` folder and add it to your project's include paths. 
+
+Alternatively, use the provided CMake install target:
+```bash
+cmake -B build
+cmake --install build --prefix /your/install/path
+```
+
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
 * Decide to let the geometry management for octree or not. `Managed` types could manage the geometries life-cycle, meanwhile the `non-managed` types are just update the relevant metadata about the changes.
