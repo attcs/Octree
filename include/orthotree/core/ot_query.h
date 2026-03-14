@@ -87,6 +87,7 @@ namespace OrthoTree
     { ct.GetNodeBox(nodeValue) };
     { ct.GetNodeMinPoint(nodeValue) };
     { ct.GetNodeSize(nodeValue) };
+    { ct.AreChildNodesOverlapping() } -> std::convertible_to<bool>;
 
     { ct.IsNodeEntitiesEmpty(nodeValue) } -> std::convertible_to<bool>;
 
@@ -110,8 +111,6 @@ namespace OrthoTree
     static_assert(std::is_trivially_copyable_v<EntityID>, "Only trivially copyable EntityID types are supported!");
     static_assert(CONFIG::IS_HOMOGENEOUS_GEOMETRY, "Mixed geometry types are not supported yet!");
     static_assert(EA::GEOMETRY_TYPE == GeometryType::Point || EA::GEOMETRY_TYPE == GeometryType::Box, "Entity geometry type is not supported!");
-    static_assert(CONFIG::MAX_ALLOWED_DEPTH_ID <= MAX_DEPTH_ID, "MAX_ALLOWED_DEPTH_ID of Configuration is too large.");
-    static_assert(CONFIG::LOOSE_FACTOR >= 1.0 && CONFIG::LOOSE_FACTOR <= 2.0, "Wrong loose factor for Loose trees.");
 
     using TOrthoTreeCore::TOrthoTreeCore;
 
@@ -1669,8 +1668,8 @@ namespace OrthoTree
       for (NodeIDCR childKey : Core::GetNodeChildren(nodeValue))
         InsertCollidedEntitiesInSubtree(entities, comparator, Core::GetNodeValue(childKey), nodeContextStack, collidedEntities, tolerance, collisionDetector);
 
-      // Pairwise sub-tree collision detection for loose octree
-      if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
+      // Pairwise sub-tree collision detection for tree with overlapping child nodes
+      if constexpr (Core::AreChildNodesOverlapping())
       {
         auto const& childNodeIDs = Core::GetNodeChildren(nodeValue);
         for (auto it1 = childNodeIDs.begin(); it1 != childNodeIDs.end(); ++it1)
@@ -1827,7 +1826,7 @@ namespace OrthoTree
           InsertCollidedEntitiesInSubtree(entities, comparator, nodeValue, nodeContextStack, taskContext.collidedEntities, tolerance, collisionDetector);
         });
 
-        if constexpr (CONFIG::LOOSE_FACTOR > 1.0)
+        if constexpr (Core::AreChildNodesOverlapping())
         {
           for (std::size_t i = 0; i < childNodeAddedParentNum; ++i)
           {
