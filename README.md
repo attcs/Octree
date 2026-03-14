@@ -15,6 +15,7 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Arbitrary number of dimensions for other scientific usages
 * Differentiated Static and Dynamic solution
 * Optionally Loose octree
+* Static BVH tree
 * Parallelization is available (via `std::execution` policies)
 * Edit functions to Insert/Update/Erase entities
 * Wide range of search functions for both AABBs and points
@@ -92,7 +93,7 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
     * Contiguous: `QuadtreePointM`, `OctreePointM`, `QuadtreeBoxM`, `OctreeBoxM`, `OrthoTreePointManagedND<dim, ...>`, `OrthoTreeBoxManagedND<dim, ...>`
     * Custom keyed: `QuadtreePointMapM`, `OctreePointMapM`, `QuadtreeBoxMapM`, `OctreeBoxMapM`
 
-See the full list of the default aliases in [core/aliases.h](./include/orthotree/core/aliases.h)
+See the full list of the default aliases in [core/ot_aliases.h](./include/orthotree/core/ot_aliases.h) or [core/bvh_aliases.h](./include/orthotree/core/bvh_aliases.h)
 
 ## Basic examples
 
