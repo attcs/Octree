@@ -437,9 +437,9 @@
 
     const PRESETS = [
       { id: 'point3', label: '📍 Point Trees', patterns: ['PointTree'] },
-      { id: 'boxmodes', label: '📦 Box: MinPt vs MBR vs Loose', patterns: ['DynamicBoxTree__MinPoint_Regular', 'DynamicBoxTree__MBR_Regular', 'DynamicBoxTree__MBR_Loose'] },
-      { id: 'dynvsstatic', label: '⚡ Dynamic vs Static Loose', patterns: ['DynamicBoxTree__MBR_Loose', 'StaticBoxTree__MBR_Loose'] },
-      { id: 'staticbox', label: '🏛 Static Box Trees', patterns: ['StaticBoxTree'] },
+      { id: 'boxmodes', label: '📦 Box: MinPt vs MBR vs Loose', patterns: ['DynamicBoxOrthoTree__MinPoint_Regular', 'DynamicBoxOrthoTree__MBR_Regular', 'DynamicBoxOrthoTree__MBR_Loose'] },
+      { id: 'dynvsstatic', label: '⚡ Dynamic vs Static Loose', patterns: ['DynamicBoxOrthoTree__MBR_Loose', 'StaticBoxOrthoTree__MBR_Loose'] },
+      { id: 'staticbox', label: '🏛 Static Box Trees', patterns: ['StaticBoxOrthoTree'] },
       { id: 'createbulk', label: '🔄 Create vs Insert__Bulk', fn: 'Create|Insert__Bulk' },
       { id: 'seqpar', label: '🔀 Seq vs Par', fn: 'Create' },
       { id: 'all', label: '📋 All' },
