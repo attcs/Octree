@@ -288,3 +288,41 @@ Usage of Core types
     
 For more examples, see the unit tests. E.g., [example.tests.cpp](./tests/unittests/example.tests.cpp).
 <div align="center" width="100%"><img src="./docs/quadtree_example.PNG " align="center" height="300"></div>
+
+## Comparison with alternatives
+
+| Library | Header-only | Dependencies | N-Dimensions | C++ | License | Adaptability | Key Focus / Features |
+| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| **OrthoTree** (this) | **✓** | None (STL) | **1D - 63D** <br> (compile-time) | **20** | **MIT** | **High** | CAD / Simulation / Research / Robotics |
+| **nanoflann** | **✓** | None (STL) | Full <br> (compile-time) | 11 | BSD | High | Fast KD-trees and k-NN search. |
+| **libspatialindex** | ✗ | None | N-D <br> (runtime) | 11 | MIT | Moderate | R*-tree, MVR-tree, TPR-tree, C-API. |
+| **madmann91/bvh** | **✓** | None (STL) | N-D <br> (compile-time) | 17 | MIT | High | High performance BVH, Ray tracing. |
+| **Open3D** | ✗ | Eigen, TBB | 3D only <br> (runtime) | 17 | MIT | ✗ | 3D Point Cloud geometry processing. |
+| **Boost.Geometry** | (✓) | Boost | Full <br> (compile-time) | 03 | BSL-1.0 | Moderate | R-trees, heavy header dependency. |
+| **CGAL** | ✗ | GMP, MPFR | Full <br> (compile-time) | 14 | GPL/LGPL | Moderate | High precision, complex algorithms. |
+| **PCL** | ✗ | Eigen, FLANN | 3D only <br> (runtime) | 14 | BSD | ✗ | 3D Point Cloud processing. |
+| **Intel Embree** | ✗ | Binary | 3D only <br> (runtime) | 11 | Apache 2.0 | ✗ | Ray Tracing kernels, BVH-centric. |
+| **Unreal TOctree** | ✗ | Engine | 3D / 2D <br> (runtime) | 17 | Proprietary | ✗ | Engine-specific, non-standalone. |
+
+<details>
+<summary>Detailed Feature Comparison</summary>
+
+| Feature | **OrthoTree** | nanoflann | spatialindex | madmann/bvh | Open3D | Boost | CGAL | PCL | Embree | Unreal |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Point support** | **✓** | **✓** | ✓ | ✓ | ✓ | ✓ | ✓ | **✓** | ✗ | ✓ |
+| **AABB / Box support** | **✓** | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | (✓) | **✓** | ✓ |
+| **Ray / Raycast** | **✓** | ✗ | ✗ | **✓** | ✓ | (✓) | ✓ | ✗ | **✓** | ✓ |
+| **Frustum / Plane queries** | **✓** | ✗ | ✗ | ✗ | ✓ | (✓) | ✓ | ✗ | ✗ | ✗ |
+| **kNN search** | **Point, Box** | Point | Point, Box | ✗ | Point | Point, Box | Point, Box | Point | ✗ | ✗ |
+| **Collision detection** | **✓** | ✗ | ✗ | ✗ | (✓) | ✓ | ✓ | ✗ | ✗ | ✓ |
+| **User-defined traversal** | **✓** | (✓) | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Entity tester predicate for Queries** | **✓** | (✓) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Spatial structures** | **Loose- / Octree / BVH** | KD | R*-Tree / MVR | BVH | Octree / KD | R*-Tree | KD / AABB | Octree / KD | BVH | Loose Octree |
+| **Static / Dynamic** | **Both** | Static | Both | Static | Both | Both | Both | Both | Both | Both |
+| **Sparse support** | **✓** | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Native C API** | ✗ | ✗ | **✓** | ✗ | **✓** | ✗ | ✗ | ✗ | **✓** | ✗ |
+| **Serialize** | **✗** | Bin | Bin, Custom | Bin | Bin, JSON | ✗ | (✓) Text/Bin | Bin, Text | ✗ | (✓) Bin |
+| **Parallel build** | **✓ (STL)** | ✗ | ✗ | **✓** | ✓ | ✗ | ✓ | ✓ | **✓** | (✓) |
+| **GPU acceleration** | ✗ | ✗ | ✗ | ✗ | **✓** | ✗ | ✗ | ✗ | **✓** | **✓** |
+
+</details>
