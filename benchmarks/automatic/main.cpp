@@ -890,30 +890,31 @@ static constexpr auto unit = benchmark::kMicrosecond;
   BENCHMARK(Benchmarks::NAME::RayIntersectedFirst)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);                                                            \
   BENCHMARK(Benchmarks::NAME::RayIntersectedAll)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(unit);
 
-BOX_BENCHMARKS(StaticBVHBoxTree__MBR_Regular_WithoutReverseMap, Static, BVH, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(StaticBVHBox__MBR_WithoutReverseMap, Static, BVH, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
 
-POINT_BENCHMARKS(DynamicPointTree__MinPoint_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MinPoint, false, false);
-POINT_BENCHMARKS(DynamicPointTree__MBR_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MBR, false, false);
-POINT_BENCHMARKS(StaticPointTree__MBR_Regular_WithoutReverseMap, Static, NodeGeometryStorage::MBR, false, false);
-POINT_BENCHMARKS(DynamicPointTree__MinPoint_Regular_WithReverseMap, Dynamic, NodeGeometryStorage::MinPoint, true, false);
-POINT_BENCHMARKS(DynamicPointTree__MBR_Regular_WithReverseMap, Dynamic, NodeGeometryStorage::MBR, true, false);
-POINT_BENCHMARKS(StaticPointTree__MBR_Regular_WithReverseMap, Static, NodeGeometryStorage::MBR, true, false);
+POINT_BENCHMARKS(DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MinPoint, false, false);
+POINT_BENCHMARKS(DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap, Dynamic, NodeGeometryStorage::MinPoint, true, false);
+POINT_BENCHMARKS(DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap, Dynamic, NodeGeometryStorage::MBR, false, false);
+POINT_BENCHMARKS(DynamicOrthoTreePoint__MBR_Regular_WithReverseMap, Dynamic, NodeGeometryStorage::MBR, true, false);
 
-
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithoutReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithoutReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithoutReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithoutReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Regular_WithReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, true, false);
-BOX_BENCHMARKS(DynamicBoxTree__MinPoint_Loose_WithReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, true, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Regular_WithReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, true, false);
-BOX_BENCHMARKS(DynamicBoxTree__MBR_Loose_WithReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, true, false);
+POINT_BENCHMARKS(StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap, Static, NodeGeometryStorage::MBR, false, false);
+POINT_BENCHMARKS(StaticOrthoTreePoint__MBR_Regular_WithReverseMap, Static, NodeGeometryStorage::MBR, true, false);
 
 
-BOX_BENCHMARKS(StaticBoxTree__MinPoint_Regular_WithoutReverseMap, Static, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(StaticBoxTree__MinPoint_Loose_WithoutReverseMap, Static, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
-BOX_BENCHMARKS(StaticBoxTree__MBR_Regular_WithoutReverseMap, Static, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
-BOX_BENCHMARKS(StaticBoxTree__MBR_Loose_WithoutReverseMap, Static, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, true, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MBR_Regular_WithReverseMap, Dynamic, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, true, false);
+BOX_BENCHMARKS(DynamicOrthoTreeBox__MBR_Loose_WithReverseMap, Dynamic, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, true, false);
+
+
+BOX_BENCHMARKS(StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap, Static, Ortho, LooseMode::Regular, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap, Static, Ortho, LooseMode::Loose, NodeGeometryStorage::MinPoint, false, false);
+BOX_BENCHMARKS(StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap, Static, Ortho, LooseMode::Regular, NodeGeometryStorage::MBR, false, false);
+BOX_BENCHMARKS(StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap, Static, Ortho, LooseMode::Loose, NodeGeometryStorage::MBR, false, false);
 
 // Run the benchmark
 BENCHMARK_MAIN();
