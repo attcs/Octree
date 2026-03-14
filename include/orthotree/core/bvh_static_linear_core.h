@@ -31,7 +31,7 @@ namespace OrthoTree
     // Required by OrthoTreeQueryBase
     static constexpr bool IS_HOMOGENEOUS_GEOMETRY = true;
     static constexpr bool USE_REVERSE_MAPPING = false;
-    static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 19 };
+    static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 32 };
 
     template<typename TKey, typename TValue, typename THash>
     using UMapNodeContainer = std::unordered_map<TKey, TValue, THash>;
@@ -56,6 +56,13 @@ namespace OrthoTree
     using EntityID = EA::EntityID;
     using EntityGeometry = EA::Geometry;
 
+    using TScalar = typename GA::Scalar;
+    using TFloatScalar = typename GA::FloatScalar;
+    using TVector = typename GA::Vector;
+    using TBox = typename GA::Box;
+    using TRay = typename GA::Ray;
+    using TPlane = typename GA::Plane;
+
   private:
     template<typename TBegin, typename TLength>
     struct Segment
@@ -65,6 +72,15 @@ namespace OrthoTree
 
       TBegin begin;
       TLength length;
+
+      constexpr Segment() noexcept
+      : begin(0)
+      , length(0)
+      {}
+      constexpr Segment(TBegin b, TLength l) noexcept
+      : begin(b)
+      , length(l)
+      {}
     };
 
     struct NodeStorage256
@@ -110,6 +126,7 @@ namespace OrthoTree
     std::vector<NodeGeometryData> m_nodeGeometry;
     std::vector<uint8_t> m_nodeDepthIDs;
     depth_t m_maxDepthNo = 0;
+    std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
 
   public:
     // Default constructor. Requires Create call before usage.
@@ -132,6 +149,24 @@ namespace OrthoTree
       assert(isSuccessfullyInsertedAllElements);
     }
 
+  public:
+    constexpr depth_t GetMaxDepthID() const { return m_maxDepthNo - 1; }
+    constexpr depth_t GetDepthNo() const { return m_maxDepthNo; }
+    constexpr std::size_t GetMaxElementNum() const noexcept { return m_maxElementNum; }
+
+    constexpr TBox GetBox() const noexcept
+    {
+      if (GetNodeCount() == 0)
+        return GA::MakeBox();
+
+      auto const rootBox = GetNodeBox(GetRootNodeID());
+      auto box = GA::MakeBox();
+      detail::static_for<GA::DIMENSION_NO>([&](auto d) {
+        GA::SetBoxMinC(box, d, rootBox.Min[d]);
+        GA::SetBoxMaxC(box, d, rootBox.Max[d]);
+      });
+      return box;
+    }
 
     // Node API
 #ifdef ORTHOTREE__PUBLIC_NODE_INTERFACE
@@ -159,7 +194,7 @@ namespace OrthoTree
     {
       return std::visit(
         [nodeID](auto const& nodes) {
-          if (nodeID >= nodes.nodeChildSegmentBegins.size() - 1)
+          if (nodeID >= NodeValue(nodes.nodeChildSegmentBegins.size()) - 1)
             return SequenceView<NodeID>(static_cast<NodeID>(0), static_cast<NodeID>(0));
 
           return SequenceView<NodeID>(
@@ -192,10 +227,6 @@ namespace OrthoTree
       auto const& [minPoint, size] = m_nodeGeometry[nodeID];
       return { .Min = minPoint, .Max = IGM::Add(minPoint, size) };
     }
-
-    constexpr depth_t GetMaxDepthID() const { return m_maxDepthNo - 1; }
-
-    constexpr depth_t GetDepthNo() const { return m_maxDepthNo; }
 
   private:
     static constexpr int CHILD_NUM = CONFIG::CHILD_NUM;
@@ -319,22 +350,21 @@ namespace OrthoTree
       std::visit(
         [&](auto& nodes) {
           using NodeStorage = std::decay_t<decltype(nodes)>;
-          nodes.nodeEntitySegment.push_back(
-            typename NodeStorage::EntitySegment{ static_cast<typename NodeStorage::EntitySegment::Begin>(nodeEntityBeginID),
-                                                 static_cast<typename NodeStorage::EntitySegment::Length>(nodeEntityCount) });
+          using EntitySegment = typename NodeStorage::EntitySegment;
 
-          if (childNodeCount > 0)
-          {
-            nodes.nodeChildSegmentBegins.resize(nodeID + 2, nodes.nodeChildSegmentBegins.back());
-            nodes.nodeChildSegmentBegins.back() += static_cast<typename NodeStorage::NodeSegmentIndex>(childNodeCount);
-          }
+          nodes.nodeEntitySegment.emplace_back(
+            static_cast<typename EntitySegment::Begin>(nodeEntityBeginID), static_cast<typename EntitySegment::Length>(nodeEntityCount));
+
+          // If there are no child nodes, we can skip storing child segment begin index for this node.
+          if (childNodeCount == 0)
+            return;
+
+          nodes.nodeChildSegmentBegins.resize(nodeID + 2, nodes.nodeChildSegmentBegins.back());
+          nodes.nodeChildSegmentBegins.back() += static_cast<typename NodeStorage::NodeSegmentIndex>(childNodeCount);
         },
         m_nodes);
 
-      if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
-      {
-        m_nodeGeometry.push_back({});
-      }
+      m_nodeGeometry.push_back({});
 
       return nodeID;
     }
@@ -518,52 +548,47 @@ namespace OrthoTree
     template<typename TExecMode = SeqExec>
     void InitializeNodeGeometryBVH(EA::EntityContainerView entities, TExecMode execMode = {}) noexcept
     {
-      if constexpr (std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
+      auto const nodeCount = static_cast<uint32_t>(GetNodeCount());
+      if (nodeCount == 0)
         return;
-      else
+
+      // Group nodes by depth for safe parallel/iterative bottom-up processing
+      auto const maxDepth = GetMaxDepthID();
+      std::vector<std::vector<uint32_t>> nodesAtDepth(maxDepth + 1);
+      for (uint32_t i = 0; i < nodeCount; ++i)
+        nodesAtDepth[m_nodeDepthIDs[i]].push_back(i);
+
+      auto const processNode = [&](uint32_t nodeID) {
+        auto nodeBox = IGM::BoxInvertedInit();
+
+        std::visit(
+          [&](auto const& nodes) {
+            auto const [entityBeginID, entityLength] = nodes.nodeEntitySegment[nodeID];
+            for (uint32_t j = entityBeginID, endID = entityBeginID + entityLength; j < endID; ++j)
+              IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, m_entityStorage[j]));
+
+            if (nodes.nodeChildSegmentBegins.size() <= static_cast<size_t>(nodeID) + 1)
+              return;
+
+            auto const childBeginNodeID = nodes.nodeChildSegmentBegins[nodeID];
+            auto const childEndNodeID = nodes.nodeChildSegmentBegins[nodeID + 1];
+            for (auto childID = childBeginNodeID; childID < childEndNodeID; ++childID)
+              IGM::UniteInBoxAD(nodeBox, GetNodeBox(childID));
+          },
+          m_nodes);
+
+        m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
+      };
+
+      // Process depths bottom-up
+      for (int d = static_cast<int>(maxDepth); d >= 0; --d)
       {
-        auto const nodeCount = static_cast<uint32_t>(GetNodeCount());
-        if (nodeCount == 0)
-          return;
+        auto const& currentLevelNodes = nodesAtDepth[d];
+        if (currentLevelNodes.empty())
+          continue;
 
-        // Group nodes by depth for safe parallel/iterative bottom-up processing
-        auto const maxDepth = GetMaxDepthID();
-        std::vector<std::vector<uint32_t>> nodesAtDepth(maxDepth + 1);
-        for (uint32_t i = 0; i < nodeCount; ++i)
-          nodesAtDepth[m_nodeDepthIDs[i]].push_back(i);
-
-        auto const processNode = [&](uint32_t nodeID) {
-          auto nodeBox = IGM::BoxInvertedInit();
-
-          std::visit(
-            [&](auto const& nodes) {
-              auto const [entityBeginID, entityLength] = nodes.nodeEntitySegment[nodeID];
-              for (uint32_t j = entityBeginID, endID = entityBeginID + entityLength; j < endID; ++j)
-                IGM::UniteInBoxAD(nodeBox, EA::GetGeometry(entities, m_entityStorage[j]));
-
-              if (nodes.nodeChildSegmentBegins.size() <= static_cast<size_t>(nodeID) + 1)
-                return;
-
-              auto const childBeginNodeID = nodes.nodeChildSegmentBegins[nodeID];
-              auto const childEndNodeID = nodes.nodeChildSegmentBegins[nodeID + 1];
-              for (auto childID = childBeginNodeID; childID < childEndNodeID; ++childID)
-                IGM::UniteInBoxAD(nodeBox, GetNodeBox(childID));
-            },
-            m_nodes);
-
-          m_nodeGeometry[nodeID] = { nodeBox.Min, IGM::Sub(nodeBox.Max, nodeBox.Min) };
-        };
-
-        // Process depths bottom-up
-        for (int d = static_cast<int>(maxDepth); d >= 0; --d)
-        {
-          auto const& currentLevelNodes = nodesAtDepth[d];
-          if (currentLevelNodes.empty())
-            continue;
-
-          EXEC_POL_DEF(ep);
-          std::for_each(EXEC_POL_ADD(ep) currentLevelNodes.begin(), currentLevelNodes.end(), processNode);
-        }
+        EXEC_POL_DEF(ep);
+        std::for_each(EXEC_POL_ADD(ep) currentLevelNodes.begin(), currentLevelNodes.end(), processNode);
       }
     }
 
@@ -583,6 +608,7 @@ namespace OrthoTree
       if (entityCount == 0)
         return true;
 
+      m_maxElementNum = maxElementNoInNode;
       m_maxDepthNo = 0;
 
       // Estimate max depth: log_{CHILD_NUM}(entityCount / maxElementNoInNode)
@@ -591,7 +617,7 @@ namespace OrthoTree
           return 1;
         auto const nLeaf = static_cast<double>(entityCount) / static_cast<double>(maxElementNoInNode);
         auto const logBase = std::log2(nLeaf) / std::log2(static_cast<double>(CHILD_NUM));
-        return static_cast<uint8_t>(std::clamp(static_cast<int>(std::ceil(logBase)), 2, 32));
+        return static_cast<uint8_t>(std::clamp(static_cast<int>(std::ceil(logBase)), 2, static_cast<int>(CONFIG::MAX_ALLOWED_DEPTH_ID)));
       }();
 
       // Build entity center data and populate entity storage
@@ -631,16 +657,16 @@ namespace OrthoTree
       else
         m_nodes = NodeStorageGeneral{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
 
+      // Reserve space to avoid reallocations and appease compiler warnings
+      m_nodeDepthIDs.reserve(estimatedNodeCount);
+      m_nodeGeometry.reserve(estimatedNodeCount);
+
       std::visit(
         [&](auto& nodes) {
-          nodes.nodeChildSegmentBegins.reserve(estimatedNodeCount);
           nodes.nodeEntitySegment.reserve(estimatedNodeCount);
+          nodes.nodeChildSegmentBegins.reserve(estimatedNodeCount + 1);
         },
         m_nodes);
-
-      m_nodeDepthIDs.reserve(estimatedNodeCount);
-      if constexpr (!std::is_same_v<decltype(m_nodeGeometry), std::monostate>)
-        m_nodeGeometry.reserve(estimatedNodeCount);
 
       // Build the BVH
       BuildBVH(buildData, entities, maxDepthID, maxElementNoInNode, execMode);

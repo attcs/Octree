@@ -346,6 +346,8 @@ namespace OrthoTree
     constexpr TOrthoTreeCore const& GetCore() const noexcept { return m_tree; }
     constexpr EntityContainer const& GetData() const noexcept { return m_entities; }
 
+    constexpr TBox GetBox() const noexcept { return m_tree.GetBox(); }
+
     constexpr void Init(TBox const& boxSpace, depth_t maxDepthID, std::size_t maxElementNoInNode = TOrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
     {
       m_tree.Init(boxSpace, maxDepthID, maxElementNoInNode);
