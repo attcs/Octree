@@ -37,6 +37,7 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 
 ## Requirements
 * Language standard: C++20 or above
+* Parallel execution via the `PAR_EXEC` tag requires support for `std::execution` policies (usually requiring TBB on Linux and macOS).
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
@@ -72,8 +73,8 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Default: 2D, 3D...63D; `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
 * CGAL: 2D, 3D; `CGAL::OctreePoint`, `OctreeBox`, `OctreePointM`, `OctreeBoxM`, etc. (adaptor.cgal.h)
 * Eigen: 2D, 3D; `Eigen::OctreePoint3d`, `OctreePointC3d`, `OctreeBox3d`, `OctreeBoxC3d`, etc. (adaptor.eigen.h)
-* glm: 2D, 3D, 4D; `glm::octree_point`, `octree_box`, `octree_point_c`, `octree_box_c`, etc. (adaptor.glm.h)
-* Unreal Engine: 2D, 3D; `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
+* glm: 2D, 3D, 4D; `glm::octree_point`, `octree_box`, `octree_point_m`, `octree_box_m`, etc. (adaptor.glm.h)
+* Unreal Engine: 2D, 3D; `FOctreePoint`, `FOctreePointM`, `FOctreeBox`, `FOctreeBoxM`, etc. (adaptor.unreal.h)
 * Boost: 2D, 3D; `boost::geometry::octree_point`, `octree_box`, etc. (adaptor.boost.h)
 * `struct{x,y,z}`: 2D, 3D; (adaptor.xyz.h)
 
@@ -247,4 +248,4 @@ Usage of Core types
 ```
     
 For more examples, see the unit tests. E.g., [example.tests.cpp](./tests/unittests/example.tests.cpp).
-<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/quadtree_example.PNG " align="center" height="300"></div>
+<div align="center" width="100%"><img src="./docs/quadtree_example.PNG " align="center" height="300"></div>
