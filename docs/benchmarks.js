@@ -1,1606 +1,1606 @@
-var BENCHMARK_DATA = `----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Benchmark                                                                                                                  Time             CPU   Iterations UserCounters...
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Benchmarks::Base::GetNodeID/1000                                                                                       13956 ns        13811 ns        49778 items_per_second=72.4044M/s
-Benchmarks::Base::GetDepthID/1000                                                                                        871 ns          872 ns       896000 items_per_second=1.14688G/s
-Benchmarks::Base::GridSpaceIndexing_GetPointGridID/1000                                                                10366 ns        10463 ns        74667 items_per_second=95.5738M/s
-Benchmarks::Base::GridSpaceIndexing_GetBoxGridID/1000                                                                  12196 ns        12277 ns        56000 items_per_second=81.4545M/s
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                     0.578 us        0.572 us      1120000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                      1.41 us         1.41 us       497778
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                      3.73 us         3.77 us       186667
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                     8.20 us         8.16 us        74667
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                     112 us          112 us         5600
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                   2302 us         2344 us          320
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                 29104 us        28846 us           26
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                               405496 us       406250 us            2
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                      1.32 us         1.28 us       560000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                      3.17 us         3.00 us       224000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                      10.5 us         9.42 us        89600
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                     19.8 us         15.3 us        40727
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                     136 us          111 us         7467
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                   1184 us          928 us          640
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                 17886 us        14230 us           56
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                               177647 us       175781 us            4
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                0.605 us        0.614 us      1120000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                 1.42 us         1.41 us       497778
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                 3.81 us         3.84 us       179200
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                8.29 us         8.16 us        74667
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                113 us          112 us         6400
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000              2162 us         2148 us          320
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000            27575 us        27500 us           25
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000          406181 us       406250 us            2
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                 1.28 us         1.26 us       497778
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                 3.15 us         3.11 us       235789
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                 9.87 us         8.09 us       112000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                19.3 us         15.1 us        49778
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                136 us          100 us         5600
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000              1009 us          837 us          747
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000            18348 us        16319 us           45
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000          177045 us       164062 us            4
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/100                                              153 ns          153 ns      4480000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/1000                                             176 ns          176 ns      4072727
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/10000                                            240 ns          246 ns      2800000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/100000                                           350 ns          345 ns      2036364
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/100                                             101 ns          103 ns      7466667
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                            126 ns          123 ns      5600000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                           184 ns          184 ns      3733333
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                          441 ns          449 ns      1600000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                       0.508 us        0.516 us      1000000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                       1.78 us         1.73 us       407273
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                            1.92 us         1.97 us       373333
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                           29.4 us         29.8 us        23579
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                          1242 us         1200 us          560
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                        20202 us        20680 us           34
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                            2.33 us         2.30 us       298667
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                           31.1 us         31.4 us        22400
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                          1241 us         1228 us          560
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                        20447 us        20680 us           34
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                      8.08 us         7.95 us        74667
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                     58.6 us         58.6 us        11200
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                    1629 us         1639 us          448
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                  29317 us        29297 us           24
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100                                   0.453 us        0.455 us      1544828
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                  0.547 us        0.544 us      1120000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/10000                                  1.05 us         1.05 us       640000
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100000                                 1.96 us         1.97 us       373333
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100                                     0.404 us        0.399 us      1723077
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/1000                                    0.475 us        0.471 us      1493333
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/10000                                   0.975 us        0.963 us       746667
-Benchmarks::StaticBVHBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100000                                   3.76 us         3.85 us       186667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                0.695 us        0.698 us      1120000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                 1.61 us         1.60 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                 2.12 us         2.10 us       320000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                3.61 us         3.61 us       194783
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                               38.9 us         38.1 us        17231
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                               702 us          711 us         1120
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                            10232 us        10010 us           64
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                          157155 us       160156 us            4
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10                                 1.44 us         1.48 us       497778
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/20                                 3.53 us         3.30 us       203636
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/50                                 8.49 us         8.02 us        89600
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100                                13.0 us         11.9 us        74667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000                               64.4 us         57.8 us        10000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10000                               499 us          500 us         1000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100000                             6673 us         6562 us          100
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                          117050 us       117188 us            6
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10           0.701 us        0.698 us      1120000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20            1.62 us         1.60 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50            2.13 us         2.18 us       344615
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100           4.27 us         4.24 us       165926
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000          52.0 us         51.6 us        11200
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000          817 us          820 us          896
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000       11430 us        11230 us           64
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000     176126 us       175781 us            4
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10            1.48 us         1.44 us       497778
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20            3.81 us         3.49 us       179200
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50            8.37 us         7.11 us        74667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100           17.0 us         13.5 us        49778
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000          70.4 us         66.3 us         8960
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000          537 us          531 us         1000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000        7507 us         7292 us           90
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000     125784 us       125000 us            6
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/10                                0.844 us        0.854 us       896000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/20                                 2.71 us         2.73 us       263529
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/50                                 4.92 us         5.00 us       100000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/100                                7.75 us         7.85 us        89600
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/1000                               87.1 us         85.8 us         7467
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/10000                               977 us          962 us          747
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/100000                            25484 us        25670 us           28
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/1000000                          161396 us       164062 us            4
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/10                                 1.59 us         1.46 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/20                                 4.94 us         5.00 us       100000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/50                                 10.6 us         10.3 us        74667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/100                                17.7 us         13.3 us        44800
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/1000                               96.4 us         96.3 us         7467
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/10000                               636 us          614 us         1120
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/100000                            20098 us        19761 us           34
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/1000000                           96828 us        98214 us            7
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                          0.777 us        0.767 us       896000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                           1.09 us         1.10 us       640000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                           1.94 us         1.90 us       344615
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                          3.35 us         3.37 us       213333
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                         34.3 us         33.8 us        20364
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                         494 us          502 us         1120
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                       5603 us         5580 us          112
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                     73070 us        72917 us            9
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                           1.36 us         1.29 us       640000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                           2.11 us         1.97 us       373333
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                           4.18 us         4.17 us       172308
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                          10.3 us         6.72 us       100000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                         35.8 us         32.2 us        20364
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                         357 us          361 us         2036
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                       3940 us         3928 us          179
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                     54473 us        56250 us           10
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10                              1.24 us         1.25 us       640000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/20                              3.50 us         3.59 us       213333
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/50                              7.06 us         6.98 us        89600
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/100                             15.8 us         15.7 us        44800
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                             167 us          167 us         4480
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                           2447 us         2400 us          280
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/10                                     2.15 us         2.15 us       320000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/20                                     3.69 us         3.69 us       194783
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/50                                     9.42 us         9.42 us        74667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/100                                    17.2 us         16.7 us        37333
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/1000                                    196 us          197 us         3733
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/10000                                  3173 us         3154 us          213
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertUnique/10                                       3.05 us         3.05 us       235789
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertUnique/20                                       7.95 us         8.02 us        89600
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertUnique/50                                       19.9 us         20.1 us        37333
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertUnique/100                                      46.5 us         47.5 us        15448
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertUnique/1000                                      666 us          656 us         1120
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::InsertUnique/10000                                   10401 us        10498 us           64
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Update/10                                             1.75 us         1.76 us       407273 items_per_second=5.66641M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Update/20                                             3.31 us         3.30 us       203636 items_per_second=6.06172M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Update/50                                             8.18 us         8.20 us        89600 items_per_second=6.10043M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Update/100                                            20.4 us         20.5 us        37333 items_per_second=4.87615M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Update/1000                                            662 us          684 us         1120 items_per_second=1.46286M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::Update/10000                                         10979 us        11336 us           51 items_per_second=882.162k/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/100                                        155 ns          150 ns      4480000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/1000                                       249 ns          257 ns      2800000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/10000                                      427 ns          420 ns      1600000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/100000                                     914 ns          921 ns       746667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/100                              0.928 us        0.921 us       746667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/1000                              1.46 us         1.46 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/10000                             2.62 us         2.61 us       263529
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/100000                            4.01 us         3.90 us       172308
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors<6>/1000                           4.46 us         4.45 us       154483
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors<6>/10000                          18.3 us         18.1 us        34462
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::FrustumCulling/1000                                   1.58 us         1.57 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithoutReverseMap::FrustumCulling/10000                                  10.4 us         10.5 us        64000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                     0.637 us        0.642 us      1120000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                      1.60 us         1.60 us       448000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                      2.13 us         2.13 us       344615
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                     3.68 us         3.69 us       194783
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                    40.7 us         40.8 us        17231
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                    784 us          785 us          896
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                 10826 us        10742 us           64
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                               209718 us       208333 us            3
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                      1.44 us         1.29 us       448000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                      4.00 us         4.01 us       194783
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                      8.55 us         7.53 us       112000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                     14.3 us         11.7 us        56000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                    66.3 us         62.8 us        11200
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                    576 us          558 us         1120
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                  7303 us         7292 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                               157056 us       160156 us            4
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                0.646 us        0.642 us      1120000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                 1.61 us         1.61 us       407273
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                 2.14 us         2.10 us       320000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                4.38 us         4.39 us       160000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000               52.4 us         51.6 us        11200
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000               853 us          858 us          747
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000            12254 us        12207 us           64
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000          234711 us       229167 us            3
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                 1.45 us         1.37 us       560000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                 3.93 us         3.99 us       203636
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                 8.36 us         7.32 us        74667
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                16.4 us         12.6 us        56000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000               71.1 us         64.1 us        10000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000               590 us          586 us         1120
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000             8255 us         8160 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000          170994 us       171875 us            4
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10                                     0.785 us        0.767 us       896000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/20                                      2.88 us         2.79 us       224000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/50                                      5.38 us         5.47 us       100000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100                                     8.59 us         8.72 us        89600
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000                                    97.7 us         95.2 us         6400
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10000                                   1136 us         1147 us          640
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100000                                 30821 us        30540 us           22
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000000                               230003 us       229167 us            3
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10                                      1.50 us         1.29 us       448000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/20                                      5.12 us         5.00 us       100000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/50                                      10.6 us         10.7 us        74667
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100                                     18.6 us         16.4 us        44800
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000                                     105 us          103 us         6400
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10000                                    759 us          732 us          896
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100000                                 23171 us        23438 us           30
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000000                               148400 us       148438 us            4
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                               0.820 us        0.820 us       896000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                                1.17 us         1.17 us       560000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                                2.08 us         2.05 us       320000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                               3.61 us         3.61 us       194783
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                              37.5 us         37.7 us        18667
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                              538 us          547 us         1000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                            6603 us         6597 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                          95629 us        93750 us            6
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                                1.71 us         1.61 us       407273
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                                2.59 us         2.40 us       280000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                                5.49 us         5.00 us       100000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                               9.65 us         8.20 us        89600
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                              48.1 us         41.9 us        17920
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                              424 us          410 us         1600
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                            4953 us         4957 us          145
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                          78506 us        76389 us            9
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10                                   1.08 us         1.07 us       640000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/20                                   3.32 us         3.30 us       203636
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/50                                   6.61 us         6.70 us       112000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/100                                  15.3 us         15.3 us        44800
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                                  170 us          169 us         4073
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                                2554 us         2567 us          280
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/10                                          2.30 us         2.29 us       320000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/20                                          4.08 us         4.08 us       172308
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/50                                          10.5 us         10.5 us        64000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/100                                         19.5 us         19.5 us        34462
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/1000                                         291 us          295 us         2489
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/10000                                       4240 us         4236 us          166
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertUnique/10                                            2.32 us         2.30 us       298667
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertUnique/20                                            6.41 us         6.42 us       112000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertUnique/50                                            17.1 us         17.3 us        40727
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertUnique/100                                           39.5 us         39.0 us        17231
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertUnique/1000                                           506 us          502 us         1120
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::InsertUnique/10000                                         7827 us         7812 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Update/10                                                  1.65 us         1.65 us       407273 items_per_second=6.06174M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Update/20                                                  3.20 us         3.21 us       224000 items_per_second=6.23304M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Update/50                                                  7.85 us         7.85 us        89600 items_per_second=6.37156M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Update/100                                                 20.7 us         20.4 us        34462 items_per_second=4.90126M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Update/1000                                                 662 us          663 us          896 items_per_second=1.50905M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::Update/10000                                              11911 us        11968 us           47 items_per_second=835.556k/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/100                                             144 ns          144 ns      4977778
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                            210 ns          209 ns      3446154
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                           346 ns          353 ns      2036364
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                          709 ns          698 ns       896000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100                                   0.916 us        0.921 us       746667
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/1000                                   1.70 us         1.70 us       560000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/10000                                  2.29 us         2.29 us       320000
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100000                                 3.82 us         3.92 us       179200
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/1000                                3.96 us         3.92 us       179200
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/10000                               16.4 us         16.4 us        44800
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                        1.43 us         1.44 us       497778
-Benchmarks::DynamicPointTree__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                       10.5 us         10.5 us        74667
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                      0.815 us        0.816 us       746667
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                       2.12 us         2.13 us       344615
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                       2.51 us         2.51 us       248889
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                      4.40 us         4.49 us       160000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                     43.7 us         43.3 us        16593
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                     688 us          698 us         1120
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                   8647 us         8750 us           75
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                                107778 us       106771 us            6
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                       1.61 us         1.54 us       497778
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                       3.98 us         3.93 us       194783
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                       8.92 us         8.20 us        89600
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                      15.6 us         14.1 us        49778
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                     90.4 us         89.1 us        10000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                     558 us          558 us         1120
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                   5143 us         5156 us          100
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                                 53745 us        54688 us           10
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                 0.767 us        0.767 us       896000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                  2.02 us         1.99 us       344615
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                  2.58 us         2.62 us       280000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                 4.61 us         4.60 us       149333
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                39.9 us         40.1 us        17920
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                654 us          645 us          896
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000              8512 us         8333 us           75
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000           106947 us       106771 us            6
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                  1.52 us         1.45 us       560000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                  4.33 us         4.00 us       160000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                  9.11 us         8.59 us       100000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                 17.1 us         15.7 us        44800
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                90.3 us         81.6 us         7467
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                539 us          531 us         1000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000              5188 us         5156 us          100
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000            55112 us        54688 us           10
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10                                      0.869 us        0.858 us       746667
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/20                                       3.09 us         3.11 us       235789
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/50                                       5.70 us         5.72 us       112000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100                                      9.21 us         9.21 us        74667
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000                                     88.8 us         87.9 us         7467
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10000                                     956 us          962 us          747
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100000                                  15776 us        15625 us           41
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000000                                149194 us       148438 us            4
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10                                       1.56 us         1.54 us       497778
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/20                                       5.18 us         5.16 us       100000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/50                                       10.7 us         10.7 us        64000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100                                      23.8 us         22.2 us        34462
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000                                      126 us          120 us         5600
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10000                                     642 us          641 us         1000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100000                                   9542 us         9375 us           90
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000000                                 58552 us        58239 us           11
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/100                                              122 ns          123 ns      5600000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                             162 ns          164 ns      4480000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                            258 ns          255 ns      2635294
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                           522 ns          500 ns      1000000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100                                    0.849 us        0.854 us       896000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/1000                                    1.19 us         1.22 us       640000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/10000                                   1.80 us         1.80 us       407273
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100000                                  2.96 us         2.98 us       235789
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/1000                                 2.92 us         2.92 us       235789
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/10000                                11.2 us         11.2 us        56000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                         1.11 us         1.10 us       640000
-Benchmarks::StaticPointTree__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                        7.06 us         7.11 us       112000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10                                   0.740 us        0.732 us       896000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/20                                    1.66 us         1.65 us       407273
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/50                                    2.16 us         2.15 us       320000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100                                   3.62 us         3.60 us       186667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000                                  38.3 us         38.5 us        18667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10000                                  701 us          698 us         1120
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100000                               10009 us        10010 us           64
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000000                             169942 us       167969 us            4
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10                                    1.57 us         1.57 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/20                                    4.12 us         4.08 us       172308
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/50                                    8.26 us         6.56 us       112000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100                                   15.5 us         12.7 us        64000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000                                  64.1 us         59.4 us        10000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10000                                  515 us          500 us         1000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100000                                6948 us         6696 us          112
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000000                             131307 us       132812 us            6
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10              0.751 us        0.732 us       896000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20               1.66 us         1.69 us       407273
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50               2.17 us         2.15 us       320000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100              4.32 us         4.30 us       160000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000             51.1 us         51.6 us        10000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000             805 us          802 us          896
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000          11453 us        11440 us           56
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000        187770 us       187500 us            4
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10               1.55 us         1.38 us       497778
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20               4.11 us         4.01 us       179200
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50               10.3 us         9.84 us        74667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100              16.4 us         12.3 us        40727
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000             71.0 us         66.3 us         8960
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000             559 us          558 us         1120
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000           7653 us         7533 us          112
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000        140235 us       137500 us            5
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/10                                   0.879 us        0.858 us       746667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/20                                    2.72 us         2.70 us       248889
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/50                                    4.95 us         5.00 us       100000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/100                                   7.80 us         7.67 us        89600
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/1000                                  89.7 us         87.9 us         7467
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/10000                                 1077 us         1074 us          640
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/100000                               26087 us        25841 us           26
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/1000000                             196437 us       195312 us            4
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/10                                    1.67 us         1.50 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/20                                    4.98 us         5.02 us       112000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/50                                    13.6 us         12.3 us        56000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/100                                   17.8 us         14.2 us        40727
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/1000                                   102 us         97.7 us         6400
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/10000                                  664 us          670 us         1120
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/100000                               20956 us        20996 us           32
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/1000000                             114206 us       114583 us            6
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                             0.850 us        0.837 us       896000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                              1.19 us         1.20 us       640000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                              2.07 us         2.05 us       320000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                             3.56 us         3.61 us       203636
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                            36.2 us         36.9 us        19478
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                            513 us          516 us         1000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                          5880 us         5938 us          100
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                        77872 us        78125 us            9
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                              1.40 us         1.29 us       497778
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                              2.11 us         2.05 us       373333
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                              4.37 us         4.39 us       160000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                             10.7 us         7.11 us        74667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                            37.4 us         34.3 us        18667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                            383 us          384 us         1792
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                          4223 us         4236 us          166
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                        59282 us        59659 us           11
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10                                 1.51 us         1.50 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/20                                 3.92 us         3.92 us       179200
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/50                                 7.59 us         7.53 us       112000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/100                                16.7 us         16.7 us        44800
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/1000                                171 us          173 us         4073
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10000                              2527 us         2511 us          280
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/10                                        2.51 us         2.51 us       280000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/20                                        4.20 us         4.14 us       165926
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/50                                        10.0 us         10.0 us        74667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/100                                       18.1 us         18.0 us        40727
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/1000                                       200 us          204 us         3446
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/10000                                     3223 us         3209 us          224
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertUnique/10                                          3.43 us         3.45 us       203636
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertUnique/20                                          8.34 us         8.20 us        89600
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertUnique/50                                          20.6 us         20.0 us        32000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertUnique/100                                         47.9 us         47.6 us        14452
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertUnique/1000                                         681 us          680 us          896
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::InsertUnique/10000                                      10534 us        10498 us           64
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Update/10                                                1.66 us         1.71 us       448000 items_per_second=5.85143M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Update/20                                                3.27 us         3.22 us       213333 items_per_second=6.20605M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Update/50                                                9.53 us         9.63 us        74667 items_per_second=5.19423M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Update/100                                               21.6 us         21.5 us        32000 items_per_second=4.65455M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Update/1000                                               676 us          680 us          896 items_per_second=1.47036M/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::Update/10000                                            15601 us        16026 us           39 items_per_second=624k/s
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::RangeSearch/100                                           157 ns          157 ns      4480000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::RangeSearch/1000                                          249 ns          251 ns      2800000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::RangeSearch/10000                                         428 ns          430 ns      1600000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::RangeSearch/100000                                        908 ns          921 ns       746667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/100                                 0.930 us        0.942 us       746667
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/1000                                 1.47 us         1.48 us       497778
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/10000                                2.64 us         2.62 us       280000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/100000                               4.00 us         4.08 us       172308
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::GetNearestNeighbors<6>/1000                              4.43 us         4.35 us       154483
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::GetNearestNeighbors<6>/10000                             18.4 us         18.4 us        37333
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::FrustumCulling/1000                                      1.53 us         1.50 us       448000
-Benchmarks::DynamicPointTree__MinPoint_Regular_WithReverseMap::FrustumCulling/10000                                     10.8 us         11.0 us        64000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10                                        0.676 us        0.663 us       896000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/20                                         1.64 us         1.65 us       407273
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/50                                         2.18 us         2.14 us       298667
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100                                        3.73 us         3.77 us       186667
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000                                       40.9 us         40.8 us        17231
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10000                                       797 us          802 us          896
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100000                                    11040 us        11161 us           56
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000000                                  224226 us       223958 us            3
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/10                                         1.41 us         1.34 us       560000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/20                                         3.91 us         3.68 us       203636
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/50                                         8.49 us         7.95 us        74667
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/100                                        14.2 us         11.4 us        56000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000                                       67.7 us         64.2 us        11200
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/10000                                       594 us          558 us         1120
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/100000                                     7464 us         7639 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000000                                  169411 us       167969 us            4
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                   0.683 us        0.680 us       896000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                    1.64 us         1.61 us       407273
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                    2.19 us         2.15 us       320000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                   4.45 us         4.45 us       154483
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                  52.1 us         51.6 us        10000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                  874 us          879 us          747
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000               12152 us        11998 us           56
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000             248812 us       250000 us            3
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                    1.38 us         1.37 us       560000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                    4.11 us         4.09 us       194783
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                    9.61 us         7.67 us        89600
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                   16.4 us         13.7 us        64000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                  74.1 us         69.8 us        11200
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                  612 us          586 us         1120
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000                8096 us         8160 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000             183700 us       187500 us            4
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10                                        0.824 us        0.816 us       746667
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/20                                         2.91 us         2.92 us       235789
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/50                                         5.41 us         5.30 us       112000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100                                        8.55 us         8.54 us        89600
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000                                       96.3 us         96.3 us         7467
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10000                                      1174 us         1172 us          560
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100000                                    31418 us        31250 us           21
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000000                                  256231 us       260417 us            3
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/10                                         1.54 us         1.53 us       448000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/20                                         5.17 us         4.76 us       144516
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/50                                         10.7 us         10.5 us        64000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/100                                        18.5 us         15.0 us        44800
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000                                        107 us          103 us         8960
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/10000                                       785 us          767 us          896
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/100000                                    23984 us        23958 us           30
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000000                                  170080 us       167969 us            4
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                  0.891 us        0.879 us       746667
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                   1.26 us         1.26 us       560000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                   2.22 us         2.20 us       320000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                  3.84 us         3.84 us       179200
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                 39.6 us         40.1 us        17920
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                 561 us          558 us         1120
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                               6924 us         6771 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                            102736 us       102679 us            7
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                                   1.75 us         1.73 us       407273
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                                   2.64 us         2.56 us       298667
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                                   5.40 us         4.50 us       149333
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                                  8.60 us         8.37 us        89600
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                 49.5 us         46.1 us        16593
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                 446 us          443 us         1659
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                               5217 us         5162 us          112
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                             84689 us        83333 us            9
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10                                      1.35 us         1.35 us       497778
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/20                                      3.80 us         3.75 us       179200
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/50                                      7.28 us         7.25 us       112000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/100                                     16.4 us         16.5 us        40727
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/1000                                     178 us          176 us         3733
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10000                                   2641 us         2663 us          264
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertIntoLeaf/10                                             2.69 us         2.67 us       263529
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertIntoLeaf/20                                             4.57 us         4.65 us       154483
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertIntoLeaf/50                                             11.1 us         11.0 us        64000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertIntoLeaf/100                                            20.4 us         20.0 us        32000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertIntoLeaf/1000                                            298 us          298 us         2358
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertIntoLeaf/10000                                          4349 us         4424 us          166
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertUnique/10                                               2.59 us         2.57 us       280000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertUnique/20                                               6.85 us         6.98 us       112000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertUnique/50                                               18.0 us         18.0 us        40727
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertUnique/100                                              41.0 us         41.7 us        17231
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertUnique/1000                                              518 us          516 us         1000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::InsertUnique/10000                                            7986 us         7986 us           90
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Update/10                                                     1.48 us         1.50 us       448000 items_per_second=6.66791M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Update/20                                                     2.98 us         3.01 us       248889 items_per_second=6.63704M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Update/50                                                     8.58 us         8.58 us        74667 items_per_second=5.82767M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Update/100                                                    21.1 us         20.9 us        34462 items_per_second=4.79471M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Update/1000                                                    667 us          670 us         1120 items_per_second=1.49333M/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::Update/10000                                                 15732 us        15625 us           39 items_per_second=640k/s
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::RangeSearch/100                                                146 ns          148 ns      4977778
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::RangeSearch/1000                                               215 ns          215 ns      3200000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::RangeSearch/10000                                              345 ns          345 ns      1947826
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::RangeSearch/100000                                             706 ns          711 ns      1120000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/100                                      0.896 us        0.907 us       896000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/1000                                      1.32 us         1.34 us       560000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/10000                                     2.22 us         2.20 us       320000
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/100000                                    3.63 us         3.69 us       194783
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/1000                                   3.74 us         3.68 us       186667
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/10000                                  15.8 us         15.7 us        44800
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::FrustumCulling/1000                                           1.33 us         1.32 us       497778
-Benchmarks::DynamicPointTree__MBR_Regular_WithReverseMap::FrustumCulling/10000                                          9.59 us         9.63 us        74667
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10                                         0.753 us        0.750 us       896000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/20                                          1.95 us         1.95 us       344615
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/50                                          2.45 us         2.46 us       280000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100                                         4.37 us         4.39 us       160000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000                                        42.1 us         41.4 us        16593
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10000                                        678 us          684 us         1120
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100000                                      8553 us         8681 us           90
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000000                                   106178 us       104911 us            7
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/10                                          1.56 us         1.50 us       448000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/20                                          4.04 us         4.10 us       179200
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/50                                          8.96 us         7.85 us        89600
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/100                                         15.8 us         14.8 us        49778
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000                                        89.2 us         85.8 us         7467
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/10000                                        559 us          516 us         1120
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/100000                                      5248 us         5156 us          100
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000000                                    53171 us        53125 us           10
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                    0.755 us        0.767 us      1120000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                     2.01 us         1.99 us       344615
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                     2.57 us         2.55 us       263529
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                    4.66 us         4.60 us       149333
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                   39.6 us         39.9 us        17231
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                   650 us          642 us         1120
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                 8537 us         8542 us           75
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000              106944 us       109375 us            6
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                     1.51 us         1.54 us       497778
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                     4.33 us         4.36 us       179200
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                     8.80 us         8.37 us        89600
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                    14.4 us         13.8 us        49778
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                   93.5 us         73.2 us         7467
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                   538 us          508 us         1445
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000                 5177 us         5156 us          100
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000               52858 us        51562 us           10
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10                                         0.864 us        0.858 us       746667
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/20                                          3.08 us         3.07 us       224000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/50                                          5.68 us         5.58 us       112000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100                                         9.19 us         9.21 us        74667
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000                                        88.3 us         90.0 us         7467
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10000                                        950 us          941 us          747
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100000                                     15644 us        15278 us           45
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000000                                   148781 us       148438 us            4
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/10                                          1.63 us         1.61 us       407273
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/20                                          5.35 us         5.31 us       100000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/50                                          10.8 us         10.7 us        64000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/100                                         27.5 us         25.7 us        28000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000                                         125 us          110 us         6400
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/10000                                        640 us          614 us         1120
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/100000                                      9578 us         9583 us           75
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000000                                    57972 us        56818 us           11
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::RangeSearch/100                                                 123 ns          122 ns      4977778
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::RangeSearch/1000                                                161 ns          160 ns      4480000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::RangeSearch/10000                                               258 ns          257 ns      2800000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::RangeSearch/100000                                              521 ns          500 ns      1000000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/100                                       0.844 us        0.854 us       896000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/1000                                       1.19 us         1.20 us       640000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/10000                                      1.82 us         1.80 us       407273
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors/100000                                     2.96 us         2.95 us       248889
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/1000                                    2.90 us         2.92 us       235789
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/10000                                   11.1 us         11.2 us        64000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::FrustumCulling/1000                                            1.12 us         1.12 us       640000
-Benchmarks::StaticPointTree__MBR_Regular_WithReverseMap::FrustumCulling/10000                                           7.08 us         7.11 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                  0.908 us        0.900 us       746667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                   1.72 us         1.69 us       407273
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                   3.16 us         3.14 us       224000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                  6.04 us         6.14 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                 54.4 us         56.2 us        10000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                 705 us          698 us          896
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                               7787 us         7812 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                             92823 us        91518 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10                                   1.65 us         1.63 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/20                                   3.29 us         3.28 us       224000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/50                                   8.85 us         8.37 us        74667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100                                  15.7 us         13.2 us        64000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                 63.1 us         55.8 us         8960
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                 342 us          300 us         2133
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100000                               3106 us         3209 us          224
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                             39401 us        39062 us           18
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10             0.912 us        0.942 us       746667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20              1.73 us         1.69 us       407273
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50              3.85 us         3.93 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100             8.27 us         8.20 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000            65.1 us         65.6 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000            804 us          795 us          747
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000          8560 us         8507 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000       101450 us       102679 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10              1.67 us         1.57 us       448000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20              3.88 us         3.81 us       172308
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50              10.6 us         8.89 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100             17.4 us         14.6 us        44800
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000            66.9 us         64.1 us        10000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000            361 us          353 us         1948
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000          3211 us         3228 us          213
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000        40693 us        40799 us           18
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                            0.952 us        0.942 us       746667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                             1.43 us         1.44 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                             2.72 us         2.70 us       248889
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                            4.99 us         5.00 us       100000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                           46.8 us         46.5 us        14452
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                           619 us          614 us         1120
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                         7298 us         7465 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                       77715 us        76389 us            9
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                             1.68 us         1.61 us       407273
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                             3.10 us         2.72 us       224000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                             10.1 us         5.93 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                            8.36 us         8.23 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                           36.7 us         35.2 us        24889
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                           355 us          338 us         2036
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                         4147 us         4142 us          166
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                       45446 us        45833 us           15
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/10                                        0.338 us        0.330 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/20                                        0.337 us        0.344 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/50                                        0.338 us        0.337 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/100                                       0.337 us        0.330 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/1000                                      0.338 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/10000                                     0.341 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10                                1.25 us         1.26 us       560000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/20                                3.25 us         3.28 us       224000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/50                                9.87 us         9.77 us        64000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/100                               15.5 us         15.7 us        44800
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                               146 us          148 us         4978
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                             1496 us         1506 us          498
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Update/10                                               1.99 us         2.01 us       373333 items_per_second=4.97777M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Update/20                                               3.72 us         3.77 us       186667 items_per_second=5.30964M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Update/50                                               8.38 us         8.37 us        74667 items_per_second=5.97336M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Update/100                                              17.0 us         16.9 us        40727 items_per_second=5.92393M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Update/1000                                              277 us          270 us         2489 items_per_second=3.70456M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::Update/10000                                            7819 us         7812 us           90 items_per_second=1.28M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/100                                           197 ns          197 ns      3733333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/1000                                          235 ns          235 ns      2986667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/10000                                         780 ns          785 ns       896000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/100000                                       7746 ns         7847 ns        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/100                                          157 ns          157 ns      4480000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/1000                                         191 ns          193 ns      3733333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/10000                                        724 ns          732 ns       896000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/100000                                      5967 ns         5938 ns       100000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::FrustumCulling/1000                                    0.550 us        0.544 us      1120000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::FrustumCulling/10000                                    3.48 us         3.53 us       203636
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                         3.34 us         3.30 us       203636
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                         128 us          131 us         5600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                       5768 us         5720 us          112
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                    213914 us       213542 us            3
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                         3.77 us         3.77 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                         131 us          131 us         5600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                       2057 us          546 us         1116
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                     75147 us        53125 us           10
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                   22.5 us         22.0 us        32000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                   179 us          181 us         4480
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                 5901 us         5781 us          100
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000              490349 us       500000 us            1
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100                                0.602 us        0.614 us      1120000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                1.43 us         1.41 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/10000                               6.86 us         6.98 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100000                              72.0 us         72.5 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100                                  0.554 us        0.562 us      1000000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/1000                                  1.37 us         1.35 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/10000                                 6.95 us         7.11 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100000                                80.5 us         78.5 us         8960
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                    0.758 us        0.767 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                     1.41 us         1.38 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                     2.36 us         2.41 us       298667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                    5.05 us         5.16 us       100000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                   47.7 us         46.5 us        14452
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                   694 us          698 us          896
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                 8682 us         8507 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                              124287 us       125000 us            6
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10                                     1.37 us         1.34 us       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/20                                     2.88 us         2.79 us       263529
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/50                                     8.99 us         9.00 us        74667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100                                    16.7 us         13.4 us        40727
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                   71.1 us         62.8 us         8960
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                   442 us          433 us         1659
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                 4768 us         4667 us          154
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                               76481 us        76389 us            9
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10               0.765 us        0.750 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                1.40 us         1.41 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                3.00 us         2.98 us       235789
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100               7.15 us         7.15 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000              58.6 us         58.6 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000              797 us          785 us          896
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000            9567 us         9583 us           75
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000         133345 us       132812 us            6
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                1.47 us         1.44 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                2.87 us         2.86 us       213333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                10.1 us         8.20 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100               17.9 us         14.8 us        56000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000              75.3 us         68.8 us        10000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000              469 us          460 us         1493
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000            5022 us         5000 us          100
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000          78170 us        78125 us            9
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                              0.816 us        0.837 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                               1.17 us         1.17 us       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                               2.12 us         2.15 us       320000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                              3.74 us         3.77 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                             36.4 us         36.0 us        18667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                             572 us          578 us         1000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                           6732 us         6696 us          112
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                         72607 us        72443 us           11
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                               1.43 us         1.44 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                               2.19 us         1.88 us       298667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                               4.35 us         4.52 us       165926
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                              11.6 us         6.72 us       100000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                             35.9 us         35.2 us        21333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                             426 us          417 us         1723
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                           4793 us         4741 us          145
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                         52281 us        53125 us           10
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/10                                          0.334 us        0.337 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/20                                          0.335 us        0.337 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/50                                          0.334 us        0.330 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/100                                         0.334 us        0.337 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/1000                                        0.335 us        0.330 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/10000                                       0.334 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/10                                  1.15 us         1.14 us       560000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/20                                  2.87 us         2.89 us       248889
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/50                                  8.42 us         8.37 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/100                                 15.4 us         15.3 us        44800
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/1000                                 148 us          146 us         4480
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/10000                               1909 us         1927 us          373
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Update/10                                                 1.69 us         1.69 us       407273 items_per_second=5.92397M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Update/20                                                 3.26 us         3.22 us       213333 items_per_second=6.20605M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Update/50                                                 8.16 us         8.20 us        89600 items_per_second=6.10043M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Update/100                                                14.3 us         14.4 us        49778 items_per_second=6.92563M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Update/1000                                                153 us          153 us         4480 items_per_second=6.51636M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::Update/10000                                              2895 us         2860 us          224 items_per_second=3.49659M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/100                                             240 ns          246 ns      2986667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/1000                                            296 ns          285 ns      2357895
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/10000                                           550 ns          544 ns      1120000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/100000                                          983 ns          984 ns       746667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/100                                            208 ns          209 ns      3446154
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/1000                                           304 ns          300 ns      2240000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/10000                                         1005 ns         1001 ns       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/100000                                       10088 ns        10254 ns        64000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::FrustumCulling/1000                                       1.13 us         1.15 us       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::FrustumCulling/10000                                      3.77 us         3.77 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                           50.2 us         50.2 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                          1366 us         1349 us          498
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                        26874 us        27043 us           26
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                      464948 us       468750 us            2
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                           50.7 us         51.6 us        10000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                          1369 us         1349 us          498
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                         9802 us         3342 us          187
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                      131314 us        84821 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                     33.8 us         34.4 us        21333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                     250 us          246 us         2800
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                   6681 us         6597 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                147984 us       148438 us            4
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100                                  0.823 us        0.820 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                  1.20 us         1.20 us       560000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                 3.11 us         3.07 us       224000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                7.57 us         7.50 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100                                    0.686 us        0.656 us      1120000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/1000                                    1.03 us         1.03 us       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/10000                                   2.65 us         2.64 us       248889
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100000                                  10.2 us         10.3 us        64000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                       0.866 us        0.858 us       746667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                        1.75 us         1.76 us       407273
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                        3.25 us         3.15 us       213333
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                       6.28 us         6.28 us       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                      56.4 us         54.4 us        11200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                      753 us          750 us          896
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                    8247 us         8160 us           90
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                                 119144 us       119792 us            6
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                        1.68 us         1.53 us       448000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                        3.91 us         3.92 us       179200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                        13.5 us         10.0 us        49778
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                       16.4 us         12.9 us        44800
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                      66.5 us         60.9 us        10000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                      392 us          361 us         2036
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                    3599 us         3526 us          195
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                                  63870 us        62500 us           11
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                  0.878 us        0.858 us       746667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                   1.77 us         1.80 us       407273
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                   4.09 us         4.08 us       172308
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                  8.63 us         8.72 us        89600
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                 65.8 us         65.6 us        11200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                 826 us          820 us          896
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000               8838 us         8958 us           75
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000            124717 us       122396 us            6
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                   1.66 us         1.43 us       448000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                   3.88 us         3.75 us       179200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                   10.3 us         9.53 us        83627
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                  17.7 us         15.1 us        56000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                 68.2 us         64.2 us        11200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                 404 us          410 us         1792
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000               3628 us         3686 us          195
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000             63131 us        62500 us           11
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                                  1.01 us         1.00 us       640000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                                  1.49 us         1.46 us       448000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                                  2.86 us         2.85 us       235789
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                                 5.31 us         5.30 us       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                                50.9 us         50.0 us        10000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                                670 us          663 us          896
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                              8656 us         8854 us           90
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                           109568 us       109375 us            6
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                                  2.00 us         1.97 us       373333
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                                  3.33 us         2.78 us       235789
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                                  8.80 us         6.63 us        89600
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                                 11.3 us         9.00 us        74667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                                48.9 us         42.2 us        14452
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                                431 us          420 us         1600
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                              5638 us         5720 us          112
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                            76513 us        76705 us           11
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::InsertToLeaf/10                                             0.296 us        0.292 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::InsertToLeaf/20                                             0.293 us        0.292 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::InsertToLeaf/50                                             0.293 us        0.293 us      2240000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::InsertToLeaf/100                                            0.292 us        0.292 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::InsertToLeaf/1000                                           0.293 us        0.295 us      2488889
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::InsertToLeaf/10000                                          0.294 us        0.292 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10                                     1.10 us         1.10 us       640000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/20                                     3.10 us         3.07 us       224000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/50                                     9.88 us         10.0 us        74667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/100                                    15.7 us         15.7 us        44800
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                                    150 us          151 us         4978
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                                  1566 us         1569 us          448
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Update/10                                                    1.92 us         1.93 us       373333 items_per_second=5.1942M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Update/20                                                    3.48 us         3.45 us       194783 items_per_second=5.79819M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Update/50                                                    7.88 us         7.85 us        89600 items_per_second=6.37156M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Update/100                                                   16.0 us         16.0 us        44800 items_per_second=6.23304M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Update/1000                                                   269 us          273 us         2635 items_per_second=3.66609M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::Update/10000                                                 7769 us         7812 us           90 items_per_second=1.28M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/100                                                171 ns          173 ns      4072727
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/1000                                               192 ns          193 ns      3733333
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/10000                                              677 ns          663 ns       896000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/100000                                            7547 ns         7533 ns       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/100                                               135 ns          132 ns      4977778
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                              168 ns          171 ns      4480000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                             727 ns          711 ns      1120000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                           6532 ns         6557 ns       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                         0.445 us        0.449 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                         3.04 us         3.05 us       235789
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                              3.16 us         3.08 us       213333
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                              106 us          107 us         6400
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                            5359 us         5301 us          112
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                         203994 us       203125 us            4
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                              3.54 us         3.53 us       194783
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                              107 us          107 us         6400
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                            1897 us          641 us         1000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                          72492 us        48828 us           16
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                        11.9 us         12.2 us        64000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                        110 us          110 us         6400
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                      4215 us         4199 us          160
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                   430949 us       437500 us            2
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100                                     0.430 us        0.439 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                     1.13 us         1.12 us       640000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/10000                                    6.22 us         6.42 us       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100000                                   70.5 us         71.1 us        11200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100                                       0.448 us        0.449 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/1000                                       1.14 us         1.12 us       560000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/10000                                      6.26 us         6.14 us       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100000                                     79.3 us         80.2 us         8960
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                         0.889 us        0.879 us       746667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                          1.61 us         1.60 us       448000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                          2.65 us         2.67 us       263529
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                         5.50 us         5.58 us       112000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                        49.8 us         50.8 us        14452
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                        770 us          785 us          896
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                      9331 us         9375 us           75
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                                   167491 us       164062 us            4
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10                                          2.34 us         2.30 us       373333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/20                                          4.99 us         5.00 us       100000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/50                                          10.5 us         10.7 us        74667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100                                         20.2 us         15.3 us        40727
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                        75.3 us         69.8 us        11200
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                        510 us          508 us         1445
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                      5529 us         5625 us          100
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                                   115807 us       117188 us            6
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                    0.889 us        0.900 us       746667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                     1.61 us         1.60 us       448000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                     3.36 us         3.37 us       213333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                    7.74 us         7.67 us        89600
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                   60.3 us         60.0 us        11200
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                   821 us          837 us          896
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                 9956 us         9792 us           75
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000              175042 us       175781 us            4
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                     1.72 us         1.65 us       407273
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                     2.91 us         2.85 us       235789
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                     9.29 us         8.58 us        74667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                    20.1 us         17.6 us        37333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                   79.7 us         73.2 us         8960
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                   513 us          531 us         1000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000                 5546 us         5312 us          100
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000              116191 us       119792 us            6
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                                    1.11 us         1.10 us       640000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                                    1.43 us         1.43 us       448000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                                    2.49 us         2.51 us       298667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                                   4.28 us         4.24 us       165926
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                                  40.3 us         39.9 us        17231
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                                  624 us          609 us         1000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                                8395 us         8542 us           75
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                             105697 us       104167 us            6
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                                    2.07 us         2.09 us       344615
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                                    2.91 us         2.85 us       235789
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                                    5.84 us         5.16 us       100000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                                   9.17 us         8.37 us        89600
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                                  48.5 us         46.5 us        15448
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                                  489 us          481 us         1493
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                                6407 us         6417 us          112
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                              84669 us        84821 us            7
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::InsertToLeaf/10                                               0.465 us        0.475 us      1544828
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::InsertToLeaf/20                                               0.466 us        0.460 us      1493333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::InsertToLeaf/50                                               0.465 us        0.471 us      1493333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::InsertToLeaf/100                                              0.464 us        0.471 us      1493333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::InsertToLeaf/1000                                             0.465 us        0.460 us      1493333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::InsertToLeaf/10000                                            0.465 us        0.460 us      1493333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/10                                       1.17 us         1.14 us       560000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/20                                       2.91 us         2.86 us       224000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/50                                       9.23 us         9.00 us        74667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/100                                      17.3 us         17.3 us        40727
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/1000                                      160 us          160 us         4480
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/10000                                    2099 us         2100 us          320
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Update/10                                                      1.62 us         1.64 us       448000 items_per_second=6.10043M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Update/20                                                      3.10 us         3.07 us       224000 items_per_second=6.51636M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Update/50                                                      7.80 us         7.85 us        89600 items_per_second=6.37156M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Update/100                                                     13.4 us         13.4 us        56000 items_per_second=7.46667M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Update/1000                                                     149 us          151 us         4978 items_per_second=6.63733M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::Update/10000                                                   2845 us         2847 us          236 items_per_second=3.51256M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/100                                                  168 ns          169 ns      4072727
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/1000                                                 178 ns          176 ns      4072727
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/10000                                                241 ns          241 ns      2986667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/100000                                               355 ns          361 ns      1947826
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/100                                                 131 ns          131 ns      5600000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/1000                                                143 ns          144 ns      4977778
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/10000                                               209 ns          209 ns      3446154
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/100000                                              551 ns          544 ns      1120000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::FrustumCulling/1000                                           0.327 us        0.330 us      2133333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::FrustumCulling/10000                                           1.27 us         1.28 us       560000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                                50.1 us         48.8 us        11200
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                                885 us          899 us          747
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                             13592 us        13393 us           56
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                           222788 us       223958 us            3
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                                50.0 us         50.0 us        10000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                                884 us          879 us          747
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                              4399 us         1256 us          448
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                            64140 us        44922 us           16
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                          13.3 us         13.4 us        56000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                          124 us          123 us         5600
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                        2183 us         2246 us          320
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                      48782 us        49107 us           14
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100                                       0.357 us        0.361 us      1947826
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                      0.425 us        0.414 us      1659259
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                     0.831 us        0.837 us       896000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                     1.77 us         1.76 us       373333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100                                         0.374 us        0.368 us      1866667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/1000                                        0.443 us        0.449 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/10000                                       0.875 us        0.889 us       896000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100000                                       3.25 us         3.30 us       213333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10                                     0.966 us        0.963 us       746667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/20                                      1.84 us         1.81 us       448000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/50                                      3.28 us         3.22 us       213333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100                                     6.21 us         6.14 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000                                    54.6 us         54.7 us        10000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10000                                    711 us          698 us          896
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100000                                  7903 us         7812 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000000                               101691 us       104911 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10                                      1.76 us         1.65 us       407273
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/20                                      4.00 us         4.02 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/50                                      13.9 us         9.77 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100                                     16.1 us         13.6 us        44800
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000                                    63.7 us         60.0 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10000                                    358 us          353 us         2036
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100000                                  3337 us         3301 us          213
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000000                                48620 us        50000 us           10
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                0.965 us        0.963 us       746667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                 1.80 us         1.84 us       407273
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                 3.96 us         3.92 us       179200
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                8.34 us         8.37 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000               64.0 us         62.8 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000               793 us          802 us          896
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000             8664 us         8681 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000          108705 us       106771 us            6
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                 1.67 us         1.67 us       448000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                 3.69 us         3.53 us       203636
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                 8.20 us         8.20 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                18.6 us         15.0 us        44800
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000               67.7 us         62.8 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000               378 us          360 us         1867
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000             3460 us         3447 us          204
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000           50244 us        51562 us           10
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                1.02 us         1.00 us       640000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                1.49 us         1.51 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                2.81 us         2.78 us       235789
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                               5.16 us         5.02 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                              48.3 us         49.7 us        14452
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                              640 us          628 us         1120
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                            7329 us         7292 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                          82009 us        80357 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                                1.61 us         1.53 us       407273
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                                3.09 us         2.57 us       248889
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                                5.33 us         4.74 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                               8.85 us         8.02 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                              38.8 us         36.8 us        18667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                              381 us          385 us         1867
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                            4431 us         4395 us          160
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                          50657 us        50000 us           10
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::InsertToLeaf/10                                           0.340 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::InsertToLeaf/20                                           0.340 us        0.344 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::InsertToLeaf/50                                           0.343 us        0.345 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::InsertToLeaf/100                                          0.344 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::InsertToLeaf/1000                                         0.342 us        0.345 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::InsertToLeaf/10000                                        0.344 us        0.344 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10                                   1.55 us         1.53 us       448000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/20                                   3.75 us         3.68 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/50                                   10.8 us         11.0 us        64000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/100                                  17.0 us         16.9 us        40727
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/1000                                  155 us          153 us         4480
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10000                                1584 us         1569 us          448
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Update/10                                                  1.47 us         1.46 us       448000 items_per_second=6.82667M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Update/20                                                  2.68 us         2.73 us       263529 items_per_second=7.33298M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Update/50                                                  5.92 us         6.00 us       112000 items_per_second=8.33488M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Update/100                                                 12.2 us         12.2 us        64000 items_per_second=8.192M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Update/1000                                                 227 us          225 us         2987 items_per_second=4.44577M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::Update/10000                                               7358 us         7292 us           90 items_per_second=1.37143M/s
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::PickSearch/100                                              200 ns          199 ns      3446154
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::PickSearch/1000                                             238 ns          235 ns      2986667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::PickSearch/10000                                            781 ns          785 ns       896000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::PickSearch/100000                                          7679 ns         7673 ns        89600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RangeSearch/100                                             160 ns          160 ns      4480000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RangeSearch/1000                                            194 ns          193 ns      3733333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RangeSearch/10000                                           729 ns          732 ns       896000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RangeSearch/100000                                         5998 ns         5999 ns       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::FrustumCulling/1000                                       0.551 us        0.547 us      1000000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::FrustumCulling/10000                                       3.47 us         3.45 us       194783
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/100                            3.35 us         3.37 us       213333
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/1000                            130 us          131 us         5600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/10000                          5775 us         5781 us          100
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/100000                       213636 us       213542 us            3
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/100                            3.78 us         3.77 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/1000                            130 us          131 us         5600
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/10000                          2052 us          664 us         1365
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/100000                        70595 us        50000 us           10
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100                      23.4 us         23.5 us        29867
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/1000                      183 us          184 us         3733
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/10000                    5919 us         5859 us          112
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100000                 506293 us       500000 us            1
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/100                                   0.614 us        0.628 us      1120000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/1000                                   1.43 us         1.41 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/10000                                  6.86 us         6.84 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/100000                                 71.5 us         71.5 us         8960
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedAll/100                                     0.558 us        0.558 us      1120000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedAll/1000                                     1.37 us         1.38 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedAll/10000                                    6.90 us         6.70 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Regular_WithReverseMap::RayIntersectedAll/100000                                   79.8 us         78.5 us         8960
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/10                                       0.813 us        0.820 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/20                                        1.49 us         1.51 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/50                                        2.47 us         2.46 us       280000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/100                                       5.29 us         5.16 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/1000                                      47.6 us         48.1 us        14933
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/10000                                      700 us          698 us          896
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/100000                                    8837 us         8958 us           75
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/1000000                                 134181 us       135417 us            6
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/10                                        1.56 us         1.50 us       448000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/20                                        3.13 us         2.85 us       263529
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/50                                        8.15 us         7.25 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/100                                       17.2 us         13.8 us        37333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/1000                                      72.1 us         61.0 us         8960
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/10000                                      463 us          465 us         1545
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/100000                                    5119 us         5000 us          100
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/1000000                                  90168 us        89286 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                  0.819 us        0.820 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                   1.48 us         1.53 us       448000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                   3.13 us         3.07 us       224000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                  7.36 us         7.50 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                 57.3 us         57.8 us        10000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                 788 us          785 us          896
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000               9628 us         9792 us           75
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000            144430 us       143750 us            5
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                   1.54 us         1.50 us       448000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                   3.21 us         3.07 us       224000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                   9.77 us         10.0 us        74667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                  18.7 us         14.3 us        44800
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                 77.5 us         73.2 us         8960
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                 498 us          497 us         1445
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000               5375 us         5312 us          100
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000             92653 us        91518 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                 0.915 us        0.921 us       746667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                  1.26 us         1.23 us       560000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                  2.26 us         2.29 us       320000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                 4.01 us         4.01 us       179200
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                38.5 us         39.3 us        18667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                597 us          600 us         1120
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                              7020 us         7118 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                            78968 us        78125 us            9
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10                                  1.40 us         1.35 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/20                                  2.67 us         2.49 us       344615
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/50                                  4.49 us         4.45 us       154483
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100                                 10.8 us         6.56 us       112000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                37.6 us         36.8 us        18667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                460 us          465 us         1545
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100000                              5063 us         5000 us          100
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                            58368 us        58239 us           11
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::InsertToLeaf/10                                             0.338 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::InsertToLeaf/20                                             0.343 us        0.344 us      2133333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::InsertToLeaf/50                                             0.342 us        0.329 us      1947826
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::InsertToLeaf/100                                            0.340 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::InsertToLeaf/1000                                           0.341 us        0.338 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::InsertToLeaf/10000                                          0.340 us        0.345 us      2036364
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/10                                     1.44 us         1.44 us       497778
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/20                                     3.36 us         3.38 us       203636
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/50                                     9.39 us         9.42 us        74667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/100                                    16.9 us         16.9 us        40727
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/1000                                    156 us          157 us         4480
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/10000                                  1997 us         1993 us          345
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Update/10                                                    1.31 us         1.29 us       497778 items_per_second=7.77019M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Update/20                                                    2.48 us         2.51 us       280000 items_per_second=7.96444M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Update/50                                                    6.08 us         6.14 us       112000 items_per_second=8.14545M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Update/100                                                   10.5 us         10.7 us        74667 items_per_second=9.36998M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Update/1000                                                   117 us          117 us         6400 items_per_second=8.53333M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::Update/10000                                                 2484 us         2486 us          264 items_per_second=4.02286M/s
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::PickSearch/100                                                241 ns          246 ns      2986667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::PickSearch/1000                                               296 ns          292 ns      2357895
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::PickSearch/10000                                              544 ns          544 ns      1120000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::PickSearch/100000                                             979 ns          977 ns       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RangeSearch/100                                               208 ns          209 ns      3446154
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RangeSearch/1000                                              310 ns          305 ns      2357895
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RangeSearch/10000                                            1025 ns         1025 ns       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RangeSearch/100000                                          10141 ns         9766 ns        64000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::FrustumCulling/1000                                          1.12 us         1.12 us       560000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::FrustumCulling/10000                                         3.79 us         3.85 us       186667
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/100                              51.0 us         51.6 us        10000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/1000                             1423 us         1443 us          498
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/10000                           27660 us        27500 us           25
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/100000                         474070 us       476562 us            2
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/100                              52.2 us         51.6 us        11200
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/1000                             1432 us         1443 us          498
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/10000                           10138 us         3294 us          204
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/100000                         132691 us        89286 us            7
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100                        32.9 us         31.5 us        20364
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/1000                        248 us          246 us         2800
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/10000                      6724 us         6771 us           90
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100000                   147571 us       148438 us            4
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/100                                     0.819 us        0.820 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/1000                                     1.20 us         1.20 us       560000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/10000                                    3.08 us         3.08 us       213333
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/100000                                   7.55 us         7.50 us        89600
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedAll/100                                       0.670 us        0.663 us       896000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedAll/1000                                       1.03 us         1.03 us       640000
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedAll/10000                                      2.63 us         2.67 us       263529
-Benchmarks::DynamicBoxTree__MinPoint_Loose_WithReverseMap::RayIntersectedAll/100000                                     10.2 us         10.3 us        64000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10                                          0.909 us        0.924 us       896000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/20                                           1.78 us         1.80 us       407273
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/50                                           3.33 us         3.37 us       213333
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100                                          6.32 us         6.42 us       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000                                         57.3 us         57.2 us        11200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10000                                         766 us          767 us         1120
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100000                                       8474 us         8333 us           90
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000000                                    130238 us       130208 us            6
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/10                                           1.68 us         1.59 us       560000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/20                                           3.90 us         3.84 us       179200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/50                                           13.6 us         10.9 us        74667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/100                                          15.8 us         12.9 us        44800
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000                                         68.2 us         62.8 us         8960
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/10000                                         407 us          410 us         1792
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/100000                                       3786 us         3760 us          187
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000000                                     73930 us        72917 us            9
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                     0.905 us        0.900 us       746667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                      1.80 us         1.80 us       373333
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                      4.11 us         4.05 us       165926
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                     8.76 us         8.54 us        64000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                    66.0 us         68.4 us        11200
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                    834 us          837 us          896
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                  9069 us         9028 us           90
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000               137943 us       137500 us            5
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                      1.67 us         1.57 us       497778
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                      3.93 us         3.93 us       186667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                      14.8 us         11.2 us        44800
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                     17.5 us         13.8 us        40727
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                    70.1 us         66.3 us         8960
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                    416 us          417 us         1723
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000                  3798 us         3666 us          179
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000                74454 us        72443 us           11
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                     1.06 us         1.07 us       640000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                     1.56 us         1.53 us       448000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                     2.97 us         3.05 us       235789
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                    5.41 us         5.30 us       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                   51.3 us         51.6 us        10000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                   686 us          698 us         1120
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                                 8750 us         8854 us           90
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                              115776 us       117188 us            6
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                                     2.12 us         2.13 us       373333
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                                     3.34 us         2.85 us       235789
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                                     9.46 us         8.37 us        89600
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                                    11.3 us         9.77 us        64000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                   51.9 us         45.0 us        14933
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                   456 us          415 us         1545
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                                 5974 us         5999 us          112
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                               84552 us        83333 us            9
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::InsertToLeaf/10                                                0.299 us        0.293 us      2240000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::InsertToLeaf/20                                                0.299 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::InsertToLeaf/50                                                0.299 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::InsertToLeaf/100                                               0.298 us        0.301 us      2488889
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::InsertToLeaf/1000                                              0.298 us        0.293 us      2240000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::InsertToLeaf/10000                                             0.297 us        0.293 us      2240000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10                                        1.41 us         1.41 us       497778
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/20                                        3.57 us         3.53 us       194783
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/50                                        10.7 us         10.7 us        64000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/100                                       16.8 us         16.4 us        44800
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/1000                                       158 us          160 us         4480
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10000                                     1650 us         1651 us          407
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Update/10                                                       1.39 us         1.38 us       497778 items_per_second=7.24041M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Update/20                                                       2.47 us         2.46 us       280000 items_per_second=8.14545M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Update/50                                                       5.41 us         5.47 us       100000 items_per_second=9.14286M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Update/100                                                      11.2 us         11.2 us        64000 items_per_second=8.90435M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Update/1000                                                      217 us          215 us         3200 items_per_second=4.65455M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::Update/10000                                                    7300 us         7254 us          112 items_per_second=1.37846M/s
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::PickSearch/100                                                   165 ns          165 ns      4072727
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::PickSearch/1000                                                  193 ns          190 ns      3446154
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::PickSearch/10000                                                 675 ns          663 ns       896000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::PickSearch/100000                                               7487 ns         7499 ns        89600
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RangeSearch/100                                                  134 ns          134 ns      5600000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RangeSearch/1000                                                 167 ns          169 ns      4072727
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RangeSearch/10000                                                773 ns          767 ns       896000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RangeSearch/100000                                              6821 ns         6696 ns        74667
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::FrustumCulling/1000                                            0.442 us        0.449 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::FrustumCulling/10000                                            3.04 us         3.05 us       235789
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/100                                 3.15 us         3.21 us       224000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/1000                                 105 us          105 us         6400
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/10000                               5348 us         5312 us          100
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/100000                            204772 us       208333 us            3
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/100                                 3.53 us         3.53 us       194783
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/1000                                 107 us          107 us         6400
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/10000                               1888 us          750 us          896
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/100000                             72196 us        49805 us           16
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100                           12.0 us         12.0 us        64000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/1000                           112 us          112 us         6400
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/10000                         4227 us         4142 us          166
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100000                      429017 us       429688 us            2
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedFirst/100                                        0.433 us        0.430 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedFirst/1000                                        1.12 us         1.12 us       640000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedFirst/10000                                       6.08 us         6.09 us       100000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedFirst/100000                                      70.7 us         69.8 us         8960
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedAll/100                                          0.448 us        0.459 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedAll/1000                                          1.14 us         1.12 us       560000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedAll/10000                                         6.24 us         6.28 us       112000
-Benchmarks::DynamicBoxTree__MBR_Regular_WithReverseMap::RayIntersectedAll/100000                                        78.7 us         78.5 us         8960
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/10                                            0.751 us        0.750 us       896000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/20                                             1.46 us         1.48 us       497778
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/50                                             2.51 us         2.51 us       280000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/100                                            5.45 us         5.44 us       112000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/1000                                           50.8 us         50.0 us        10000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/10000                                           775 us          767 us          896
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/100000                                         9634 us         9583 us           75
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, SeqExec>/1000000                                      179873 us       175781 us            4
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/10                                             1.42 us         1.44 us       497778
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/20                                             2.87 us         2.79 us       280000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/50                                             8.70 us         8.02 us        89600
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/100                                            18.5 us         14.4 us        64000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/1000                                           75.8 us         71.5 us         8960
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/10000                                           526 us          516 us         1120
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/100000                                         5896 us         5938 us          100
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create<3, ParExec>/1000000                                      127530 us       127604 us            6
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                       0.750 us        0.750 us       896000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                        1.46 us         1.46 us       448000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                        3.27 us         3.22 us       213333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                       7.68 us         7.50 us        89600
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                      59.6 us         58.6 us        11200
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                      847 us          854 us          896
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                   10350 us        10254 us           64
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000                 188594 us       187500 us            4
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                        1.44 us         1.35 us       497778
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                        2.89 us         2.64 us       248889
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                        8.68 us         7.95 us        74667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                       20.8 us         16.0 us        44800
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                      81.1 us         80.2 us         8960
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                      536 us          516 us         1000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000                    5915 us         5999 us          112
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000                 128897 us       128125 us            5
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                      0.947 us        0.928 us       640000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                       1.33 us         1.37 us       560000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                       2.42 us         2.40 us       280000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                      4.31 us         4.30 us       160000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                     42.0 us         42.4 us        16593
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                     649 us          656 us         1120
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                                   8623 us         8681 us           90
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                                112667 us       111979 us            6
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10                                       1.86 us         1.84 us       407273
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/20                                       2.79 us         2.46 us       280000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/50                                       5.76 us         4.88 us       112000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100                                      9.50 us         8.30 us        64000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                     49.5 us         37.7 us        14933
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                     514 us          516 us         1000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100000                                   6662 us         6557 us          112
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                                 92417 us        91518 us            7
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::InsertToLeaf/10                                                  0.300 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::InsertToLeaf/20                                                  0.298 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::InsertToLeaf/50                                                  0.300 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::InsertToLeaf/100                                                 0.300 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::InsertToLeaf/1000                                                0.298 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::InsertToLeaf/10000                                               0.299 us        0.298 us      2357895
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__RebalanceMode/10                                          1.26 us         1.26 us       560000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__RebalanceMode/20                                          3.11 us         3.08 us       213333
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__RebalanceMode/50                                          9.07 us         9.00 us        74667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__RebalanceMode/100                                         16.5 us         16.7 us        44800
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__RebalanceMode/1000                                         157 us          157 us         4480
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Insert__RebalanceMode/10000                                       2075 us         2083 us          345
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Update/10                                                         1.18 us         1.17 us       560000 items_per_second=8.53333M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Update/20                                                         2.30 us         2.30 us       298667 items_per_second=8.68849M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Update/50                                                         5.69 us         5.72 us       112000 items_per_second=8.74146M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Update/100                                                        9.73 us         9.63 us        74667 items_per_second=10.3885M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Update/1000                                                        108 us          110 us         6400 items_per_second=9.10222M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::Update/10000                                                      2404 us         2344 us          280 items_per_second=4.26667M/s
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::PickSearch/100                                                     171 ns          174 ns      4480000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::PickSearch/1000                                                    193 ns          196 ns      4072727
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::PickSearch/10000                                                   257 ns          256 ns      2986667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::PickSearch/100000                                                  516 ns          500 ns      1000000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RangeSearch/100                                                    183 ns          173 ns      4977778
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RangeSearch/1000                                                   203 ns          184 ns      4072727
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RangeSearch/10000                                                  265 ns          258 ns      2240000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RangeSearch/100000                                                 677 ns          680 ns       896000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::FrustumCulling/1000                                              0.346 us        0.342 us      1600000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::FrustumCulling/10000                                              1.37 us         1.32 us       497778
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/100                                   50.3 us         44.4 us        18667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/1000                                  2173 us         1535 us          560
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/10000                                29290 us        21959 us           37
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/100000                              387843 us       359375 us            2
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/100                                   40.0 us         39.1 us        20364
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/1000                                   902 us          854 us          896
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/10000                                 6734 us         3397 us          345
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/100000                              104807 us        61080 us           11
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100                             33.4 us         24.1 us        29867
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/1000                             780 us          252 us         3098
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/10000                          12110 us         5729 us           90
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100000                        519928 us       164062 us            4
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedFirst/100                                           1.80 us        0.531 us      1000000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedFirst/1000                                          1.77 us        0.753 us       746667
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedFirst/10000                                         3.59 us         1.57 us       407273
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedFirst/100000                                        6.30 us         3.67 us       165926
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedAll/100                                            0.583 us        0.572 us      1120000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedAll/1000                                           0.752 us        0.698 us       896000
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedAll/10000                                           1.34 us         1.35 us       497778
-Benchmarks::DynamicBoxTree__MBR_Loose_WithReverseMap::RayIntersectedAll/100000                                          4.94 us         5.00 us       100000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                    1.19 us         1.22 us       497778
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                    1.75 us         1.72 us       344615
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                    3.32 us         3.30 us       213333
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                   5.68 us         5.72 us       112000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                  51.6 us         50.0 us        10000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                  727 us          732 us          896
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                7385 us         7292 us           90
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                              79515 us        79861 us            9
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10                                    1.69 us         1.65 us       407273
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/20                                    3.61 us         3.49 us       224000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/50                                    12.1 us         10.0 us        64000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100                                   16.7 us         15.0 us        40727
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                  65.4 us         60.0 us        11200
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                  363 us          360 us         1867
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                2821 us         2663 us          264
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                              28155 us        27644 us           26
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10              0.869 us        0.879 us       746667
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20               1.70 us         1.69 us       407273
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50               3.11 us         3.14 us       224000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100              5.84 us         5.86 us       112000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000             52.2 us         51.6 us        11200
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000             704 us          711 us         1120
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000           7273 us         7254 us          112
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000         79667 us        78125 us            9
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10               1.66 us         1.50 us       407273
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20               3.68 us         3.49 us       224000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50               12.4 us         10.3 us        89600
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100              15.9 us         14.1 us        49778
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000             65.4 us         61.0 us         8960
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000             385 us          384 us         2036
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000           2906 us         2781 us          236
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000         29313 us        26442 us           26
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/100                                            165 ns          164 ns      4480000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/1000                                           197 ns          186 ns      3446154
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/10000                                          702 ns          711 ns      1120000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::PickSearch/100000                                        7728 ns         7673 ns        89600
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/100                                           100 ns          103 ns      7466667
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/1000                                          127 ns          126 ns      5600000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/10000                                         647 ns          642 ns      1120000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RangeSearch/100000                                       5937 ns         5999 ns       112000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::FrustumCulling/1000                                     0.465 us        0.471 us      1493333
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::FrustumCulling/10000                                     3.28 us         3.30 us       203636
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                          3.32 us         3.37 us       213333
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                          127 us          126 us         4978
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                        5730 us         5781 us          100
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                     219496 us       223958 us            3
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                          3.66 us         3.69 us       194783
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                          127 us          128 us         5600
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                        1990 us         1689 us          407
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                      86204 us        31994 us           21
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                    13.3 us         13.2 us        49778
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                    143 us          141 us         4978
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                  5944 us         5859 us          112
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000               549693 us       546875 us            1
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100                                 0.441 us        0.439 us      1600000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                 1.28 us         1.28 us       560000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/10000                                6.72 us         6.70 us       112000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100000                               72.0 us         71.5 us         8960
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100                                   0.449 us        0.449 us      1600000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/1000                                   1.27 us         1.28 us       560000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/10000                                  6.78 us         6.84 us       112000
-Benchmarks::StaticBoxTree__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100000                                 80.3 us         78.5 us         8960
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                     0.731 us        0.732 us       896000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                      1.38 us         1.38 us       497778
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                      2.29 us         2.30 us       298667
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                     4.77 us         4.76 us       144516
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                    44.4 us         42.5 us        15448
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                    649 us          656 us         1120
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                  7258 us         7254 us          112
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                                83610 us        83333 us            9
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10                                      1.66 us         1.56 us       560000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/20                                      2.86 us         2.51 us       280000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/50                                      8.81 us         8.72 us        89600
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100                                     18.8 us         13.4 us        37333
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                    76.8 us         72.5 us        11200
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                    463 us          459 us         1600
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                  3907 us         3753 us          179
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                                42626 us        42763 us           19
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                0.735 us        0.750 us       896000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                 1.55 us         1.53 us       448000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                 2.31 us         2.30 us       298667
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                5.03 us         5.00 us       100000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000               45.7 us         45.5 us        15448
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000               665 us          670 us         1120
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000             7405 us         7394 us          112
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000           82715 us        83333 us            9
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                 1.43 us         1.38 us       497778
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                 2.86 us         2.68 us       280000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                 8.49 us         7.85 us        89600
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                18.6 us         15.6 us        56000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000               77.7 us         68.0 us         8960
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000               463 us          414 us         1659
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000             4115 us         4047 us          166
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000           43493 us        42969 us           16
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/100                                              175 ns          176 ns      4072727
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/1000                                             196 ns          195 ns      3200000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/10000                                            329 ns          330 ns      2133333
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::PickSearch/100000                                           574 ns          578 ns      1000000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/100                                             131 ns          131 ns      5600000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/1000                                            197 ns          195 ns      3446154
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/10000                                           623 ns          628 ns      1120000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RangeSearch/100000                                         6348 ns         6278 ns       112000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::FrustumCulling/1000                                       0.770 us        0.767 us       896000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::FrustumCulling/10000                                       2.52 us         2.49 us       263529
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                            37.1 us         36.8 us        18667
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                           1229 us         1228 us          560
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                         24402 us        24554 us           28
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                       458334 us       460938 us            2
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                            38.0 us         37.7 us        18667
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                           1238 us         1228 us          560
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                          8385 us         2545 us          264
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                       128431 us       121875 us            5
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                      19.9 us         19.5 us        34462
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                      174 us          173 us         4073
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                    5153 us         5156 us          100
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                 119935 us       119792 us            6
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100                                   0.491 us        0.500 us      1000000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                  0.861 us        0.858 us       746667
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                  1.98 us         1.97 us       373333
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                 5.19 us         5.16 us       100000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100                                     0.490 us        0.497 us      1445161
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/1000                                    0.817 us        0.820 us       896000
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/10000                                    2.12 us         2.13 us       344615
-Benchmarks::StaticBoxTree__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100000                                   8.12 us         8.16 us        74667
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                        0.961 us        0.952 us       640000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                         2.20 us         2.20 us       320000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                         3.85 us         3.85 us       186667
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                        7.04 us         7.11 us       112000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                       56.1 us         56.2 us        10000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                       741 us          725 us         1120
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                     8133 us         7812 us           90
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                                  106415 us        96354 us            6
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                         1.81 us         1.73 us       407273
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                         4.79 us         4.74 us       112000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                         9.81 us         8.54 us        64000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                        20.6 us         18.6 us        34462
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                       88.9 us         83.7 us         7467
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                       455 us          433 us         1659
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                     3305 us         3374 us          213
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                                   35065 us        34226 us           21
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                   0.998 us         1.00 us       746667
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                    2.20 us         2.20 us       320000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                    3.81 us         3.84 us       179200
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                   7.08 us         6.98 us        89600
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                  56.1 us         56.2 us        10000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                  731 us          725 us         1120
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                7676 us         7812 us           90
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000             100794 us       101562 us            6
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                    1.65 us         1.57 us       448000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                    4.31 us         4.33 us       165926
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                    9.84 us         9.42 us        89600
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                   20.3 us         19.0 us        56000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                  87.6 us         83.7 us         7467
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                  458 us          426 us         1723
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000                3118 us         3138 us          249
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000              34562 us        33717 us           19
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/100                                                 163 ns          157 ns      4072727
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/1000                                                206 ns          205 ns      3733333
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/10000                                               652 ns          637 ns      1079054
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::PickSearch/100000                                             7589 ns         7673 ns        89600
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/100                                                107 ns          105 ns      6400000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                               133 ns          132 ns      4977778
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                              606 ns          600 ns      1120000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                            5739 ns         5720 ns       112000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                          0.432 us        0.433 us      1659259
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                          3.02 us         3.07 us       224000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                               3.12 us         3.14 us       224000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                               103 us          103 us         6400
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                             5320 us         5312 us          100
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                          206060 us       208333 us            3
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                               3.54 us         3.53 us       194783
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                               101 us          103 us         7467
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                             1625 us         1395 us          448
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                           69274 us        30649 us           26
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                         11.8 us         12.0 us        64000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                         111 us          109 us         5600
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                       4399 us         4492 us          160
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                    462318 us       460938 us            2
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100                                      0.420 us        0.414 us      1659259
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                      1.10 us         1.10 us       640000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/10000                                     5.99 us         6.00 us       112000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100000                                    70.0 us         69.8 us         8960
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100                                        0.423 us        0.414 us      1659259
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/1000                                        1.09 us         1.10 us       640000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/10000                                       6.03 us         6.09 us       100000
-Benchmarks::StaticBoxTree__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100000                                      76.9 us         76.7 us         8960
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                          0.825 us        0.820 us       896000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                           1.99 us         1.97 us       373333
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                           3.05 us         3.07 us       224000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                          6.18 us         6.14 us       112000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                         50.5 us         50.8 us        14452
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                         698 us          711 us         1120
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                       8482 us         8333 us           75
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                                    114892 us       117188 us            6
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10                                           1.53 us         1.44 us       497778
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/20                                           4.31 us         4.19 us       179200
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/50                                           9.31 us         8.37 us        74667
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100                                          18.0 us         14.2 us        37333
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                         99.6 us         80.2 us         8960
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                         564 us          544 us         1120
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                       4161 us         4088 us          172
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                                     43358 us        42708 us           15
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                     0.842 us        0.837 us       896000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                      1.90 us         1.90 us       344615
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                      2.97 us         2.98 us       235789
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                     6.29 us         6.28 us       112000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                    50.0 us         49.7 us        14452
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                    689 us          698 us         1120
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                  7873 us         7986 us           90
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000               105665 us       104167 us            6
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                      1.62 us         1.50 us       407273
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                      3.73 us         3.58 us       165926
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                      9.10 us         8.54 us        89600
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                     17.4 us         16.7 us        37333
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                    99.6 us         92.4 us         8960
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                    522 us          516 us         1000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000                  4214 us         4087 us          195
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000                42665 us        40799 us           18
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/100                                                   154 ns          153 ns      4480000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/1000                                                  163 ns          165 ns      4072727
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/10000                                                 215 ns          210 ns      3200000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::PickSearch/100000                                                303 ns          300 ns      2240000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/100                                                  105 ns          107 ns      7466667
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/1000                                                 113 ns          115 ns      6400000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/10000                                                163 ns          165 ns      4072727
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RangeSearch/100000                                               429 ns          430 ns      1600000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::FrustumCulling/1000                                            0.282 us        0.283 us      2488889
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::FrustumCulling/10000                                            1.02 us        0.984 us       746667
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                                 33.6 us         33.7 us        21333
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                                 674 us          670 us         1120
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                              11995 us        11998 us           56
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                            218088 us       223958 us            3
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                                 34.3 us         34.5 us        20364
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                                 678 us          684 us         1120
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                               4059 us         1945 us          747
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                             67195 us        66761 us           11
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                           13.1 us         13.1 us        56000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                           120 us          120 us         6400
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                         2161 us         2174 us          345
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                       45095 us        44792 us           15
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100                                        0.356 us        0.353 us      1947826
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                       0.413 us        0.414 us      1659259
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                      0.757 us        0.767 us       896000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                      1.49 us         1.50 us       448000
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100                                          0.366 us        0.361 us      1947826
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/1000                                         0.421 us        0.414 us      1659259
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/10000                                        0.836 us        0.816 us       746667
-Benchmarks::StaticBoxTree__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100000                                        2.84 us         2.83 us       248889
+var BENCHMARK_DATA = `---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                                                                       Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Benchmarks::Base::GetNodeID/1000                                                                                            13901 ns        13811 ns        49778 items_per_second=72.4044M/s
+Benchmarks::Base::GetDepthID/1000                                                                                             894 ns          907 ns       896000 items_per_second=1.10277G/s
+Benchmarks::Base::GridSpaceIndexing_GetPointGridID/1000                                                                     10516 ns        10463 ns        74667 items_per_second=95.5738M/s
+Benchmarks::Base::GridSpaceIndexing_GetBoxGridID/1000                                                                       13277 ns        13114 ns        56000 items_per_second=76.2553M/s
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/10                                                      0.569 us        0.572 us      1120000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/20                                                       1.43 us         1.45 us       560000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/50                                                       3.87 us         3.92 us       179200
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/100                                                      8.54 us         8.54 us        89600
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/1000                                                      117 us          117 us         5600
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/10000                                                    2337 us         2352 us          299
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/100000                                                  29140 us        29297 us           24
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, SeqExec>/1000000                                                417305 us       414062 us            2
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/10                                                       1.41 us         1.37 us       560000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/20                                                       3.33 us         3.22 us       213333
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/50                                                       12.5 us         9.49 us       112000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/100                                                      20.0 us         17.4 us        44800
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/1000                                                      143 us          119 us         4978
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/10000                                                    1205 us         1099 us          640
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/100000                                                  16333 us        14404 us           64
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create<3, ParExec>/1000000                                                182638 us       143750 us            5
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                                 0.579 us        0.578 us      1000000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                                  1.47 us         1.46 us       448000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                                  3.89 us         3.92 us       179200
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                                 8.56 us         8.58 us        74667
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                                 118 us          120 us         6400
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                               2195 us         2195 us          299
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                             29414 us        28750 us           25
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000                           414013 us       414062 us            2
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                                  1.42 us         1.37 us       560000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                                  3.33 us         3.05 us       235789
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                                  12.9 us         10.3 us        56000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                                 19.8 us         16.9 us        40727
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                                 145 us          125 us         6400
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                               1027 us          899 us          747
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000                             18059 us        14863 us           41
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000                           180546 us       152344 us            4
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::PickSearch/100                                                               153 ns          153 ns      4480000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::PickSearch/1000                                                              181 ns          180 ns      4072727
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::PickSearch/10000                                                             234 ns          230 ns      2986667
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::PickSearch/100000                                                            352 ns          345 ns      1947826
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RangeSearch/100                                                              104 ns          103 ns      6400000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RangeSearch/1000                                                             128 ns          128 ns      5600000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RangeSearch/10000                                                            192 ns          193 ns      3733333
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RangeSearch/100000                                                           456 ns          455 ns      1544828
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::FrustumCulling/1000                                                        0.487 us        0.487 us      1445161
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::FrustumCulling/10000                                                        1.97 us         1.97 us       373333
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<SeqExec>/100                                             8.46 us         8.54 us        89600
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<SeqExec>/1000                                             287 us          289 us         2489
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<SeqExec>/10000                                           8638 us         8542 us           75
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<SeqExec>/100000                                        234401 us       234375 us            3
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<ParExec>/100                                             8.89 us         8.72 us        89600
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<ParExec>/1000                                             288 us          289 us         2489
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<ParExec>/10000                                           8683 us         8854 us           90
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection<ParExec>/100000                                        233025 us       229167 us            3
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection__WithOtherTree/100                                       8.30 us         8.37 us        89600
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                                      60.3 us         61.4 us        11200
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                                     1862 us         1843 us          373
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                                   28232 us        28125 us           25
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedFirst/100                                                    0.440 us        0.435 us      1544828
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedFirst/1000                                                   0.511 us        0.516 us      1000000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedFirst/10000                                                  0.959 us        0.952 us       640000
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedFirst/100000                                                  1.91 us         1.88 us       373333
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedAll/100                                                      0.396 us        0.390 us      1723077
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedAll/1000                                                     0.453 us        0.450 us      1493333
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedAll/10000                                                    0.892 us        0.900 us       746667
+Benchmarks::StaticBVHBox__MBR_WithoutReverseMap::RayIntersectedAll/100000                                                    3.64 us         3.69 us       194783
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                0.693 us        0.680 us       896000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                 1.68 us         1.67 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                 2.16 us         2.13 us       373333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                3.78 us         3.61 us       194783
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                               39.2 us         39.2 us        17920
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                               706 us          698 us         1120
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                            11113 us        11042 us           75
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                          159700 us       156250 us            4
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10                                 1.51 us         1.41 us       497778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/20                                 3.82 us         3.66 us       213333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/50                                 8.46 us         7.67 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100                                16.5 us         13.7 us        56000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000                               64.2 us         62.5 us        10000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10000                               511 us          500 us         1000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100000                             6942 us         6975 us          112
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                          123280 us       125000 us            6
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10           0.700 us        0.698 us       896000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20            1.67 us         1.61 us       407273
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50            2.13 us         2.13 us       344615
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100           4.44 us         4.30 us       160000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000          51.9 us         51.6 us        10000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000          810 us          785 us          896
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000       12011 us        11963 us           64
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000     182056 us       183594 us            4
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10            1.53 us         1.50 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20            4.02 us         3.76 us       203636
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50            9.10 us         8.02 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100           16.8 us         13.5 us        49778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000          73.1 us         68.0 us         8960
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000          546 us          500 us         1000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000        7760 us         7708 us           75
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000     138798 us       137500 us            5
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/10                                0.857 us        0.858 us       746667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/20                                 2.71 us         2.73 us       263529
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/50                                 4.93 us         5.00 us       100000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/100                                7.84 us         7.85 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/1000                               87.0 us         87.2 us         8960
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/10000                               981 us         1001 us          640
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/100000                            27704 us        27500 us           25
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, SeqExec>/1000000                          164706 us       164062 us            4
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/10                                 1.59 us         1.54 us       497778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/20                                 4.29 us         4.27 us       179200
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/50                                 11.0 us         9.52 us        64000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/100                                18.2 us         13.6 us        44800
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/1000                               98.1 us         92.1 us         7467
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/10000                               643 us          641 us         1000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/100000                            23318 us        23438 us           28
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Create<6, ParExec>/1000000                          109230 us       106771 us            6
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                          0.787 us        0.781 us      1120000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                           1.08 us         1.07 us       640000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                           1.91 us         1.88 us       373333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                          3.29 us         3.22 us       203636
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                         34.2 us         33.7 us        19478
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                         504 us          500 us         1000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                       5767 us         5720 us          112
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                     74578 us        72917 us            9
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                           1.27 us         1.26 us       497778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                           2.06 us         1.97 us       373333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                           4.13 us         3.92 us       179200
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                          8.40 us         6.98 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                         36.1 us         31.5 us        20364
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                         368 us          369 us         1948
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                       4059 us         4047 us          166
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                     55171 us        55398 us           11
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10                              1.21 us         1.22 us       640000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/20                              3.50 us         3.45 us       203636
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/50                              6.92 us         6.98 us       112000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/100                             15.5 us         15.3 us        44800
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                             164 us          164 us         4480
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                           2464 us         2455 us          280
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/10                                     2.14 us         2.15 us       320000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/20                                     3.63 us         3.69 us       194783
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/50                                     9.22 us         9.42 us        74667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/100                                    16.9 us         17.1 us        44800
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/1000                                    196 us          195 us         3446
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertIntoLeaf/10000                                  3314 us         3301 us          213
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertUnique/10                                       2.99 us         3.05 us       235789
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertUnique/20                                       7.60 us         7.67 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertUnique/50                                       19.2 us         19.3 us        37333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertUnique/100                                      44.7 us         44.5 us        15448
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertUnique/1000                                      654 us          656 us         1120
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::InsertUnique/10000                                   10375 us        10417 us           75
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Update/10                                             1.72 us         1.73 us       407273 items_per_second=5.79233M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Update/20                                             3.22 us         3.28 us       224000 items_per_second=6.10043M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Update/50                                             7.69 us         7.67 us        89600 items_per_second=6.51636M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Update/100                                            20.6 us         20.4 us        34462 items_per_second=4.90126M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Update/1000                                            665 us          656 us         1120 items_per_second=1.52511M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::Update/10000                                         10768 us        10795 us           55 items_per_second=926.316k/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::RangeSearch/100                                        153 ns          150 ns      4480000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::RangeSearch/1000                                       243 ns          246 ns      2986667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::RangeSearch/10000                                      428 ns          433 ns      1659259
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::RangeSearch/100000                                     909 ns          900 ns       746667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/100                              0.915 us        0.921 us       746667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/1000                              1.44 us         1.44 us       497778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/10000                             2.65 us         2.68 us       280000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors/100000                            3.98 us         3.92 us       179200
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors<6>/1000                           4.44 us         4.49 us       160000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::GetNearestNeighbors<6>/10000                          18.5 us         18.4 us        37333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::FrustumCulling/1000                                   1.53 us         1.53 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithoutReverseMap::FrustumCulling/10000                                  10.5 us         10.5 us        64000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10                                   0.754 us        0.750 us       896000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/20                                    1.67 us         1.65 us       407273
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/50                                    2.17 us         2.15 us       320000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100                                   3.63 us         3.60 us       186667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000                                  38.4 us         39.3 us        18667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10000                                  707 us          698 us          896
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100000                               10052 us        10010 us           64
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000000                             171816 us       171875 us            4
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10                                    1.53 us         1.45 us       560000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/20                                    4.05 us         3.99 us       172308
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/50                                    8.65 us         7.32 us        74667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100                                   14.7 us         13.2 us        49778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000                                  66.1 us         64.2 us        11200
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10000                                  528 us          502 us         1120
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100000                                6987 us         7118 us           90
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000000                             133974 us       132812 us            6
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10              0.757 us        0.767 us       896000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20               1.66 us         1.67 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50               2.20 us         2.15 us       320000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100              4.29 us         4.33 us       165926
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000             50.1 us         50.0 us        10000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000             807 us          802 us          896
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000          11581 us        11475 us           64
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000        188152 us       183594 us            4
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10               1.54 us         1.50 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20               3.99 us         3.99 us       172308
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50               8.81 us         8.37 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100              18.3 us         13.0 us        40727
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000             72.2 us         68.0 us         8960
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000             571 us          558 us         1120
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000           7849 us         7500 us           75
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000        142008 us       140625 us            5
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/10                                   0.882 us        0.889 us       896000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/20                                    2.74 us         2.79 us       263529
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/50                                    4.94 us         5.00 us       100000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/100                                   7.76 us         7.85 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/1000                                  87.5 us         87.9 us         7467
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/10000                                 1018 us         1025 us          747
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/100000                               26605 us        26442 us           26
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, SeqExec>/1000000                             193404 us       191406 us            4
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/10                                    1.67 us         1.63 us       373333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/20                                    5.23 us         5.31 us       100000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/50                                    11.3 us         10.7 us        64000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/100                                   18.6 us         16.3 us        49778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/1000                                  99.2 us         99.4 us         8960
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/10000                                  671 us          670 us         1120
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/100000                               23929 us        23958 us           30
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Create<6, ParExec>/1000000                             122838 us       119792 us            6
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                             0.841 us        0.837 us       746667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                              1.15 us         1.15 us       640000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                              2.02 us         1.99 us       344615
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                             3.52 us         3.53 us       203636
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                            35.9 us         36.1 us        20364
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                            526 us          531 us         1000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                          6034 us         5999 us          112
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                        79758 us        79861 us            9
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                              1.39 us         1.30 us       746667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                              2.12 us         2.04 us       344615
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                              4.48 us         4.30 us       160000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                             9.65 us         7.74 us        74667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                            37.7 us         30.8 us        21333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                            399 us          392 us         1792
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                          4404 us         4160 us          154
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                        62978 us        60764 us            9
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10                                 1.52 us         1.50 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/20                                 3.82 us         3.85 us       186667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/50                                 7.33 us         7.32 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/100                                16.2 us         16.4 us        44800
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/1000                                172 us          173 us         4073
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10000                              2629 us         2604 us          264
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/10                                        2.50 us         2.51 us       298667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/20                                        4.11 us         4.17 us       172308
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/50                                        10.4 us         10.3 us        64000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/100                                       17.9 us         18.0 us        40727
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/1000                                       205 us          204 us         3446
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertIntoLeaf/10000                                     3295 us         3301 us          213
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertUnique/10                                          3.28 us         3.30 us       203636
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertUnique/20                                          8.01 us         8.02 us        89600
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertUnique/50                                          19.6 us         19.7 us        37333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertUnique/100                                         45.3 us         44.5 us        15448
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertUnique/1000                                         660 us          656 us         1120
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::InsertUnique/10000                                      10473 us        10498 us           64
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Update/10                                                1.61 us         1.64 us       448000 items_per_second=6.10043M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Update/20                                                3.18 us         3.21 us       224000 items_per_second=6.23304M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Update/50                                                8.90 us         8.89 us        89600 items_per_second=5.62196M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Update/100                                               22.4 us         22.5 us        29867 items_per_second=4.44532M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Update/1000                                               687 us          684 us         1120 items_per_second=1.46286M/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::Update/10000                                            14254 us        14482 us           41 items_per_second=690.526k/s
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::RangeSearch/100                                           153 ns          154 ns      4977778
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::RangeSearch/1000                                          245 ns          240 ns      2800000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::RangeSearch/10000                                         423 ns          420 ns      1600000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::RangeSearch/100000                                        907 ns          900 ns       746667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/100                                 0.938 us        0.900 us       746667
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/1000                                 1.45 us         1.43 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/10000                                2.67 us         2.67 us       263529
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::GetNearestNeighbors/100000                               4.01 us         4.05 us       165926
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::GetNearestNeighbors<6>/1000                              4.46 us         4.45 us       154483
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::GetNearestNeighbors<6>/10000                             18.5 us         18.8 us        37333
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::FrustumCulling/1000                                      1.53 us         1.53 us       448000
+Benchmarks::DynamicOrthoTreePoint__MinPoint_Regular_WithReverseMap::FrustumCulling/10000                                     10.4 us         10.3 us        74667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                     0.635 us        0.628 us       896000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                      1.62 us         1.61 us       407273
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                      2.19 us         2.20 us       320000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                     3.90 us         3.85 us       186667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                    41.9 us         41.4 us        16593
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                    802 us          802 us          896
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                 13095 us        13114 us           56
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                               218923 us       218750 us            3
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                      1.42 us         1.35 us       497778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                      3.61 us         3.21 us       194783
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                      9.08 us         8.37 us        89600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                     16.6 us         15.0 us        40727
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                    66.7 us         65.6 us        11200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                    585 us          586 us         1120
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                  8238 us         8333 us           90
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                               164497 us       164062 us            4
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                0.631 us        0.641 us      1000000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                 1.63 us         1.64 us       448000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                 2.21 us         2.20 us       298667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                4.46 us         4.35 us       154483
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000               54.4 us         54.4 us        11200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000               886 us          889 us          896
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000            12323 us        12207 us           64
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000          239094 us       239583 us            3
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                 1.38 us         1.26 us       560000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                 3.28 us         3.30 us       213333
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                 8.35 us         7.50 us        89600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                17.1 us         13.3 us        44800
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000               73.2 us         64.5 us         8960
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000               602 us          600 us         1120
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000             8052 us         7812 us           90
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000          175363 us       171875 us            4
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10                                     0.786 us        0.785 us       896000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/20                                      2.89 us         2.92 us       235789
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/50                                      5.40 us         5.30 us       112000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100                                     8.63 us         8.58 us        74667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000                                    93.8 us         94.2 us         7467
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10000                                   1115 us         1074 us          640
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100000                                 32704 us        32812 us           20
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000000                               238600 us       239583 us            3
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10                                      1.48 us         1.40 us       448000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/20                                      5.48 us         5.41 us       144516
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/50                                      11.7 us         11.0 us        64000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100                                     19.1 us         17.6 us        40727
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000                                     113 us          103 us         5600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10000                                    805 us          732 us          896
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100000                                 25127 us        25240 us           26
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000000                               151605 us       148438 us            4
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                               0.807 us        0.823 us      1120000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                                1.16 us         1.14 us       560000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                                2.03 us         2.05 us       320000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                               3.57 us         3.53 us       194783
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                              37.1 us         37.7 us        19478
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                              569 us          558 us         1120
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                            7058 us         7118 us           90
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                         105975 us       104911 us            7
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                                1.72 us         1.69 us       407273
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                                2.50 us         2.34 us       280000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                                5.49 us         4.71 us       149333
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                               10.9 us         8.16 us        74667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                              47.1 us         43.6 us        17920
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                              441 us          420 us         1600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                            5166 us         5312 us          100
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                          80960 us        79861 us            9
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10                                   1.05 us         1.05 us       746667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/20                                   3.29 us         3.22 us       203636
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/50                                   6.50 us         6.45 us        89600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/100                                  15.1 us         15.0 us        44800
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                                  177 us          173 us         4073
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                                2554 us         2567 us          280
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/10                                          2.27 us         2.20 us       320000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/20                                          3.93 us         3.92 us       179200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/50                                          10.2 us         10.3 us        74667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/100                                         19.0 us         19.0 us        34462
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/1000                                         289 us          289 us         2489
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertIntoLeaf/10000                                       4305 us         4297 us          160
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertUnique/10                                            2.32 us         2.35 us       298667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertUnique/20                                            6.28 us         6.28 us       112000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertUnique/50                                            16.4 us         16.1 us        40727
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertUnique/100                                           37.7 us         37.7 us        18667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertUnique/1000                                           492 us          497 us         1445
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::InsertUnique/10000                                         7652 us         7673 us          112
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Update/10                                                  1.65 us         1.67 us       448000 items_per_second=5.97333M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Update/20                                                  3.13 us         3.18 us       235789 items_per_second=6.28771M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Update/50                                                  7.93 us         8.02 us        89600 items_per_second=6.23304M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Update/100                                                 20.3 us         20.0 us        32000 items_per_second=4.99512M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Update/1000                                                 662 us          656 us         1120 items_per_second=1.52511M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::Update/10000                                              12249 us        12087 us           53 items_per_second=827.317k/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/100                                             139 ns          141 ns      4977778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                            202 ns          204 ns      3446154
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                           344 ns          345 ns      2036364
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                          701 ns          680 ns       896000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100                                   0.871 us        0.858 us       746667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/1000                                   1.34 us         1.35 us       497778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/10000                                  2.22 us         2.25 us       320000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100000                                 3.61 us         3.58 us       165926
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/1000                                3.73 us         3.77 us       186667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/10000                               15.8 us         16.0 us        44800
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                        1.37 us         1.37 us       560000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                       9.77 us         9.77 us        64000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10                                        0.681 us        0.680 us       896000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/20                                         1.72 us         1.73 us       407273
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/50                                         2.22 us         2.25 us       320000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100                                        3.78 us         3.75 us       179200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000                                       41.1 us         41.7 us        17231
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10000                                       807 us          802 us          896
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100000                                    12098 us        12207 us           64
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000000                                  244641 us       244792 us            3
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/10                                         1.49 us         1.46 us       448000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/20                                         3.47 us         3.38 us       203636
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/50                                         8.67 us         7.53 us       112000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/100                                        16.5 us         14.5 us        56000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000                                       67.9 us         65.6 us        11200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/10000                                       610 us          586 us         1120
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/100000                                     7877 us         7986 us           90
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000000                                  198706 us       199219 us            4
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                   0.703 us        0.698 us       896000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                    1.68 us         1.65 us       407273
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                    2.29 us         2.29 us       320000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                   4.48 us         4.45 us       154483
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                  53.2 us         53.0 us        11200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                  894 us          907 us          896
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000               12951 us        13114 us           56
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000             253598 us       255208 us            3
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                    1.50 us         1.38 us       497778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                    3.45 us         3.45 us       235789
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                    9.04 us         8.89 us        89600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                   17.1 us         13.8 us        49778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                  75.0 us         71.1 us        11200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                  625 us          610 us          896
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000               11049 us        11042 us           75
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000             201487 us       195312 us            4
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10                                        0.837 us        0.837 us       896000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/20                                         2.94 us         2.85 us       235789
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/50                                         5.42 us         5.62 us       100000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100                                        8.84 us         8.79 us        74667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000                                       98.8 us         98.3 us         7467
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10000                                      1248 us         1256 us          560
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100000                                    41678 us        42279 us           17
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000000                                  315474 us       312500 us            2
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/10                                         1.68 us         1.65 us       560000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/20                                         5.31 us         5.16 us       100000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/50                                         11.9 us         11.5 us        64000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/100                                        19.2 us         16.5 us        40727
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000                                        114 us          112 us         6400
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/10000                                       817 us          785 us          896
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/100000                                    36341 us        36184 us           19
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000000                                  170143 us       167969 us            4
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                  0.881 us        0.879 us       746667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                   1.23 us         1.25 us       640000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                   2.20 us         2.20 us       320000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                  3.80 us         3.66 us       179200
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                 39.4 us         39.2 us        17920
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                 578 us          572 us         1120
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                               7276 us         7115 us          112
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                            104333 us       104167 us            6
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                                   1.80 us         1.76 us       373333
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                                   2.64 us         2.40 us       280000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                                   5.70 us         5.62 us       100000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                                  9.91 us         8.89 us        89600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                 51.4 us         47.1 us        14933
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                 471 us          465 us         1545
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                               5583 us         5625 us          100
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                             88392 us        88542 us            9
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10                                      1.31 us         1.32 us       497778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__RebalanceMode/20                                      3.72 us         3.77 us       194783
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__RebalanceMode/50                                      7.19 us         7.15 us        89600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__RebalanceMode/100                                     16.4 us         16.1 us        40727
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__RebalanceMode/1000                                     178 us          176 us         4073
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10000                                   2668 us         2723 us          264
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertIntoLeaf/10                                             2.64 us         2.61 us       263529
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertIntoLeaf/20                                             4.47 us         4.55 us       154483
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertIntoLeaf/50                                             10.9 us         10.7 us        64000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertIntoLeaf/100                                            20.2 us         20.5 us        37333
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertIntoLeaf/1000                                            300 us          305 us         2358
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertIntoLeaf/10000                                          4420 us         4395 us          160
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertUnique/10                                               2.60 us         2.61 us       263529
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertUnique/20                                               6.73 us         6.63 us        89600
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertUnique/50                                               17.2 us         17.3 us        40727
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertUnique/100                                              40.4 us         40.1 us        17920
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertUnique/1000                                              507 us          500 us         1000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::InsertUnique/10000                                            7807 us         7812 us           90
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Update/10                                                     1.48 us         1.46 us       448000 items_per_second=6.82667M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Update/20                                                     2.92 us         2.92 us       235789 items_per_second=6.85932M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Update/50                                                     7.95 us         8.02 us        89600 items_per_second=6.23304M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Update/100                                                    20.6 us         20.4 us        34462 items_per_second=4.90126M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Update/1000                                                    659 us          670 us         1120 items_per_second=1.49333M/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::Update/10000                                                 14201 us        14172 us           43 items_per_second=705.641k/s
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/100                                                138 ns          135 ns      4977778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/1000                                               202 ns          199 ns      3446154
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/10000                                              334 ns          330 ns      2036364
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/100000                                             687 ns          680 ns       896000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/100                                      0.869 us        0.858 us       746667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/1000                                      1.30 us         1.31 us       560000
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/10000                                     2.25 us         2.25 us       298667
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/100000                                    3.62 us         3.61 us       194783
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/1000                                   3.71 us         3.69 us       194783
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/10000                                  15.7 us         15.7 us        44800
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::FrustumCulling/1000                                           1.38 us         1.38 us       497778
+Benchmarks::DynamicOrthoTreePoint__MBR_Regular_WithReverseMap::FrustumCulling/10000                                          10.1 us         9.77 us        64000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                      0.734 us        0.732 us       746667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                       1.88 us         1.84 us       373333
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                       2.37 us         2.34 us       280000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                      4.27 us         4.24 us       165926
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                     40.9 us         40.8 us        17231
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                     659 us          663 us          896
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                   8288 us         8333 us           90
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                                105112 us       106771 us            6
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                       1.57 us         1.50 us       448000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                       3.77 us         3.68 us       186667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                       8.31 us         7.85 us        89600
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                      15.0 us         13.8 us        49778
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                     90.3 us         83.7 us         8960
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                     569 us          547 us         1000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                   5109 us         4957 us          145
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                                 53216 us        51562 us           10
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                 0.746 us        0.750 us       896000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                  1.93 us         1.90 us       344615
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                  2.48 us         2.46 us       280000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                 4.60 us         4.59 us       160000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                39.1 us         39.2 us        17920
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                630 us          628 us          896
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000              8414 us         8507 us           90
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000           107227 us       107143 us            7
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                  1.53 us         1.46 us       448000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                  4.35 us         4.19 us       179200
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                  8.54 us         7.11 us        74667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                 15.9 us         14.1 us        49778
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                89.9 us         79.5 us        11200
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                541 us          531 us         1000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000              5350 us         5441 us          112
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000            57096 us        56818 us           11
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10                                      0.873 us        0.889 us       896000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/20                                       3.09 us         3.07 us       224000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/50                                       5.79 us         5.58 us       112000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100                                      9.30 us         9.21 us        74667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000                                     89.0 us         87.9 us         7467
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/10000                                     956 us          962 us          747
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/100000                                  15903 us        16319 us           45
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, SeqExec>/1000000                                149791 us       152344 us            4
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10                                       1.61 us         1.53 us       448000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/20                                       5.23 us         4.88 us       112000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/50                                       11.0 us         10.9 us        56000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100                                      26.9 us         21.4 us        29867
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000                                      124 us          112 us         6400
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/10000                                     631 us          593 us          896
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/100000                                   9650 us         9583 us           75
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::Create<6, ParExec>/1000000                                 58463 us        53125 us           10
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/100                                              122 ns          123 ns      5600000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                             162 ns          164 ns      4480000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                            259 ns          261 ns      2635294
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                           516 ns          516 ns      1000000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100                                    0.831 us        0.837 us       746667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/1000                                    1.17 us         1.17 us       640000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/10000                                   1.77 us         1.76 us       373333
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors/100000                                  2.97 us         2.92 us       235789
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/1000                                 2.95 us         2.85 us       235789
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::GetNearestNeighbors<6>/10000                                11.2 us         11.2 us        64000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                         1.12 us         1.12 us       640000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                        7.07 us         7.15 us        89600
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10                                         0.742 us        0.732 us       896000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/20                                          1.87 us         1.92 us       407273
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/50                                          2.38 us         2.41 us       298667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100                                         4.25 us         4.24 us       165926
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000                                        41.2 us         40.5 us        16593
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10000                                        661 us          670 us         1120
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100000                                      8611 us         8542 us           75
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000000                                   106122 us       104167 us            6
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/10                                          1.55 us         1.40 us       448000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/20                                          4.06 us         4.01 us       179200
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/50                                          8.67 us         8.37 us        89600
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/100                                         15.2 us         14.8 us        56000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000                                        89.4 us         81.2 us        10000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/10000                                        567 us          530 us         1120
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/100000                                      5142 us         5156 us          100
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000000                                    52866 us        51136 us           11
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                    0.740 us        0.732 us       896000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                     1.91 us         1.93 us       373333
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                     2.50 us         2.51 us       280000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                    4.51 us         4.55 us       154483
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                   39.3 us         39.2 us        17920
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                   631 us          628 us         1120
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                 8319 us         8333 us           90
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000              108509 us       109375 us            6
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                     1.56 us         1.51 us       497778
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                     4.22 us         4.17 us       194783
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                     8.47 us         8.16 us        74667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                    15.8 us         13.8 us        49778
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                   88.3 us         85.8 us         7467
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                   526 us          500 us         1000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000                 5181 us         5000 us          100
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000               53012 us        53125 us           10
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10                                         0.852 us        0.837 us       746667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/20                                          3.08 us         3.07 us       224000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/50                                          5.75 us         5.72 us       112000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100                                         9.31 us         9.00 us        74667
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000                                        88.7 us         87.9 us         7467
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/10000                                        952 us          941 us          747
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/100000                                     15870 us        15625 us           45
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, SeqExec>/1000000                                   150042 us       152344 us            4
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/10                                          1.63 us         1.54 us       497778
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/20                                          5.37 us         5.31 us       100000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/50                                          10.9 us         11.0 us        64000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/100                                         24.8 us         22.2 us        34462
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000                                         124 us          113 us         7467
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/10000                                        625 us          625 us         1000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/100000                                      9655 us         9521 us           64
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::Create<6, ParExec>/1000000                                    58154 us        56818 us           11
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/100                                                 122 ns          120 ns      5600000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/1000                                                161 ns          161 ns      4072727
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/10000                                               258 ns          261 ns      2635294
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::RangeSearch/100000                                              518 ns          516 ns      1000000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/100                                       0.824 us        0.820 us       896000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/1000                                       1.17 us         1.17 us       560000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/10000                                      1.76 us         1.73 us       407273
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors/100000                                     2.95 us         2.92 us       235789
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/1000                                    2.92 us         2.92 us       235789
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::GetNearestNeighbors<6>/10000                                   11.1 us         10.6 us        56000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::FrustumCulling/1000                                            1.11 us         1.09 us       560000
+Benchmarks::StaticOrthoTreePoint__MBR_Regular_WithReverseMap::FrustumCulling/10000                                           7.06 us         6.98 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                  0.919 us        0.900 us       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                   1.73 us         1.73 us       407273
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                   3.19 us         3.21 us       224000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                  6.10 us         6.09 us       100000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                 54.3 us         54.4 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                 702 us          698 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                               7782 us         7812 us           90
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                             92170 us        91518 us            7
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10                                   1.62 us         1.57 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/20                                   3.07 us         2.92 us       235789
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/50                                   8.91 us         8.54 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100                                  16.0 us         12.7 us        64000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                 63.6 us         57.2 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                 346 us          330 us         2036
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100000                               3189 us         3209 us          224
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                             39795 us        40441 us           17
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10             0.909 us        0.900 us       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20              1.72 us         1.73 us       407273
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50              3.89 us         3.93 us       186667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100             8.28 us         8.20 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000            64.1 us         64.2 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000            788 us          767 us          896
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000          8583 us         8542 us           75
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000        99220 us        98214 us            7
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10              1.60 us         1.50 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20              3.17 us         2.85 us       235789
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50              8.89 us         8.16 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100             17.5 us         14.8 us        49778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000            67.3 us         65.6 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000            368 us          366 us         2133
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000          3497 us         3448 us          213
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000        40683 us        40441 us           17
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                            0.945 us        0.942 us       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                             1.42 us         1.41 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                             2.72 us         2.79 us       263529
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                            4.99 us         5.00 us       100000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                           47.1 us         46.5 us        14452
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                           633 us          628 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                         7247 us         7292 us           90
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                       81250 us        79861 us            9
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                             1.69 us         1.61 us       407273
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                             2.87 us         2.68 us       280000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                             5.24 us         4.71 us       149333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                            9.05 us         5.93 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                           37.9 us         31.8 us        18667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                           370 us          369 us         1948
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                         4202 us         4236 us          166
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                       46801 us        46875 us           11
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/10                                        0.348 us        0.345 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/20                                        0.347 us        0.345 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/50                                        0.349 us        0.345 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/100                                       0.348 us        0.353 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/1000                                      0.348 us        0.353 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::InsertToLeaf/10000                                     0.348 us        0.353 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10                                1.24 us         1.26 us       560000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/20                                3.24 us         3.22 us       213333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/50                                9.82 us         9.84 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/100                               15.3 us         15.0 us        44800
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                               143 us          144 us         4978
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                             1495 us         1475 us          498
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Update/10                                               1.99 us         2.01 us       373333 items_per_second=4.97777M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Update/20                                               3.67 us         3.68 us       186667 items_per_second=5.43031M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Update/50                                               8.36 us         8.37 us        74667 items_per_second=5.97336M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Update/100                                              16.9 us         16.9 us        40727 items_per_second=5.92393M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Update/1000                                              258 us          255 us         2635 items_per_second=3.92186M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Update/10000                                            6525 us         6424 us           90 items_per_second=1.55676M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/100                                           197 ns          197 ns      3733333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/1000                                          235 ns          235 ns      2986667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/10000                                         778 ns          767 ns       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/100000                                       7730 ns         7743 ns        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/100                                          156 ns          153 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/1000                                         192 ns          193 ns      3733333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/10000                                        735 ns          715 ns       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/100000                                      6077 ns         6138 ns       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::FrustumCulling/1000                                    0.546 us        0.530 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::FrustumCulling/10000                                    3.43 us         3.45 us       203636
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                         3.62 us         3.69 us       194783
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                         129 us          128 us         5600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                       5814 us         5859 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                    215163 us       213542 us            3
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                         3.87 us         3.84 us       179200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                         131 us          131 us         5600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                       2060 us          672 us         1000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                     80047 us        54688 us           10
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                   22.7 us         22.9 us        32000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                   180 us          176 us         4073
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                 6025 us         6094 us          100
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000              515671 us       515625 us            1
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100                                0.599 us        0.600 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                1.42 us         1.41 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/10000                               6.91 us         6.80 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100000                              72.2 us         71.5 us         8960
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100                                  0.549 us        0.544 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/1000                                  1.38 us         1.35 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/10000                                 6.88 us         6.98 us       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100000                                80.7 us         83.7 us         7467
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                    0.758 us        0.767 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                     1.46 us         1.48 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                     2.46 us         2.46 us       298667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                    5.14 us         5.02 us       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                   47.8 us         48.1 us        14933
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                   696 us          698 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                 8908 us         8958 us           75
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                              122924 us       122396 us            6
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10                                     1.44 us         1.42 us       560000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/20                                     2.91 us         2.72 us       224000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/50                                     8.60 us         8.37 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100                                    17.6 us         13.1 us        56000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                   71.2 us         64.5 us         8960
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                   447 us          444 us         1723
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                 4914 us         5022 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                               74939 us        74653 us            9
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10               0.754 us        0.750 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                1.40 us         1.38 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                3.06 us         3.00 us       224000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100               7.25 us         7.32 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000              57.7 us         57.2 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000              790 us          785 us          896
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000            9826 us        10000 us           75
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000         131756 us       132812 us            6
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                1.46 us         1.48 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                3.02 us         2.92 us       235789
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                8.93 us         8.37 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100               19.6 us         16.3 us        37333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000              75.2 us         73.2 us         8960
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000              476 us          474 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000            5427 us         5312 us          100
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000          78497 us        74653 us            9
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                              0.817 us        0.820 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                               1.16 us         1.17 us       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                               2.09 us         2.10 us       320000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                              3.65 us         3.60 us       186667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                             35.7 us         35.3 us        19478
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                             577 us          578 us         1000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                           6816 us         6836 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                         73897 us        73864 us           11
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                               1.49 us         1.40 us       560000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                               2.17 us         1.77 us       344615
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                               4.26 us         4.14 us       165926
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                              10.2 us         8.09 us       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                             34.7 us         31.5 us        21333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                             437 us          420 us         1600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                           5025 us         5065 us          145
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                         57114 us        57292 us            9
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/10                                          0.351 us        0.345 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/20                                          0.359 us        0.360 us      1866667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/50                                          0.360 us        0.361 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/100                                         0.352 us        0.353 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/1000                                        0.351 us        0.353 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::InsertToLeaf/10000                                       0.344 us        0.345 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/10                                  1.16 us         1.14 us       560000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/20                                  2.85 us         2.83 us       248889
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/50                                  8.34 us         8.37 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/100                                 15.3 us         15.4 us        49778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/1000                                 144 us          144 us         4978
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Insert__RebalanceMode/10000                               1930 us         1927 us          373
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Update/10                                                 1.69 us         1.69 us       407273 items_per_second=5.92397M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Update/20                                                 3.23 us         3.28 us       224000 items_per_second=6.10043M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Update/50                                                 8.07 us         7.95 us        74667 items_per_second=6.28775M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Update/100                                                14.3 us         14.4 us        49778 items_per_second=6.92563M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Update/1000                                                154 us          153 us         4480 items_per_second=6.51636M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Update/10000                                              2786 us         2781 us          236 items_per_second=3.59619M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/100                                             238 ns          241 ns      2986667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/1000                                            292 ns          295 ns      2488889
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/10000                                           545 ns          544 ns      1120000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/100000                                          987 ns          984 ns       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/100                                            210 ns          209 ns      3446154
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/1000                                           306 ns          300 ns      2240000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/10000                                         1020 ns         1025 ns       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/100000                                       10138 ns        10045 ns        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::FrustumCulling/1000                                       1.12 us         1.12 us       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::FrustumCulling/10000                                      3.77 us         3.85 us       194783
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                           49.9 us         50.0 us        10000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                          1407 us         1412 us          498
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                        27250 us        26875 us           25
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                      471909 us       468750 us            2
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                           50.8 us         51.6 us        10000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                          1424 us         1412 us          498
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                         9941 us         3815 us          172
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                      132595 us        93750 us            9
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                     32.9 us         33.0 us        21333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                     247 us          246 us         2800
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                   6596 us         6557 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                148713 us       150000 us            5
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100                                  0.929 us        0.921 us       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                  1.33 us         1.34 us       560000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                 3.18 us         3.22 us       213333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                7.92 us         8.02 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100                                    0.663 us        0.645 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/1000                                    1.02 us         1.03 us       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/10000                                   2.64 us         2.67 us       263529
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100000                                  10.3 us         10.5 us        74667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                       0.842 us        0.837 us       746667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                        1.70 us         1.69 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                        3.21 us         3.28 us       224000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                       6.28 us         6.28 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                      57.2 us         57.2 us        11200
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                      797 us          795 us          747
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                    8513 us         8507 us           90
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                                 122477 us       122396 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                        1.72 us         1.53 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                        3.55 us         3.15 us       213333
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                        12.7 us         10.0 us        64000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                       16.3 us         11.2 us        44800
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                      68.5 us         62.5 us        10000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                      413 us          396 us         1659
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                    3687 us         3760 us          187
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                                  65335 us        64236 us            9
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                  0.855 us        0.858 us       746667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                   1.78 us         1.76 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                   4.00 us         3.92 us       179200
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                  8.59 us         8.72 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                 68.3 us         68.0 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                 845 us          854 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000               9138 us         9167 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000            129825 us       130208 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                   1.67 us         1.54 us       497778
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                   3.16 us         3.00 us       224000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                   9.03 us         8.79 us        74667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                  18.3 us         16.9 us        40727
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                 71.4 us         71.5 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                 408 us          410 us         1792
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000               3680 us         3593 us          187
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000             63906 us        64236 us            9
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                                 0.989 us        0.977 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                                  1.46 us         1.43 us       448000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                                  2.82 us         2.83 us       248889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                                 5.25 us         5.16 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                                51.5 us         51.6 us        10000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                                683 us          670 us         1120
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                              8737 us         8750 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                           111800 us       111979 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                                  1.95 us         1.80 us       373333
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                                  3.05 us         2.58 us       224000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                                  6.74 us         6.00 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                                 10.7 us         9.94 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                                50.9 us         45.9 us        16000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                                470 us          461 us         1659
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                              6139 us         6250 us          100
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                            90629 us        91518 us            7
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::InsertToLeaf/10                                             0.291 us        0.295 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::InsertToLeaf/20                                             0.288 us        0.289 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::InsertToLeaf/50                                             0.302 us        0.310 us      1866667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::InsertToLeaf/100                                            0.360 us        0.360 us      1866667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::InsertToLeaf/1000                                           0.345 us        0.353 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::InsertToLeaf/10000                                          0.449 us        0.410 us      1792000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10                                     1.44 us         1.39 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/20                                     6.24 us         5.00 us       100000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/50                                     14.1 us         12.6 us        44800
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/100                                    19.5 us         18.8 us        40727
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/1000                                    198 us          193 us         3733
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Insert__RebalanceMode/10000                                  1774 us         1766 us          407
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Update/10                                                    1.92 us         1.86 us       344615 items_per_second=5.37936M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Update/20                                                    3.65 us         3.66 us       179200 items_per_second=5.46133M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Update/50                                                    8.21 us         8.20 us        89600 items_per_second=6.10043M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Update/100                                                   17.2 us         17.3 us        40727 items_per_second=5.79228M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Update/1000                                                   293 us          285 us         1867 items_per_second=3.51435M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::Update/10000                                                 8266 us         8092 us          112 items_per_second=1.23586M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/100                                                165 ns          165 ns      4072727
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/1000                                               192 ns          193 ns      3733333
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/10000                                              716 ns          715 ns       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/100000                                            7936 ns         7673 ns        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/100                                               130 ns          128 ns      5600000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                              155 ns          153 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                             670 ns          670 ns      1120000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                           6140 ns         6138 ns       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                         0.448 us        0.439 us      1600000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                         3.11 us         3.07 us       224000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                              3.43 us         3.44 us       213333
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                              117 us          120 us         6400
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                            5567 us         5556 us           90
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                         222735 us       223958 us            3
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                              3.94 us         4.02 us       186667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                              118 us          114 us         5600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                            1895 us          600 us         1120
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                          79822 us        56250 us           10
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                        12.3 us         12.3 us        56000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                        120 us          120 us         5600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                      4590 us         4590 us          160
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                   502636 us       500000 us            1
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100                                     0.428 us        0.433 us      1659259
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                     1.14 us         1.14 us       560000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/10000                                    6.37 us         6.42 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100000                                   72.5 us         71.1 us         7467
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100                                       0.459 us        0.469 us      1600000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/1000                                       1.13 us         1.15 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/10000                                      6.33 us         6.42 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100000                                     81.3 us         80.2 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                         0.704 us        0.711 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                          1.41 us         1.41 us       497778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                          2.46 us         2.46 us       298667
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                         5.41 us         5.31 us       100000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                        51.6 us         50.2 us        11200
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                        780 us          785 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                     12340 us        12277 us           56
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                                   190940 us       191406 us            4
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10                                          1.41 us         1.37 us       560000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/20                                          2.79 us         2.65 us       235789
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/50                                          8.59 us         7.85 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100                                         18.3 us         13.8 us        49778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                        79.7 us         71.5 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                        521 us          500 us         1000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                      7971 us         7917 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                                   131426 us       132812 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                    0.731 us        0.725 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                     1.41 us         1.43 us       448000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                     3.22 us         3.15 us       213333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                    7.60 us         7.67 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                   62.1 us         62.8 us        11200
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                   863 us          854 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                13925 us        13889 us           45
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000              209559 us       208333 us            3
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                     1.44 us         1.42 us       560000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                     2.93 us         2.76 us       248889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                     9.95 us         9.77 us        56000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                    19.2 us         15.9 us        37333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                   82.2 us         75.3 us        11200
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                   536 us          530 us         1120
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000                 8462 us         8542 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000              144461 us       143750 us            5
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10                                   0.871 us        0.858 us       746667
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/20                                    1.29 us         1.23 us       560000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/50                                    2.27 us         2.30 us       298667
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100                                   3.96 us         3.90 us       172308
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000                                  39.1 us         39.2 us        17920
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/10000                                  628 us          628 us         1120
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/100000                                9437 us         9583 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, SeqExec>/1000000                             115521 us       114583 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10                                    1.77 us         1.65 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/20                                    2.68 us         2.61 us       203636
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/50                                    5.83 us         5.44 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100                                   10.3 us         8.54 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000                                  49.4 us         43.0 us        16000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/10000                                  506 us          500 us         1000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/100000                                6873 us         6836 us          112
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__Bulk<3, ParExec>/1000000                              94641 us        91518 us            7
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::InsertToLeaf/10                                               0.299 us        0.292 us      2357895
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::InsertToLeaf/20                                               0.291 us        0.289 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::InsertToLeaf/50                                               0.289 us        0.292 us      2357895
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::InsertToLeaf/100                                              0.291 us        0.295 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::InsertToLeaf/1000                                             0.289 us        0.289 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::InsertToLeaf/10000                                            0.291 us        0.292 us      2357895
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/10                                      0.930 us        0.903 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/20                                       2.63 us         2.61 us       263529
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/50                                       8.13 us         8.20 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/100                                      15.1 us         15.4 us        49778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/1000                                      144 us          144 us         4978
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Insert__RebalanceMode/10000                                    2051 us         2038 us          345
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Update/10                                                      1.57 us         1.60 us       497778 items_per_second=6.24663M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Update/20                                                      3.02 us         3.05 us       235789 items_per_second=6.56109M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Update/50                                                      7.54 us         7.67 us        89600 items_per_second=6.51636M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Update/100                                                     13.2 us         13.2 us        49778 items_per_second=7.58522M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Update/1000                                                     149 us          148 us         4978 items_per_second=6.77855M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::Update/10000                                                   2823 us         2811 us          239 items_per_second=3.55721M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/100                                                  156 ns          157 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/1000                                                 169 ns          169 ns      4072727
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/10000                                                233 ns          230 ns      2986667
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/100000                                               359 ns          361 ns      1947826
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/100                                                 141 ns          140 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/1000                                                139 ns          141 ns      4977778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/10000                                               203 ns          205 ns      3200000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/100000                                              570 ns          558 ns       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::FrustumCulling/1000                                           0.321 us        0.322 us      2133333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::FrustumCulling/10000                                           1.26 us         1.28 us       560000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                                33.7 us         33.0 us        20364
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                                691 us          680 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                             11968 us        11998 us           56
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                           233773 us       229167 us            3
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                                34.7 us         34.5 us        20364
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                                685 us          680 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                              4610 us         1730 us          560
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                            71898 us        50000 us           10
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                          13.4 us         12.9 us        49778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                          125 us          126 us         5600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                        2203 us         2197 us          320
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                      69298 us        69602 us           11
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100                                       0.348 us        0.345 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                      0.418 us        0.414 us      1659259
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                     0.830 us        0.837 us       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                     1.84 us         1.84 us       373333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100                                         0.375 us        0.377 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/1000                                        0.438 us        0.433 us      1659259
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/10000                                       0.876 us        0.889 us       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100000                                       3.53 us         3.53 us       203636
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10                                     0.953 us        0.963 us       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/20                                      1.77 us         1.76 us       373333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/50                                      3.21 us         3.15 us       213333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100                                     6.09 us         6.14 us       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000                                    54.3 us         54.7 us        10000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/10000                                    718 us          711 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/100000                                  8581 us         8542 us           75
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, SeqExec>/1000000                               109732 us       109375 us            6
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10                                      1.83 us         1.69 us       407273
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/20                                      3.80 us         3.53 us       194783
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/50                                      9.15 us         8.16 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100                                     16.5 us         13.4 us        56000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000                                    66.0 us         62.8 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/10000                                    382 us          377 us         1948
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/100000                                  4182 us         4236 us          166
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create<3, ParExec>/1000000                                64366 us        61080 us           11
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                0.988 us        0.984 us       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                 1.77 us         1.73 us       407273
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                 3.87 us         3.84 us       179200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                8.27 us         8.37 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000               64.3 us         64.2 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000               795 us          802 us          896
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000             9295 us         9375 us           75
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000          114797 us       114583 us            6
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                 1.74 us         1.67 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                 4.02 us         3.60 us       186667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                 12.5 us         11.2 us        64000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                17.9 us         13.8 us        49778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000               69.3 us         64.1 us        10000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000               396 us          354 us         1723
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000             4077 us         3953 us          166
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000           59048 us        58239 us           11
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                1.01 us         1.00 us       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                1.48 us         1.51 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                2.81 us         2.85 us       263529
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                               5.22 us         5.16 us       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                              48.8 us         48.8 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                              664 us          656 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                            7697 us         7465 us           90
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                          88208 us        87054 us            7
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                                1.67 us         1.50 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                                3.13 us         2.58 us       224000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                                6.27 us         5.45 us       143360
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                               9.39 us         6.84 us       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                              41.4 us         38.1 us        21333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                              401 us          399 us         1723
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                            4740 us         4667 us          154
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                          59821 us        56818 us           11
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::InsertToLeaf/10                                           0.380 us        0.366 us      1792000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::InsertToLeaf/20                                           0.343 us        0.337 us      2133333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::InsertToLeaf/50                                           0.337 us        0.337 us      2133333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::InsertToLeaf/100                                          0.340 us        0.344 us      2133333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::InsertToLeaf/1000                                         0.339 us        0.338 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::InsertToLeaf/10000                                        0.339 us        0.344 us      2133333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10                                   1.53 us         1.50 us       407273
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/20                                   3.67 us         3.69 us       194783
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/50                                   10.6 us         10.7 us        64000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/100                                  16.5 us         16.5 us        40727
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/1000                                  154 us          154 us         4978
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Insert__RebalanceMode/10000                                1588 us         1569 us          448
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Update/10                                                  1.43 us         1.44 us       497778 items_per_second=6.92561M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Update/20                                                  2.65 us         2.67 us       263529 items_per_second=7.49594M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Update/50                                                  5.78 us         5.86 us       112000 items_per_second=8.53333M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Update/100                                                 12.0 us         12.0 us        64000 items_per_second=8.35918M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Update/1000                                                 210 us          213 us         3446 items_per_second=4.69243M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::Update/10000                                               6144 us         6138 us          112 items_per_second=1.62909M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::PickSearch/100                                              200 ns          199 ns      3446154
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::PickSearch/1000                                             241 ns          235 ns      2986667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::PickSearch/10000                                            788 ns          767 ns       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::PickSearch/100000                                          7890 ns         7952 ns        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RangeSearch/100                                             159 ns          157 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RangeSearch/1000                                            196 ns          197 ns      3733333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RangeSearch/10000                                           735 ns          732 ns       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RangeSearch/100000                                         6241 ns         6278 ns       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::FrustumCulling/1000                                       0.554 us        0.562 us      1000000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::FrustumCulling/10000                                       3.46 us         3.45 us       203636
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/100                            3.68 us         3.69 us       194783
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/1000                            130 us          129 us         4978
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/10000                          5895 us         5859 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<SeqExec>/100000                       224706 us       223958 us            3
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/100                            4.04 us         4.01 us       179200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/1000                            142 us          138 us         4978
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/10000                          2047 us          879 us          747
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection<ParExec>/100000                        81804 us        58239 us           11
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100                      24.7 us         24.9 us        32000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/1000                      183 us          184 us         4073
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/10000                    5995 us         5999 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100000                 558978 us       562500 us            1
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/100                                   0.607 us        0.593 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/1000                                   1.44 us         1.44 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/10000                                  6.91 us         6.80 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedFirst/100000                                 75.2 us         75.0 us         8960
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedAll/100                                     0.554 us        0.558 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedAll/1000                                     1.38 us         1.38 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedAll/10000                                    6.96 us         6.98 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Regular_WithReverseMap::RayIntersectedAll/100000                                   83.4 us         83.7 us         8960
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/10                                       0.804 us        0.802 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/20                                        1.44 us         1.43 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/50                                        2.42 us         2.46 us       298667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/100                                       5.13 us         5.16 us       100000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/1000                                      47.3 us         47.6 us        14452
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/10000                                      707 us          698 us          896
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/100000                                   10864 us        10742 us           64
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, SeqExec>/1000000                                 156470 us       156250 us            4
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/10                                        1.53 us         1.40 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/20                                        2.92 us         2.70 us       248889
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/50                                        8.76 us         7.32 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/100                                       16.9 us         13.6 us        44800
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/1000                                      74.3 us         66.3 us         8960
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/10000                                      482 us          454 us         1445
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/100000                                    7238 us         7118 us           90
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create<3, ParExec>/1000000                                 106505 us       106771 us            6
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                  0.798 us        0.802 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                   1.44 us         1.40 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                   3.05 us         3.05 us       235789
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                  7.24 us         7.15 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                 57.6 us         57.8 us        10000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                 792 us          774 us          747
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000              11883 us        11719 us           56
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000            163025 us       164062 us            4
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                   1.58 us         1.57 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                   2.81 us         2.83 us       248889
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                   9.76 us         8.51 us       112000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                  19.6 us         16.6 us        49778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                 84.1 us         80.2 us         8960
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                 518 us          502 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000               7743 us         7639 us           90
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000            119972 us       118750 us            5
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                 0.884 us        0.889 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                  1.35 us         1.31 us       560000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                  2.22 us         2.25 us       298667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                 3.91 us         3.92 us       179200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                39.5 us         38.5 us        18667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                602 us          600 us         1120
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                              7492 us         7394 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                            84319 us        84821 us            7
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10                                  1.43 us         1.44 us       497778
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/20                                  2.10 us         2.00 us       320000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/50                                  4.22 us         3.45 us       194783
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100                                 11.0 us         8.16 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                36.8 us         35.3 us        19478
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                471 us          475 us         1545
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100000                              5268 us         5301 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                            61683 us        59659 us           11
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::InsertToLeaf/10                                             0.341 us        0.338 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::InsertToLeaf/20                                             0.337 us        0.337 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::InsertToLeaf/50                                             0.338 us        0.338 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::InsertToLeaf/100                                            0.338 us        0.338 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::InsertToLeaf/1000                                           0.339 us        0.330 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::InsertToLeaf/10000                                          0.338 us        0.338 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/10                                     1.44 us         1.43 us       448000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/20                                     3.33 us         3.30 us       213333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/50                                     9.07 us         9.00 us        74667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/100                                    16.4 us         16.5 us        40727
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/1000                                    156 us          157 us         4480
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Insert__RebalanceMode/10000                                  2008 us         2038 us          345
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Update/10                                                    1.29 us         1.29 us       497778 items_per_second=7.77019M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Update/20                                                    2.41 us         2.40 us       280000 items_per_second=8.33488M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Update/50                                                    6.02 us         6.14 us       112000 items_per_second=8.14545M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Update/100                                                   10.5 us         10.5 us        64000 items_per_second=9.52558M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Update/1000                                                   119 us          120 us         6400 items_per_second=8.35918M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::Update/10000                                                 2430 us         2427 us          264 items_per_second=4.12098M/s
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::PickSearch/100                                                240 ns          241 ns      2986667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::PickSearch/1000                                               296 ns          292 ns      2357895
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::PickSearch/10000                                              545 ns          544 ns      1120000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::PickSearch/100000                                            1013 ns         1025 ns       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RangeSearch/100                                               206 ns          205 ns      3200000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RangeSearch/1000                                              303 ns          305 ns      2357895
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RangeSearch/10000                                            1010 ns         1025 ns       746667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RangeSearch/100000                                          10704 ns        10742 ns        64000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::FrustumCulling/1000                                          1.13 us         1.12 us       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::FrustumCulling/10000                                         3.77 us         3.77 us       186667
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/100                              50.6 us         48.8 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/1000                             1414 us         1412 us          498
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/10000                           27434 us        26875 us           25
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<SeqExec>/100000                         496426 us       500000 us            2
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/100                              50.6 us         50.2 us        11200
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/1000                             1424 us         1443 us          498
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/10000                            9648 us         3731 us          201
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection<ParExec>/100000                         141297 us        96354 us            6
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100                        33.1 us         33.0 us        21333
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/1000                        250 us          249 us         2635
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/10000                      6653 us         6696 us          112
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100000                   155161 us       152344 us            4
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/100                                     0.794 us        0.785 us       896000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/1000                                     1.19 us         1.17 us       560000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/10000                                    2.99 us         2.98 us       235789
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedFirst/100000                                   7.79 us         7.67 us        89600
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedAll/100                                       0.661 us        0.670 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedAll/1000                                       1.02 us         1.03 us       640000
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedAll/10000                                      2.63 us         2.67 us       263529
+Benchmarks::DynamicOrthoTreeBox__MinPoint_Loose_WithReverseMap::RayIntersectedAll/100000                                     10.6 us         10.5 us        64000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10                                          0.887 us        0.879 us       746667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/20                                           1.77 us         1.76 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/50                                           3.27 us         3.30 us       213333
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100                                          6.38 us         6.28 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000                                         57.6 us         57.8 us        10000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/10000                                         771 us          767 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/100000                                       8986 us         8958 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, SeqExec>/1000000                                    130693 us       132812 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/10                                           1.61 us         1.46 us       448000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/20                                           3.59 us         3.45 us       235789
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/50                                           9.52 us         8.06 us        64000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/100                                          16.6 us         14.1 us        49778
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000                                         70.0 us         66.3 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/10000                                         415 us          414 us         1659
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/100000                                       4209 us         4236 us          166
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create<3, ParExec>/1000000                                     76104 us        74653 us            9
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                     0.896 us        0.907 us       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                      1.78 us         1.76 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                      4.04 us         4.08 us       172308
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                     8.68 us         8.58 us        74667
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                    68.0 us         68.4 us        11200
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                    854 us          854 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                  9771 us         9792 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000               138236 us       140625 us            5
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                      1.64 us         1.53 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                      3.20 us         3.05 us       194783
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                      8.30 us         8.37 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                     18.0 us         15.7 us        40727
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                    73.5 us         64.5 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                    428 us          426 us         1723
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000                  4231 us         4297 us          160
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000                73747 us        72443 us           11
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                     1.06 us         1.05 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                     1.58 us         1.57 us       448000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                     2.97 us         2.98 us       235789
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                    5.47 us         5.47 us       100000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                   51.8 us         51.6 us        11200
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                   699 us          698 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                                 9231 us         9375 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                              120281 us       119792 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10                                     2.06 us         1.96 us       407273
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/20                                     3.54 us         3.28 us       224000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/50                                     7.59 us         6.63 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100                                    10.5 us         9.42 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                   53.3 us         50.0 us        10000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                   469 us          429 us         1493
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/100000                                 6359 us         6417 us          112
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                               86437 us        85069 us            9
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::InsertToLeaf/10                                                0.280 us        0.283 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::InsertToLeaf/20                                                0.280 us        0.276 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::InsertToLeaf/50                                                0.282 us        0.283 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::InsertToLeaf/100                                               0.282 us        0.283 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::InsertToLeaf/1000                                              0.282 us        0.283 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::InsertToLeaf/10000                                             0.281 us        0.283 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10                                        1.39 us         1.38 us       497778
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__RebalanceMode/20                                        3.58 us         3.53 us       194783
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__RebalanceMode/50                                        10.5 us         10.5 us        64000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__RebalanceMode/100                                       16.5 us         16.5 us        40727
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__RebalanceMode/1000                                       156 us          157 us         4480
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Insert__RebalanceMode/10000                                     1667 us         1651 us          407
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Update/10                                                       1.34 us         1.35 us       497778 items_per_second=7.40879M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Update/20                                                       2.40 us         2.40 us       280000 items_per_second=8.33488M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Update/50                                                       5.35 us         5.30 us       112000 items_per_second=9.43158M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Update/100                                                      11.1 us         11.2 us        64000 items_per_second=8.90435M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Update/1000                                                      198 us          197 us         3733 items_per_second=5.08323M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::Update/10000                                                    6077 us         6094 us          100 items_per_second=1.64103M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::PickSearch/100                                                   161 ns          160 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::PickSearch/1000                                                  189 ns          184 ns      3733333
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::PickSearch/10000                                                 695 ns          698 ns       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::PickSearch/100000                                               7787 ns         7673 ns        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RangeSearch/100                                                  130 ns          129 ns      4977778
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RangeSearch/1000                                                 157 ns          157 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RangeSearch/10000                                                653 ns          656 ns      1120000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RangeSearch/100000                                              6100 ns         5999 ns       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::FrustumCulling/1000                                            0.439 us        0.439 us      1600000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::FrustumCulling/10000                                            3.05 us         3.05 us       235789
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/100                                 3.20 us         3.21 us       224000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/1000                                 107 us          107 us         6400
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/10000                               5400 us         5441 us          112
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<SeqExec>/100000                            213410 us       213542 us            3
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/100                                 3.58 us         3.61 us       194783
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/1000                                 107 us          105 us         6400
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/10000                               1947 us          830 us          640
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection<ParExec>/100000                             76826 us        54688 us           10
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100                           11.9 us         12.0 us        64000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/1000                           113 us          112 us         6400
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/10000                         4329 us         4270 us          172
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::CollisionDetection__WithOtherTree/100000                      469614 us       468750 us            2
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedFirst/100                                        0.426 us        0.424 us      1659259
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedFirst/1000                                        1.11 us         1.12 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedFirst/10000                                       6.10 us         6.14 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedFirst/100000                                      71.0 us         69.8 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedAll/100                                          0.448 us        0.445 us      1544828
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedAll/1000                                          1.14 us         1.15 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedAll/10000                                         6.27 us         6.28 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Regular_WithReverseMap::RayIntersectedAll/100000                                        79.5 us         80.2 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/10                                            0.744 us        0.753 us      1120000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/20                                             1.45 us         1.48 us       497778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/50                                             2.48 us         2.46 us       280000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/100                                            5.38 us         5.31 us       100000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/1000                                           50.9 us         51.6 us        10000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/10000                                           788 us          774 us          747
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/100000                                        11903 us        11998 us           56
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, SeqExec>/1000000                                      188630 us       187500 us            4
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/10                                             1.38 us         1.22 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/20                                             2.79 us         2.73 us       263529
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/50                                             8.38 us         7.81 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/100                                            17.8 us         14.6 us        40727
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/1000                                           76.1 us         66.3 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/10000                                           536 us          516 us         1000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/100000                                         7476 us         7533 us          112
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create<3, ParExec>/1000000                                      131279 us       131250 us            5
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10                       0.743 us        0.732 us       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/20                        1.44 us         1.43 us       448000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/50                        3.21 us         3.22 us       213333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100                       7.63 us         7.50 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                      61.7 us         61.4 us        11200
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                      859 us          858 us          747
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                   12333 us        12277 us           56
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000                 197216 us       197917 us            3
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10                        1.31 us         1.29 us       497778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/20                        3.02 us         2.83 us       248889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/50                        8.00 us         7.95 us        74667
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100                       20.4 us         18.0 us        40727
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000                      82.7 us         82.0 us         8960
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/10000                      546 us          544 us         1120
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/100000                    7989 us         7812 us           90
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Create__OversizedModelspace<3, ParExec>/1000000                 146054 us       143750 us            5
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10                                      0.917 us        0.924 us       896000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/20                                       1.30 us         1.31 us       560000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/50                                       2.35 us         2.34 us       280000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100                                      4.17 us         4.17 us       172308
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000                                     40.6 us         40.8 us        17231
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/10000                                     647 us          642 us         1120
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/100000                                   8878 us         8958 us           75
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, SeqExec>/1000000                                117137 us       117188 us            6
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10                                       1.81 us         1.80 us       373333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/20                                       2.91 us         2.54 us       320000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/50                                       5.58 us         5.51 us       144516
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100                                      10.3 us         8.79 us       112000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000                                     49.5 us         50.0 us        10000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/10000                                     522 us          516 us         1000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/100000                                   7130 us         6944 us           90
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__Bulk<3, ParExec>/1000000                                 92680 us        93750 us            7
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::InsertToLeaf/10                                                  0.279 us        0.283 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::InsertToLeaf/20                                                  0.278 us        0.276 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::InsertToLeaf/50                                                  0.278 us        0.276 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::InsertToLeaf/100                                                 0.279 us        0.278 us      2357895
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::InsertToLeaf/1000                                                0.278 us        0.279 us      2635294
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::InsertToLeaf/10000                                               0.279 us        0.276 us      2488889
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__RebalanceMode/10                                          1.24 us         1.20 us       560000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__RebalanceMode/20                                          3.15 us         3.07 us       224000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__RebalanceMode/50                                          9.08 us         9.24 us        89600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__RebalanceMode/100                                         16.7 us         16.7 us        44800
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__RebalanceMode/1000                                         157 us          157 us         4480
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Insert__RebalanceMode/10000                                       2116 us         2129 us          345
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Update/10                                                         1.19 us         1.20 us       560000 items_per_second=8.33488M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Update/20                                                         2.23 us         2.20 us       320000 items_per_second=9.10222M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Update/50                                                         5.43 us         5.44 us       112000 items_per_second=9.18974M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Update/100                                                        9.19 us         9.21 us        74667 items_per_second=10.8607M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Update/1000                                                        106 us          107 us         6400 items_per_second=9.30909M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::Update/10000                                                      2344 us         2344 us          280 items_per_second=4.26667M/s
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::PickSearch/100                                                     157 ns          160 ns      4480000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::PickSearch/1000                                                    170 ns          169 ns      4072727
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::PickSearch/10000                                                   231 ns          229 ns      2800000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::PickSearch/100000                                                  356 ns          353 ns      1947826
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RangeSearch/100                                                    125 ns          126 ns      5600000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RangeSearch/1000                                                   135 ns          135 ns      4977778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RangeSearch/10000                                                  201 ns          199 ns      3446154
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RangeSearch/100000                                                 548 ns          544 ns      1120000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::FrustumCulling/1000                                              0.328 us        0.322 us      2133333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::FrustumCulling/10000                                              1.26 us         1.27 us       640000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/100                                   34.8 us         35.2 us        21333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/1000                                   683 us          663 us          896
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/10000                                11809 us        11963 us           64
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<SeqExec>/100000                              229673 us       229167 us            3
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/100                                   33.9 us         33.8 us        20364
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/1000                                   683 us          670 us         1120
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/10000                                 4641 us         1986 us          299
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection<ParExec>/100000                               68562 us        47917 us           15
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100                             13.3 us         13.2 us        49778
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/1000                             123 us          123 us         5600
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/10000                           2179 us         2197 us          320
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::CollisionDetection__WithOtherTree/100000                         52886 us        53125 us           10
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedFirst/100                                          0.349 us        0.353 us      2036364
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedFirst/1000                                         0.429 us        0.424 us      1659259
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedFirst/10000                                        0.821 us        0.816 us       746667
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedFirst/100000                                        1.81 us         1.80 us       373333
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedAll/100                                            0.370 us        0.361 us      1947826
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedAll/1000                                           0.441 us        0.439 us      1600000
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedAll/10000                                          0.873 us        0.879 us       746667
+Benchmarks::DynamicOrthoTreeBox__MBR_Loose_WithReverseMap::RayIntersectedAll/100000                                          3.35 us         3.30 us       213333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                   0.861 us        0.858 us       746667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                    1.63 us         1.64 us       448000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                    3.03 us         3.00 us       224000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                   5.59 us         5.62 us       100000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                  51.0 us         50.2 us        11200
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                  684 us          684 us         1120
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                7200 us         7292 us           90
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                              79867 us        79545 us           11
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10                                    1.61 us         1.46 us       448000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/20                                    2.93 us         2.85 us       263529
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/50                                    9.96 us         8.54 us        64000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100                                   15.6 us         12.9 us        49778
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                  64.1 us         61.4 us        11200
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                  374 us          369 us         1948
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                2825 us         2824 us          249
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                              28415 us        27644 us           26
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10              0.866 us        0.872 us       896000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20               1.68 us         1.65 us       407273
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50               3.12 us         3.11 us       235789
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100              5.77 us         5.78 us       100000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000             51.9 us         51.6 us        10000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000             698 us          698 us          896
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000           7231 us         7292 us           90
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000         78305 us        79861 us            9
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10               1.66 us         1.60 us       497778
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20               3.11 us         3.02 us       263529
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50               9.11 us         7.95 us        74667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100              16.2 us         12.6 us        44800
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000             65.3 us         58.6 us        11200
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000             388 us          345 us         1948
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000           2942 us         2788 us          213
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000         29065 us        29375 us           25
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/100                                            160 ns          160 ns      4480000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/1000                                           192 ns          193 ns      3733333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/10000                                          696 ns          698 ns      1120000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::PickSearch/100000                                        9058 ns         8196 ns        89600
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/100                                           104 ns          103 ns      6400000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/1000                                          132 ns          132 ns      4977778
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/10000                                         683 ns          680 ns       896000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RangeSearch/100000                                       6704 ns         6696 ns       112000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::FrustumCulling/1000                                     0.541 us        0.481 us      1493333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::FrustumCulling/10000                                     3.30 us         3.30 us       213333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                          3.38 us         3.37 us       213333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                          136 us          135 us         4978
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                        5733 us         5720 us          112
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                     218544 us       218750 us            3
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                          3.72 us         3.68 us       186667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                          131 us          131 us         5600
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                        1770 us         1676 us          373
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                      75834 us        30540 us           22
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                    13.8 us         13.8 us        49778
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                    131 us          129 us         4978
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                  5678 us         5720 us          112
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000               540018 us       546875 us            1
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100                                 0.419 us        0.420 us      1600000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                 1.28 us         1.28 us       560000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/10000                                6.57 us         6.56 us       112000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedFirst/100000                               72.4 us         71.5 us         8960
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100                                   0.455 us        0.450 us      1493333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/1000                                   1.29 us         1.28 us       560000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/10000                                  6.67 us         6.63 us        89600
+Benchmarks::StaticOrthoTreeBox__MinPoint_Regular_WithoutReverseMap::RayIntersectedAll/100000                                 80.2 us         80.2 us         8960
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                     0.851 us        0.854 us       896000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                      1.47 us         1.46 us       448000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                      2.42 us         2.40 us       280000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                     4.53 us         4.55 us       154483
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                    44.4 us         43.9 us        14933
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                    639 us          642 us         1120
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                  7127 us         7254 us          112
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                                80010 us        79861 us            9
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10                                      1.64 us         1.55 us       373333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/20                                      3.25 us         3.10 us       186667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/50                                      8.28 us         7.50 us        89600
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100                                     13.5 us         11.7 us        74667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                    76.7 us         68.4 us        11200
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                    453 us          446 us         1120
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                  3841 us         3928 us          179
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                                40295 us        39062 us           18
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                0.871 us        0.858 us       746667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                 1.48 us         1.46 us       448000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                 2.42 us         2.40 us       280000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                4.68 us         4.71 us       149333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000               45.5 us         45.0 us        14933
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000               657 us          656 us         1120
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000             7292 us         7254 us          112
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000           80794 us        80966 us           11
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                 1.73 us         1.65 us       407273
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                 3.25 us         3.21 us       224000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                 8.60 us         7.67 us        89600
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                17.0 us         12.6 us        49778
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000               79.1 us         69.8 us        11200
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000               456 us          424 us         1659
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000             4010 us         4015 us          179
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000           40648 us        39062 us           18
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/100                                              174 ns          176 ns      4072727
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/1000                                             196 ns          197 ns      3733333
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/10000                                            332 ns          330 ns      2036364
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::PickSearch/100000                                           573 ns          572 ns      1120000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/100                                             128 ns          128 ns      5600000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/1000                                            194 ns          195 ns      3446154
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/10000                                           617 ns          614 ns      1120000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RangeSearch/100000                                         6461 ns         6417 ns       112000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::FrustumCulling/1000                                       0.747 us        0.750 us       896000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::FrustumCulling/10000                                       2.47 us         2.46 us       298667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                            38.2 us         38.5 us        18667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                           1182 us         1172 us          560
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                         23698 us        23438 us           30
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                       438084 us       437500 us            2
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                            38.8 us         38.1 us        17231
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                           1188 us         1172 us          560
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                          8179 us         2912 us          279
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                       128850 us       130208 us            6
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                      17.6 us         17.6 us        40727
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                      164 us          165 us         4073
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                    4880 us         4957 us          145
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                 126712 us       127232 us            7
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100                                   0.534 us        0.544 us      1120000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                  0.970 us        0.963 us       746667
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                  2.09 us         2.10 us       320000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                 5.47 us         5.44 us       112000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100                                     0.485 us        0.487 us      1445161
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/1000                                    0.814 us        0.820 us       896000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/10000                                    2.12 us         2.10 us       320000
+Benchmarks::StaticOrthoTreeBox__MinPoint_Loose_WithoutReverseMap::RayIntersectedAll/100000                                   8.14 us         8.20 us        89600
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10                                         1.09 us         1.07 us       640000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/20                                         2.13 us         2.18 us       344615
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/50                                         3.66 us         3.69 us       194783
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100                                        6.84 us         6.84 us       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000                                       55.6 us         56.2 us        10000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/10000                                       732 us          732 us          896
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/100000                                     7786 us         7812 us           90
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, SeqExec>/1000000                                   99152 us        98958 us            6
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10                                         2.10 us         1.95 us       344615
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/20                                         4.39 us         4.10 us       186667
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/50                                         9.33 us         9.21 us        74667
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100                                        18.8 us         16.0 us        44800
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000                                       87.0 us         78.5 us         8960
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/10000                                       457 us          410 us         1792
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/100000                                     3088 us         3112 us          236
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create<3, ParExec>/1000000                                   33409 us        32552 us           24
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                    1.09 us         1.09 us       560000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                    2.12 us         2.10 us       320000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                    3.68 us         3.69 us       194783
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                   6.84 us         6.80 us        89600
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                  55.8 us         57.8 us        10000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                  733 us          739 us         1120
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                7724 us         7708 us           75
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000              99061 us        98214 us            7
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                    2.58 us         2.30 us       298667
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                    4.16 us         4.20 us       160000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                    10.3 us         9.03 us        64000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                   18.8 us         17.6 us        40727
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                  85.0 us         85.1 us        11200
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                  454 us          435 us         1545
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000                3053 us         2934 us          213
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000              32611 us        31250 us           26
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/100                                                 155 ns          157 ns      4480000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/1000                                                183 ns          184 ns      3733333
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/10000                                               646 ns          642 ns      1120000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::PickSearch/100000                                             7659 ns         7673 ns       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/100                                                103 ns          103 ns      6400000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/1000                                               135 ns          135 ns      4977778
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/10000                                              669 ns          663 ns       896000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RangeSearch/100000                                            6640 ns         6696 ns       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::FrustumCulling/1000                                          0.416 us        0.414 us      1659259
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::FrustumCulling/10000                                          2.97 us         2.98 us       235789
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100                               3.39 us         3.38 us       203636
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/1000                               110 us          109 us         5600
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/10000                             5335 us         5312 us          100
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<SeqExec>/100000                          208737 us       208333 us            3
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100                               3.66 us         3.69 us       194783
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/1000                               109 us          107 us         6400
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/10000                             1637 us         1537 us          498
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection<ParExec>/100000                           73315 us        28125 us           20
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100                         11.0 us         11.0 us        64000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                         107 us          109 us         7467
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                       4357 us         4330 us          166
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                    472199 us       476562 us            2
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100                                      0.404 us        0.399 us      1723077
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/1000                                      1.08 us         1.07 us       640000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/10000                                     5.96 us         6.00 us       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedFirst/100000                                    69.6 us         69.8 us        11200
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100                                        0.421 us        0.424 us      1659259
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/1000                                        1.09 us         1.07 us       640000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/10000                                       6.03 us         6.14 us       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Regular_WithoutReverseMap::RayIntersectedAll/100000                                      82.1 us         80.2 us         8960
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10                                          0.817 us        0.802 us       896000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/20                                           1.69 us         1.73 us       497778
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/50                                           2.75 us         2.76 us       248889
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100                                          6.16 us         6.14 us       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000                                         49.7 us         50.0 us        10000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/10000                                         701 us          698 us          896
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/100000                                       8076 us         8125 us           75
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, SeqExec>/1000000                                    107314 us       109375 us            6
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10                                           1.45 us         1.37 us       560000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/20                                           3.28 us         3.07 us       224000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/50                                           8.35 us         8.02 us        89600
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100                                          17.3 us         14.2 us        40727
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000                                         98.8 us         94.2 us         7467
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/10000                                         547 us          502 us         1120
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/100000                                       4049 us         4015 us          179
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create<3, ParExec>/1000000                                     43677 us        41992 us           16
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10                     0.795 us        0.809 us      1120000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/20                      1.67 us         1.67 us       448000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/50                      2.78 us         2.76 us       248889
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100                     6.22 us         6.28 us       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000                    49.4 us         50.0 us        10000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/10000                    692 us          698 us          896
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/100000                  7829 us         7812 us          112
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, SeqExec>/1000000               108575 us       109375 us            6
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10                      1.45 us         1.45 us       560000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/20                      3.08 us         3.07 us       224000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/50                      8.25 us         7.53 us       112000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100                     17.0 us         15.0 us        44800
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000                    98.0 us         85.8 us         7467
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/10000                    513 us          440 us         1493
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/100000                  4136 us         4179 us          172
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::Create__OversizedModelspace<3, ParExec>/1000000                44391 us        42708 us           15
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/100                                                   157 ns          157 ns      4480000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/1000                                                  161 ns          164 ns      4480000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/10000                                                 212 ns          213 ns      3446154
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::PickSearch/100000                                                299 ns          298 ns      2357895
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/100                                                  109 ns          105 ns      6400000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/1000                                                 113 ns          115 ns      6400000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/10000                                                163 ns          161 ns      4072727
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RangeSearch/100000                                               424 ns          420 ns      1600000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::FrustumCulling/1000                                            0.283 us        0.283 us      2488889
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::FrustumCulling/10000                                            1.03 us         1.03 us       746667
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100                                 33.3 us         33.0 us        21333
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/1000                                 671 us          663 us          896
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/10000                              11711 us        11719 us           64
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<SeqExec>/100000                            215706 us       213542 us            3
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100                                 33.8 us         33.7 us        21333
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/1000                                 670 us          680 us          896
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/10000                               3834 us         1514 us          640
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection<ParExec>/100000                             64798 us        65972 us            9
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100                           11.7 us         11.7 us        56000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/1000                           116 us          117 us         6400
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/10000                         2012 us         2011 us          373
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::CollisionDetection__WithOtherTree/100000                       40319 us        40441 us           17
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100                                        0.334 us        0.330 us      2036364
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/1000                                       0.412 us        0.414 us      1659259
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/10000                                      0.833 us        0.837 us       896000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedFirst/100000                                      1.66 us         1.67 us       448000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100                                          0.348 us        0.345 us      1947826
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/1000                                         0.407 us        0.405 us      1659259
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/10000                                        0.806 us        0.802 us       896000
+Benchmarks::StaticOrthoTreeBox__MBR_Loose_WithoutReverseMap::RayIntersectedAll/100000                                        2.78 us         2.76 us       248889
 `;
