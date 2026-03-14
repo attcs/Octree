@@ -30,8 +30,6 @@ namespace OrthoTree
 
     // Required by OrthoTreeQueryBase
     static constexpr bool IS_HOMOGENEOUS_GEOMETRY = true;
-    static constexpr double LOOSE_FACTOR = 1.0;
-    static constexpr bool ALLOW_OUT_OF_SPACE_INSERTION = true;
     static constexpr bool USE_REVERSE_MAPPING = false;
     static constexpr depth_t MAX_ALLOWED_DEPTH_ID = depth_t{ 19 };
 
@@ -42,7 +40,7 @@ namespace OrthoTree
   };
 
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-  class BVHStaticLinearCore
+  class StaticBVHLinearCore
   {
   public:
     using EA = TEntityAdapter;
@@ -115,11 +113,11 @@ namespace OrthoTree
 
   public:
     // Default constructor. Requires Create call before usage.
-    constexpr BVHStaticLinearCore() = default;
+    constexpr StaticBVHLinearCore() = default;
 
     // Initialize the base octree structure with entity collection
     template<typename TExecMode = SeqExec>
-    explicit BVHStaticLinearCore(
+    explicit StaticBVHLinearCore(
       EA::EntityContainerView entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
     {
       [[maybe_unused]] auto isSuccessfullyInsertedAllElements = Create(entities, maxElementNoInNode, execMode);
@@ -127,7 +125,7 @@ namespace OrthoTree
     }
 
     template<typename TExecMode = SeqExec>
-    explicit BVHStaticLinearCore(
+    explicit StaticBVHLinearCore(
       TExecMode execMode, EA::EntityContainerView entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
       [[maybe_unused]] auto isSuccessfullyInsertedAllElements = Create(entities, maxElementNoInNode, execMode);
@@ -219,7 +217,7 @@ namespace OrthoTree
     };
 
     template<typename TExecMode = SeqExec>
-    static SplitCandidate FindBestSplitAxis(std::span<EntityBuildData const> entities, TExecMode execMode = {}) noexcept
+    static SplitCandidate FindBestSplitAxis(std::span<EntityBuildData const> entities, [[maybe_unused]] TExecMode execMode = {}) noexcept
     {
       using Geometry = typename IGM::Geometry;
 
@@ -274,7 +272,7 @@ namespace OrthoTree
             leftCount[i] = leftSum;
             if (bins[i].count > 0)
               IGM::UniteInBoxAD(leftBox, bins[i].bounds);
-            leftArea[i] = IGM::GetVolumeAD(leftBox);
+            leftArea[i] = IGM::GetSurfaceAreaAD(leftBox);
           }
         }
         {
@@ -286,7 +284,7 @@ namespace OrthoTree
             rightCount[i - 1] = rightSum;
             if (bins[i].count > 0)
               IGM::UniteInBoxAD(rightBox, bins[i].bounds);
-            rightArea[i - 1] = IGM::GetVolumeAD(rightBox);
+            rightArea[i - 1] = IGM::GetSurfaceAreaAD(rightBox);
           }
         }
 
@@ -343,7 +341,12 @@ namespace OrthoTree
 
 
     template<typename TExecMode = SeqExec>
-    void BuildBVH(std::vector<EntityBuildData>& buildData, EA::EntityContainerView entities, uint8_t maxDepthID, std::size_t maxElementNoInNode, TExecMode execMode = {}) noexcept
+    void BuildBVH(
+      std::vector<EntityBuildData>& buildData,
+      [[maybe_unused]] EA::EntityContainerView entities,
+      uint8_t maxDepthID,
+      std::size_t maxElementNoInNode,
+      TExecMode execMode = {}) noexcept
     {
       struct NodeProcessingData
       {
@@ -484,7 +487,9 @@ namespace OrthoTree
             }
             else
             {
-              std::sort(res.subRanges.begin(), res.subRanges.begin() + res.rangeCount, [](auto const& a, auto const& b) { return a.beginID < b.beginID; });
+              std::sort(res.subRanges.begin(), res.subRanges.begin() + res.rangeCount, [](auto const& a, auto const& b) {
+                return a.beginID < b.beginID;
+              });
             }
           });
 
@@ -586,7 +591,7 @@ namespace OrthoTree
           return 1;
         auto const nLeaf = static_cast<double>(entityCount) / static_cast<double>(maxElementNoInNode);
         auto const logBase = std::log2(nLeaf) / std::log2(static_cast<double>(CHILD_NUM));
-        return static_cast<uint8_t>(std::clamp(static_cast<int>(std::ceil(logBase)), 2, 20));
+        return static_cast<uint8_t>(std::clamp(static_cast<int>(std::ceil(logBase)), 2, 32));
       }();
 
       // Build entity center data and populate entity storage
@@ -594,9 +599,8 @@ namespace OrthoTree
       m_entityStorage.resize(entityCount);
 
       EXEC_POL_DEF(epb);
-      auto const entityIndices = SequenceView<std::size_t>(0, entityCount);
-      std::for_each(EXEC_POL_ADD(epb) entityIndices.begin(), entityIndices.end(), [&](std::size_t i) {
-        auto const& entity = *(entities.begin() + i);
+      detail::zip_view buildDataAndStorageZip(buildData, m_entityStorage);
+      std::transform(EXEC_POL_ADD(epb) entities.begin(), entities.end(), buildDataAndStorageZip.begin(), [&](auto const& entity) {
         auto const entityID = EA::GetEntityID(entities, entity);
         auto const& geometry = EA::GetGeometry(entity);
 
@@ -615,8 +619,7 @@ namespace OrthoTree
             center[d] = typename IGM::Geometry(GA::GetPointC(geometry, d));
         }
 
-        buildData[i] = { entityID, center, entityBox };
-        m_entityStorage[i] = entityID;
+        return std::make_pair(EntityBuildData{ entityID, center, entityBox }, entityID);
       });
 
       // Initialize node storage variant
@@ -644,64 +647,28 @@ namespace OrthoTree
 
       // Write back entity IDs in the final sorted order
       EXEC_POL_DEF(epw);
-      std::for_each(EXEC_POL_ADD(epw) entityIndices.begin(), entityIndices.end(), [&](std::size_t i) {
-        m_entityStorage[i] = buildData[i].entityID;
-      });
+      std::transform(EXEC_POL_ADD(epw) buildData.begin(), buildData.end(), m_entityStorage.begin(), [](auto const& ed) { return ed.entityID; });
 
       // Initialize node geometry (MBR) bottom-up
       InitializeNodeGeometryBVH(entities, execMode);
 
       return true;
     }
+
+    template<typename TExecMode = SeqExec>
+    static bool Create(
+      StaticBVHLinearCore& tree,
+      EA::EntityContainerView entities,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
+    {
+      return tree.Create<TExecMode>(entities, maxElementNoInNode, execMode);
+    }
+
+
+    static constexpr bool AreChildNodesOverlapping() noexcept { return true; }
   };
 
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-  using BVHStaticLinear = OrthoTreeQueryBase<BVHStaticLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>>;
-
-
-  // BVH aliases
-
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 2>
-  using StaticBVHPointND = BVHStaticLinear<
-    std::conditional_t<IS_CONTIOGUOS_CONTAINER, PointEntitySpanAdapter<PointND<DIMENSION_NO, TScalar>>, PointEntityMapAdapter<PointND<DIMENSION_NO, TScalar>>>,
-    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    BVHConfiguration<CHILD_NUM>>;
-
-  template<dim_t DIMENSION_NO, typename TScalar = BaseGeometryType, bool IS_CONTIOGUOS_CONTAINER = true, int CHILD_NUM = 2>
-  using StaticBVHBoxND = BVHStaticLinear<
-    std::conditional_t<IS_CONTIOGUOS_CONTAINER, BoxEntitySpanAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>, BoxEntityMapAdapter<BoundingBoxND<DIMENSION_NO, TScalar>>>,
-    GeneralGeometryAdapterND<DIMENSION_NO, TScalar>,
-    BVHConfiguration<CHILD_NUM>>;
-
-  // BVH for points
-  using StaticBVHPoint1D = StaticBVHPointND<1, BaseGeometryType>;
-  using StaticBVHPoint2D = StaticBVHPointND<2, BaseGeometryType>;
-  using StaticBVHPoint3D = StaticBVHPointND<3, BaseGeometryType>;
-  using StaticBVHPoint4D = StaticBVHPointND<4, BaseGeometryType>;
-
-  // BVH for bounding boxes
-  using StaticBVHBox1D = StaticBVHBoxND<1, BaseGeometryType>;
-  using StaticBVHBox2D = StaticBVHBoxND<2, BaseGeometryType>;
-  using StaticBVHBox3D = StaticBVHBoxND<3, BaseGeometryType>;
-  using StaticBVHBox4D = StaticBVHBoxND<4, BaseGeometryType>;
-
-  // BVH with unordered_map entities
-  using StaticBVHPointMap1D = StaticBVHPointND<1, BaseGeometryType, false>;
-  using StaticBVHPointMap2D = StaticBVHPointND<2, BaseGeometryType, false>;
-  using StaticBVHPointMap3D = StaticBVHPointND<3, BaseGeometryType, false>;
-  using StaticBVHPointMap4D = StaticBVHPointND<4, BaseGeometryType, false>;
-  using StaticBVHBoxMap1D = StaticBVHBoxND<1, BaseGeometryType, false>;
-  using StaticBVHBoxMap2D = StaticBVHBoxND<2, BaseGeometryType, false>;
-  using StaticBVHBoxMap3D = StaticBVHBoxND<3, BaseGeometryType, false>;
-  using StaticBVHBoxMap4D = StaticBVHBoxND<4, BaseGeometryType, false>;
-
-  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNPointND = StaticBVHPointND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
-  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNBoxND = StaticBVHBoxND<DIMENSION_NO, BaseGeometryType, true, CHILD_NUM>;
-
-  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNPointMapND = StaticBVHPointND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
-  template<dim_t DIMENSION_NO, int CHILD_NUM = 8>
-  using StaticBVHNBoxMapND = StaticBVHBoxND<DIMENSION_NO, BaseGeometryType, false, CHILD_NUM>;
+  using StaticBVHLinearBase = OrthoTreeQueryBase<StaticBVHLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>>;
 } // namespace OrthoTree

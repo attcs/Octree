@@ -469,6 +469,62 @@ namespace OrthoTree::detail
       return volume;
     }
 
+    static constexpr Geometry GetSurfaceAreaAD(Box const& range) noexcept
+    {
+      if constexpr (DIMENSION_NO == 2)
+      {
+        return ((range.Max[0] - range.Min[0]) + (range.Max[1] - range.Min[1])) * 2.0;
+      }
+      else if constexpr (DIMENSION_NO == 3)
+      {
+        auto const dx = range.Max[0] - range.Min[0];
+        auto const dy = range.Max[1] - range.Min[1];
+        auto const dz = range.Max[2] - range.Min[2];
+        return (dx * dy + dy * dz + dz * dx) * 2.0;
+      }
+      else
+      {
+        Geometry surfaceArea = 0.0;
+        static_for<DIMENSION_NO>([&](auto dimensionID) {
+          Geometry faceArea = 1.0;
+          static_for<DIMENSION_NO>([&](auto otherDimID) {
+            if (otherDimID != dimensionID)
+              faceArea *= (range.Max[otherDimID] - range.Min[otherDimID]);
+          });
+          surfaceArea += faceArea;
+        });
+        return surfaceArea * 2.0;
+      }
+    }
+
+    static constexpr Geometry GetSurfaceAreaAD(TBox const& range) noexcept
+    {
+      if constexpr (DIMENSION_NO == 2)
+      {
+        return (Geometry(GA::GetBoxMaxC(range, 0) - GA::GetBoxMinC(range, 0)) + Geometry(GA::GetBoxMaxC(range, 1) - GA::GetBoxMinC(range, 1))) * 2.0;
+      }
+      else if constexpr (DIMENSION_NO == 3)
+      {
+        auto const dx = Geometry(GA::GetBoxMaxC(range, 0) - GA::GetBoxMinC(range, 0));
+        auto const dy = Geometry(GA::GetBoxMaxC(range, 1) - GA::GetBoxMinC(range, 1));
+        auto const dz = Geometry(GA::GetBoxMaxC(range, 2) - GA::GetBoxMinC(range, 2));
+        return (dx * dy + dy * dz + dz * dx) * 2.0;
+      }
+      else
+      {
+        Geometry surfaceArea = 0.0;
+        static_for<DIMENSION_NO>([&](auto dimensionID) {
+          Geometry faceArea = 1.0;
+          static_for<DIMENSION_NO>([&](auto otherDimID) {
+            if (otherDimID != dimensionID)
+              faceArea *= Geometry(GA::GetBoxMaxC(range, otherDimID) - GA::GetBoxMinC(range, otherDimID));
+          });
+          surfaceArea += faceArea;
+        });
+        return surfaceArea * 2.0;
+      }
+    }
+
     class RayHitTester
     {
     public:
