@@ -87,6 +87,6 @@ SOFTWARE.
 
 #include "adapters/general.h"
 
-#include "core/aliases.h"
+#include "core/bvh_aliases.h"
 
 #include "detail/undefs.h"

@@ -12,7 +12,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace BVHTests
 {
-  TEST_CLASS(BVHStaticLinearTests)
+  TEST_CLASS(StaticBVHLinearCoreTests)
   {
     static constexpr std::size_t MAX_ELEMENT_NUM = 2;
 
@@ -164,9 +164,10 @@ namespace BVHTests
         double x = static_cast<double>(i % 4) * 10.0;
         double y = static_cast<double>((i / 4) % 4) * 10.0;
         double z = static_cast<double>(i / 16) * 10.0;
-        boxes.push_back({
-          {       x,       y,       z },
-          { x + 1.0, y + 1.0, z + 1.0 }
+        boxes.push_back(
+          {
+            {       x,       y,       z },
+            { x + 1.0, y + 1.0, z + 1.0 }
         });
       }
 
@@ -226,7 +227,7 @@ namespace BVHTests
         { { 4.0, 4.0, 4.0 }, { 5.0, 5.0, 5.0 } },
       };
       StaticBVHBox3D bvh;
-      bvh.Create(std::span<BoundingBox3D const>(boxes), MAX_ELEMENT_NUM);
+      bvh.Create(std::span<BoundingBox3D const>(boxes), 3);
       Assert::IsTrue(bvh.GetNodeCount() == 1);
       Assert::IsTrue(bvh.GetNodeEntityCount(bvh.GetRootNodeValue()) == 3);
     }
@@ -268,9 +269,10 @@ namespace BVHTests
       for (int i = 0; i < 100; ++i)
       {
         double x = static_cast<double>(i);
-        boxes.push_back({
-          {       x, 0.0, 0.0 },
-          { x + 0.5, 0.5, 0.5 }
+        boxes.push_back(
+          {
+            {       x, 0.0, 0.0 },
+            { x + 0.5, 0.5, 0.5 }
         });
       }
       StaticBVHBox3D bvh;
@@ -287,17 +289,19 @@ namespace BVHTests
       for (int i = 0; i < 20; ++i)
       {
         double v = static_cast<double>(i) * 0.1;
-        boxes.push_back({
-          {        v,        v,        v },
-          { v + 0.05, v + 0.05, v + 0.05 }
+        boxes.push_back(
+          {
+            {        v,        v,        v },
+            { v + 0.05, v + 0.05, v + 0.05 }
         });
       }
       for (int i = 0; i < 20; ++i)
       {
         double v = 100.0 + static_cast<double>(i) * 0.1;
-        boxes.push_back({
-          {        v,        v,        v },
-          { v + 0.05, v + 0.05, v + 0.05 }
+        boxes.push_back(
+          {
+            {        v,        v,        v },
+            { v + 0.05, v + 0.05, v + 0.05 }
         });
       }
 
@@ -349,6 +353,64 @@ namespace BVHTests
       auto ids = CollectAllEntities(bvh);
       Assert::IsTrue(ids.size() == 2);
     }
-
   };
-}
+
+
+  TEST_CLASS(ManagedBVHTests)
+  {
+  public:
+    TEST_METHOD(Test_ManagedBVH_Point3DM_Create)
+    {
+      auto points = std::vector<Point3D>{
+        { 0.0, 0.0, 0.0 },
+        { 1.0, 1.0, 1.0 },
+        { 2.0, 2.0, 2.0 },
+        { 3.0, 3.0, 3.0 }
+      };
+
+      StaticBVHPoint3DM bvh(points, 2);
+      Assert::AreEqual(points.size(), bvh.GetData().size());
+      Assert::IsTrue(bvh.GetCore().GetNodeCount() > 0);
+    }
+
+    TEST_METHOD(Test_ManagedBVH_Box3DM_RangeSearch)
+    {
+      auto boxes = std::vector<BoundingBox3D>{
+        { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } },
+        { { 2.0, 2.0, 2.0 }, { 3.0, 3.0, 3.0 } },
+        { { 4.0, 4.0, 4.0 }, { 5.0, 5.0, 5.0 } }
+      };
+
+      StaticBVHBox3DM bvh(boxes, 1);
+
+      auto found = bvh.RangeSearch({ { 0.5, 0.5, 0.5 }, { 2.5, 2.5, 2.5 } }, RangeSearchMode::Overlap);
+      Assert::AreEqual<size_t>(2, found.size());
+    }
+
+    TEST_METHOD(Test_ManagedBVH_PointMap3DM)
+    {
+      auto points = std::unordered_map<index_t, Point3D>{
+        { 10, { 0.0, 0.0, 0.0 } },
+        { 20, { 1.0, 1.0, 1.0 } },
+        { 30, { 5.0, 5.0, 5.0 } }
+      };
+
+      StaticBVHPointMap3DM bvh(points, 1);
+      Assert::AreEqual<size_t>(3, bvh.GetData().size());
+
+      auto found = bvh.RangeSearch({ { -0.5, -0.5, -0.5 }, { 1.5, 1.5, 1.5 } });
+      Assert::AreEqual<size_t>(2, found.size());
+
+      // Check if IDs are correct (keyed)
+      bool found10 = false;
+      bool found20 = false;
+      for (auto id : found)
+      {
+        if (id == 10) found10 = true;
+        if (id == 20) found20 = true;
+      }
+      Assert::IsTrue(found10);
+      Assert::IsTrue(found20);
+    }
+  };
+} // namespace BVHTests

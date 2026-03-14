@@ -88,6 +88,6 @@ SOFTWARE.
 
 #include "adapters/general.h"
 
-#include "core/aliases.h"
+#include "core/ot_aliases.h"
 
 #include "detail/undefs.h"

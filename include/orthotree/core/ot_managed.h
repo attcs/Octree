@@ -30,9 +30,12 @@ SOFTWARE.
 
 
 #include "../adapters/general.h"
-#include "../core/types.h"
-#include "../detail/common.h"
 
+#include "../core/entity_adapter.h"
+#include "../core/types.h"
+
+#include "../detail/common.h"
+#include "../detail/utils.h"
 
 #include <utility>
 #include <variant>
@@ -68,6 +71,127 @@ namespace OrthoTree
   public: // Constructors
     constexpr explicit OrthoTreeManaged() noexcept = default;
 
+  public: // Constructors without box space
+    // Constructor for any contiguous container with runtime parallel parameter
+    template<typename TExecMode = SeqExec>
+    explicit OrthoTreeManaged(
+      std::span<Entity const> const& geometryCollection,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
+      TExecMode execMode = {}) noexcept
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed && detail::HasCreateSimple<TOrthoTreeCore>)
+    : m_entities(geometryCollection.begin(), geometryCollection.end())
+    {
+#ifndef __cpp_lib_execution
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      TOrthoTreeCore::Create(m_tree, m_entities, maxElementNoInNode, execMode);
+    }
+
+    // Constructor for any copyable container with runtime parallel parameter
+    template<typename TExecMode = SeqExec>
+    explicit OrthoTreeManaged(
+      EntityContainer const& geometryCollection, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateSimple<TOrthoTreeCore>)
+    : m_entities(geometryCollection)
+    {
+#ifndef __cpp_lib_execution
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      TOrthoTreeCore::Create(m_tree, m_entities, maxElementNoInNode, execMode);
+    }
+
+    // Constructor for any movable container with runtime parallel parameter
+    template<typename TExecMode = SeqExec>
+    explicit OrthoTreeManaged(
+      EntityContainer&& geometryCollection, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateSimple<TOrthoTreeCore>)
+    : m_entities(std::move(geometryCollection))
+    {
+#ifndef __cpp_lib_execution
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      TOrthoTreeCore::Create(m_tree, m_entities, maxElementNoInNode, execMode);
+    }
+
+    // Constructor for any contiguous container with compile-time parallel parameter
+    template<typename TExecMode>
+    explicit OrthoTreeManaged(
+      TExecMode execMode,
+      std::span<Entity const> const& geometryCollection,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed && detail::HasCreateSimple<TOrthoTreeCore>)
+    : m_entities(geometryCollection.begin(), geometryCollection.end())
+    {
+#ifdef __cpp_lib_execution
+#else
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      TOrthoTreeCore::Create(m_tree, m_entities, maxElementNoInNode, execMode);
+    }
+
+    // Constructor for any copyable container compile-time parallel parameter
+    template<typename TExecMode>
+    explicit OrthoTreeManaged(
+      TExecMode execMode, EntityContainer const& geometryCollection, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      requires(detail::HasCreateSimple<TOrthoTreeCore>)
+    : m_entities(geometryCollection)
+    {
+#ifdef __cpp_lib_execution
+#else
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      TOrthoTreeCore::Create(m_tree, m_entities, maxElementNoInNode, execMode);
+    }
+
+    // Constructor for any movable container with compile-time parallel parameter
+    template<typename TExecMode>
+    explicit OrthoTreeManaged(
+      TExecMode execMode, EntityContainer&& geometryCollection, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      requires(detail::HasCreateSimple<TOrthoTreeCore>)
+    : m_entities(std::move(geometryCollection))
+    {
+#ifdef __cpp_lib_execution
+#else
+      static_assert(!std::is_same_v<TExecMode, ExecutionTags::Parallel>, "Parallel creation is based on execution policies. __cpp_lib_execution is required.");
+#endif
+      TOrthoTreeCore::Create(m_tree, m_entities, maxElementNoInNode, execMode);
+    }
+
+    template<typename TExecMode = SeqExec>
+    static OrthoTreeManaged Create(
+      std::span<Entity const> const& entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed && detail::HasCreateSimple<TOrthoTreeCore>)
+    {
+      auto otc = OrthoTreeManaged();
+      otc.m_entities = std::vector(entities.begin(), entities.end());
+      TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxElementNoInNode, execMode);
+      return otc;
+    }
+
+    template<typename TExecMode = SeqExec>
+    static OrthoTreeManaged Create(
+      EntityContainer const& entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateSimple<TOrthoTreeCore>)
+    {
+      auto otc = OrthoTreeManaged();
+      otc.m_entities = entities;
+      TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxElementNoInNode, execMode);
+      return otc;
+    }
+
+    template<typename TExecMode = SeqExec>
+    static OrthoTreeManaged Create(
+      EntityContainer&& entities, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES, TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateSimple<TOrthoTreeCore>)
+    {
+      auto otc = OrthoTreeManaged();
+      otc.m_entities = std::move(entities);
+      TOrthoTreeCore::Create(otc.m_tree, otc.m_entities, maxElementNoInNode, execMode);
+      return otc;
+    }
+
+
+  public: // Constructors with box space
     // Constructor for any contiguous container with runtime parallel parameter
     template<typename TExecMode = SeqExec>
     explicit OrthoTreeManaged(
@@ -76,7 +200,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
-      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed && detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifndef __cpp_lib_execution
@@ -93,6 +217,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     : m_entities(geometryCollection)
     {
 #ifndef __cpp_lib_execution
@@ -109,6 +234,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     : m_entities(std::move(geometryCollection))
     {
 #ifndef __cpp_lib_execution
@@ -125,7 +251,7 @@ namespace OrthoTree
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
-      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed && detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     : m_entities(geometryCollection.begin(), geometryCollection.end())
     {
 #ifdef __cpp_lib_execution
@@ -143,6 +269,7 @@ namespace OrthoTree
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      requires(detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     : m_entities(geometryCollection)
     {
 #ifdef __cpp_lib_execution
@@ -160,6 +287,7 @@ namespace OrthoTree
       std::optional<depth_t> maxDepthID = std::nullopt,
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      requires(detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     : m_entities(std::move(geometryCollection))
     {
 #ifdef __cpp_lib_execution
@@ -176,7 +304,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
-      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed && detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     {
       auto otc = OrthoTreeManaged();
       otc.m_entities = std::vector(entities.begin(), entities.end());
@@ -191,6 +319,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     {
       auto otc = OrthoTreeManaged();
       otc.m_entities = entities;
@@ -205,6 +334,7 @@ namespace OrthoTree
       std::optional<TBox> boxSpace = std::nullopt,
       std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES,
       TExecMode execMode = {}) noexcept
+      requires(detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
     {
       auto otc = OrthoTreeManaged();
       otc.m_entities = std::move(entities);
