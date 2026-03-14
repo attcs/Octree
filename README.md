@@ -78,7 +78,7 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * `struct{x,y,z}`: 2D, 3D; (adaptor.xyz.h)
 
 ## Major aliases in OrthoTree
-* `Core` types
+* `Core` `OrthoTree` types
   * Static: 
     * Contiguous: `StaticQuadtreePoint`, `StaticOctreePoint`, `StaticOrthoTreePointND<dim, ...>`, `StaticQuadtreeBox`, `StaticOctreeBox`, `StaticOrthoTreeBoxND<dim, ...>`
     * Custom keyed: `StaticQuadtreePointMap`, `StaticOctreePointMap`, `StaticQuadtreeBoxMap`, `StaticOctreeBoxMap`
@@ -92,6 +92,14 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
   * Dynamic:
     * Contiguous: `QuadtreePointM`, `OctreePointM`, `QuadtreeBoxM`, `OctreeBoxM`, `OrthoTreePointManagedND<dim, ...>`, `OrthoTreeBoxManagedND<dim, ...>`
     * Custom keyed: `QuadtreePointMapM`, `OctreePointMapM`, `QuadtreeBoxMapM`, `OctreeBoxMapM`
+* `Core` `BVH` types
+  * Static: 
+    * Contiguous: `StaticBVHPoint2D`, `StaticBVHPoint3D`, `StaticBVHPointND<dim, ...>`, `StaticBVHBox2D`, `StaticBVHBox3D`, `StaticBVHBoxND<dim, ...>`
+    * Custom keyed: `StaticBVHPointMap2D`, `StaticBVHPointMap3D`, `StaticBVHPointND<dim, ..., false>`, `StaticBVHBoxMap2D`, `StaticBVHBoxMap3D`, `StaticBVHBoxND<dim, ..., false>`
+* `Managed` types:
+  * Static:
+    * Contiguous: `StaticBVHPoint2DM`, `StaticBVHPoint3DM`, `StaticBVHPointManagedND<dim, ...>`, `StaticBVHBox2DM`, `StaticBVHBox3DM`, `StaticBVHBoxManagedND<dim, ...>`
+    * Custom keyed: `StaticBVHPointMap2DM`, `StaticBVHPointMap3DM`, `StaticBVHPointManagedND<dim, ..., false>`, `StaticBVHBoxMap2DM`, `StaticBVHBoxMap3DM`, `StaticBVHBoxManagedND<dim, ..., false>`
 
 See the full list of the default aliases in [core/ot_aliases.h](./include/orthotree/core/ot_aliases.h) or [core/bvh_aliases.h](./include/orthotree/core/bvh_aliases.h)
 
