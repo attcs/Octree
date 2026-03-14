@@ -1,5 +1,9 @@
 #include "pch.h"
 
+#define ORTHOTREE__PUBLIC_NODE_INTERFACE
+#define ORTHOTREE__DEBUG_CHECKS
+
+
 // clang-format off
 #include "orthotree/octree.h"
 

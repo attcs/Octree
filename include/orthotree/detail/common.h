@@ -26,45 +26,12 @@ SOFTWARE.
 
 #include "../core/types.h"
 
-#include <algorithm>
-#include <array>
-#include <bit>
-#include <bitset>
 #include <cassert>
-#include <climits>
-#include <cmath>
-#include <compare>
-#include <concepts>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-
 #include <exception>
 #include <execution>
-#include <forward_list>
-#include <functional>
-#include <iterator>
-#include <limits>
-#include <list>
-#include <map>
-#include <memory>
-#include <memory_resource>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <ranges>
-#include <set>
-#include <span>
-#include <stack>
-#include <stdexcept>
-#include <string>
-#include <thread>
-#include <tuple>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
-#include <variant>
-#include <vector>
+#include <utility>
+#include <cstdlib>
 #include <version>
 
 

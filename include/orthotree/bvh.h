@@ -31,38 +31,6 @@ SOFTWARE.
 #endif // !ORTHOTREE__DISABLE_PMR
 #endif
 
-#include <assert.h>
-#include <math.h>
-
-#include <algorithm>
-#include <array>
-#include <bit>
-#include <bitset>
-#include <concepts>
-#include <cstring>
-#include <execution>
-#include <functional>
-#include <iterator>
-#include <map>
-#include <memory_resource>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <ranges>
-#include <set>
-#include <span>
-#include <stack>
-#include <stdexcept>
-#include <thread>
-#include <tuple>
-#include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
-#include <variant>
-#include <vector>
-#include <version>
-
-
 #include "detail/bitset_arithmetic.h"
 #include "detail/common.h"
 #include "detail/inplace_vector.h"
@@ -88,5 +56,3 @@ SOFTWARE.
 #include "adapters/general.h"
 
 #include "core/bvh_aliases.h"
-
-#include "detail/undefs.h"

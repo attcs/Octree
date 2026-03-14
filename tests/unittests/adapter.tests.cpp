@@ -1,5 +1,10 @@
 #include "pch.h"
 
+#define ORTHOTREE__PUBLIC_NODE_INTERFACE
+#define ORTHOTREE__DEBUG_CHECKS
+#include "orthotree/bvh.h"
+#include "orthotree/octree.h"
+
 #include "orthotree/adapters/boost.h"
 #include <boost/geometry.hpp>
 
