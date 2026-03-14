@@ -20,12 +20,6 @@
 #include "orthotree/detail/utils.h"
 #include "orthotree/detail/zip_view.h"
 
-
-#define ORTHOTREE__PUBLIC_NODE_INTERFACE
-#define ORTHOTREE__DEBUG_CHECKS
-#include "orthotree/octree.h"
-
-
 #include "CppUnitTest.h"
 
 #endif // PCH_H

@@ -27,6 +27,8 @@ SOFTWARE.
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
+#include <type_traits>
 
 
 namespace OrthoTree
@@ -108,5 +110,4 @@ namespace OrthoTree
   using ParExec = ExecutionTags::Parallel;
   auto constexpr SEQ_EXEC = SeqExec{};
   auto constexpr PAR_EXEC = ParExec{};
-
 } // namespace OrthoTree

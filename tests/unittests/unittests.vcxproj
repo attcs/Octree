@@ -180,6 +180,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bitset.arithmetic.tests.cpp" />
+    <ClCompile Include="bvh.tests.cpp" />
     <ClCompile Include="compile.tests.cpp" />
     <ClCompile Include="example.tests.cpp" />
     <ClCompile Include="pch.cpp">
@@ -202,8 +203,10 @@
     <ClInclude Include="..\..\include\orthotree\adapters\glm.h" />
     <ClInclude Include="..\..\include\orthotree\adapters\unreal.h" />
     <ClInclude Include="..\..\include\orthotree\adapters\xyz.h" />
+    <ClInclude Include="..\..\include\orthotree\bvh.h" />
     <ClInclude Include="..\..\include\orthotree\core\aliases.h" />
     <ClInclude Include="..\..\include\orthotree\core\build_config.h" />
+    <ClInclude Include="..\..\include\orthotree\core\bvh_static_linear_core.h" />
     <ClInclude Include="..\..\include\orthotree\core\configuration.h" />
     <ClInclude Include="..\..\include\orthotree\core\entity_adapter.h" />
     <ClInclude Include="..\..\include\orthotree\core\ot_base.h" />

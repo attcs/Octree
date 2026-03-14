@@ -46,13 +46,9 @@ SOFTWARE.
 #include <memory_resource>
 #include <numeric>
 #include <optional>
-#include <queue>
 #include <ranges>
 #include <set>
 #include <span>
-#include <stack>
-#include <stdexcept>
-#include <thread>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -187,6 +183,32 @@ namespace OrthoTree::detail
 
     return std::visit(overloaded, variant);
   }
+
+  
+
+  // Trait to check if TOrthoTreeCore::Create() has maxDepthID and boxSpace parameters
+  template<typename TCore>
+  concept HasCreateWithBoxSpace = requires(
+    TCore& tree,
+    typename TCore::EA::EntityContainerView entities,
+    std::optional<depth_t> maxDepthID,
+    std::optional<typename TCore::GA::Box> boxSpace,
+    std::size_t maxElementNoInNode,
+    SeqExec execMode) { TCore::Create(tree, entities, maxDepthID, boxSpace, maxElementNoInNode, execMode); };
+
+  template<typename TCore>
+  inline constexpr bool HasCreateWithBoxSpaceV = HasCreateWithBoxSpace<TCore>;
+
+
+  // Trait to check if TOrthoTreeCore::Create() has NO maxDepthID and boxSpace parameters (typical for BVH)
+  template<typename TCore>
+  concept HasCreateSimple = requires(TCore& tree, typename TCore::EA::EntityContainerView entities, std::size_t maxElementNoInNode, SeqExec execMode) {
+    TCore::Create(tree, entities, maxElementNoInNode, execMode);
+  };
+
+  template<typename TCore>
+  inline constexpr bool HasCreateSimpleV = HasCreateSimple<TCore>;
+
 
 
   template<typename TContainer, typename TKey>

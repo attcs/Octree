@@ -432,13 +432,14 @@
       { group: 'mode', items: ['Loose', 'Regular'] },
       { group: 'map', items: ['WithReverseMap', 'WithoutReverseMap'] },
       { group: 'exec', items: ['Seq', 'Par'] },
+      { group: 'treetype', items: ['Octree', 'BVH'] },
     ];
 
     const PRESETS = [
       { id: 'point3', label: '📍 Point Trees', patterns: ['PointTree'] },
-      { id: 'boxmodes', label: '📦 Box: MinPt vs MBR vs Loose', patterns: ['DynamicBoxTree__MinPoint_Regular', 'DynamicBoxTree__MBR_Regular', 'DynamicBoxTree__MBR_Loose'] },
-      { id: 'dynvsstatic', label: '⚡ Dynamic vs Static Loose', patterns: ['DynamicBoxTree__MBR_Loose', 'StaticBoxTree__MBR_Loose'] },
-      { id: 'staticbox', label: '🏛 Static Box Trees', patterns: ['StaticBoxTree'] },
+      { id: 'boxmodes', label: '📦 Box: MinPt vs MBR vs Loose', patterns: ['DynamicBoxOrthoTree__MinPoint_Regular', 'DynamicBoxOrthoTree__MBR_Regular', 'DynamicBoxOrthoTree__MBR_Loose'] },
+      { id: 'dynvsstatic', label: '⚡ Dynamic vs Static Loose', patterns: ['DynamicBoxOrthoTree__MBR_Loose', 'StaticBoxOrthoTree__MBR_Loose'] },
+      { id: 'staticbox', label: '🏛 Static Box Trees', patterns: ['StaticBoxOrthoTree'] },
       { id: 'createbulk', label: '🔄 Create vs Insert__Bulk', fn: 'Create|Insert__Bulk' },
       { id: 'seqpar', label: '🔀 Seq vs Par', fn: 'Create' },
       { id: 'all', label: '📋 All' },
@@ -519,6 +520,8 @@
                 if (item === 'Point') return full.includes('pointtree');
                 if (item === 'Box') return full.includes('boxtree');
                 if (item === 'WithReverseMap') return full.includes('withreversemap') && !full.includes('withoutreversemap');
+                if (item === 'Octree') return full.includes('octree') || full.includes('orthotree') || (!full.includes('bvh') && !full.startsWith('base::'));
+                if (item === 'BVH') return full.includes('bvh');
                 return full.includes(il);
               });
               if (matchingItems.length > 0)
@@ -838,13 +841,13 @@
         return { title: fn, subtitle: sub, args, datasets };
       });
 
-      // Special comparison: Create vs Insert__Bulk
+      // Special comparison: Create__OversizedModelspace vs Insert__Bulk
       if (fbs.includes('Create') && fbs.includes('Insert__Bulk'))
       {
-        const compRows = data.filter(b => b.funcBase === 'Create' || b.funcBase === 'Insert__Bulk');
+        const compRows = data.filter(b => b.funcBase === 'Create__OversizedModelspace' || b.funcBase === 'Insert__Bulk');
         const configs = [...new Set(compRows.map(b => b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx))];
         const sharedConfigs = configs.filter(c =>
-          compRows.some(b => b.funcBase === 'Create' && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === c) &&
+          compRows.some(b => b.funcBase === 'Create__OversizedModelspace' && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === c) &&
           compRows.some(b => b.funcBase === 'Insert__Bulk' && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === c)
         );
 
@@ -856,18 +859,18 @@
           sharedConfigs.forEach((sc, ci) =>
           {
             const color = PALETTE[ci % PALETTE.length];
-            ['Create', 'Insert__Bulk'].forEach(fb =>
+            ['Create__OversizedModelspace', 'Insert__Bulk'].forEach(fb =>
             {
               const pts = rows.filter(b => b.funcBase === fb && (b.treeName + '|' + (b.execMode || '') + '|' + b.fileIdx) === sc);
               if (!pts.length) return;
               const vals = args.map(a => { const m = pts.find(b => b.arg === a); return m ? m.timeNs : null; });
               const b = pts[0];
-              let lbl = b.treeName + ' (' + (fb === 'Create' ? 'Create' : 'Bulk') + ')';
+              let lbl = b.treeName + ' (' + (fb === 'Create__OversizedModelspace' ? 'Create__OversizedModelspace' : 'Bulk') + ')';
               if (b.execMode) lbl += ' [' + b.execMode + ']';
               datasets.push({
-                label: lbl, data: vals, borderColor: color, borderDash: fb === 'Create' ? [] : [5, 5],
+                label: lbl, data: vals, borderColor: color, borderDash: fb === 'Create__OversizedModelspace' ? [] : [5, 5],
                 backgroundColor: color + '22', pointBackgroundColor: color, borderWidth: 2,
-                pointRadius: 4, pointStyle: fb === 'Create' ? 'circle' : 'triangle',
+                pointRadius: 4, pointStyle: fb === 'Create__OversizedModelspace' ? 'circle' : 'triangle',
                 tension: 0.25, fill: false, spanGaps: true,
                 _treeName: b.treeName, _execMode: b.execMode
               });

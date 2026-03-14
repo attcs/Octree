@@ -235,6 +235,8 @@ namespace OrthoTree
     ORTHOTREE_DEPENDENT_TYPES(Base);
 
   public:
+    using SI = typename Base::SI;
+
     using NodeID = typename SI::NodeID;
     using NodeIDCR = typename SI::NodeIDCR;
 

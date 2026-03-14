@@ -4,7 +4,9 @@
 #include <array>
 #include <vector>
 
+#include "../../include/orthotree/bvh.h"
 #include "../../include/orthotree/octree.h"
+
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -676,7 +678,196 @@ void testCompileBoxMapM()
   }
 }
 
+
+template<OrthoTree::dim_t N, typename TExecMode>
+void testCompileBVHPoint()
+{
+  using Point = OrthoTree::PointND<N>;
+  using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using BVH = OrthoTree::StaticBVHPointND<N>;
+  using Plane = OrthoTree::PlaneND<N>;
+
+  auto constexpr vpt = std::array{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 }, Point{ 3.0 }, Point{ 4.0 } };
+  auto bvh = BVH(vpt, 2, TExecMode{});
+
+  // const member functions
+  {
+    [[maybe_unused]] auto const& boxAll = bvh.GetBox();
+    [[maybe_unused]] auto const nDepthMax = bvh.GetDepthNo();
+    [[maybe_unused]] auto const aidInRange = bvh.RangeSearch(BoundingBox{ Point{ 0.0 }, Point{ 1.0 } }, vpt);
+    [[maybe_unused]] auto const idFrustum = bvh.FrustumCulling(
+      std::vector{
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
+      vpt,
+      0.0);
+    [[maybe_unused]] auto const aidPick = bvh.PickSearch(Point{ 0.5 }, vpt);
+    [[maybe_unused]] auto const rayFirst = bvh.RayIntersectedFirst(Point{ -1.0 }, Point{ 1.0 }, vpt);
+    [[maybe_unused]] auto const rayAll = bvh.RayIntersectedAll(Point{ -1.0 }, Point{ 1.0 }, vpt);
+    [[maybe_unused]] auto const kNN = bvh.GetNearestNeighbors(Point{ 0.0 }, 2, vpt);
+  }
+}
+
+template<OrthoTree::dim_t N, typename TExecMode>
+void testCompileBVHBox()
+{
+  using Point = OrthoTree::PointND<N>;
+  using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using BVH = OrthoTree::StaticBVHBoxND<N, OrthoTree::BaseGeometryType>;
+  using Plane = OrthoTree::PlaneND<N>;
+
+  auto constexpr boxes = std::array{
+    BoundingBox{ Point{ 0.0 }, Point{ 1.0 } },
+    BoundingBox{ Point{ 1.0 }, Point{ 2.0 } },
+    BoundingBox{ Point{ 2.0 }, Point{ 3.0 } }
+  };
+  auto bvh = BVH(boxes, 2, TExecMode{});
+
+  // const member functions
+  {
+    [[maybe_unused]] auto const& boxAll = bvh.GetBox();
+    [[maybe_unused]] auto const vidCollision = bvh.CollisionDetection(boxes);
+    [[maybe_unused]] auto const aidPick = bvh.PickSearch(Point{ 0.5 }, boxes);
+    [[maybe_unused]] auto const aidInRange = bvh.RangeSearch(boxes[0], boxes);
+    [[maybe_unused]] auto const idFrustum = bvh.FrustumCulling(
+      std::vector{
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
+      boxes,
+      0.0);
+    [[maybe_unused]] auto const rayFirst = bvh.RayIntersectedFirst(Point{ -1.0 }, Point{ 1.0 }, boxes);
+    [[maybe_unused]] auto const rayAll = bvh.RayIntersectedAll(Point{ -1.0 }, Point{ 1.0 }, boxes);
+    [[maybe_unused]] auto const kNN = bvh.GetNearestNeighbors(Point{ 0.0 }, 2, boxes);
+  }
+}
+
+template<OrthoTree::dim_t N, typename TExecMode>
+void testCompileBVHPointM()
+{
+  using Point = OrthoTree::PointND<N>;
+  using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using BVHM = OrthoTree::StaticBVHPointManagedND<N>;
+  using Plane = OrthoTree::PlaneND<N>;
+
+  auto const vpt = std::vector{ Point{ 0.0 }, Point{ 1.0 }, Point{ 2.0 } };
+  auto bvh = BVHM(vpt, 2, TExecMode{});
+
+  {
+    [[maybe_unused]] auto const& boxAll = bvh.GetBox();
+    [[maybe_unused]] auto const aidPick = bvh.PickSearch(Point{ 0.5 });
+    [[maybe_unused]] auto const aidInRange = bvh.RangeSearch(BoundingBox{ Point{ 0.0 }, Point{ 1.0 } });
+    [[maybe_unused]] auto const idFrustum = bvh.FrustumCulling(
+      std::vector{
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
+      0.0);
+    [[maybe_unused]] auto const rayFirst = bvh.RayIntersectedFirst(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const rayAll = bvh.RayIntersectedAll(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const kNN = bvh.GetNearestNeighbors(Point{ 0.0 }, 2);
+  }
+}
+
+template<OrthoTree::dim_t N, typename TExecMode>
+void testCompileBVHBoxM()
+{
+  using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using Point = OrthoTree::PointND<N>;
+  using BVHM = OrthoTree::StaticBVHBoxManagedND<N>;
+  using Plane = OrthoTree::PlaneND<N>;
+
+  auto const boxes = std::vector{
+    BoundingBox{ Point{ 0.0 }, Point{ 1.0 } },
+    BoundingBox{ Point{ 1.0 }, Point{ 2.0 } }
+  };
+  auto bvh = BVHM(boxes, 2, TExecMode{});
+
+  {
+    [[maybe_unused]] auto const vidCollision = bvh.template CollisionDetection<TExecMode>();
+    [[maybe_unused]] auto const aidPick = bvh.PickSearch(Point{ 0.5 });
+    [[maybe_unused]] auto const aidInRange = bvh.RangeSearch(boxes[0]);
+    [[maybe_unused]] auto const idFrustum = bvh.FrustumCulling(
+      std::vector{
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
+      0.0);
+    [[maybe_unused]] auto const rayFirst = bvh.RayIntersectedFirst(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const rayAll = bvh.RayIntersectedAll(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const kNN = bvh.GetNearestNeighbors(Point{ 0.0 }, 2);
+  }
+}
+
+template<OrthoTree::dim_t N, typename TExecMode>
+void testCompileBVHPointMapM()
+{
+  using Point = OrthoTree::PointND<N>;
+  using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using Map = std::unordered_map<unsigned int, Point>;
+  using BVHM = OrthoTree::StaticBVHPointManagedND<N, OrthoTree::BaseGeometryType, false>;
+  using Plane = OrthoTree::PlaneND<N>;
+
+  auto const vpt = Map{
+    { 10, Point{ 0.0 } },
+    { 20, Point{ 1.0 } },
+    { 30, Point{ 2.0 } }
+  };
+  auto bvh = BVHM(vpt, 2, TExecMode{});
+
+  {
+    [[maybe_unused]] auto const& boxAll = bvh.GetBox();
+    [[maybe_unused]] auto const aidPick = bvh.PickSearch(Point{ 0.5 });
+    [[maybe_unused]] auto const aidInRange = bvh.RangeSearch(BoundingBox{ Point{ 0.0 }, Point{ 1.0 } });
+    [[maybe_unused]] auto const idFrustum = bvh.FrustumCulling(
+      std::vector{
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
+      0.0);
+    [[maybe_unused]] auto const rayFirst = bvh.RayIntersectedFirst(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const rayAll = bvh.RayIntersectedAll(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const kNN = bvh.GetNearestNeighbors(Point{ 0.0 }, 2);
+  }
+}
+
+
+template<OrthoTree::dim_t N, typename TExecMode>
+void testCompileBVHBoxMapM()
+{
+  using BoundingBox = OrthoTree::BoundingBoxND<N>;
+  using Point = OrthoTree::PointND<N>;
+  using Map = std::unordered_map<unsigned int, BoundingBox>;
+  using BVHM = OrthoTree::StaticBVHBoxManagedND<N, OrthoTree::BaseGeometryType, false>;
+  using Plane = OrthoTree::PlaneND<N>;
+
+  auto const boxes = Map{
+    { 10, BoundingBox{ Point{ 0.0 }, Point{ 1.0 } } },
+    { 20, BoundingBox{ Point{ 1.0 }, Point{ 2.0 } } }
+  };
+  auto bvh = BVHM(boxes, 2, TExecMode{});
+
+  {
+    [[maybe_unused]] auto const vidCollision = bvh.template CollisionDetection<TExecMode>();
+    [[maybe_unused]] auto const aidPick = bvh.PickSearch(Point{ 0.5 });
+    [[maybe_unused]] auto const aidInRange = bvh.RangeSearch(boxes.at(10));
+    [[maybe_unused]] auto const idFrustum = bvh.FrustumCulling(
+      std::vector{
+        Plane{ 1.0, { 1.0, 0.0 } },
+        Plane{ 1.0, { 0.0, 1.0 } }
+    },
+      0.0);
+    [[maybe_unused]] auto const rayFirst = bvh.RayIntersectedFirst(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const rayAll = bvh.RayIntersectedAll(Point{ -1.0 }, Point{ 1.0 });
+    [[maybe_unused]] auto const kNN = bvh.GetNearestNeighbors(Point{ 0.0 }, 2);
+  }
+}
+
+
 template<typename TExecMode, bool IS_LOOSE_TREE, OrthoTree::NodeGeometryStorage NODE_GEOMETRY_STORAGE>
+
+
 void testCompileBoxBatchDimension()
 {
   auto constexpr isPlatform64 = sizeof(std::size_t) == 8;
@@ -761,7 +952,26 @@ void testCompileBoxBatchDimension()
     testCompileBoxMapM<2, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
     testCompileBoxMapM<3, TExecMode, IS_LOOSE_TREE, NODE_GEOMETRY_STORAGE>();
   }
+
+  // BVH types
+  {
+    testCompileBVHPoint<2, TExecMode>();
+    testCompileBVHPoint<3, TExecMode>();
+    testCompileBVHBox<2, TExecMode>();
+    testCompileBVHBox<3, TExecMode>();
+
+    testCompileBVHPointM<2, TExecMode>();
+    testCompileBVHPointM<3, TExecMode>();
+    testCompileBVHBoxM<2, TExecMode>();
+    testCompileBVHBoxM<3, TExecMode>();
+
+    testCompileBVHPointMapM<2, TExecMode>();
+    testCompileBVHPointMapM<3, TExecMode>();
+    testCompileBVHBoxMapM<2, TExecMode>();
+    testCompileBVHBoxMapM<3, TExecMode>();
+  }
 }
+
 
 template<bool IS_LOOSE_TREE = true>
 void testCompileBoxBatchExPol()

@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "orthotree/bvh.h"
+#include "orthotree/octree.h"
 
 using namespace OrthoTree;
 

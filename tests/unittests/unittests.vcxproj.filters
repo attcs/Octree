@@ -51,6 +51,9 @@
     <ClCompile Include="compile.tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="bvh.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -154,6 +157,12 @@
     </ClInclude>
     <ClInclude Include="..\..\include\orthotree\core\ot_managed.h">
       <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\core\bvh_static_linear_core.h">
+      <Filter>Header Files\include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\orthotree\bvh.h">
+      <Filter>Header Files\include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

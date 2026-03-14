@@ -1,5 +1,7 @@
 #include "pch.h"
 
+#include "orthotree/octree.h"
+
 using namespace OrthoTree;
 
 using std::array;

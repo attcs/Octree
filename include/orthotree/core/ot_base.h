@@ -73,6 +73,10 @@ namespace OrthoTree
       std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR, NodeBox, std::monostate>>;
 
   private:
+    static_assert(CONFIG::MAX_ALLOWED_DEPTH_ID <= MAX_DEPTH_ID, "MAX_ALLOWED_DEPTH_ID of Configuration is too large.");
+    static_assert(CONFIG::LOOSE_FACTOR >= 1.0 && CONFIG::LOOSE_FACTOR <= 2.0, "Wrong loose factor for Loose trees.");
+
+  private:
     std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
     depth_t m_maxDepthID = INVALID_DEPTH;
 
@@ -92,6 +96,7 @@ namespace OrthoTree
     using EntityID = EA::EntityID;
     using Entity = EA::Entity;
     using EntityGeometry = EA::Geometry;
+    using ChildID = SI::ChildID;
 
   protected:
     constexpr OrthoTreeCoreBase() = default;
@@ -167,6 +172,7 @@ namespace OrthoTree
     constexpr auto GetMaxDepthID() const noexcept { return m_maxDepthID; }
     constexpr auto GetMaxElementNum() const noexcept { return m_maxElementNum; }
     constexpr auto GetDepthNo() const noexcept { return m_maxDepthID + 1; }
+    static constexpr bool AreChildNodesOverlapping() noexcept { return CONFIG::LOOSE_FACTOR > 1.0; }
 
   protected:
     constexpr decltype(auto) GetNodeSize(depth_t depthID) const
@@ -236,7 +242,6 @@ namespace OrthoTree
   using GA = Base::GA;                                          \
   using CONFIG = Base::CONFIG;                                  \
   using IGM = Base::IGM;                                        \
-  using SI = Base::SI;                                          \
   using IGM_Geometry = IGM::Geometry;                           \
                                                                 \
   using TScalar = typename GA::Scalar;                          \
@@ -249,5 +254,7 @@ namespace OrthoTree
   using EntityContainerView = typename EA::EntityContainerView; \
   using EntityID = typename EA::EntityID;                       \
   using Entity = typename EA::Entity;                           \
-  using EntityGeometry = typename EA::Geometry
+  using EntityGeometry = typename EA::Geometry;                 \
+                                                                \
+  using ChildID = Base::ChildID
 } // namespace OrthoTree

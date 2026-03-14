@@ -6,6 +6,11 @@
 #include <numbers>
 #include <random>
 
+#define ORTHOTREE__PUBLIC_NODE_INTERFACE
+#define ORTHOTREE__DEBUG_CHECKS
+#include "orthotree/bvh.h"
+#include "orthotree/octree.h"
+
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-braces"

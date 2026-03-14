@@ -3,17 +3,22 @@
 ## Introduction
 OrthoTree is a generic geometric data structure that represents coordinate space recursively. For storage and structural representation, it only handles Axis-Aligned Bounding Boxes (AABBs) and points. Other geometries, such as rays and planes, are used for search and querying operations.
 
-For ease of use, the library provides several aliases ([core/aliases.h](../include/orthotree/core/aliases.h)) for common configurations (e.g., `OctreePoint`, `OctreeBox`, `QuadtreePoint`, `QuadtreeBox`).
+For ease of use, the library provides several aliases for common configurations (e.g., `OctreePoint`, `OctreeBox`, `QuadtreePoint`, `QuadtreeBox`). See [core/ot_aliases.h](../include/orthotree/core/ot_aliases.h) and [core/bvh_aliases.h](../include/orthotree/core/ot_aliases.h).
 
 ## Code structure
-* **octree.h**: Main header file. 
-* **Static Core** (`ot_static_linear_core.h`): An immutable, linear memory layout tree. It is built once and cannot be modified (no insertion/removal after build), but it provides the highest cache coherency and fastest query performance. Best for static environments and one-time spatial setups. It aims minimal memory footprint. E.g: `StaticOctreeBox`
-* **Dynamic Core** (`ot_dynamic_hash_core.h`): A mutable tree structure based on a hashing approach. It allows adding, removing, and updating entities dynamically at runtime. Best for changing environments, simulators, and physics engines. E.g: `DynamicOctreeBox`/`OctreeBox`
-* **Query** layer (`ot_query.h`): It is an additional layer on top of the cores. Contains the geometric search algorithms that operate on the trees, such as Range search, Collision detection, K-Nearest Neighbors (KNN), and Raycasting. With the proper interface it can be used for other types of Cores (e.g., BVH, RTree, etc.).
-* **Managed** (`ot_managed.h`): High-level wrapper classes (e.g., `OctreePointM`) that manage both the tree structure and the user's entity storage. They provide a simpler, object-oriented API for interacting with the tree.
-* **Adapters** (`adapters/*.h`): Adapters map user-defined or third-party geometric types (vector, box) to the generic concepts required by OrthoTree. Ready-made adapters exist for GLM, Eigen, Unreal, CGAL, etc.
-* **`core/`**: Strongly connected Core functionalities for internal use.
-* **`detail/`**: Other utilities.
+* Main header files
+  * **octree.h**: Main header file for OrthoTree-based solution.
+  * **bvh.h**: Main header file for static BVH solution.
+  * **Adapters** (`adapters/*.h`): Adapters map user-defined or third-party geometric types (vector, box) to the generic concepts required by OrthoTree. Ready-made adapters exist for GLM, Eigen, Unreal, CGAL, etc.
+* Internal files
+  * **`core/`**: Strongly connected Core functionalities for internal use.
+    * **Static OrthoTree Core** (`core/ot_static_linear_core.h`): An immutable, linear memory layout orthotree. It is built once and cannot be modified (no insertion/removal after build), but it provides the highest cache coherency and fastest query performance. Best for static environments and one-time spatial setups. It aims minimal memory footprint. E.g: `StaticOctreeBox`
+    * **Dynamic OrthoTree Core** (`core/ot_dynamic_hash_core.h`): A mutable tree structure based on a hashing approach. It allows adding, removing, and updating entities dynamically at runtime. Best for changing environments, simulators, and physics engines. E.g: `DynamicOctreeBox`/`OctreeBox`
+    * **Static BVH Core** (`core/bvh_static_linear_core.h`): An immutable, linear memory layout, binned SAH bvh-tree. It is built once and cannot be modified (no insertion/removal after build), but it provides the highest cache coherency and fastest query performance. Best for static environments and one-time spatial setups. It aims minimal memory footprint. E.g: `StaticOctreeBox`
+    * **Query** layer (`core/ot_query.h`): It is an additional layer on top of the cores. Contains the geometric search algorithms that operate on the trees, such as Range search, Collision detection, K-Nearest Neighbors (KNN), and Raycasting. With the proper interface it can be used for other types of Cores (e.g., BVH, RTree, etc.).
+    * **Managed** (`core/ot_managed.h`): High-level wrapper classes (e.g., `OctreePointM`) that manage both the tree structure and the user's entity storage. They provide a simpler, object-oriented API for interacting with the tree.
+
+  * **`detail/`**: Other utilities.
 
 > [!CAUTION]
 > **Core types**: Tree cores do not store `Entities`, just `EntityID`s. Usage requires attention to the proper updating order: if element geometries are modified before calling `Update` or `Insert`, the overflowing mechanism may find elements that do not geographically fit in the current node.

@@ -1,6 +1,11 @@
 # Changelog
 
-# 2026-03 v3.0
+## 2026-03 v3.1
+
+New features
+* Static BVH linear core is added.
+
+## 2026-03 v3.0
 Major refactorization with large interface change.
 
 > [!CAUTION]
@@ -45,12 +50,12 @@ Miscellaneous
 Performance improvements
 * Loose octree has major performance advantage for picking.
 
-# 2025-11 v2.7
+## 2025-11 v2.7
 Interface changes
 * GetNearestNeighbors()` supports boxes, and changed to be more numerically robust.
 * `RayIntersected*()` functions changed to be more numerically robust.
 
-# 2025-05 v2.6
+## 2025-05 v2.6
 Interface changes
 * Exposing of Node's entities responsibility was moved to the Tree class
 * General split depth increasement strategy is removed. The one-level deeper solution is applied: `DO_SPLIT_PARENT_ENTITIES`

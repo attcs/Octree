@@ -43,10 +43,9 @@ SOFTWARE.
 #include "detail/zip_view.h"
 
 #include "core/build_config.h"
+#include "core/bvh_static_linear_core.h"
 #include "core/configuration.h"
 #include "core/entity_adapter.h"
-#include "core/ot_dynamic_hash_core.h"
-#include "core/ot_static_linear_core.h"
 #include "core/types.h"
 
 
@@ -56,4 +55,4 @@ SOFTWARE.
 
 #include "adapters/general.h"
 
-#include "core/ot_aliases.h"
+#include "core/bvh_aliases.h"

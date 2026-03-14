@@ -15,6 +15,7 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Arbitrary number of dimensions for other scientific usages
 * Differentiated Static and Dynamic solution
 * Optionally Loose octree
+* Static BVH tree
 * Parallelization is available (via `std::execution` policies)
 * Edit functions to Insert/Update/Erase entities
 * Wide range of search functions for both AABBs and points
@@ -36,6 +37,7 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 
 ## Requirements
 * Language standard: C++20 or above
+* Parallel execution via the `PAR_EXEC` tag requires support for `std::execution` policies (usually requiring TBB on Linux and macOS).
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
@@ -71,13 +73,13 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Default: 2D, 3D...63D; `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
 * CGAL: 2D, 3D; `CGAL::OctreePoint`, `OctreeBox`, `OctreePointM`, `OctreeBoxM`, etc. (adaptor.cgal.h)
 * Eigen: 2D, 3D; `Eigen::OctreePoint3d`, `OctreePointC3d`, `OctreeBox3d`, `OctreeBoxC3d`, etc. (adaptor.eigen.h)
-* glm: 2D, 3D, 4D; `glm::octree_point`, `octree_box`, `octree_point_c`, `octree_box_c`, etc. (adaptor.glm.h)
-* Unreal Engine: 2D, 3D; `FOctreePoint`, `FOctreePointC`, `FOctreeBox`, `FOctreeBoxC`, etc. (adaptor.unreal.h)
+* glm: 2D, 3D, 4D; `glm::octree_point`, `octree_box`, `octree_point_m`, `octree_box_m`, etc. (adaptor.glm.h)
+* Unreal Engine: 2D, 3D; `FOctreePoint`, `FOctreePointM`, `FOctreeBox`, `FOctreeBoxM`, etc. (adaptor.unreal.h)
 * Boost: 2D, 3D; `boost::geometry::octree_point`, `octree_box`, etc. (adaptor.boost.h)
 * `struct{x,y,z}`: 2D, 3D; (adaptor.xyz.h)
 
 ## Major aliases in OrthoTree
-* `Core` types
+* `Core` `OrthoTree` types
   * Static: 
     * Contiguous: `StaticQuadtreePoint`, `StaticOctreePoint`, `StaticOrthoTreePointND<dim, ...>`, `StaticQuadtreeBox`, `StaticOctreeBox`, `StaticOrthoTreeBoxND<dim, ...>`
     * Custom keyed: `StaticQuadtreePointMap`, `StaticOctreePointMap`, `StaticQuadtreeBoxMap`, `StaticOctreeBoxMap`
@@ -91,8 +93,16 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
   * Dynamic:
     * Contiguous: `QuadtreePointM`, `OctreePointM`, `QuadtreeBoxM`, `OctreeBoxM`, `OrthoTreePointManagedND<dim, ...>`, `OrthoTreeBoxManagedND<dim, ...>`
     * Custom keyed: `QuadtreePointMapM`, `OctreePointMapM`, `QuadtreeBoxMapM`, `OctreeBoxMapM`
+* `Core` `BVH` types
+  * Static: 
+    * Contiguous: `StaticBVHPoint2D`, `StaticBVHPoint3D`, `StaticBVHPointND<dim, ...>`, `StaticBVHBox2D`, `StaticBVHBox3D`, `StaticBVHBoxND<dim, ...>`
+    * Custom keyed: `StaticBVHPointMap2D`, `StaticBVHPointMap3D`, `StaticBVHPointND<dim, ..., false>`, `StaticBVHBoxMap2D`, `StaticBVHBoxMap3D`, `StaticBVHBoxND<dim, ..., false>`
+* `Managed` types:
+  * Static:
+    * Contiguous: `StaticBVHPoint2DM`, `StaticBVHPoint3DM`, `StaticBVHPointManagedND<dim, ...>`, `StaticBVHBox2DM`, `StaticBVHBox3DM`, `StaticBVHBoxManagedND<dim, ...>`
+    * Custom keyed: `StaticBVHPointMap2DM`, `StaticBVHPointMap3DM`, `StaticBVHPointManagedND<dim, ..., false>`, `StaticBVHBoxMap2DM`, `StaticBVHBoxMap3DM`, `StaticBVHBoxManagedND<dim, ..., false>`
 
-See the full list of the default aliases in [core/aliases.h](./include/orthotree/core/aliases.h)
+See the full list of the default aliases in [core/ot_aliases.h](./include/orthotree/core/ot_aliases.h) or [core/bvh_aliases.h](./include/orthotree/core/bvh_aliases.h)
 
 ## Basic examples
 
@@ -238,4 +248,4 @@ Usage of Core types
 ```
     
 For more examples, see the unit tests. E.g., [example.tests.cpp](./tests/unittests/example.tests.cpp).
-<div align="center" width="100%"><img src="https://github.com/attcs/Octree/blob/master/docs/quadtree_example.PNG " align="center" height="300"></div>
+<div align="center" width="100%"><img src="./docs/quadtree_example.PNG " align="center" height="300"></div>
