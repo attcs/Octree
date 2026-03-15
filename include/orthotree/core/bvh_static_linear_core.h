@@ -39,31 +39,8 @@ namespace OrthoTree
     using MapNodeContainer = std::map<TKey, TValue, TComp>;
   };
 
-  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-  class StaticBVHLinearCore
+  namespace detail
   {
-  public:
-    using EA = TEntityAdapter;
-    using GA = TGeometryAdapter;
-    using CONFIG = TConfiguration;
-    using IGM = detail::InternalGeometryModule<TGeometryAdapter>;
-
-    using NodeID = int;
-    using NodeIDCR = NodeID;
-    using NodeValue = NodeID;
-    using ChildID = NodeID;
-
-    using EntityID = EA::EntityID;
-    using EntityGeometry = EA::Geometry;
-
-    using TScalar = typename GA::Scalar;
-    using TFloatScalar = typename GA::FloatScalar;
-    using TVector = typename GA::Vector;
-    using TBox = typename GA::Box;
-    using TRay = typename GA::Ray;
-    using TPlane = typename GA::Plane;
-
-  private:
     template<typename TBegin, typename TLength>
     struct Segment
     {
@@ -109,24 +86,61 @@ namespace OrthoTree
 #else
       using EntitySegment = Segment<uint32_t, uint32_t>;
 #endif
-
       std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
       std::vector<EntitySegment> nodeEntitySegment;
     };
 
+    template<typename TVector>
     struct NodeGeometryData
     {
-      typename IGM::Vector minPoint;
-      typename IGM::Vector size;
+      TVector minPoint;
+      TVector size;
     };
+  } // namespace detail
 
-  private:
+  template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  class StaticBVHLinearCore
+  {
+  public: // Public type aliases
+    using EA = TEntityAdapter;
+    using GA = TGeometryAdapter;
+    using CONFIG = TConfiguration;
+    using IGM = detail::InternalGeometryModule<TGeometryAdapter>;
+
+    using NodeID = int;
+    using NodeIDCR = NodeID;
+    using NodeValue = NodeID;
+    using ChildID = NodeID;
+
+    using EntityID = EA::EntityID;
+    using EntityGeometry = EA::Geometry;
+
+    using TScalar = typename GA::Scalar;
+    using TFloatScalar = typename GA::FloatScalar;
+    using TVector = typename GA::Vector;
+    using TBox = typename GA::Box;
+    using TRay = typename GA::Ray;
+    using TPlane = typename GA::Plane;
+
+  private: // Internal type aliases
+    using NodeStorage256 = detail::NodeStorage256;
+    using NodeStorage65536 = detail::NodeStorage65536;
+    using NodeStorageGeneral = detail::NodeStorageGeneral;
+    using NodeGeometryData = detail::NodeGeometryData<typename IGM::Vector>;
+
+  private: // Data members
     std::variant<NodeStorage256, NodeStorage65536, NodeStorageGeneral> m_nodes;
     std::vector<EntityID> m_entityStorage;
     std::vector<NodeGeometryData> m_nodeGeometry;
     std::vector<uint8_t> m_nodeDepthIDs;
     depth_t m_maxDepthNo = 0;
     std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
+
+  private: // Serialization
+    static constexpr uint32_t dataRepresentionVersion = 1;
+
+    template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
+    friend void serialize(TArchive& ar, StaticBVHLinearCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const unsigned int version);
 
   public:
     // Default constructor. Requires Create call before usage.
