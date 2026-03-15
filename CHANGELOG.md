@@ -1,11 +1,20 @@
 # Changelog
 
-## 2026-03 v3.1
+## 2026-03 v3.1.1
+
+Bugfixes
+* Memory resource could cause memory leak.
+* Typos in adapter headers.
+
+Miscellaneous
+* Managed types now have a new constructor that takes only the bounding box and the depth.
+
+## 2026-03 v3.1.0
 
 New features
 * Static BVH linear core is added.
 
-## 2026-03 v3.0
+## 2026-03 v3.0.0
 Major refactorization with large interface change.
 
 > [!CAUTION]
