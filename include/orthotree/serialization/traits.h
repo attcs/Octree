@@ -46,7 +46,7 @@ namespace OrthoTree
   };
 
   template<typename T>
-  inline constexpr uint32_t version_v = version<T>::value;
+  inline constexpr const uint32_t version_v = version<T>::value;
 
 
   // --- Archive Identification ---
@@ -78,4 +78,23 @@ namespace OrthoTree
     }
   };
 
+  // --- Archive Traits Helpers ---
+  template<typename TArchive, typename = void>
+  struct archive_traits
+  {
+    static bool is_loading(TArchive const& ar) { return ar.is_loading(); }
+  };
+ 
+  template<typename TArchive>
+  struct archive_traits<TArchive, std::void_t<typename TArchive::is_loading>>
+  {
+    static bool is_loading(TArchive const&) { return TArchive::is_loading::value; }
+  };
+ 
+  template<typename TArchive>
+  bool is_loading_archive(TArchive const& ar)
+  {
+    return archive_traits<TArchive>::is_loading(ar);
+  }
+ 
 } // namespace OrthoTree

@@ -28,13 +28,13 @@ SOFTWARE.
 
 // Optional third-party support
 #if __has_include(<cereal/cereal.hpp>)
-  #include <cereal/cereal.hpp>
-  #define ORTHOTREE_SERIALIZATION_CEREAL_ENABLED
+#include <cereal/cereal.hpp>
+#define ORTHOTREE_SERIALIZATION_CEREAL_ENABLED
 #endif
 
 #if __has_include(<boost/serialization/nvp.hpp>)
-  #include <boost/serialization/nvp.hpp>
-  #define ORTHOTREE_SERIALIZATION_BOOST_ENABLED
+#include <boost/serialization/nvp.hpp>
+#define ORTHOTREE_SERIALIZATION_BOOST_ENABLED
 #endif
 
 
@@ -46,7 +46,10 @@ namespace OrthoTree
     const char* name;
     T& value;
 
-    constexpr NameValuePair(const char* n, T& v) noexcept : name(n), value(v) {}
+    constexpr NameValuePair(const char* n, T& v) noexcept
+    : name(n)
+    , value(v)
+    {}
 
     // Support for cereal NVP detection traits
     using cereal_nvp_tag = std::true_type;
@@ -70,7 +73,9 @@ namespace OrthoTree
   struct SizeTag
   {
     T& value;
-    constexpr SizeTag(T& v) noexcept : value(v) {}
+    constexpr SizeTag(T& v) noexcept
+    : value(v)
+    {}
   };
 
   template<typename T>
@@ -90,6 +95,27 @@ namespace OrthoTree
   template<typename T>
   inline constexpr bool is_size_tag_v = is_size_tag<T>::value;
 
+  namespace detail
+  {
+    template<typename T>
+    constexpr auto get_nvp_name(T const& nvp) noexcept
+    {
+      if constexpr (requires { nvp.name(); })
+        return nvp.name();
+      else if constexpr (requires { nvp.name; })
+        return nvp.name;
+    }
+
+    template<typename T>
+    constexpr decltype(auto) get_nvp_value(T& nvp) noexcept
+    {
+      if constexpr (requires { nvp.value(); })
+        return nvp.value();
+      else if constexpr (requires { nvp.value; })
+        return (nvp.value);
+    }
+  } // namespace detail
+
 #ifndef ORTHOTREE_NVP
 #define ORTHOTREE_NVP(member) ::OrthoTree::make_nvp(#member, member)
 #endif
@@ -98,23 +124,56 @@ namespace OrthoTree
 #define ORTHOTREE_NVP_M(obj, member) ::OrthoTree::make_nvp(#member, obj.member)
 #endif
 
+#ifndef ORTHOTREE_NVP_INT
+#define ORTHOTREE_NVP_INT(member) ::OrthoTree::make_nvp(#member, this->member)
+#endif
+
   // Generic bridge for other archivers
   template<typename TArchive, typename T>
-  auto operator&(TArchive& ar, NameValuePair<T> nvp) -> decltype(ar(nvp.value), ar)
+  auto operator&(TArchive& ar, NameValuePair<T> nvp) -> decltype(ar(detail::get_nvp_value(nvp)), ar)
   {
-#if defined(ORTHOTREE_SERIALIZATION_CEREAL_ENABLED)
+  #if defined(ORTHOTREE_SERIALIZATION_CEREAL_ENABLED)
     // Bridge to cereal NVP
-    ar(::cereal::make_nvp<TArchive>(nvp.name, nvp.value));
+    auto&& val = detail::get_nvp_value(nvp);
+    if constexpr (is_size_tag_v<std::decay_t<decltype(val)>>)
+    {
+      ar(::cereal::make_nvp(detail::get_nvp_name(nvp), ::cereal::make_size_tag(val.value)));
+    }
+    else
+    {
+      ar(::cereal::make_nvp(detail::get_nvp_name(nvp), val));
+    }
     return ar;
 #elif defined(ORTHOTREE_SERIALIZATION_BOOST_ENABLED)
     // Bridge to boost NVP
-    ar(::boost::serialization::make_nvp(nvp.name, nvp.value));
+    ar(::boost::serialization::make_nvp(detail::get_nvp_name(nvp), detail::get_nvp_value(nvp)));
     return ar;
 #else
     // Fallback
-    ar(nvp.value);
+    ar(detail::get_nvp_value(nvp));
     return ar;
 #endif
   }
+  
+    template<typename TArchive, typename T>
+    auto operator&(TArchive& ar, SizeTag<T> tag) -> decltype(ar(tag.value), ar)
+    {
+  #if defined(ORTHOTREE_SERIALIZATION_CEREAL_ENABLED)
+      ar(::cereal::make_size_tag(tag.value));
+  #else
+      ar(tag.value);
+  #endif
+      return ar;
+    }
 
+    // Generic bridge for archives that use operator() (like cereal)
+    template<typename TArchive, typename T>
+    requires(requires(TArchive& ar, T& t) { ar(t); } && !requires(TArchive& ar, T& t) { ar & t; })
+    TArchive& operator&(TArchive& ar, T& t)
+    {
+      ar(t);
+      return ar;
+    }
+
+  
 } // namespace OrthoTree

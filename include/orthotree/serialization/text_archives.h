@@ -63,7 +63,7 @@ namespace OrthoTree
     bool m_deferred_scope = false;
     bool m_in_array = false;
 
-    void indent()
+    void write_indent()
     {
       for (int i = 0; i < m_indent_level; ++i)
         m_os << "  ";
@@ -91,7 +91,8 @@ namespace OrthoTree
 
     // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
-    auto operator&(TNVP&& nvp) -> decltype(nvp.name, nvp.value, *this)
+    requires(requires(TNVP nvp) { detail::get_nvp_name(nvp); detail::get_nvp_value(nvp); })
+    auto operator&(TNVP&& nvp) -> JSONArchive&
     {
       if (m_deferred_scope)
       {
@@ -104,14 +105,14 @@ namespace OrthoTree
         m_os << ",";
       m_first_item = false;
       m_os << "\n";
-      indent();
+      write_indent();
 
       if (m_in_array)
-        serialize_value(nvp.value);
+        serialize_value(detail::get_nvp_value(nvp));
       else
       {
-        m_os << "\"" << nvp.name << "\": ";
-        serialize_value(nvp.value);
+        m_os << "\"" << detail::get_nvp_name(nvp) << "\": ";
+        serialize_value(detail::get_nvp_value(nvp));
       }
       return *this;
     }
@@ -130,7 +131,7 @@ namespace OrthoTree
         m_os << ",";
       m_first_item = false;
       m_os << "\n";
-      indent();
+      write_indent();
       serialize_value(val);
       return *this;
     }
@@ -168,7 +169,7 @@ namespace OrthoTree
 
         m_indent_level--;
         m_os << "\n";
-        indent();
+        write_indent();
         m_os << "}";
         m_first_item = old_first;
       }
@@ -188,14 +189,7 @@ namespace OrthoTree
         {
           m_indent_level--;
           m_os << "\n";
-          indent();
-          m_os << "]";
-        }
-        else if (!m_deferred_scope)
-        {
-          m_indent_level--;
-          m_os << "\n";
-          indent();
+          write_indent();
           m_os << "}";
         }
 
@@ -217,12 +211,12 @@ namespace OrthoTree
             m_os << ",";
           first = false;
           m_os << "\n";
-          indent();
+          write_indent();
           serialize_value(item);
         }
         m_indent_level--;
         m_os << "\n";
-        indent();
+        write_indent();
         m_os << "]";
       }
       else
@@ -237,7 +231,7 @@ namespace OrthoTree
 
         m_indent_level--;
         m_os << "\n";
-        indent();
+        write_indent();
         m_os << "}";
         m_first_item = old_first;
       }
@@ -262,7 +256,7 @@ namespace OrthoTree
     std::ostream& m_os;
     int m_indent_level = 0;
 
-    void indent()
+    void write_indent()
     {
       for (int i = 0; i < m_indent_level; ++i)
         m_os << "  ";
@@ -285,19 +279,20 @@ namespace OrthoTree
 
     // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
-    auto operator&(TNVP&& nvp) -> decltype(nvp.name, nvp.value, *this)
+    requires(requires(TNVP nvp) { detail::get_nvp_name(nvp); detail::get_nvp_value(nvp); })
+    auto operator&(TNVP&& nvp) -> XMLArchive&
     {
-      indent();
-      m_os << "<" << nvp.name << ">";
-      serialize_value(nvp.value);
-      m_os << "</" << nvp.name << ">\n";
+      write_indent();
+      m_os << "<" << detail::get_nvp_name(nvp) << ">";
+      serialize_value(detail::get_nvp_value(nvp));
+      m_os << "</" << detail::get_nvp_name(nvp) << ">\n";
       return *this;
     }
 
     template<typename T>
     auto operator&(T& val) -> std::enable_if_t<!is_size_tag_v<std::remove_cv_t<T>>, XMLArchive&>
     {
-      indent();
+      write_indent();
       m_os << "<value>";
       serialize_value(val);
       m_os << "</value>\n";
@@ -333,7 +328,7 @@ namespace OrthoTree
         m_indent_level++;
         serialize(*this, val, version_v<T>);
         m_indent_level--;
-        indent();
+        write_indent();
       }
       else if constexpr (requires {
                            val.begin();
@@ -344,13 +339,13 @@ namespace OrthoTree
         m_indent_level++;
         for (auto& item : val)
         {
-          indent();
+          write_indent();
           m_os << "<item>";
           serialize_value(item);
           m_os << "</item>\n";
         }
         m_indent_level--;
-        indent();
+        write_indent();
       }
       else
       {

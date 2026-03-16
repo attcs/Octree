@@ -135,9 +135,10 @@ namespace OrthoTree
 
     // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
-    auto operator&(TNVP&& nvp) -> decltype(nvp.name, nvp.value, *this)
+    requires(requires(TNVP nvp) { detail::get_nvp_name(nvp); detail::get_nvp_value(nvp); })
+    auto operator&(TNVP&& nvp) -> BinaryArchive&
     {
-      return (*this & nvp.value);
+      return (*this & detail::get_nvp_value(nvp));
     }
 
     template<typename... Args>
