@@ -34,7 +34,7 @@ namespace OrthoTree
 {
   // std::map
   template<typename TArchive, typename K, typename V, typename Compare, typename Alloc>
-  auto serialize(TArchive& ar, std::map<K, V, Compare, Alloc>& val, [[maybe_unused]] const unsigned int version)
+  auto serialize(TArchive& ar, std::map<K, V, Compare, Alloc>& val, [[maybe_unused]] const uint32_t version)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     std::size_t size = val.size();

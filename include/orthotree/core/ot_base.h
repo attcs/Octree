@@ -81,7 +81,7 @@ namespace OrthoTree
     static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
     template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
-    friend void serialize(TArchive& ar, OrthoTreeCoreBase<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const unsigned int version);
+    friend void serialize(TArchive& ar, OrthoTreeCoreBase<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const uint32_t version);
 
     std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None || CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR, TreeBox, std::monostate>
       m_nominalTreeBox;

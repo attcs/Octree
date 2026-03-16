@@ -33,7 +33,7 @@ namespace OrthoTree
 {
   // std::array
   template<typename TArchive, typename T, std::size_t N>
-  auto serialize(TArchive& ar, std::array<T, N>& val, [[maybe_unused]] const unsigned int version)
+  auto serialize(TArchive& ar, std::array<T, N>& val, [[maybe_unused]] const uint32_t version)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     for (auto& item : val)

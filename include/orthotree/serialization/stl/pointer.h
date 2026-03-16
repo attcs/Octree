@@ -33,7 +33,7 @@ namespace OrthoTree
 {
   // std::unique_ptr
   template<typename TArchive, typename T, typename D>
-  auto serialize(TArchive& ar, std::unique_ptr<T, D>& val, [[maybe_unused]] const unsigned int version)
+  auto serialize(TArchive& ar, std::unique_ptr<T, D>& val, [[maybe_unused]] const uint32_t version)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     bool has_value = (val != nullptr);
@@ -59,7 +59,7 @@ namespace OrthoTree
 
   // std::shared_ptr
   template<typename TArchive, typename T>
-  auto serialize(TArchive& ar, std::shared_ptr<T>& val, [[maybe_unused]] const unsigned int version)
+  auto serialize(TArchive& ar, std::shared_ptr<T>& val, [[maybe_unused]] const uint32_t version)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     bool has_value = (val != nullptr);

@@ -92,7 +92,7 @@ namespace OrthoTree
     static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
     template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
-    friend void serialize(TArchive& ar, StaticLinearOrthoTreeCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const unsigned int version);
+    friend void serialize(TArchive& ar, StaticLinearOrthoTreeCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const uint32_t version);
 
   public: // Constructors
     // Default constructor. Requires Create call before usage.

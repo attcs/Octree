@@ -34,7 +34,7 @@ namespace OrthoTree
 {
   // std::unordered_map
   template<typename TArchive, typename K, typename V, typename Hash, typename KeyEqual, typename Alloc>
-  auto serialize(TArchive& ar, std::unordered_map<K, V, Hash, KeyEqual, Alloc>& val, [[maybe_unused]] const unsigned int version)
+  auto serialize(TArchive& ar, std::unordered_map<K, V, Hash, KeyEqual, Alloc>& val, [[maybe_unused]] const uint32_t version)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     std::size_t size = val.size();

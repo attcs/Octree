@@ -73,7 +73,7 @@ namespace OrthoTree
     static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
     template<typename TArchive, typename TOrthoTreeCore_>
-    friend void serialize(TArchive& ar, OrthoTreeManaged<TOrthoTreeCore_>& core, const unsigned int version);
+    friend void serialize(TArchive& ar, OrthoTreeManaged<TOrthoTreeCore_>& core, const uint32_t version);
 
   public: // Constructors
     constexpr explicit OrthoTreeManaged() noexcept = default;

@@ -94,10 +94,10 @@ namespace OrthoTree
       static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
       template<typename TArchive, std::size_t CHILD_NO, typename NodeID, typename ChildID, typename EntityID, typename Geometry>
-      friend void serialize(TArchive& ar, OrthoTreeNodeData<CHILD_NO, NodeID, ChildID, EntityID, Geometry>& node, const unsigned int version);
+      friend void serialize(TArchive& ar, OrthoTreeNodeData<CHILD_NO, NodeID, ChildID, EntityID, Geometry>& node, const uint32_t version);
 
       template<typename TArchive, typename T, typename TNodes>
-      friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, const unsigned int version);
+      friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, const uint32_t version);
 
     public:
       explicit constexpr OrthoTreeNodeData() noexcept = default;
@@ -147,6 +147,7 @@ namespace OrthoTree
       }
 
       EntityContainer& GetEntitySegment() noexcept { return m_entities; }
+      EntityContainer const& GetEntitySegment() const noexcept { return m_entities; }
 
     public: // Child handling
       constexpr void LinkChild(ChildID childID, NodeID nodeID) noexcept
@@ -288,7 +289,7 @@ namespace OrthoTree
     static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
     template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
-    friend void serialize(TArchive& ar, DynamicHashOrthoTreeCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const unsigned int version);
+    friend void serialize(TArchive& ar, DynamicHashOrthoTreeCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const uint32_t version);
 
   public: // Constructors
     // Default constructor. Requires InitBase call before usage.

@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include "../adapters/concepts.h"
 #include "../core/types.h"
+#include "../serialization/nvp.h"
 #include "common.h"
 #include "utils.h"
 
@@ -72,6 +73,13 @@ namespace OrthoTree::detail
     struct Box
     {
       Vector Min, Max;
+
+      template<typename TArchive>
+      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
+      {
+        ar& ORTHOTREE_NVP_INT(Min);
+        ar& ORTHOTREE_NVP_INT(Max);
+      }
     };
 
     static constexpr Geometry Size2(Vector const& vector) noexcept
