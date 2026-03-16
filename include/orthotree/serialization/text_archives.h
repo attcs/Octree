@@ -60,6 +60,8 @@ namespace OrthoTree
     std::ostream& m_os;
     int m_indent_level = 0;
     bool m_first_item = true;
+    bool m_deferred_scope = false;
+    bool m_in_array = false;
 
     void indent()
     {
@@ -75,23 +77,55 @@ namespace OrthoTree
     constexpr bool is_loading() const { return false; }
     constexpr bool is_saving() const { return true; }
 
+    // SizeTag: signals array mode
+    template<typename T>
+    JSONArchive& operator&(SizeTag<T> tag)
+    {
+      m_os << "[";
+      m_indent_level++;
+      m_deferred_scope = false;
+      m_in_array = true;
+      m_first_item = true;
+      return *this;
+    }
+
     // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
     auto operator&(TNVP&& nvp) -> decltype(nvp.name, nvp.value, *this)
     {
+      if (m_deferred_scope)
+      {
+        m_os << "{";
+        m_indent_level++;
+        m_deferred_scope = false;
+      }
+
       if (!m_first_item)
         m_os << ",";
       m_first_item = false;
       m_os << "\n";
       indent();
-      m_os << "\"" << nvp.name << "\": ";
-      serialize_value(nvp.value);
+
+      if (m_in_array)
+        serialize_value(nvp.value);
+      else
+      {
+        m_os << "\"" << nvp.name << "\": ";
+        serialize_value(nvp.value);
+      }
       return *this;
     }
 
     template<typename T>
-    JSONArchive& operator&(T& val)
+    auto operator&(T& val) -> std::enable_if_t<!is_size_tag_v<std::remove_cv_t<T>>, JSONArchive&>
     {
+      if (m_deferred_scope)
+      {
+        m_os << "{";
+        m_indent_level++;
+        m_deferred_scope = false;
+      }
+
       if (!m_first_item)
         m_os << ",";
       m_first_item = false;
@@ -140,7 +174,34 @@ namespace OrthoTree
       }
       else if constexpr (is_stl_serialization_enabled_v<JSONArchive>)
       {
+        bool prev_deferred = m_deferred_scope;
+        bool prev_in_array = m_in_array;
+        bool prev_first = m_first_item;
+
+        m_deferred_scope = true;
+        m_in_array = false;
+        m_first_item = true;
+
         serialize(*this, val, version_v<T>);
+
+        if (m_in_array)
+        {
+          m_indent_level--;
+          m_os << "\n";
+          indent();
+          m_os << "]";
+        }
+        else if (!m_deferred_scope)
+        {
+          m_indent_level--;
+          m_os << "\n";
+          indent();
+          m_os << "}";
+        }
+
+        m_deferred_scope = prev_deferred;
+        m_in_array = prev_in_array;
+        m_first_item = prev_first;
       }
       else if constexpr (requires {
                            val.begin();
@@ -153,11 +214,15 @@ namespace OrthoTree
         for (auto& item : val)
         {
           if (!first)
-            m_os << ", ";
-          serialize_value(item);
+            m_os << ",";
           first = false;
+          m_os << "\n";
+          indent();
+          serialize_value(item);
         }
         m_indent_level--;
+        m_os << "\n";
+        indent();
         m_os << "]";
       }
       else
@@ -211,6 +276,13 @@ namespace OrthoTree
     constexpr bool is_loading() const { return false; }
     constexpr bool is_saving() const { return true; }
 
+    // SizeTag: array sizes are implicit in XML (derived from child count)
+    template<typename T>
+    XMLArchive& operator&(SizeTag<T>)
+    {
+      return *this;
+    }
+
     // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
     auto operator&(TNVP&& nvp) -> decltype(nvp.name, nvp.value, *this)
@@ -223,7 +295,7 @@ namespace OrthoTree
     }
 
     template<typename T>
-    XMLArchive& operator&(T& val)
+    auto operator&(T& val) -> std::enable_if_t<!is_size_tag_v<std::remove_cv_t<T>>, XMLArchive&>
     {
       indent();
       m_os << "<value>";

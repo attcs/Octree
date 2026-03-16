@@ -64,6 +64,32 @@ namespace OrthoTree
     return NameValuePair<const T>(name, value);
   }
 
+  // --- Size Tag (signals archiver to enter array/sequence mode) ---
+
+  template<typename T>
+  struct SizeTag
+  {
+    T& value;
+    constexpr SizeTag(T& v) noexcept : value(v) {}
+  };
+
+  template<typename T>
+  constexpr SizeTag<T> make_size_tag(T& value) noexcept
+  {
+    return SizeTag<T>(value);
+  }
+
+  template<typename T>
+  struct is_size_tag : std::false_type
+  {};
+
+  template<typename U>
+  struct is_size_tag<SizeTag<U>> : std::true_type
+  {};
+
+  template<typename T>
+  inline constexpr bool is_size_tag_v = is_size_tag<T>::value;
+
 #ifndef ORTHOTREE_NVP
 #define ORTHOTREE_NVP(member) ::OrthoTree::make_nvp(#member, member)
 #endif

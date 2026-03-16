@@ -126,6 +126,13 @@ namespace OrthoTree
       return *this;
     }
 
+    // SizeTag: write/read the size value
+    template<typename T>
+    BinaryArchive& operator&(SizeTag<T> tag)
+    {
+      return (*this & tag.value);
+    }
+
     // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
     auto operator&(TNVP&& nvp) -> decltype(nvp.name, nvp.value, *this)
