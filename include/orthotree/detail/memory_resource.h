@@ -638,8 +638,11 @@ namespace OrthoTree::detail
   private:
     static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
+    template<typename TData, typename TNodeMap>
+    friend class MemoryResourceSerializerProxy;
+
     template<typename TArchive, typename T, typename TNodes>
-    friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, const unsigned int version);
+    friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, const uint32_t version);
 
   private:
     // stores the data

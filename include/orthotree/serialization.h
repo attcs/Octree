@@ -32,8 +32,12 @@ SOFTWARE.
 #include "core/ot_static_linear_core.h"
 
 // Components
+#include "detail/internal_geometry_module.h"
 #include "serialization/nvp.h"
 #include "serialization/traits.h"
+#include <span>
+#include <string>
+#include <vector>
 
 namespace OrthoTree
 {
@@ -41,7 +45,7 @@ namespace OrthoTree
 
   // BoundingBoxND
   template<typename TArchive, dim_t DIM, typename T>
-  void serialize(TArchive& ar, BoundingBoxND<DIM, T>& box, [[maybe_unused]] const unsigned int version)
+  void serialize(TArchive& ar, BoundingBoxND<DIM, T>& box, [[maybe_unused]] const uint32_t version)
   {
     ar& ORTHOTREE_NVP_M(box, Min);
     ar& ORTHOTREE_NVP_M(box, Max);
@@ -49,7 +53,7 @@ namespace OrthoTree
 
   // RayND
   template<typename TArchive, dim_t DIM, typename T>
-  void serialize(TArchive& ar, RayND<DIM, T>& ray, [[maybe_unused]] const unsigned int version)
+  void serialize(TArchive& ar, RayND<DIM, T>& ray, [[maybe_unused]] const uint32_t version)
   {
     ar& ORTHOTREE_NVP_M(ray, Origin);
     ar& ORTHOTREE_NVP_M(ray, Direction);
@@ -57,7 +61,7 @@ namespace OrthoTree
 
   // PlaneND
   template<typename TArchive, dim_t DIM, typename T>
-  void serialize(TArchive& ar, PlaneND<DIM, T>& plane, [[maybe_unused]] const unsigned int version)
+  void serialize(TArchive& ar, PlaneND<DIM, T>& plane, [[maybe_unused]] const uint32_t version)
   {
     ar& ORTHOTREE_NVP_M(plane, OrigoDistance);
     ar& ORTHOTREE_NVP_M(plane, Normal);
@@ -68,7 +72,7 @@ namespace OrthoTree
   namespace detail
   {
     template<typename TArchive, typename TVector>
-    void serialize(TArchive& ar, BoundingBoxMinPointAndSize<TVector>& box, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, BoundingBoxMinPointAndSize<TVector>& box, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(box, minPoint);
       ar& ORTHOTREE_NVP_M(box, size);
@@ -76,47 +80,46 @@ namespace OrthoTree
 
 
     template<typename TArchive, typename TBegin, typename TLength>
-    void serialize(TArchive& ar, Segment<TBegin, TLength>& segment, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, Segment<TBegin, TLength>& segment, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(segment, begin);
       ar& ORTHOTREE_NVP_M(segment, length);
     }
 
     template<typename TArchive>
-    void serialize(TArchive& ar, NodeStorage256& storage, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, NodeStorage256& storage, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(storage, nodeChildSegmentBegins);
       ar& ORTHOTREE_NVP_M(storage, nodeEntitySegment);
     }
 
     template<typename TArchive>
-    void serialize(TArchive& ar, NodeStorage65536& storage, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, NodeStorage65536& storage, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(storage, nodeChildSegmentBegins);
       ar& ORTHOTREE_NVP_M(storage, nodeEntitySegment);
     }
 
     template<typename TArchive>
-    void serialize(TArchive& ar, NodeStorageGeneral& storage, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, NodeStorageGeneral& storage, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(storage, nodeChildSegmentBegins);
       ar& ORTHOTREE_NVP_M(storage, nodeEntitySegment);
     }
 
     template<typename TArchive, typename TVector>
-    void serialize(TArchive& ar, NodeGeometryData<TVector>& data, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, NodeGeometryData<TVector>& data, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(data, minPoint);
       ar& ORTHOTREE_NVP_M(data, size);
     }
 
     template<typename TArchive, typename T, std::size_t N>
-    auto serialize(TArchive& ar, detail::inplace_vector<T, N>& val, [[maybe_unused]] const unsigned int version)
-      -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+    void serialize(TArchive& ar, detail::inplace_vector<T, N>& val, [[maybe_unused]] const uint32_t version)
     {
       std::size_t size = val.size();
       ar& make_size_tag(size);
-      if (ar.is_loading())
+      if (OrthoTree::is_loading_archive(ar))
       {
         val.clear();
         for (std::size_t i = 0; i < size; ++i)
@@ -127,20 +130,20 @@ namespace OrthoTree
       else
       {
         for (auto& item : val)
-          ar& make_nvp("item", item);
+          ar & item;
       }
     }
 
 
     template<typename TArchive, typename GA, bool ALLOW_OUT, double LOOSE, depth_t MAX_DP>
-    void serialize(TArchive& ar, MortonGridSpaceIndexing<GA, ALLOW_OUT, LOOSE, MAX_DP>& si, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, MortonGridSpaceIndexing<GA, ALLOW_OUT, LOOSE, MAX_DP>& si, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(si, m_grid);
       ar& ORTHOTREE_NVP_M(si, m_maxDepthID);
     }
 
     template<typename TArchive, typename TGeometryAdapter>
-    void serialize(TArchive& ar, GridSpaceIndexing<TGeometryAdapter>& grid, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, GridSpaceIndexing<TGeometryAdapter>& grid, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(grid, m_maxRasterResolution);
       ar& ORTHOTREE_NVP_M(grid, m_maxRasterID);
@@ -151,7 +154,7 @@ namespace OrthoTree
     }
 
     template<typename TArchive, typename GA>
-    void serialize(TArchive& ar, typename GridSpaceIndexing<GA>::NativeRasterizationFactors& factors, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, typename GridSpaceIndexing<GA>::NativeRasterizationFactors& factors, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(factors, sizeInDimensions);
       ar& ORTHOTREE_NVP_M(factors, rasterizerFactors);
@@ -159,7 +162,7 @@ namespace OrthoTree
     }
 
     template<typename TArchive, typename GA>
-    void serialize(TArchive& ar, typename GridSpaceIndexing<GA>::ForcedDoubleRasterizationFactors& factors, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, typename GridSpaceIndexing<GA>::ForcedDoubleRasterizationFactors& factors, [[maybe_unused]] const uint32_t version)
     {
       ar& ORTHOTREE_NVP_M(factors, sizeInDimensions);
       ar& ORTHOTREE_NVP_M(factors, rasterizerFactors);
@@ -167,7 +170,7 @@ namespace OrthoTree
     }
 
     template<typename TArchive, std::size_t C, typename NID, typename CID, typename EID, typename NG>
-    void serialize(TArchive& ar, OrthoTreeNodeData<C, NID, CID, EID, NG>& node, [[maybe_unused]] const unsigned int version)
+    void serialize(TArchive& ar, OrthoTreeNodeData<C, NID, CID, EID, NG>& node, [[maybe_unused]] const uint32_t version)
     {
       using Node = OrthoTreeNodeData<C, NID, CID, EID, NG>;
 
@@ -181,154 +184,246 @@ namespace OrthoTree
     }
 
 
-    template<typename TArchive, typename T, typename TNodes>
-    void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, [[maybe_unused]] const unsigned int version)
+    template<typename T>
+    class StdSpanSerializerProxy
     {
-      auto serializedVersionID = MemoryResource<T>::SERIALIZED_VERSION_ID;
-      ar& ORTHOTREE_NVP(serializedVersionID);
+    public:
+      StdSpanSerializerProxy(const std::span<T>& span, std::function<std::span<T>(std::size_t)>&& construct)
+      : m_span(span)
+      , m_construct(std::move(construct))
+      {}
 
-      auto memoryResourceSize = memoryResource.GetSize();
-      ar& ORTHOTREE_NVP(memoryResourceSize);
-
-      if (ar.is_loading())
+      template<typename TArchive>
+      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
       {
-        memoryResource.Init(memoryResourceSize);
+        std::size_t size = m_span.size();
+        ar& make_size_tag(size);
 
-        using NodeID = decltype(nodes)::key_type;
-        for (int i = 0; i < nodes.size(); ++i)
+        if (OrthoTree::is_loading_archive(ar))
+          m_span = m_construct(size);
+
+        for (auto& item : m_span)
+          ar& ORTHOTREE_NVP(item);
+      }
+
+    private:
+      std::span<T> m_span;
+      std::function<std::span<T>(std::size_t)> m_construct;
+    };
+
+    template<typename NodeID, typename T>
+    class NodeSegmentSerializerProxy
+    {
+    public:
+      constexpr NodeSegmentSerializerProxy(NodeID nodeID, MemoryResource<T>::MemorySegment& segment, MemoryResource<T>& memoryResource) noexcept
+      : m_nodeID(nodeID)
+      , m_segment(segment)
+      , m_memoryResource(memoryResource)
+      {}
+
+      template<typename TArchive>
+      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
+      {
+        ar& ORTHOTREE_NVP(m_nodeID);
+        auto m_entityStorage = StdSpanSerializerProxy<T>(m_segment.segment, [&](std::size_t size) {
+          m_segment = m_memoryResource.Allocate(size);
+          return m_segment.segment;
+        });
+        ar& ORTHOTREE_NVP(m_entityStorage);
+      }
+
+    private:
+      NodeID m_nodeID;
+      MemoryResource<T>::MemorySegment& m_segment;
+      MemoryResource<T>& m_memoryResource;
+    };
+
+    template<typename TArchive, typename T, typename TNodes>
+    void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, [[maybe_unused]] const uint32_t version)
+    {
+      using NodeID = typename std::decay_t<TNodes>::key_type;
+      using NodeSegment = NodeSegmentSerializerProxy<NodeID, T>;
+
+      std::size_t nodeCount = 0;
+      if (OrthoTree::is_loading_archive(ar))
+      {
+        ar& make_size_tag(nodeCount);
+        for (std::size_t i = 0; i < nodeCount; ++i)
         {
           NodeID nodeID;
-          ar& ORTHOTREE_NVP(nodeID);
+          typename MemoryResource<T>::MemorySegment segment;
+          auto m_segment = NodeSegment(nodeID, segment, memoryResource);
 
-          uint32_t entityCount;
-          ar& make_size_tag(entityCount);
+          ar& ORTHOTREE_NVP(m_segment);
 
-          auto& memorySegment = nodes.at(nodeID).GetMemorySegment();
-          memorySegment = memoryResource.Allocate(entityCount);
-          for (int i = 0; i < entityCount; ++i)
-            ar& ORTHOTREE_NVP(memorySegment[i]);
+          nodes.at(nodeID).GetEntitySegment() = std::move(segment);
         }
       }
       else
       {
-        for (auto const& [nodeID, node] : nodes)
+        for (auto& [nodeID, node] : nodes)
+          nodeCount += !node.IsEntitiesEmpty();
+
+        ar& make_size_tag(nodeCount);
+
+        for (auto& [nodeID, node] : nodes)
         {
-          ar& ORTHOTREE_NVP(nodeID);
+          if (node.IsEntitiesEmpty())
+            continue;
 
-          auto const entityCount = uint32_t(node.GetEntitySegment().segment.size());
-          ar& make_size_tag(entityCount);
-          for (auto const& entity : node.GetEntitySegment().segment)
-            ar& ORTHOTREE_NVP(entity);
+          auto m_segment = NodeSegment(nodeID, node.GetEntitySegment(), memoryResource);
+          ar& ORTHOTREE_NVP(m_segment);
         }
       }
-    } // namespace detail
-
-
-    // --- Core Serialization ---
-
-    // OrthoTreeCoreBase
-    template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-    void serialize(TArchive& ar, OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const unsigned int version)
-    {
-      using TCore = OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>;
-      auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
-      ar& ORTHOTREE_NVP(serializedVersionID);
-      ar& ORTHOTREE_NVP_M(core, m_maxElementNum);
-      ar& ORTHOTREE_NVP_M(core, m_maxDepthID);
-      ar& ORTHOTREE_NVP_M(core, m_nominalTreeBox);
-      ar& ORTHOTREE_NVP_M(core, m_realTreeBox);
-      ar& ORTHOTREE_NVP_M(core, m_nodeSize);
-    }
-
-    // StaticLinearOrthoTreeCore
-    template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-    void serialize(TArchive& ar, StaticLinearOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const unsigned int version)
-    {
-      using TCore = StaticLinearOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>;
-      auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
-      ar& ORTHOTREE_NVP(serializedVersionID);
-
-      ar& make_nvp("base", static_cast<OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>&>(core));
-      ar& ORTHOTREE_NVP_M(core, m_nodes);
-      ar& ORTHOTREE_NVP_M(core, m_nodeDepthIDs);
-      ar& ORTHOTREE_NVP_M(core, m_entityStorage);
-      ar& ORTHOTREE_NVP_M(core, m_nodeGeometry);
-    }
-
-    // DynamicHashOrthoTreeCore
-    template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-    void serialize(TArchive& ar, DynamicHashOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const unsigned int version)
-    {
-      using TCore = DynamicHashOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>;
-
-      ar& make_nvp("base", static_cast<TCore::Base&>(core));
-
-      auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
-      ar& ORTHOTREE_NVP(serializedVersionID);
-
-      ar& ORTHOTREE_NVP_M(core, m_nodes);
-      ar& ORTHOTREE_NVP_M(core, m_reverseMap);
-      ar& ORTHOTREE_NVP_M(core, m_spaceIndexing);
-
-      detail::serialize(ar, core.m_memoryResource, core.m_nodes, version);
-    }
-
-    // StaticBVHLinearCore
-    template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
-    void serialize(TArchive& ar, StaticBVHLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const unsigned int version)
-    {
-      using TCore = StaticBVHLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>;
-
-      auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
-      ar& ORTHOTREE_NVP(serializedVersionID);
-
-      ar& ORTHOTREE_NVP_M(core, m_maxDepthNo);
-      ar& ORTHOTREE_NVP_M(core, m_maxElementNum);
-      ar& ORTHOTREE_NVP_M(core, m_entityStorage);
-      ar& ORTHOTREE_NVP_M(core, m_nodeDepthIDs);
-      ar& ORTHOTREE_NVP_M(core, m_nodeGeometry);
-      ar& ORTHOTREE_NVP_M(core, m_nodes);
-    }
-
-    // OrthoTreeQueryBase
-    template<typename TArchive, typename TCore>
-    void serialize(TArchive& ar, OrthoTreeQueryBase<TCore>& query, [[maybe_unused]] const unsigned int version)
-    {
-      using TCore = OrthoTreeQueryBase<TCore>;
-
-      ar& make_nvp("base", static_cast<TCore::Base&>(query));
-    }
-
-    // OrthoTreeManaged
-    template<typename TArchive, typename TCore>
-    void serialize(TArchive& ar, OrthoTreeManaged<TCore>& managed, [[maybe_unused]] const unsigned int version)
-    {
-      ar& ORTHOTREE_NVP_M(managed, m_core);
-      ar& ORTHOTREE_NVP_M(managed, m_entities);
     }
 
 
-    // EmbeddedResourcePmrMap
-    template<typename TArchive, typename PmrMap>
-    void serialize(TArchive& ar, detail::EmbeddedResourcePmrMap<PmrMap>& pmrMap, [[maybe_unused]] const unsigned int version)
+    template<typename TData, typename TNodeMap>
+    class MemoryResourceContentSerializerProxy
     {
-      if (ar.is_loading())
+    public:
+      MemoryResourceContentSerializerProxy(MemoryResource<TData>& memoryResource, TNodeMap& nodes)
+      : m_memoryResource(memoryResource)
+      , m_nodes(nodes)
+      {}
+
+      template<typename TArchive>
+      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
       {
-        using value_type = typename PmrMap::value_type;
-        std::vector<value_type> vec;
-        ar& make_nvp("data", vec);
-        pmrMap.clear();
-        for (auto&& item : vec)
-          pmrMap.Underlying().insert(std::move(item));
+        detail::serialize(ar, m_memoryResource, m_nodes, version);
       }
-      else
+
+    private:
+      MemoryResource<TData>& m_memoryResource;
+      TNodeMap& m_nodes;
+    };
+
+    template<typename TData, typename TNodeMap>
+    class MemoryResourceSerializerProxy
+    {
+    public:
+      MemoryResourceSerializerProxy(MemoryResource<TData>& memoryResource, TNodeMap& nodes)
+      : m_memoryResource(memoryResource)
+      , m_nodes(nodes)
+      {}
+
+      template<typename TArchive>
+      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
       {
-        ar& make_nvp("data", pmrMap.Underlying());
+        auto serializedVersionID = MemoryResource<TData>::SERIALIZED_VERSION_ID;
+        ar& ORTHOTREE_NVP(serializedVersionID);
+
+        auto m_memorySize = m_memoryResource.GetSize();
+        ar& ORTHOTREE_NVP(m_memorySize);
+
+        if (OrthoTree::is_loading_archive(ar))
+          m_memoryResource.Init(m_memorySize);
+
+        auto m_content = MemoryResourceContentSerializerProxy(m_memoryResource, m_nodes);
+        ar& ORTHOTREE_NVP(m_content);
       }
-    }
+
+    private:
+      MemoryResource<TData>& m_memoryResource;
+      TNodeMap& m_nodes;
+    };
+  } // namespace detail
 
 
-    // --- Core Serialization ---
+  // --- Core Serialization ---
+
+  // OrthoTreeCoreBase
+  template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  void serialize(TArchive& ar, OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const uint32_t version)
+  {
+    using TCore = OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>;
+    auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
+    ar& ORTHOTREE_NVP(serializedVersionID);
+    ar& ORTHOTREE_NVP_M(core, m_maxElementNum);
+    ar& ORTHOTREE_NVP_M(core, m_maxDepthID);
+    ar& ORTHOTREE_NVP_M(core, m_nominalTreeBox);
+    ar& ORTHOTREE_NVP_M(core, m_realTreeBox);
+    ar& ORTHOTREE_NVP_M(core, m_nodeSize);
+  }
+
+  // StaticLinearOrthoTreeCore
+  template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  void serialize(TArchive& ar, StaticLinearOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const uint32_t version)
+  {
+    using TCore = StaticLinearOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>;
+    auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
+    ar& ORTHOTREE_NVP(serializedVersionID);
+
+    ar& make_nvp("base", static_cast<OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>&>(core));
+    ar& ORTHOTREE_NVP_M(core, m_nodes);
+    ar& ORTHOTREE_NVP_M(core, m_nodeDepthIDs);
+    ar& ORTHOTREE_NVP_M(core, m_entityStorage);
+    ar& ORTHOTREE_NVP_M(core, m_nodeGeometry);
+  }
 
 
-  } // namespace OrthoTree
+  // DynamicHashOrthoTreeCore
+  template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  void serialize(TArchive& ar, DynamicHashOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const uint32_t version)
+  {
+    using TCore = DynamicHashOrthoTreeCore<TEntityAdapter, TGeometryAdapter, TConfiguration>;
+
+    ar& make_nvp("base", static_cast<TCore::Base&>(core));
+
+    auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
+    ar& ORTHOTREE_NVP(serializedVersionID);
+
+    ar& ORTHOTREE_NVP_M(core, m_nodes);
+    ar& ORTHOTREE_NVP_M(core, m_reverseMap);
+    ar& ORTHOTREE_NVP_M(core, m_spaceIndexing);
+
+    detail::MemoryResourceSerializerProxy m_memoryResource(core.m_memoryResource, core.m_nodes);
+    ar& ORTHOTREE_NVP(m_memoryResource);
+  }
+
+  // StaticBVHLinearCore
+  template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
+  void serialize(TArchive& ar, StaticBVHLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core, [[maybe_unused]] const uint32_t version)
+  {
+    using TCore = StaticBVHLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>;
+
+    auto serializedVersionID = TCore::SERIALIZED_VERSION_ID;
+    ar& ORTHOTREE_NVP(serializedVersionID);
+
+    ar& ORTHOTREE_NVP_M(core, m_maxDepthNo);
+    ar& ORTHOTREE_NVP_M(core, m_maxElementNum);
+    ar& ORTHOTREE_NVP_M(core, m_entityStorage);
+    ar& ORTHOTREE_NVP_M(core, m_nodeDepthIDs);
+    ar& ORTHOTREE_NVP_M(core, m_nodeGeometry);
+    ar& ORTHOTREE_NVP_M(core, m_nodes);
+  }
+
+  // OrthoTreeQueryBase
+  template<typename TArchive, typename TCore>
+  void serialize(TArchive& ar, OrthoTreeQueryBase<TCore>& query, [[maybe_unused]] const uint32_t version)
+  {
+    ar& make_nvp("base", static_cast<TCore&>(query));
+  }
+
+  // OrthoTreeManaged
+  template<typename TArchive, typename TCore>
+  void serialize(TArchive& ar, OrthoTreeManaged<TCore>& managed, [[maybe_unused]] const uint32_t version)
+  {
+    ar& ORTHOTREE_NVP_M(managed, m_tree);
+    ar& ORTHOTREE_NVP_M(managed, m_entities);
+  }
+
+
+  // EmbeddedResourcePmrMap
+  template<typename TArchive, typename PmrMap>
+  void serialize(TArchive& ar, detail::EmbeddedResourcePmrMap<PmrMap>& pmrMap, [[maybe_unused]] const uint32_t version)
+  {
+    auto& m_data = pmrMap.Underlying();
+    ar& ORTHOTREE_NVP(m_data);
+  }
+
+
+  // --- Core Serialization ---
+
+
+} // namespace OrthoTree
