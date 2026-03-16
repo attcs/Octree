@@ -39,65 +39,6 @@ namespace OrthoTree
     using MapNodeContainer = std::map<TKey, TValue, TComp>;
   };
 
-  namespace detail
-  {
-    template<typename TBegin, typename TLength>
-    struct Segment
-    {
-      using Begin = TBegin;
-      using Length = TLength;
-
-      TBegin begin;
-      TLength length;
-
-      constexpr Segment() noexcept
-      : begin(0)
-      , length(0)
-      {}
-      constexpr Segment(TBegin b, TLength l) noexcept
-      : begin(b)
-      , length(l)
-      {}
-    };
-
-    struct NodeStorage256
-    {
-      using NodeSegmentIndex = uint8_t;
-      using EntitySegment = Segment<uint8_t, uint8_t>;
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    struct NodeStorage65536
-    {
-      using NodeSegmentIndex = uint16_t;
-      using EntitySegment = Segment<uint16_t, uint16_t>;
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    struct NodeStorageGeneral
-    {
-      using NodeSegmentIndex = uint32_t;
-#ifdef ORTHOTREE__LARGE_DATASET
-      using EntitySegment = Segment<uint64_t, uint64_t>;
-#else
-      using EntitySegment = Segment<uint32_t, uint32_t>;
-#endif
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    template<typename TVector>
-    struct NodeGeometryData
-    {
-      TVector minPoint;
-      TVector size;
-    };
-  } // namespace detail
-
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
   class StaticBVHLinearCore
   {
@@ -137,7 +78,7 @@ namespace OrthoTree
     std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
 
   private: // Serialization
-    static constexpr uint32_t dataRepresentionVersion = 1;
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
     template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
     friend void serialize(TArchive& ar, StaticBVHLinearCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const unsigned int version);

@@ -61,11 +61,8 @@ namespace OrthoTree
 
     using IGM_Vector = typename IGM::Vector;
 
-    struct NodeBox
-    {
-      IGM_Vector minPoint;
-      IGM_Vector size;
-    };
+    using TreeBox = detail::BoundingBoxMinPointAndSize<IGM_Vector>;
+    using NodeBox = detail::BoundingBoxMinPointAndSize<IGM_Vector>;
 
     using NodeGeometry = std::conditional_t<
       CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MinPoint,
@@ -80,11 +77,11 @@ namespace OrthoTree
     std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
     depth_t m_maxDepthID = INVALID_DEPTH;
 
-    struct TreeBox
-    {
-      IGM::Vector minPoint;
-      IGM::Vector size;
-    };
+  private: // Serialization
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
+    friend void serialize(TArchive& ar, OrthoTreeCoreBase<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const unsigned int version);
 
     std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None || CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::MBR, TreeBox, std::monostate>
       m_nominalTreeBox;

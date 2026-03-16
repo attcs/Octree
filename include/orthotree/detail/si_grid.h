@@ -101,6 +101,13 @@ namespace OrthoTree::detail
       m_volumeOfOverallSpace = IGM::GetVolumeAD(m_boxSpace);
     }
 
+  private:
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TGA>
+    friend void serialize(TArchive& ar, GridSpaceIndexing<TGA>& grid, const unsigned int version);
+
+  public:
     constexpr IGM::Vector const& GetMinPoint() const noexcept { return m_boxSpace.Min; }
 
     constexpr IGM::Vector const& GetSize() const noexcept { return m_sizeInDimensions; }

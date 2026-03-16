@@ -275,6 +275,12 @@ namespace OrthoTree
     detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID> m_spaceIndexing;
     detail::MemoryResource<EntityID> m_memoryResource;
 
+  private: // Serialization
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
+    friend void serialize(TArchive& ar, DynamicHashOrthoTreeCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core, const unsigned int version);
+
   public: // Constructors
     // Default constructor. Requires InitBase call before usage.
     constexpr DynamicHashOrthoTreeCore() = default;

@@ -1,4 +1,4 @@
-﻿/*
+/*
 MIT License
 
 Copyright (c) 2021 Attila Csikós
@@ -61,12 +61,20 @@ namespace OrthoTree
     using Entity = typename EA::Entity;
     using EntityID = typename EA::EntityID;
     using EntityContainer = EA::EntityContainer;
+    using EntityContainerView = typename EA::EntityContainerView;
 
     using QueryCondition = typename TOrthoTreeCore::QueryCondition;
 
   protected:
     TOrthoTreeCore m_tree;
     EntityContainer m_entities;
+
+private:
+
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TOrthoTreeCore_>
+    friend void serialize(TArchive& ar, OrthoTreeManaged<TOrthoTreeCore_>& core, const unsigned int version);
 
   public: // Constructors
     constexpr explicit OrthoTreeManaged() noexcept = default;
@@ -348,7 +356,7 @@ namespace OrthoTree
 
     constexpr TBox GetBox() const noexcept { return m_tree.GetBox(); }
 
-    constexpr void Init(TBox const& boxSpace, depth_t maxDepthID, std::size_t maxElementNoInNode = TOrthoTreeCore::DEFAULT_MAX_ELEMENT) noexcept
+    constexpr void Init(TBox const& boxSpace, depth_t maxDepthID, std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
     {
       m_tree.Init(boxSpace, maxDepthID, maxElementNoInNode);
     }
