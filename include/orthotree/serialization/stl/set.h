@@ -24,12 +24,37 @@ SOFTWARE.
 
 #pragma once
 
-#include "stl/common.h"
-#include "stl/array.h"
-#include "stl/map.h"
-#include "stl/unordered_map.h"
-#include "stl/optional.h"
-#include "stl/pointer.h"
-#include "stl/set.h"
-#include "stl/variant.h"
-#include "stl/vector.h"
+#include "../nvp.h"
+#include "../traits.h"
+#include "common.h"
+#include <set>
+#include <type_traits>
+
+namespace OrthoTree
+{
+  // std::set
+  template<typename TArchive, typename K, typename Compare, typename Alloc>
+  auto serialize(TArchive& ar, std::set<K, Compare, Alloc>& val, [[maybe_unused]] const unsigned int version)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {
+    std::size_t size = val.size();
+    ar& make_nvp("size", size);
+
+    if (ar.is_loading())
+    {
+      val.clear();
+      for (std::size_t i = 0; i < size; ++i)
+      {
+        K key;
+        ar & make_nvp("item", key);
+        val.emplace(std::move(key));
+      }
+    }
+    else
+    {
+      for (auto& item : val)
+        ar & make_nvp("item", const_cast<K&>(item));
+    }
+  }
+
+} // namespace OrthoTree

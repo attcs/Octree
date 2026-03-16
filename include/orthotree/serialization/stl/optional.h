@@ -24,12 +24,36 @@ SOFTWARE.
 
 #pragma once
 
-#include "stl/common.h"
-#include "stl/array.h"
-#include "stl/map.h"
-#include "stl/unordered_map.h"
-#include "stl/optional.h"
-#include "stl/pointer.h"
-#include "stl/set.h"
-#include "stl/variant.h"
-#include "stl/vector.h"
+#include "../nvp.h"
+#include "common.h"
+#include <optional>
+
+namespace OrthoTree
+{
+  // std::optional
+  template<typename TArchive, typename T>
+  auto serialize(TArchive& ar, std::optional<T>& val, [[maybe_unused]] const unsigned int version)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {
+    bool has_value = val.has_value();
+    ar& make_nvp("has_value", has_value);
+
+    if (ar.is_loading())
+    {
+      if (has_value)
+      {
+        T item;
+        ar & make_nvp("value", item);
+        val = std::move(item);
+      }
+      else
+        val = std::nullopt;
+    }
+    else
+    {
+      if (has_value)
+        ar & make_nvp("value", *val);
+    }
+  }
+
+} // namespace OrthoTree

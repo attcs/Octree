@@ -24,12 +24,19 @@ SOFTWARE.
 
 #pragma once
 
-#include "stl/common.h"
-#include "stl/array.h"
-#include "stl/map.h"
-#include "stl/unordered_map.h"
-#include "stl/optional.h"
-#include "stl/pointer.h"
-#include "stl/set.h"
-#include "stl/variant.h"
-#include "stl/vector.h"
+#include "../traits.h"
+#include <array>
+#include <type_traits>
+
+namespace OrthoTree
+{
+  // std::array
+  template<typename TArchive, typename T, std::size_t N>
+  auto serialize(TArchive& ar, std::array<T, N>& val, [[maybe_unused]] const unsigned int version)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {
+    for (auto& item : val)
+      ar & make_nvp("item", item);
+  }
+
+} // namespace OrthoTree

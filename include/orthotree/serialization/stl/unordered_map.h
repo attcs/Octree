@@ -24,12 +24,39 @@ SOFTWARE.
 
 #pragma once
 
-#include "stl/common.h"
-#include "stl/array.h"
-#include "stl/map.h"
-#include "stl/unordered_map.h"
-#include "stl/optional.h"
-#include "stl/pointer.h"
-#include "stl/set.h"
-#include "stl/variant.h"
-#include "stl/vector.h"
+#include "../nvp.h"
+#include "../traits.h"
+#include "common.h"
+#include <unordered_map>
+#include <type_traits>
+
+namespace OrthoTree
+{
+  // std::unordered_map
+  template<typename TArchive, typename K, typename V, typename Hash, typename KeyEqual, typename Alloc>
+  auto serialize(TArchive& ar, std::unordered_map<K, V, Hash, KeyEqual, Alloc>& val, [[maybe_unused]] const unsigned int version)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {
+    std::size_t size = val.size();
+    ar& make_nvp("size", size);
+
+    if (ar.is_loading())
+    {
+      val.clear();
+      for (std::size_t i = 0; i < size; ++i)
+      {
+        std::pair<K, V> item;
+        ar & make_nvp("item", item);
+        val.emplace(std::move(item.first), std::move(item.second));
+      }
+    }
+    else
+    {
+      for (auto& item : val)
+      {
+        ar& make_nvp("item", const_cast<std::pair<K const, V>&>(item));
+      }
+    }
+  }
+
+} // namespace OrthoTree
