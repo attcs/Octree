@@ -90,6 +90,15 @@ namespace OrthoTree
 
       Geometry m_geometry;
 
+    private:
+      static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+      template<typename TArchive, std::size_t CHILD_NO, typename NodeID, typename ChildID, typename EntityID, typename Geometry>
+      friend void serialize(TArchive& ar, OrthoTreeNodeData<CHILD_NO, NodeID, ChildID, EntityID, Geometry>& node, const unsigned int version);
+
+      template<typename TArchive, typename T, typename TNodes>
+      friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, const unsigned int version);
+
     public:
       explicit constexpr OrthoTreeNodeData() noexcept = default;
 

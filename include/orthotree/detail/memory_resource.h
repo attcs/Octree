@@ -636,6 +636,12 @@ namespace OrthoTree::detail
     }
 
   private:
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename T, typename TNodes>
+    friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, const unsigned int version);
+
+  private:
     // stores the data
     std::vector<Page> m_pages;
 

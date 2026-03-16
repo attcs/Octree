@@ -69,8 +69,7 @@ namespace OrthoTree
     TOrthoTreeCore m_tree;
     EntityContainer m_entities;
 
-private:
-
+  private:
     static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
     template<typename TArchive, typename TOrthoTreeCore_>
