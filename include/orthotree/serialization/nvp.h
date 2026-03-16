@@ -45,16 +45,23 @@ namespace OrthoTree
   {
     const char* name;
     T& value;
-    NameValuePair(const char* n, T& v) : name(n), value(v) {}
+
+    constexpr NameValuePair(const char* n, T& v) noexcept : name(n), value(v) {}
 
     // Support for cereal NVP detection traits
     using cereal_nvp_tag = std::true_type;
   };
 
   template<typename T>
-  NameValuePair<T> make_nvp(const char* name, T& value)
+  constexpr NameValuePair<T> make_nvp(const char* name, T& value) noexcept
   {
     return NameValuePair<T>(name, value);
+  }
+
+  template<typename T>
+  constexpr NameValuePair<const T> make_nvp(const char* name, const T& value) noexcept
+  {
+    return NameValuePair<const T>(name, value);
   }
 
 #ifndef ORTHOTREE_NVP
@@ -70,14 +77,17 @@ namespace OrthoTree
   auto operator&(TArchive& ar, NameValuePair<T> nvp) -> decltype(ar(nvp.value), ar)
   {
 #if defined(ORTHOTREE_SERIALIZATION_CEREAL_ENABLED)
-    // Bridge to cereal NVP - This is the key to preserve labels in JSON/XML
-    return ar(::cereal::make_nvp(nvp.name, nvp.value));
+    // Bridge to cereal NVP
+    ar(::cereal::make_nvp<TArchive>(nvp.name, nvp.value));
+    return ar;
 #elif defined(ORTHOTREE_SERIALIZATION_BOOST_ENABLED)
     // Bridge to boost NVP
-    return ar(::boost::serialization::make_nvp(nvp.name, nvp.value));
+    ar(::boost::serialization::make_nvp(nvp.name, nvp.value));
+    return ar;
 #else
-    // Fallback for our own archives or unknown binary archives
-    return ar(nvp.value);
+    // Fallback
+    ar(nvp.value);
+    return ar;
 #endif
   }
 

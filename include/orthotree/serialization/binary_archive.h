@@ -26,11 +26,14 @@ SOFTWARE.
 
 #include "../serialization/stl.h"
 
-#include "nvp.h"
-#include "traits.h"
+#include "../serialization/nvp.h"
+#include "../serialization/traits.h"
+
+
 #include <bit>
 #include <cstring>
 #include <iostream>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -62,6 +65,7 @@ namespace OrthoTree
 
   class BinaryArchive
   {
+  protected:
     std::iostream& m_stream;
     bool m_is_loading;
     Endianness m_target_endian;
@@ -73,8 +77,8 @@ namespace OrthoTree
     , m_target_endian(target_endian)
     {}
 
-    bool is_loading() const { return m_is_loading; }
-    bool is_saving() const { return !m_is_loading; }
+    constexpr bool is_loading() const { return m_is_loading; }
+    constexpr bool is_saving() const { return !m_is_loading; }
 
     template<typename T>
     BinaryArchive& operator&(T& val)
@@ -99,6 +103,22 @@ namespace OrthoTree
           m_stream.write(reinterpret_cast<const char*>(&out), sizeof(T));
         }
       }
+      else if constexpr (std::is_same_v<T, std::string>)
+      {
+        if (m_is_loading)
+        {
+          std::size_t size;
+          (*this)(size);
+          val.resize(size);
+          m_stream.read(val.data(), size);
+        }
+        else
+        {
+          std::size_t size = val.size();
+          (*this)(size);
+          m_stream.write(val.data(), size);
+        }
+      }
       else
       {
         serialize(*this, val, version_v<T>);
@@ -106,30 +126,11 @@ namespace OrthoTree
       return *this;
     }
 
-    // NVP version - binary doesn't store names
+    // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
     auto operator&(TNVP&& nvp) -> decltype(nvp.name, nvp.value, *this)
     {
       return (*this & nvp.value);
-    }
-
-    // Explicit string support
-    BinaryArchive& operator&(std::string& val)
-    {
-      if (m_is_loading)
-      {
-        std::size_t size;
-        (*this)(size);
-        val.resize(size);
-        m_stream.read(val.data(), size);
-      }
-      else
-      {
-        std::size_t size = val.size();
-        (*this)(size);
-        m_stream.write(val.data(), size);
-      }
-      return *this;
     }
 
     template<typename... Args>
@@ -155,5 +156,16 @@ namespace OrthoTree
     : BinaryArchive(stream, true, target_endian)
     {}
   };
+
+  // Specialization for traits
+  template<>
+  struct is_stl_serialization_enabled<BinaryArchive> : std::true_type
+  {};
+  template<>
+  struct is_stl_serialization_enabled<BinaryOutputArchive> : std::true_type
+  {};
+  template<>
+  struct is_stl_serialization_enabled<BinaryInputArchive> : std::true_type
+  {};
 
 } // namespace OrthoTree

@@ -24,46 +24,53 @@ SOFTWARE.
 
 #pragma once
 
-#include "../serialization/stl.h"
-
 #include "nvp.h"
+#include "stl.h"
 #include "traits.h"
-
+#include <iomanip>
 #include <iostream>
-#include <stack>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 namespace OrthoTree
 {
-  class JSONOutputArchive
+  class JSONArchive;
+  class XMLArchive;
+  class JSONOutputArchive;
+  class XMLOutputArchive;
+
+  // Specialization for traits
+  template<>
+  struct is_stl_serialization_enabled<JSONArchive> : std::true_type
+  {};
+  template<>
+  struct is_stl_serialization_enabled<JSONOutputArchive> : std::true_type
+  {};
+  template<>
+  struct is_stl_serialization_enabled<XMLArchive> : std::true_type
+  {};
+  template<>
+  struct is_stl_serialization_enabled<XMLOutputArchive> : std::true_type
+  {};
+
+  class JSONArchive
   {
+  protected:
     std::ostream& m_os;
-    int m_depth = 0;
+    int m_indent_level = 0;
     bool m_first_item = true;
 
     void indent()
     {
-      m_os << "\n";
-      for (int i = 0; i < m_depth; ++i)
+      for (int i = 0; i < m_indent_level; ++i)
         m_os << "  ";
     }
 
   public:
-    JSONOutputArchive(std::ostream& os)
+    JSONArchive(std::ostream& os)
     : m_os(os)
-    {
-      m_os << "{";
-      m_depth++;
-    }
-
-    ~JSONOutputArchive()
-    {
-      m_depth--;
-      indent();
-      m_os << "}";
-    }
+    {}
 
     constexpr bool is_loading() const { return false; }
     constexpr bool is_saving() const { return true; }
@@ -75,6 +82,7 @@ namespace OrthoTree
       if (!m_first_item)
         m_os << ",";
       m_first_item = false;
+      m_os << "\n";
       indent();
       m_os << "\"" << nvp.name << "\": ";
       serialize_value(nvp.value);
@@ -82,20 +90,25 @@ namespace OrthoTree
     }
 
     template<typename T>
-    JSONOutputArchive& operator&(T& val)
+    JSONArchive& operator&(T& val)
     {
+      if (!m_first_item)
+        m_os << ",";
+      m_first_item = false;
+      m_os << "\n";
+      indent();
       serialize_value(val);
       return *this;
     }
 
     template<typename... Args>
-    JSONOutputArchive& operator()(Args&&... args)
+    JSONArchive& operator()(Args&&... args)
     {
       ((*this & std::forward<Args>(args)), ...);
       return *this;
     }
 
-  private:
+  protected:
     template<typename T>
     void serialize_value(T& val)
     {
@@ -110,51 +123,32 @@ namespace OrthoTree
       {
         m_os << "\"" << val << "\"";
       }
-      else if constexpr (requires {
-                           typename T::key_type;
-                           typename T::mapped_type;
-                         })
+      else if constexpr (requires { val.serialize(*this); })
       {
-        // Map serialization as JSON object (if key is string) or array of pairs
-        bool keys_are_strings = std::is_base_of_v<std::string, typename T::key_type> || std::is_same_v<typename T::key_type, std::string>;
-        m_os << (keys_are_strings ? "{" : "[");
-        m_depth++;
-        bool first = true;
-        for (auto& [key, value] : val)
-        {
-          if (!first)
-            m_os << ", ";
-          if (keys_are_strings)
-          {
-            indent();
-            m_os << "\"" << key << "\": ";
-            serialize_value(value);
-          }
-          else
-          {
-            m_os << "{";
-            m_depth++;
-            m_first_item = true; // reset for the inner pair
-            *this& make_nvp("key", const_cast<typename T::key_type&>(key));
-            *this& make_nvp("value", value);
-            m_depth--;
-            indent();
-            m_os << "}";
-          }
-          first = false;
-        }
-        m_depth--;
+        m_os << "{";
+        m_indent_level++;
+        bool old_first = m_first_item;
+        m_first_item = true;
+
+        val.serialize(*this);
+
+        m_indent_level--;
+        m_os << "\n";
         indent();
-        m_os << (keys_are_strings ? "}" : "]");
+        m_os << "}";
+        m_first_item = old_first;
+      }
+      else if constexpr (is_stl_serialization_enabled_v<JSONArchive>)
+      {
+        serialize(*this, val, version_v<T>);
       }
       else if constexpr (requires {
                            val.begin();
                            val.end();
                          })
       {
-        // Container serialization as JSON array
         m_os << "[";
-        m_depth++;
+        m_indent_level++;
         bool first = true;
         for (auto& item : val)
         {
@@ -163,20 +157,21 @@ namespace OrthoTree
           serialize_value(item);
           first = false;
         }
-        m_depth--;
+        m_indent_level--;
         m_os << "]";
       }
       else
       {
-        // Custom object serialization
+        // Fallback for objects without member serialize and when STL headers are not included
         m_os << "{";
-        m_depth++;
+        m_indent_level++;
         bool old_first = m_first_item;
         m_first_item = true;
 
         serialize(*this, val, version_v<T>);
 
-        m_depth--;
+        m_indent_level--;
+        m_os << "\n";
         indent();
         m_os << "}";
         m_first_item = old_first;
@@ -184,34 +179,34 @@ namespace OrthoTree
     }
   };
 
-  // Minimal implementation for XML saving
-  class XMLOutputArchive
+  class JSONOutputArchive : public JSONArchive
   {
+  public:
+    JSONOutputArchive(std::ostream& os)
+    : JSONArchive(os)
+    {
+      m_os << "{";
+    }
+    ~JSONOutputArchive() { m_os << "\n}\n"; }
+  };
+
+
+  class XMLArchive
+  {
+  protected:
     std::ostream& m_os;
-    int m_depth = 0;
-    std::stack<std::string> m_tags;
+    int m_indent_level = 0;
 
     void indent()
     {
-      m_os << "\n";
-      for (int i = 0; i < m_depth; ++i)
+      for (int i = 0; i < m_indent_level; ++i)
         m_os << "  ";
     }
 
   public:
-    XMLOutputArchive(std::ostream& os)
+    XMLArchive(std::ostream& os)
     : m_os(os)
-    {
-      m_os << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-      m_os << "\n<root>";
-      m_depth++;
-    }
-
-    ~XMLOutputArchive()
-    {
-      m_depth--;
-      m_os << "\n</root>";
-    }
+    {}
 
     constexpr bool is_loading() const { return false; }
     constexpr bool is_saving() const { return true; }
@@ -222,77 +217,83 @@ namespace OrthoTree
     {
       indent();
       m_os << "<" << nvp.name << ">";
-
-      bool has_items = false;
-      if constexpr (requires {
-                      nvp.value.begin();
-                      nvp.value.end();
-                    })
-      {
-        if constexpr (!std::is_same_v<std::decay_t<decltype(nvp.value)>, std::string>)
-          has_items = true;
-      }
-
-      if (has_items)
-        m_depth++;
-
       serialize_value(nvp.value);
-
-      if (has_items)
-      {
-        m_depth--;
-        indent();
-      }
-
-      m_os << "</" << nvp.name << ">";
+      m_os << "</" << nvp.name << ">\n";
       return *this;
     }
 
     template<typename T>
-    XMLOutputArchive& operator&(T& val)
+    XMLArchive& operator&(T& val)
     {
+      indent();
+      m_os << "<value>";
       serialize_value(val);
+      m_os << "</value>\n";
       return *this;
     }
 
     template<typename... Args>
-    XMLOutputArchive& operator()(Args&&... args)
+    XMLArchive& operator()(Args&&... args)
     {
       ((*this & std::forward<Args>(args)), ...);
       return *this;
     }
 
-  private:
+  protected:
     template<typename T>
     void serialize_value(T& val)
     {
       if constexpr (std::is_arithmetic_v<T>)
       {
-        if constexpr (std::is_same_v<T, bool>)
-          m_os << (val ? "true" : "false");
-        else
-          m_os << val;
+        m_os << val;
       }
       else if constexpr (std::is_same_v<T, std::string>)
       {
         m_os << val;
+      }
+      else if constexpr (requires { val.serialize(*this); })
+      {
+        val.serialize(*this);
+      }
+      else if constexpr (is_stl_serialization_enabled_v<XMLArchive>)
+      {
+        m_os << "\n";
+        m_indent_level++;
+        serialize(*this, val, version_v<T>);
+        m_indent_level--;
+        indent();
       }
       else if constexpr (requires {
                            val.begin();
                            val.end();
                          })
       {
-        // Container serialization as XML items
+        m_os << "\n";
+        m_indent_level++;
         for (auto& item : val)
         {
-          *this& make_nvp("item", item);
+          indent();
+          m_os << "<item>";
+          serialize_value(item);
+          m_os << "</item>\n";
         }
+        m_indent_level--;
+        indent();
       }
       else
       {
-        serialize(*this, val, version_v<T>);
+        // No serialization found
       }
     }
   };
+
+  class XMLOutputArchive : public XMLArchive
+  {
+  public:
+    XMLOutputArchive(std::ostream& os)
+    : XMLArchive(os)
+    {}
+  };
+
 
 } // namespace OrthoTree
