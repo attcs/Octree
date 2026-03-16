@@ -38,7 +38,7 @@ namespace OrthoTree
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     std::size_t size = val.size();
-    ar& make_nvp("size", size);
+    ar& make_size_tag(size);
 
     if (ar.is_loading())
     {

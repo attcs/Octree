@@ -24,6 +24,7 @@ SOFTWARE.
 
 #pragma once
 
+#include "../nvp.h"
 #include "../traits.h"
 #include <array>
 #include <type_traits>
