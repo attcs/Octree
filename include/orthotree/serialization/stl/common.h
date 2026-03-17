@@ -31,7 +31,7 @@ SOFTWARE.
 namespace OrthoTree
 {
   template<typename TArchive, typename T1, typename T2>
-  auto serialize(TArchive& ar, std::pair<T1, T2>& val, [[maybe_unused]] const uint32_t version)
+  auto serialize(TArchive& ar, std::pair<T1, T2>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     ar& make_nvp("key", const_cast<std::remove_const_t<T1>&>(val.first));

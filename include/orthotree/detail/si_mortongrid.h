@@ -46,7 +46,7 @@ namespace OrthoTree::detail
     constexpr MortonGridSpaceIndexing() = default;
 
     template<typename TArchive, typename TGA, bool ALLOW_OUT_SPACE, double LOOSE, depth_t MAX_DP>
-    friend void serialize(TArchive& ar, MortonGridSpaceIndexing<TGA, ALLOW_OUT_SPACE, LOOSE, MAX_DP>& si, const uint32_t version);
+    friend void serialize(TArchive& ar, MortonGridSpaceIndexing<TGA, ALLOW_OUT_SPACE, LOOSE, MAX_DP>& si);
 
     constexpr MortonGridSpaceIndexing(depth_t maxDepthID, typename IGM::Box const& boxSpace) noexcept
     : m_grid(GridSpaceIndexing<TGeometryAdapter>(maxDepthID, boxSpace))

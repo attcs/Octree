@@ -106,7 +106,7 @@ namespace OrthoTree::detail
     static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
     template<typename TArchive, typename TGA>
-    friend void serialize(TArchive& ar, GridSpaceIndexing<TGA>& grid, const uint32_t version);
+    friend void serialize(TArchive& ar, GridSpaceIndexing<TGA>& grid);
 
   public:
     constexpr IGM::Vector const& GetMinPoint() const noexcept { return m_boxSpace.Min; }
@@ -294,7 +294,7 @@ namespace OrthoTree::detail
       IGM::Vector derasterizerFactors = {};
 
       template<typename TArchive>
-      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
+      void serialize(TArchive& ar)
       {
         ar& ORTHOTREE_NVP_INT(sizeInDimensions);
         ar& ORTHOTREE_NVP_INT(rasterizerFactors);
@@ -312,7 +312,7 @@ namespace OrthoTree::detail
       std::array<double, GA::DIMENSION_NO> derasterizerFactors = {};
 
       template<typename TArchive>
-      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
+      void serialize(TArchive& ar)
       {
         ar& ORTHOTREE_NVP_INT(sizeInDimensions);
         ar& ORTHOTREE_NVP_INT(rasterizerFactors);

@@ -32,7 +32,7 @@ namespace OrthoTree
 {
   // std::optional
   template<typename TArchive, typename T>
-  auto serialize(TArchive& ar, std::optional<T>& val, [[maybe_unused]] const uint32_t version)
+  auto serialize(TArchive& ar, std::optional<T>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     bool has_value = val.has_value();

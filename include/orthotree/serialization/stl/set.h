@@ -34,7 +34,7 @@ namespace OrthoTree
 {
   // std::set
   template<typename TArchive, typename K, typename Compare, typename Alloc>
-  auto serialize(TArchive& ar, std::set<K, Compare, Alloc>& val, [[maybe_unused]] const uint32_t version)
+  auto serialize(TArchive& ar, std::set<K, Compare, Alloc>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     std::size_t size = val.size();
@@ -46,14 +46,14 @@ namespace OrthoTree
       for (std::size_t i = 0; i < size; ++i)
       {
         K key;
-        ar & make_nvp("item", key);
+        ar& key;
         val.emplace(std::move(key));
       }
     }
     else
     {
       for (auto& item : val)
-        ar & make_nvp("item", const_cast<K&>(item));
+        ar& const_cast<K&>(item);
     }
   }
 

@@ -183,7 +183,7 @@ namespace OrthoTree
         m_in_array = false;
         m_first_item = true;
 
-        serialize(*this, val, version_v<T>);
+        serialize(*this, val);
 
         if (m_in_array)
         {
@@ -227,7 +227,7 @@ namespace OrthoTree
         bool old_first = m_first_item;
         m_first_item = true;
 
-        serialize(*this, val, version_v<T>);
+        serialize(*this, val);
 
         m_indent_level--;
         m_os << "\n";
@@ -326,7 +326,7 @@ namespace OrthoTree
       {
         m_os << "\n";
         m_indent_level++;
-        serialize(*this, val, version_v<T>);
+        serialize(*this, val);
         m_indent_level--;
         write_indent();
       }

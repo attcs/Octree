@@ -46,7 +46,7 @@ namespace OrthoTree
   };
 
   template<typename T>
-  inline constexpr const uint32_t version_v = version<T>::value;
+  inline constexpr uint32_t version_v = version<T>::value;
 
 
   // --- Archive Identification ---

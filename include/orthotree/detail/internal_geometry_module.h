@@ -75,7 +75,7 @@ namespace OrthoTree::detail
       Vector Min, Max;
 
       template<typename TArchive>
-      void serialize(TArchive& ar, [[maybe_unused]] const uint32_t version)
+      void serialize(TArchive& ar)
       {
         ar& ORTHOTREE_NVP_INT(Min);
         ar& ORTHOTREE_NVP_INT(Max);

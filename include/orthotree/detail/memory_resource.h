@@ -642,7 +642,7 @@ namespace OrthoTree::detail
     friend class MemoryResourceSerializerProxy;
 
     template<typename TArchive, typename T, typename TNodes>
-    friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes, const uint32_t version);
+    friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes);
 
   private:
     // stores the data

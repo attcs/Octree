@@ -38,7 +38,7 @@ namespace OrthoTree
 {
   // std::vector
   template<typename TArchive, typename T, typename Alloc>
-  auto serialize(TArchive& ar, std::vector<T, Alloc>& val, [[maybe_unused]] const uint32_t version)
+  auto serialize(TArchive& ar, std::vector<T, Alloc>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     std::size_t size = val.size();
@@ -47,19 +47,19 @@ namespace OrthoTree
     {
       val.resize(size);
       for (auto& item : val)
-        ar & make_nvp("item", item);
+        ar& item;
     }
     else
     {
       for (auto& item : val)
-        ar & make_nvp("item", item);
+        ar& item;
     }
   }
 
 #ifdef __cpp_lib_constexpr_inplace_vector
   // std::inplace_vector (C++26)
   template<typename TArchive, typename T, std::size_t N>
-  auto serialize(TArchive& ar, std::inplace_vector<T, N>& val, [[maybe_unused]] const uint32_t version)
+  auto serialize(TArchive& ar, std::inplace_vector<T, N>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     std::size_t size = val.size();
@@ -75,7 +75,7 @@ namespace OrthoTree
     else
     {
       for (auto& item : val)
-        ar & make_nvp("item", item);
+        ar& item;
     }
   }
 #endif

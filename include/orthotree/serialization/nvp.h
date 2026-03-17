@@ -116,16 +116,30 @@ namespace OrthoTree
     }
   } // namespace detail
 
-#ifndef ORTHOTREE_NVP
-#define ORTHOTREE_NVP(member) ::OrthoTree::make_nvp(#member, member)
-#endif
-
-#ifndef ORTHOTREE_NVP_M
-#define ORTHOTREE_NVP_M(obj, member) ::OrthoTree::make_nvp(#member, obj.member)
-#endif
-
-#ifndef ORTHOTREE_NVP_INT
-#define ORTHOTREE_NVP_INT(member) ::OrthoTree::make_nvp(#member, this->member)
+#if defined(ORTHOTREE_SERIALIZATION_CEREAL_ENABLED)
+  #ifndef ORTHOTREE_NVP
+  #define ORTHOTREE_NVP(member) ::cereal::make_nvp(#member, member)
+  #endif
+  
+  #ifndef ORTHOTREE_NVP_M
+  #define ORTHOTREE_NVP_M(obj, member) ::cereal::make_nvp(#member, obj.member)
+  #endif
+  
+  #ifndef ORTHOTREE_NVP_INT
+  #define ORTHOTREE_NVP_INT(member) ::cereal::make_nvp(#member, this->member)
+  #endif
+#else
+  #ifndef ORTHOTREE_NVP
+  #define ORTHOTREE_NVP(member) ::OrthoTree::make_nvp(#member, member)
+  #endif
+  
+  #ifndef ORTHOTREE_NVP_M
+  #define ORTHOTREE_NVP_M(obj, member) ::OrthoTree::make_nvp(#member, obj.member)
+  #endif
+  
+  #ifndef ORTHOTREE_NVP_INT
+  #define ORTHOTREE_NVP_INT(member) ::OrthoTree::make_nvp(#member, this->member)
+  #endif
 #endif
 
   // Generic bridge for other archivers

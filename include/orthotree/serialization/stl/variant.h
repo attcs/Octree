@@ -34,7 +34,7 @@ namespace OrthoTree
 {
   // std::variant
   template<typename TArchive, typename... Types>
-  auto serialize(TArchive& ar, std::variant<Types...>& val, [[maybe_unused]] const uint32_t version)
+  auto serialize(TArchive& ar, std::variant<Types...>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
     std::size_t index = val.index();
