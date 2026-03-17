@@ -24,6 +24,9 @@ SOFTWARE.
 
 #pragma once
 
+#ifndef ORTHOTREE__BVH_H_INCLUDED
+#define ORTHOTREE__BVH_H_INCLUDED
+#endif
 
 #if defined(ORTHOTREE__USE_PMR) || defined(_MSC_VER)
 #ifndef ORTHOTREE__DISABLE_PMR
