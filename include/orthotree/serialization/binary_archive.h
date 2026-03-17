@@ -33,6 +33,7 @@ SOFTWARE.
 #include <bit>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -89,17 +90,13 @@ namespace OrthoTree
         {
           m_stream.read(reinterpret_cast<char*>(&val), sizeof(T));
           if (m_target_endian != native_endian)
-          {
             val = swap_endian(val);
-          }
         }
         else
         {
           T out = val;
           if (m_target_endian != native_endian)
-          {
             out = swap_endian(val);
-          }
           m_stream.write(reinterpret_cast<const char*>(&out), sizeof(T));
         }
       }
@@ -119,9 +116,47 @@ namespace OrthoTree
           m_stream.write(val.data(), size);
         }
       }
+      else if constexpr (requires { val.serialize(*this); })
+      {
+        val.serialize(*this);
+      }
       else
       {
-        serialize(*this, val, version_v<T>);
+        serialize(*this, val);
+      }
+      return *this;
+    }
+
+    template<typename T>
+    BinaryArchive& operator&(const T& val)
+    {
+      if (m_is_loading)
+      {
+         // This should never happen if used correctly via make_nvp for const objects
+         // but we need it for compilation of saving paths.
+         throw std::runtime_error("Cannot load into const object");
+      }
+      
+      if constexpr (std::is_arithmetic_v<T>)
+      {
+        T out = val;
+        if (m_target_endian != native_endian)
+          out = swap_endian(val);
+        m_stream.write(reinterpret_cast<const char*>(&out), sizeof(T));
+      }
+      else if constexpr (std::is_same_v<T, std::string>)
+      {
+        std::size_t size = val.size();
+        (*this)(size);
+        m_stream.write(val.data(), size);
+      }
+      else if constexpr (requires { val.serialize(*this); })
+      {
+        const_cast<T&>(val).serialize(*this);
+      }
+      else
+      {
+        serialize(*this, const_cast<T&>(val));
       }
       return *this;
     }

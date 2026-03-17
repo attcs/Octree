@@ -174,6 +174,10 @@ namespace OrthoTree
     {
   #if defined(ORTHOTREE_SERIALIZATION_CEREAL_ENABLED)
       ar(::cereal::make_size_tag(tag.value));
+  #elif defined(ORTHOTREE_SERIALIZATION_MSGPACK_ENABLED)
+    // Bridge to MsgPack (assuming a custom adapter that uses operator&)
+    ar & nvp;
+    return ar;
   #else
       ar(tag.value);
   #endif

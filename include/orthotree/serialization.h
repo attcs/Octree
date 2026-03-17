@@ -429,15 +429,13 @@ namespace OrthoTree
 
 
   // --- Boost Compatibility Bridge ---
-  // Boost.Serialization looks here or in the object's namespace for a 3-parameter version.
-  // By putting it here, we satisfy Boost without triggering Cereal's versioned path.
-} // namespace OrthoTree
-
-namespace boost::serialization
-{
+  // Boost.Serialization looks here via ADL for a 3-parameter version.
+  // We provide it here but hide it from Cereal archives using SFINAE,
+  // because Cereal's versioning system can cause unwanted wrappers in JSON/XML.
   template<typename TArchive, typename T>
-  inline void serialize(TArchive& ar, T& t, const unsigned int /*version*/)
+  inline auto serialize(TArchive& ar, T& t, const unsigned int /*version*/)
+    -> std::enable_if_t<::OrthoTree::detail::has_cereal_tag<TArchive>::value == false, void>
   {
-    ::OrthoTree::serialize(ar, t);
+    serialize(ar, t);
   }
-} // namespace boost::serialization
+} // namespace OrthoTree

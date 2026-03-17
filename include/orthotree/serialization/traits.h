@@ -96,5 +96,23 @@ namespace OrthoTree
   {
     return archive_traits<TArchive>::is_loading(ar);
   }
+
+  namespace detail
+  {
+    template<typename T, typename = void>
+    struct has_cereal_input_tag : std::false_type {};
+
+    template<typename T>
+    struct has_cereal_input_tag<T, std::void_t<typename T::is_input_archive>> : std::true_type {};
+
+    template<typename T, typename = void>
+    struct has_cereal_output_tag : std::false_type {};
+
+    template<typename T>
+    struct has_cereal_output_tag<T, std::void_t<typename T::is_output_archive>> : std::true_type {};
+
+    template<typename T>
+    struct has_cereal_tag : std::bool_constant<has_cereal_input_tag<T>::value || has_cereal_output_tag<T>::value> {};
+  }
  
 } // namespace OrthoTree
