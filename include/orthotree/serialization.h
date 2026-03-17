@@ -168,7 +168,7 @@ namespace OrthoTree
       ar& ORTHOTREE_NVP_M(factors, rasterizerFactors);
       ar& ORTHOTREE_NVP_M(factors, derasterizerFactors);
     }
-
+#ifdef ORTHOTREE__OCTREE_H_INCLUDED
     template<typename TArchive, std::size_t C, typename NID, typename CID, typename EID, typename NG>
     void serialize(TArchive& ar, OrthoTreeNodeData<C, NID, CID, EID, NG>& node)
     {
@@ -215,7 +215,7 @@ namespace OrthoTree
     class NodeSegmentSerializerProxy
     {
     public:
-      constexpr NodeSegmentSerializerProxy(NodeID nodeID, MemoryResource<T>::MemorySegment& segment, MemoryResource<T>& memoryResource) noexcept
+      constexpr NodeSegmentSerializerProxy(NodeID& nodeID, typename MemoryResource<T>::MemorySegment& segment, MemoryResource<T>& memoryResource) noexcept
       : m_nodeID(nodeID)
       , m_segment(segment)
       , m_memoryResource(memoryResource)
@@ -233,13 +233,13 @@ namespace OrthoTree
       }
 
     private:
-      NodeID m_nodeID;
+      NodeID& m_nodeID;
       MemoryResource<T>::MemorySegment& m_segment;
       MemoryResource<T>& m_memoryResource;
     };
 
     template<typename TArchive, typename T, typename TNodes>
-    void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes)
+    void serializeMemoryResource(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes)
     {
       using NodeID = typename std::decay_t<TNodes>::key_type;
       using NodeSegment = NodeSegmentSerializerProxy<NodeID, T>;
@@ -271,7 +271,8 @@ namespace OrthoTree
           if (node.IsEntitiesEmpty())
             continue;
 
-          auto m_segment = NodeSegment(nodeID, node.GetEntitySegment(), memoryResource);
+          auto nonConstNodeID = const_cast<NodeID&>(nodeID);
+          auto m_segment = NodeSegment(nonConstNodeID, node.GetEntitySegment(), memoryResource);
           ar & m_segment;
         }
       }
@@ -290,7 +291,7 @@ namespace OrthoTree
       template<typename TArchive>
       void serialize(TArchive& ar)
       {
-        detail::serialize(ar, m_memoryResource, m_nodes);
+        serializeMemoryResource(ar, m_memoryResource, m_nodes);
       }
 
     private:
@@ -327,6 +328,7 @@ namespace OrthoTree
       MemoryResource<TData>& m_memoryResource;
       TNodeMap& m_nodes;
     };
+#endif
   } // namespace detail
 
 
@@ -426,12 +428,16 @@ namespace OrthoTree
   }
 
 
-  // --- Boost/Cereal Compatibility Wrapper ---
-  // If an archive (like Boost) expects 3 parameters, forward it to our 2-parameter version.
-  template<typename TArchive, typename T>
-  void serialize(TArchive& ar, T& t, const unsigned int /*version*/)
-  {
-    serialize(ar, t);
-  }
-
+  // --- Boost Compatibility Bridge ---
+  // Boost.Serialization looks here or in the object's namespace for a 3-parameter version.
+  // By putting it here, we satisfy Boost without triggering Cereal's versioned path.
 } // namespace OrthoTree
+
+namespace boost::serialization
+{
+  template<typename TArchive, typename T>
+  inline void serialize(TArchive& ar, T& t, const unsigned int /*version*/)
+  {
+    ::OrthoTree::serialize(ar, t);
+  }
+} // namespace boost::serialization
