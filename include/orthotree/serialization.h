@@ -23,6 +23,9 @@ SOFTWARE.
 */
 
 #pragma once
+#ifndef ORTHOTREE_SERIALIZATION_H
+#define ORTHOTREE_SERIALIZATION_H
+#endif
 
 #include "adapters/general.h"
 #include "core/bvh_static_linear_core.h"
@@ -168,7 +171,7 @@ namespace OrthoTree
       ar& ORTHOTREE_NVP_M(factors, rasterizerFactors);
       ar& ORTHOTREE_NVP_M(factors, derasterizerFactors);
     }
-#ifdef ORTHOTREE__OCTREE_H_INCLUDED
+
     template<typename TArchive, std::size_t C, typename NID, typename CID, typename EID, typename NG>
     void serialize(TArchive& ar, OrthoTreeNodeData<C, NID, CID, EID, NG>& node)
     {
@@ -328,12 +331,12 @@ namespace OrthoTree
       MemoryResource<TData>& m_memoryResource;
       TNodeMap& m_nodes;
     };
-#endif
+
   } // namespace detail
 
 
   // --- Core Serialization ---
-#ifdef ORTHOTREE__OCTREE_H_INCLUDED
+
   // OrthoTreeCoreBase
   template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
   void serialize(TArchive& ar, OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>& core)
@@ -382,9 +385,9 @@ namespace OrthoTree
     auto m_memoryResource = detail::MemoryResourceSerializerProxy(core.m_memoryResource, core.m_nodes);
     ar& ORTHOTREE_NVP(m_memoryResource);
   }
-#endif
 
-#ifdef ORTHOTREE__BVH_H_INCLUDED
+
+
   // StaticBVHLinearCore
   template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
   void serialize(TArchive& ar, StaticBVHLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core)
@@ -401,7 +404,7 @@ namespace OrthoTree
     ar& ORTHOTREE_NVP_M(core, m_nodeGeometry);
     ar& ORTHOTREE_NVP_M(core, m_nodes);
   }
-#endif
+
 
   // OrthoTreeQueryBase
   template<typename TArchive, typename TCore>

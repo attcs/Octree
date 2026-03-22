@@ -162,4 +162,13 @@ namespace OrthoTree
   }
 
 
+  // --- NVP Identification ---
+  template<typename T>
+  struct is_nvp : std::false_type
+  {};
+
+  template<typename T>
+  inline constexpr bool is_nvp_v = is_nvp<std::remove_cvref_t<T>>::value;
+
+
 } // namespace OrthoTree

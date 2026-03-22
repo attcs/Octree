@@ -27,8 +27,7 @@ SOFTWARE.
 #include <type_traits>
 
 // Optional third-party support
-#if __has_include(<cereal/cereal.hpp>)
-#include <cereal/cereal.hpp>
+#if defined(CEREAL_CEREAL_HPP_)
 #define ORTHOTREE_SERIALIZATION_CEREAL_ENABLED
 #endif
 
@@ -37,6 +36,36 @@ SOFTWARE.
 #define ORTHOTREE_SERIALIZATION_BOOST_ENABLED
 #endif
 
+#include "traits.h"
+
+
+// Forward declarations to help the compiler parse the bridge with if constexpr
+#ifndef ORTHOTREE_SERIALIZATION_CEREAL_ENABLED
+namespace cereal
+{
+  template<class T>
+  struct NameValuePair;
+  template<class T>
+  NameValuePair<T> make_nvp(const char*, T&);
+  template<class T>
+  struct SizeTag;
+  template<class T>
+  SizeTag<T> make_size_tag(T&);
+} // namespace cereal
+#endif
+
+#ifndef ORTHOTREE_SERIALIZATION_BOOST_ENABLED
+namespace boost
+{
+  namespace serialization
+  {
+    template<class T>
+    class nvp;
+    template<class T>
+    const nvp<T> make_nvp(const char*, T&) noexcept;
+  } // namespace serialization
+} // namespace boost
+#endif
 
 namespace OrthoTree
 {
@@ -54,6 +83,18 @@ namespace OrthoTree
     // Support for cereal NVP detection traits
     using cereal_nvp_tag = std::true_type;
   };
+
+  template<typename T>
+  struct is_nvp<NameValuePair<T>> : std::true_type
+  {};
+
+  template<typename T>
+  struct is_nvp<::cereal::NameValuePair<T>> : std::true_type
+  {};
+
+  template<typename T>
+  struct is_nvp<::boost::serialization::nvp<T>> : std::true_type
+  {};
 
   template<typename T>
   constexpr NameValuePair<T> make_nvp(const char* name, T& value) noexcept
@@ -100,19 +141,25 @@ namespace OrthoTree
     template<typename T>
     constexpr auto get_nvp_name(T const& nvp) noexcept
     {
-      if constexpr (requires { nvp.name(); })
-        return nvp.name();
-      else if constexpr (requires { nvp.name; })
-        return nvp.name;
+      if constexpr (is_nvp_v<T>)
+      {
+        if constexpr (requires { nvp.name(); })
+          return nvp.name();
+        else if constexpr (requires { nvp.name; })
+          return nvp.name;
+      }
     }
 
     template<typename T>
     constexpr decltype(auto) get_nvp_value(T& nvp) noexcept
     {
-      if constexpr (requires { nvp.value(); })
-        return nvp.value();
-      else if constexpr (requires { nvp.value; })
-        return (nvp.value);
+      if constexpr (is_nvp_v<T>)
+      {
+        if constexpr (requires { nvp.value(); })
+          return nvp.value();
+        else if constexpr (requires { nvp.value; })
+          return (nvp.value);
+      }
     }
   } // namespace detail
 
@@ -129,42 +176,7 @@ namespace OrthoTree
 #define ORTHOTREE_NVP_INT(member) ::OrthoTree::make_nvp(#member, this->member)
 #endif
 
-} // namespace OrthoTree
 
-#include "traits.h"
-
-// Forward declarations to help the compiler parse the bridge with if constexpr
-#ifndef ORTHOTREE_SERIALIZATION_CEREAL_ENABLED
-namespace cereal
-{
-  template<class T>
-  struct NameValuePair;
-  template<class T>
-  NameValuePair<T> make_nvp(const char*, T&);
-  template<class T>
-  struct SizeTag;
-  template<class T>
-  SizeTag<T> make_size_tag(T&);
-} // namespace cereal
-#endif
-
-// #ifndef ORTHOTREE_SERIALIZATION_BOOST_ENABLED
-namespace boost
-{
-  namespace serialization
-  {
-    template<class T>
-    class nvp;
-    template<class T>
-    const nvp<T> make_nvp(const char*, T&) noexcept;
-  } // namespace serialization
-
-} // namespace boost
-// #endif
-
-
-namespace OrthoTree
-{
   // Generic bridge for other archivers (not for OrthoTree archives — they have member operator&)
   template<typename TArchive, typename T>
     requires(!is_orthotree_archive_v<TArchive>)
@@ -224,6 +236,5 @@ namespace OrthoTree
     ar(t);
     return ar;
   }
-
 
 } // namespace OrthoTree
