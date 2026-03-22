@@ -6,6 +6,14 @@
 
 // clang-format off
 #include "orthotree/octree.h"
+#include "orthotree/serialization.h"
+#include "orthotree/serialization/binary_archive.h"
+#include "orthotree/serialization/adapters/eigen.h"
+#include "orthotree/serialization/adapters/glm.h"
+#include "orthotree/serialization/adapters/xyz.h"
+
+#include "orthotree/serialization/adapters/boost.h"
+#include "orthotree/serialization/adapters/cgal.h"
 
 // Boost
 #include "orthotree/adapters/boost.h"
@@ -521,6 +529,40 @@ namespace XYZAdapter
   {
     containerBoxTest2D<XYZ::QuadtreeBoxM>();
   }
+
+  TEST(XYZ_SerializationTest, Box3D_Managed)
+  {
+    XYZ::OctreeBoxM tree(
+      BasicTypesXYZ::BoundingBox3D{
+        { 0.0f, 0.0f, 0.0f },
+        { 1.0f, 1.0f, 1.0f }
+      },
+      3);
+
+    tree.Add(BasicTypesXYZ::BoundingBox3D{
+        { 0.1f, 0.1f, 0.1f },
+        { 0.2f, 0.2f, 0.2f }
+    });
+
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    {
+      OrthoTree::BinaryOutputArchive ar_out(ss);
+      ar_out& make_nvp("tree", tree);
+    }
+
+    ss.seekg(0);
+    XYZ::OctreeBoxM tree_load;
+    {
+      OrthoTree::BinaryInputArchive ar_in(ss);
+      ar_in& make_nvp("tree", tree_load);
+    }
+
+    EXPECT_EQ(tree.GetData().size(), tree_load.GetData().size());
+    if (tree.GetData().size() > 0)
+    {
+      EXPECT_EQ(tree.GetData()[0].Min.x, tree_load.GetData()[0].Min.x);
+    }
+  }
 } // namespace XYZAdapter
 
 namespace BoostAdapter
@@ -532,7 +574,31 @@ namespace BoostAdapter
 
   TEST(Boost_ContainerTest, Box2D)
   {
-    containerBoxTest2D<boost::geometry::quadtree_box_c>();
+    containerBoxTest2D<boost::geometry::quadtree_box_m>();
+  }
+
+  TEST(Boost_SerializationTest, Point3D_Managed)
+  {
+    using point_t = boost::geometry::model::pointNd_t<3, double>;
+    boost::geometry::octree_point_m tree(
+      boost::geometry::model::boxNd_t<3, double>(point_t(0, 0, 0), point_t(1, 1, 1)),
+      3);
+    tree.Add(point_t(0.1, 0.1, 0.1));
+
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    {
+      OrthoTree::BinaryOutputArchive ar_out(ss);
+      ar_out& OrthoTree::make_nvp("tree", tree);
+    }
+
+    ss.seekg(0);
+    boost::geometry::octree_point_m tree_load;
+    {
+      OrthoTree::BinaryInputArchive ar_in(ss);
+      ar_in& make_nvp("tree", tree_load);
+    }
+
+    EXPECT_EQ(tree.GetData().size(), tree_load.GetData().size());
   }
 } // namespace BoostAdapter
 
@@ -547,6 +613,29 @@ namespace CGALAdapter
   {
     containerBoxTest2D<CGAL::QuadtreeBoxM>();
   }
+
+  TEST(CGAL_SerializationTest, Point3D_Managed)
+  {
+    CGAL::OctreePointM tree(
+      CGAL::Bbox_3(0, 0, 0, 1, 1, 1),
+      3);
+    tree.Add(CGAL::Point_3<CGAL::Cartesian<double>>(0.1, 0.1, 0.1));
+
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    {
+      OrthoTree::BinaryOutputArchive ar_out(ss);
+      ar_out& make_nvp("tree", tree);
+    }
+
+    ss.seekg(0);
+    CGAL::OctreePointM tree_load;
+    {
+      OrthoTree::BinaryInputArchive ar_in(ss);
+      ar_in& make_nvp("tree", tree_load);
+    }
+
+    EXPECT_EQ(tree.GetData().size(), tree_load.GetData().size());
+  }
 } // namespace CGALAdapter
 
 namespace EigenAdapter
@@ -559,6 +648,34 @@ namespace EigenAdapter
   TEST(Eigen_ContainerTest, Box2D)
   {
     containerBoxTest2D<Eigen::QuadtreeBoxM2d>();
+  }
+
+  TEST(Eigen_SerializationTest, Point3D_Managed)
+  {
+    Eigen::OctreePointM3d tree(
+      Eigen::AlignedBox3d(Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(1.0, 1.0, 1.0)),
+      3);
+    tree.Add(Eigen::Vector3d{ 0.1, 0.1, 0.1 });
+    tree.Add(Eigen::Vector3d{ 0.9, 0.9, 0.9 });
+
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    {
+      OrthoTree::BinaryOutputArchive ar_out(ss);
+      ar_out& make_nvp("tree", tree);
+    }
+
+    ss.seekg(0);
+    Eigen::OctreePointM3d tree_load;
+    {
+      OrthoTree::BinaryInputArchive ar_in(ss);
+      ar_in& make_nvp("tree", tree_load);
+    }
+
+    EXPECT_EQ(tree.GetData().size(), tree_load.GetData().size());
+    if (tree.GetData().size() > 0)
+    {
+      EXPECT_NEAR((tree.GetData()[0] - tree_load.GetData()[0]).norm(), 0.0, 0.001);
+    }
   }
 } // namespace EigenAdapter
 
@@ -573,6 +690,33 @@ namespace glmAdapter
   TEST(glm_ContainerTest, Box2D)
   {
     containerBoxTest2D<glm::quadtree_box_c>();
+  }
+
+  TEST(glm_SerializationTest, Point3D_Managed)
+  {
+    glm::octree_point_c tree(
+      glm::box3{ glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f) },
+      3);
+    tree.Add(glm::vec3{ 0.1f, 0.1f, 0.1f });
+
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    {
+      OrthoTree::BinaryOutputArchive ar_out(ss);
+      ar_out& make_nvp("tree", tree);
+    }
+
+    ss.seekg(0);
+    glm::octree_point_c tree_load;
+    {
+      OrthoTree::BinaryInputArchive ar_in(ss);
+      ar_in& make_nvp("tree", tree_load);
+    }
+
+    EXPECT_EQ(tree.GetData().size(), tree_load.GetData().size());
+    if (tree.GetData().size() > 0)
+    {
+      EXPECT_EQ(tree.GetData()[0].x, tree_load.GetData()[0].x);
+    }
   }
 } // namespace glmAdapter
 
