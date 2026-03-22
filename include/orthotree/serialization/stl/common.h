@@ -26,7 +26,9 @@ SOFTWARE.
 
 #include "../nvp.h"
 #include "../traits.h"
+#include <cstddef>
 #include <utility>
+#include <variant>
 
 namespace OrthoTree
 {
@@ -37,4 +39,14 @@ namespace OrthoTree
     ar& make_nvp("key", const_cast<std::remove_const_t<T1>&>(val.first));
     ar& make_nvp("value", val.second);
   }
+
+  template<typename TArchive>
+  auto serialize(TArchive&, std::monostate&)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {}
+
+  template<typename TArchive>
+  auto serialize(TArchive&, std::nullptr_t&)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {}
 } // namespace OrthoTree

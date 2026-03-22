@@ -47,6 +47,12 @@ namespace OrthoTree
 #endif // ORTHOTREE_INDEX_INT
 #endif // ORTHOTREE_INDEX_T__UINT_FAST32_T
 #endif // ORTHOTREE_INDEX_T__SIZE_T
+ 
+#ifdef ORTHOTREE__LARGE_DATASET
+  using serialized_size_t = std::uint64_t;
+#else
+  using serialized_size_t = std::uint32_t;
+#endif
 
   // Type of the dimension
   using dim_t = uint32_t;

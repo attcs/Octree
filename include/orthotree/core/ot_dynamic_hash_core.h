@@ -93,8 +93,8 @@ namespace OrthoTree
     private:
       static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
 
-      template<typename TArchive, std::size_t CHILD_NO, typename NodeID, typename ChildID, typename EntityID, typename Geometry>
-      friend void serialize(TArchive& ar, OrthoTreeNodeData<CHILD_NO, NodeID, ChildID, EntityID, Geometry>& node);
+      template<typename TArchive, std::size_t CHILD_NO2, typename NodeID2, typename ChildID2, typename EntityID2, typename Geometry2>
+      friend void serialize(TArchive& ar, OrthoTreeNodeData<CHILD_NO2, NodeID2, ChildID2, EntityID2, Geometry2>& node);
 
       template<typename TArchive, typename T, typename TNodes>
       friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes);

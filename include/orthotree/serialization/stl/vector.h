@@ -41,7 +41,7 @@ namespace OrthoTree
   auto serialize(TArchive& ar, std::vector<T, Alloc>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
-    std::size_t size = val.size();
+    serialized_size_t size = static_cast<serialized_size_t>(val.size());
     ar& make_size_tag(size);
     if (ar.is_loading())
     {
@@ -62,7 +62,7 @@ namespace OrthoTree
   auto serialize(TArchive& ar, std::inplace_vector<T, N>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
-    std::size_t size = val.size();
+    serialized_size_t size = static_cast<serialized_size_t>(val.size());
     ar& make_size_tag(size);
     if (ar.is_loading())
     {

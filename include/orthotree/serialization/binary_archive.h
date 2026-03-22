@@ -24,10 +24,13 @@ SOFTWARE.
 
 #pragma once
 
-#include "../serialization/stl.h"
+#ifndef ORTHOTREE_SERIALIZATION_BINARY_ARCHIVE_H
+#define ORTHOTREE_SERIALIZATION_BINARY_ARCHIVE_H
+#endif
 
-#include "../serialization/nvp.h"
-#include "../serialization/traits.h"
+#include "stl.h"
+#include "nvp.h"
+#include "traits.h"
 
 
 #include <bit>
@@ -104,14 +107,14 @@ namespace OrthoTree
       {
         if (m_is_loading)
         {
-          std::size_t size;
+          serialized_size_t size;
           (*this)(size);
           val.resize(size);
           m_stream.read(val.data(), size);
         }
         else
         {
-          std::size_t size = val.size();
+          serialized_size_t size = static_cast<serialized_size_t>(val.size());
           (*this)(size);
           m_stream.write(val.data(), size);
         }
@@ -132,11 +135,11 @@ namespace OrthoTree
     {
       if (m_is_loading)
       {
-         // This should never happen if used correctly via make_nvp for const objects
-         // but we need it for compilation of saving paths.
-         throw std::runtime_error("Cannot load into const object");
+        // This should never happen if used correctly via make_nvp for const objects
+        // but we need it for compilation of saving paths.
+        throw std::runtime_error("Cannot load into const object");
       }
-      
+
       if constexpr (std::is_arithmetic_v<T>)
       {
         T out = val;
@@ -146,7 +149,7 @@ namespace OrthoTree
       }
       else if constexpr (std::is_same_v<T, std::string>)
       {
-        std::size_t size = val.size();
+        serialized_size_t size = static_cast<serialized_size_t>(val.size());
         (*this)(size);
         m_stream.write(val.data(), size);
       }
@@ -170,7 +173,10 @@ namespace OrthoTree
 
     // Support any type that looks like an NVP (has .name and .value)
     template<typename TNVP>
-    requires(requires(TNVP nvp) { detail::get_nvp_name(nvp); detail::get_nvp_value(nvp); })
+      requires(requires(TNVP nvp) {
+        detail::get_nvp_name(nvp);
+        detail::get_nvp_value(nvp);
+      })
     auto operator&(TNVP&& nvp) -> BinaryArchive&
     {
       return (*this & detail::get_nvp_value(nvp));
@@ -201,6 +207,16 @@ namespace OrthoTree
   };
 
   // Specialization for traits
+  template<>
+  struct is_orthotree_archive<BinaryArchive> : std::true_type
+  {};
+  template<>
+  struct is_orthotree_archive<BinaryOutputArchive> : std::true_type
+  {};
+  template<>
+  struct is_orthotree_archive<BinaryInputArchive> : std::true_type
+  {};
+
   template<>
   struct is_stl_serialization_enabled<BinaryArchive> : std::true_type
   {};

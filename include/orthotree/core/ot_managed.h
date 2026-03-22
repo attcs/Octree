@@ -410,7 +410,7 @@ namespace OrthoTree
     // - The tree will not be rebalanced after insertion.
     template<typename TEntityRange, typename TExecMode = SeqExec>
     constexpr bool Add(TEntityRange&& newEntities, TExecMode execMode = {}) noexcept
-      requires requires { newEntities.size(); }
+      requires(requires { newEntities.size(); } && !std::is_same_v<std::remove_cvref_t<TEntityRange>, Entity>)
     {
       if (newEntities.empty())
         return true;

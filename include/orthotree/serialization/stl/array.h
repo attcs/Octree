@@ -33,11 +33,12 @@ namespace OrthoTree
 {
   // std::array
   template<typename TArchive, typename T, std::size_t N>
-  auto serialize(TArchive& ar, std::array<T, N>& val)
-    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  auto serialize(TArchive& ar, std::array<T, N>& val) -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
+    serialized_size_t size = static_cast<serialized_size_t>(N);
+    ar& make_size_tag(size);
     for (auto& item : val)
-      ar& item;
+      ar & item;
   }
 
 } // namespace OrthoTree

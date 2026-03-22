@@ -117,7 +117,7 @@ namespace OrthoTree
     template<typename TArchive, typename T, std::size_t N>
     void serialize(TArchive& ar, detail::inplace_vector<T, N>& val)
     {
-      std::size_t size = val.size();
+      serialized_size_t size = static_cast<serialized_size_t>(val.size());
       ar& OrthoTree::make_size_tag(size);
       if (OrthoTree::is_loading_archive(ar))
       {
@@ -196,7 +196,7 @@ namespace OrthoTree
       template<typename TArchive>
       void serialize(TArchive& ar)
       {
-        std::size_t size = m_span.size();
+        serialized_size_t size = static_cast<serialized_size_t>(m_span.size());
         ar& make_size_tag(size);
 
         if (OrthoTree::is_loading_archive(ar))
@@ -244,7 +244,7 @@ namespace OrthoTree
       using NodeID = typename std::decay_t<TNodes>::key_type;
       using NodeSegment = NodeSegmentSerializerProxy<NodeID, T>;
 
-      std::size_t nodeCount = 0;
+      serialized_size_t nodeCount = 0;
       if (OrthoTree::is_loading_archive(ar))
       {
         ar& make_size_tag(nodeCount);
@@ -428,14 +428,15 @@ namespace OrthoTree
   }
 
 
+#if defined(ORTHOTREE_SERIALIZATION_BOOST_ARCHIVE_AVAILABLE)
   // --- Boost Compatibility Bridge ---
   // Boost.Serialization looks here via ADL for a 3-parameter version.
   // We provide it here but hide it from Cereal archives using SFINAE,
   // because Cereal's versioning system can cause unwanted wrappers in JSON/XML.
   template<typename TArchive, typename T>
-  inline auto serialize(TArchive& ar, T& t, const unsigned int /*version*/)
-    -> std::enable_if_t<::OrthoTree::detail::has_cereal_tag<TArchive>::value == false, void>
+  inline auto serialize(TArchive& ar, T& t, const unsigned int /*version*/) -> std::enable_if_t<!detail::is_cereal_archive_v<TArchive>, void>
   {
     serialize(ar, t);
   }
+#endif
 } // namespace OrthoTree

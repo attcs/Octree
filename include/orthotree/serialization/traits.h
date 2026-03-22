@@ -24,8 +24,37 @@ SOFTWARE.
 
 #pragma once
 
+#include "../core/types.h"
 #include <cstdint>
 #include <type_traits>
+
+#if defined(BOOST_ARCHIVE_DETAIL_INTERFACE_IARCHIVE_HPP) || defined(BOOST_ARCHIVE_DETAIL_INTERFACE_OARCHIVE_HPP)
+#define ORTHOTREE_SERIALIZATION_BOOST_ARCHIVE_AVAILABLE
+#endif
+
+namespace cereal
+{
+  namespace detail
+  {
+    class OutputArchiveBase;
+    class InputArchiveBase;
+  } // namespace detail
+} // namespace cereal
+
+namespace boost
+{
+  namespace archive
+  {
+    namespace detail
+    {
+      template<class Archive>
+      class interface_iarchive;
+
+      template<class Archive>
+      class interface_oarchive;
+    } // namespace detail
+  } // namespace archive
+} // namespace boost
 
 namespace OrthoTree
 {
@@ -51,11 +80,46 @@ namespace OrthoTree
 
   // --- Archive Identification ---
   template<typename T>
+  struct is_orthotree_archive : std::false_type
+  {};
+
+  template<typename T>
+  inline constexpr bool is_orthotree_archive_v = is_orthotree_archive<T>::value;
+
+  template<typename T>
   struct is_stl_serialization_enabled : std::false_type
   {};
 
   template<typename T>
   inline constexpr bool is_stl_serialization_enabled_v = is_stl_serialization_enabled<T>::value;
+
+
+  namespace detail
+  {
+    template<typename T>
+    struct is_cereal_archive
+    : std::bool_constant<
+        std::is_base_of_v<::cereal::detail::InputArchiveBase, std::decay_t<T>> || std::is_base_of_v<::cereal::detail::OutputArchiveBase, std::decay_t<T>>>
+    {};
+
+    template<typename T>
+    inline constexpr bool is_cereal_archive_v = is_cereal_archive<T>::value;
+
+#ifdef ORTHOTREE_SERIALIZATION_BOOST_ARCHIVE_AVAILABLE
+    template<typename T>
+    struct is_boost_archive : std::bool_constant<
+                                std::is_base_of_v<::boost::archive::detail::interface_iarchive<std::decay_t<T>>, std::decay_t<T>> ||
+                                std::is_base_of_v<::boost::archive::detail::interface_oarchive<std::decay_t<T>>, std::decay_t<T>>>
+    {};
+#else
+    template<typename T>
+    struct is_boost_archive : std::false_type
+    {};
+#endif
+
+    template<typename T>
+    inline constexpr bool is_boost_archive_v = is_boost_archive<T>::value;
+  } // namespace detail
 
 
   // --- Factory for non-default constructible types ---
@@ -84,35 +148,18 @@ namespace OrthoTree
   {
     static bool is_loading(TArchive const& ar) { return ar.is_loading(); }
   };
- 
+
   template<typename TArchive>
   struct archive_traits<TArchive, std::void_t<typename TArchive::is_loading>>
   {
     static bool is_loading(TArchive const&) { return TArchive::is_loading::value; }
   };
- 
+
   template<typename TArchive>
   bool is_loading_archive(TArchive const& ar)
   {
     return archive_traits<TArchive>::is_loading(ar);
   }
 
-  namespace detail
-  {
-    template<typename T, typename = void>
-    struct has_cereal_input_tag : std::false_type {};
 
-    template<typename T>
-    struct has_cereal_input_tag<T, std::void_t<typename T::is_input_archive>> : std::true_type {};
-
-    template<typename T, typename = void>
-    struct has_cereal_output_tag : std::false_type {};
-
-    template<typename T>
-    struct has_cereal_output_tag<T, std::void_t<typename T::is_output_archive>> : std::true_type {};
-
-    template<typename T>
-    struct has_cereal_tag : std::bool_constant<has_cereal_input_tag<T>::value || has_cereal_output_tag<T>::value> {};
-  }
- 
 } // namespace OrthoTree

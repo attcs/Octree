@@ -641,8 +641,8 @@ namespace OrthoTree::detail
     template<typename TData, typename TNodeMap>
     friend class MemoryResourceSerializerProxy;
 
-    template<typename TArchive, typename T, typename TNodes>
-    friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes);
+    template<typename TArchive, typename TData, typename TNodes>
+    friend void serialize(TArchive& ar, MemoryResource<TData>& memoryResource, TNodes& nodes);
 
   private:
     // stores the data

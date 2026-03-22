@@ -37,7 +37,7 @@ namespace OrthoTree
   auto serialize(TArchive& ar, std::variant<Types...>& val)
     -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
   {
-    std::size_t index = val.index();
+    serialized_size_t index = static_cast<serialized_size_t>(val.index());
     ar& make_nvp("index", index);
 
     if (ar.is_loading())
