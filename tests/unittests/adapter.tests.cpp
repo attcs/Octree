@@ -845,7 +845,7 @@ namespace AdaptorTest
         using point_t = model::pointNd_t<2, double>;
         using box_t = model::boxNd_t<2, double>;
         using plane_t = model::planeNd_t<2, double>;
-        using EntityID = boost::geometry::quadtree_box_c::EntityID;
+        using EntityID = boost::geometry::quadtree_box_m::EntityID;
 
         auto boxes = std::vector{ box_t(point_t(0.0, 0.0), point_t(1.0, 1.0)),
                                   box_t(point_t(1.0, 1.0), point_t(2.0, 2.0)),
@@ -853,7 +853,7 @@ namespace AdaptorTest
                                   box_t(point_t(3.0, 3.0), point_t(4.0, 4.0)),
                                   box_t(point_t(1.2, 1.2), point_t(2.8, 2.8)) };
 
-        auto quadtree = boost::geometry::quadtree_box_c(
+        auto quadtree = boost::geometry::quadtree_box_m(
           boxes,
           3 // max depth
           ,

@@ -257,20 +257,20 @@ namespace glm
   using quadtree_box_map_d = GlmOrthoTreeBoundingBoxMap<2, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
   using quadtree_box_map_f = GlmOrthoTreeBoundingBoxMap<2, true, float, GlmContainer<glm::boxNd_t<2, float>>>;
   using quadtree_box_map_i = GlmOrthoTreeBoundingBoxMap<2, true, int, GlmContainer<glm::boxNd_t<2, int>>>;
-  using quadtree_box_map = quadtree_box_f;
+  using quadtree_box_map = quadtree_box_map_f;
 
   template<bool IS_LOOSE_TREE = true>
-  using octree_box_map_ds = GlmOrthoTreeBoundingBoxMap<3, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using octree_box_map_d = GlmOrthoTreeBoundingBoxMap<3, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using octree_box_map_f = GlmOrthoTreeBoundingBoxMap<3, true, float, GlmContainer<glm::boxNd_t<2, double>>>;
-  using octree_box_map_i = GlmOrthoTreeBoundingBoxMap<3, true, int, GlmContainer<glm::boxNd_t<2, double>>>;
-  using octree_box_map = octree_box_f;
+  using octree_box_map_ds = GlmOrthoTreeBoundingBoxMap<3, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<3, double>>>;
+  using octree_box_map_d = GlmOrthoTreeBoundingBoxMap<3, true, double, GlmContainer<glm::boxNd_t<3, double>>>;
+  using octree_box_map_f = GlmOrthoTreeBoundingBoxMap<3, true, float, GlmContainer<glm::boxNd_t<3, float>>>;
+  using octree_box_map_i = GlmOrthoTreeBoundingBoxMap<3, true, int, GlmContainer<glm::boxNd_t<3, int>>>;
+  using octree_box_map = octree_box_map_f;
 
   template<bool IS_LOOSE_TREE = true>
-  using hextree_box_map_ds = GlmOrthoTreeBoundingBoxMap<4, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using hextree_box_map_d = GlmOrthoTreeBoundingBoxMap<4, true, double, GlmContainer<glm::boxNd_t<2, double>>>;
-  using hextree_box_map_f = GlmOrthoTreeBoundingBoxMap<4, true, float, GlmContainer<glm::boxNd_t<2, double>>>;
-  using hextree_box_map_i = GlmOrthoTreeBoundingBoxMap<4, true, int, GlmContainer<glm::boxNd_t<2, double>>>;
+  using hextree_box_map_ds = GlmOrthoTreeBoundingBoxMap<4, IS_LOOSE_TREE, double, GlmContainer<glm::boxNd_t<4, double>>>;
+  using hextree_box_map_d = GlmOrthoTreeBoundingBoxMap<4, true, double, GlmContainer<glm::boxNd_t<4, double>>>;
+  using hextree_box_map_f = GlmOrthoTreeBoundingBoxMap<4, true, float, GlmContainer<glm::boxNd_t<4, float>>>;
+  using hextree_box_map_i = GlmOrthoTreeBoundingBoxMap<4, true, int, GlmContainer<glm::boxNd_t<4, int>>>;
   using hextree_box_map = hextree_box_map_f;
 
   // Container types
@@ -304,14 +304,14 @@ namespace glm
   using quadtree_box_map_c_d = orthotree_box_map_c_t<2, true, double>;
   using quadtree_box_map_c_f = orthotree_box_map_c_t<2, true, float>;
   using quadtree_box_map_c_i = orthotree_box_map_c_t<2, true, int>;
-  using quadtree_box_map_c = quadtree_box_c_f;
+  using quadtree_box_map_c = quadtree_box_map_c_f;
 
   template<bool IS_LOOSE_TREE = true>
   using octree_box_map_c_ds = orthotree_box_map_c_t<3, IS_LOOSE_TREE, double>;
   using octree_box_map_c_d = orthotree_box_map_c_t<3, true, double>;
   using octree_box_map_c_f = orthotree_box_map_c_t<3, true, float>;
   using octree_box_map_c_i = orthotree_box_map_c_t<3, true, int>;
-  using octree_box_map_c = octree_box_c_f;
+  using octree_box_map_c = octree_box_map_c_f;
 
   template<bool IS_LOOSE_TREE = true>
   using hextree_box_map_c_ds = orthotree_box_map_c_t<4, IS_LOOSE_TREE, double>;
@@ -320,3 +320,5 @@ namespace glm
   using hextree_box_map_c_i = orthotree_box_map_c_t<4, true, int>;
   using hextree_box_map_c = hextree_box_map_c_f;
 } // namespace glm
+
+

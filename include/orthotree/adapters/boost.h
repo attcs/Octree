@@ -211,7 +211,7 @@ namespace boost::geometry
 
   // Core types
 
-  template<int DIMENSION_NO, typename TScalar = double, typename TEntityAdapter = OrthoTree::PointEntitySpanAdapter<boost::geometry::model::boxNd_t<DIMENSION_NO, TScalar>>>
+  template<int DIMENSION_NO, typename TScalar = double, typename TEntityAdapter = OrthoTree::PointEntitySpanAdapter<boost::geometry::model::pointNd_t<DIMENSION_NO, TScalar>>>
   using orthotree_point_t = BoostOrthoTreePoint<DIMENSION_NO, TScalar, TEntityAdapter>;
 
   template<
@@ -250,35 +250,35 @@ namespace boost::geometry
   // Container types
 
   template<int DIMENSION_NO, typename TScalar = double>
-  using orthotree_point_c_t = OrthoTree::OrthoTreeManaged<orthotree_point_t<DIMENSION_NO, TScalar>>;
+  using orthotree_point_m_t = OrthoTree::OrthoTreeManaged<orthotree_point_t<DIMENSION_NO, TScalar>>;
 
-  using quadtree_point_c_d = orthotree_point_c_t<2, double>;
-  using quadtree_point_c_f = orthotree_point_c_t<2, float>;
-  using quadtree_point_c_i = orthotree_point_c_t<2, int>;
-  using quadtree_point_c = quadtree_point_c_d;
+  using quadtree_point_m_d = orthotree_point_m_t<2, double>;
+  using quadtree_point_m_f = orthotree_point_m_t<2, float>;
+  using quadtree_point_m_i = orthotree_point_m_t<2, int>;
+  using quadtree_point_m = quadtree_point_m_d;
 
-  using octree_point_c_d = orthotree_point_c_t<3, double>;
-  using octree_point_c_f = orthotree_point_c_t<3, float>;
-  using octree_point_c_i = orthotree_point_c_t<3, int>;
-  using octree_point_c = octree_point_c_d;
+  using octree_point_m_d = orthotree_point_m_t<3, double>;
+  using octree_point_m_f = orthotree_point_m_t<3, float>;
+  using octree_point_m_i = orthotree_point_m_t<3, int>;
+  using octree_point_m = octree_point_m_d;
 
 
   template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
-  using orthotree_box_c_t = OrthoTree::OrthoTreeManaged<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar>>;
+  using orthotree_box_m_t = OrthoTree::OrthoTreeManaged<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar>>;
 
   template<bool IS_LOOSE_TREE = true>
-  using quadtree_box_c_ds = orthotree_box_c_t<2, IS_LOOSE_TREE, double>;
-  using quadtree_box_c_d = orthotree_box_c_t<2, true, double>;
-  using quadtree_box_c_f = orthotree_box_c_t<2, true, float>;
-  using quadtree_box_c_i = orthotree_box_c_t<2, true, int>;
-  using quadtree_box_c = quadtree_box_c_d;
+  using quadtree_box_m_ds = orthotree_box_m_t<2, IS_LOOSE_TREE, double>;
+  using quadtree_box_m_d = orthotree_box_m_t<2, true, double>;
+  using quadtree_box_m_f = orthotree_box_m_t<2, true, float>;
+  using quadtree_box_m_i = orthotree_box_m_t<2, true, int>;
+  using quadtree_box_m = quadtree_box_m_d;
 
   template<bool IS_LOOSE_TREE = true>
-  using octree_box_c_ds = orthotree_box_c_t<3, IS_LOOSE_TREE, double>;
-  using octree_box_c_d = orthotree_box_c_t<3, true, double>;
-  using octree_box_c_f = orthotree_box_c_t<3, true, float>;
-  using octree_box_c_i = orthotree_box_c_t<3, true, int>;
-  using octree_box_c = octree_box_c_d;
+  using octree_box_m_ds = orthotree_box_m_t<3, IS_LOOSE_TREE, double>;
+  using octree_box_m_d = orthotree_box_m_t<3, true, double>;
+  using octree_box_m_f = orthotree_box_m_t<3, true, float>;
+  using octree_box_m_i = orthotree_box_m_t<3, true, int>;
+  using octree_box_m = octree_box_m_d;
 
 
   // Map types
@@ -316,35 +316,34 @@ namespace boost::geometry
   // Container types
 
   template<int DIMENSION_NO, typename TScalar = double>
-  using orthotree_point_map_c_t = OrthoTree::OrthoTreeManaged<orthotree_point_t<DIMENSION_NO, TScalar, pointmap_container<DIMENSION_NO, TScalar>>>;
+  using orthotree_point_map_m_t = OrthoTree::OrthoTreeManaged<orthotree_point_t<DIMENSION_NO, TScalar, pointmap_container<DIMENSION_NO, TScalar>>>;
 
-  using quadtree_point_map_c_d = orthotree_point_map_c_t<2, double>;
-  using quadtree_point_map_c_f = orthotree_point_map_c_t<2, float>;
-  using quadtree_point_map_c_i = orthotree_point_map_c_t<2, int>;
-  using quadtree_point_map_c = quadtree_point_map_c_d;
+  using quadtree_point_map_m_d = orthotree_point_map_m_t<2, double>;
+  using quadtree_point_map_m_f = orthotree_point_map_m_t<2, float>;
+  using quadtree_point_map_m_i = orthotree_point_map_m_t<2, int>;
+  using quadtree_point_map_m = quadtree_point_map_m_d;
 
-  using octree_point_map_c_d = orthotree_point_c_t<3, double>;
-  using octree_point_map_c_f = orthotree_point_c_t<3, float>;
-  using octree_point_map_c_i = orthotree_point_c_t<3, int>;
-  using octree_point_map_c = octree_point_map_c_d;
+  using octree_point_map_m_d = orthotree_point_map_m_t<3, double>;
+  using octree_point_map_m_f = orthotree_point_map_m_t<3, float>;
+  using octree_point_map_m_i = orthotree_point_map_m_t<3, int>;
+  using octree_point_map_m = octree_point_map_m_d;
 
 
   template<int DIMENSION_NO, bool IS_LOOSE_TREE = true, typename TScalar = double>
-  using orthotree_box_map_c_t =
+  using orthotree_box_map_m_t =
     OrthoTree::OrthoTreeManaged<orthotree_box_t<DIMENSION_NO, IS_LOOSE_TREE, TScalar, boxmap_container<DIMENSION_NO, TScalar>>>;
 
   template<bool IS_LOOSE_TREE = true>
-  using quadtree_box_map_c_ds = orthotree_box_map_c_t<2, IS_LOOSE_TREE, double>;
-  using quadtree_box_map_c_d = orthotree_box_map_c_t<2, true, double>;
-  using quadtree_box_map_c_f = orthotree_box_map_c_t<2, true, float>;
-  using quadtree_box_map_c_i = orthotree_box_map_c_t<2, true, int>;
-  using quadtree_box_map_c = quadtree_box_map_c_d;
+  using quadtree_box_map_m_ds = orthotree_box_map_m_t<2, IS_LOOSE_TREE, double>;
+  using quadtree_box_map_m_d = orthotree_box_map_m_t<2, true, double>;
+  using quadtree_box_map_m_f = orthotree_box_map_m_t<2, true, float>;
+  using quadtree_box_map_m_i = orthotree_box_map_m_t<2, true, int>;
+  using quadtree_box_map_m = quadtree_box_map_m_d;
 
   template<bool IS_LOOSE_TREE = true>
-  using octree_box_map_c_ds = orthotree_box_map_c_t<3, IS_LOOSE_TREE, double>;
-  using octree_box_map_c_d = orthotree_box_map_c_t<3, true, double>;
-  using octree_box_map_c_f = orthotree_box_map_c_t<3, true, float>;
-  using octree_box_map_c_i = orthotree_box_map_c_t<3, true, int>;
-  using octree_box_map_c = octree_box_map_c_d;
-
+  using octree_box_map_m_ds = orthotree_box_map_m_t<3, IS_LOOSE_TREE, double>;
+  using octree_box_map_m_d = orthotree_box_map_m_t<3, true, double>;
+  using octree_box_map_m_f = orthotree_box_map_m_t<3, true, float>;
+  using octree_box_map_m_i = orthotree_box_map_m_t<3, true, int>;
+  using octree_box_map_m = octree_box_map_m_d;
 } // namespace boost::geometry
