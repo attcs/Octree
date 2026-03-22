@@ -78,7 +78,6 @@ void TestCerealRoundtrip(T& original, std::string const& label)
 template<typename T>
 void TestMsgPack(T& original, std::string const& label)
 {
-#ifdef ORTHOTREE_SERIALIZATION_MSGPACK_ENABLED
   std::cout << "  MsgPack Save [" << label << "]: ";
   std::stringstream ss(std::ios::out | std::ios::binary);
   {
@@ -86,10 +85,6 @@ void TestMsgPack(T& original, std::string const& label)
     ar& make_nvp("data", original);
   }
   std::cout << "Success (Size: " << ss.str().size() << " bytes)" << std::endl;
-#else
-  (void)original;
-  (void)label;
-#endif
 }
 
 template<typename T>

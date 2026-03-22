@@ -5,22 +5,36 @@ Copyright (c) 2026 Attila Csikós
 
 #pragma once
 
-#include "nvp.h"
-#include "traits.h"
+#ifndef ORTHOTREE_SERIALIZATION_MSGPACK_ARCHIVE_H
+#define ORTHOTREE_SERIALIZATION_MSGPACK_ARCHIVE_H
+#endif
+
 #include <iostream>
 #include <string>
 #include <vector>
 
-#if __has_include(<msgpack.hpp>)
-#include <msgpack.hpp>
-#define ORTHOTREE_SERIALIZATION_MSGPACK_ENABLED
+#ifndef ORTHOTREE_SERIALIZATION_MSGPACK_INCLUDE
+#define ORTHOTREE_SERIALIZATION_MSGPACK_INCLUDE <msgpack.hpp>
+#endif
+
+#include ORTHOTREE_SERIALIZATION_MSGPACK_INCLUDE
+
+#include "nvp.h"
+#include "stl.h"
+#include "traits.h"
 
 namespace OrthoTree
 {
   class MsgPackArchive;
-  
+
+  // Specialization for traits
   template<>
-  struct is_stl_serialization_enabled<MsgPackArchive> : std::true_type {};
+  struct is_orthotree_archive<MsgPackArchive> : std::true_type
+  {};
+
+  template<>
+  struct is_stl_serialization_enabled<MsgPackArchive> : std::true_type
+  {};
 
   // A simple MsgPack Output Archive that works with our serialize functions
   class MsgPackArchive
@@ -31,15 +45,12 @@ namespace OrthoTree
     std::ostream& m_os;
 
   public:
-    MsgPackArchive(std::ostream& os) 
+    MsgPackArchive(std::ostream& os)
     : m_packer(m_buffer)
-    , m_os(os) 
+    , m_os(os)
     {}
 
-    ~MsgPackArchive()
-    {
-      m_os.write(m_buffer.data(), m_buffer.size());
-    }
+    ~MsgPackArchive() { m_os.write(m_buffer.data(), m_buffer.size()); }
 
     constexpr bool is_loading() const { return false; }
     constexpr bool is_saving() const { return true; }
@@ -48,14 +59,17 @@ namespace OrthoTree
     template<typename T>
     MsgPackArchive& operator&(SizeTag<T> tag)
     {
-      m_packer.pack_array(static_cast<uint32_t>(tag.value));
+      m_packer.pack_array(static_cast<serialized_size_t>(tag.value));
       return *this;
     }
 
-    // NameValuePair: We can pack as a map or just the value. 
+    // NameValuePair: We can pack as a map or just the value.
     // To stay consistent with JSON/XML, we'll use maps if it's a named object.
     template<typename TNVP>
-    requires(requires(TNVP nvp) { detail::get_nvp_name(nvp); detail::get_nvp_value(nvp); })
+      requires(requires(TNVP nvp) {
+        detail::get_nvp_name(nvp);
+        detail::get_nvp_value(nvp);
+      })
     MsgPackArchive& operator&(TNVP&& nvp)
     {
       // For simplicity in this bridge, we pack the value directly.
@@ -108,9 +122,8 @@ namespace OrthoTree
       }
       else
       {
-        // Fallback or static_assert
+        static_assert(false, "Type not serializable");
       }
     }
   };
-}
-#endif
+} // namespace OrthoTree
