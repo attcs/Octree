@@ -502,7 +502,7 @@ namespace OrthoTree
 
     template<typename FGeometry_, typename FVector_, typename FBox_, typename FRay_, typename FPlane_, bool IS_LOOSE_TREE = true>
     using OctreeBoxTemplate =
-      OrthoTreeBase<BoxEntitySpanAdapter<FBox_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FPlane_, FGeometry_>, BoxConfiguration<IS_LOOSE_TREE>>;
+      OrthoTreeBase<BoxEntitySpanAdapter<FBox_>, UnrealGeometryAdapter3D<FGeometry_, FVector_, FBox_, FRay_, FPlane_>, BoxConfiguration<IS_LOOSE_TREE>>;
 
     template<typename FGeometry_, typename FVector_, typename FBox_, bool IS_LOOSE_TREE = true, typename TContainer_ = std::unordered_map<index_t, FVector_>>
     using QuadtreeBoxMapTemplate =
