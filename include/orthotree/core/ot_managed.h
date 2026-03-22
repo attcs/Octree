@@ -50,6 +50,7 @@ namespace OrthoTree
     using CONFIG = typename TOrthoTreeCore::CONFIG;
 
     using GA = typename TOrthoTreeCore::GA;
+
     using TScalar = typename GA::Scalar;
     using TFloatScalar = typename GA::FloatScalar;
     using TVector = typename GA::Vector;
@@ -199,6 +200,15 @@ namespace OrthoTree
 
 
   public: // Constructors with box space
+    explicit OrthoTreeManaged(
+      TBox const& boxSpace,
+      std::optional<depth_t> maxDepthID = std::nullopt,
+      std::size_t maxElementNoInNode = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES) noexcept
+      requires(detail::HasCreateWithBoxSpaceV<TOrthoTreeCore>)
+    {
+      m_tree.Init(boxSpace, maxDepthID.value_or(CONFIG::MAX_ALLOWED_DEPTH_ID), maxElementNoInNode);
+    }
+
     // Constructor for any contiguous container with runtime parallel parameter
     template<typename TExecMode = SeqExec>
     explicit OrthoTreeManaged(

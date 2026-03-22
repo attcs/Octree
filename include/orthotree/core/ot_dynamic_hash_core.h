@@ -571,7 +571,11 @@ namespace OrthoTree
     }
 
   private:
-    constexpr void InitBase(IGM::Box const& boxSpace, depth_t maxDepthID, std::size_t maxElementNo, std::size_t estimatedEntityNo) noexcept
+    constexpr void InitBase(
+      IGM::Box const& boxSpace,
+      depth_t maxDepthID,
+      std::size_t maxElementNo,
+      std::size_t estimatedEntityNo = detail::MemoryResource<EntityID>::DEFAULT_PAGE_SIZE) noexcept
     {
       m_spaceIndexing =
         detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID>(maxDepthID, boxSpace);
