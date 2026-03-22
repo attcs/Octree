@@ -486,7 +486,7 @@ namespace OrthoTree::detail
             // newly freed segment is the segmentSize, not the last free segment's
             // capacity. Use emplace_back and then handle the inserted element.
             auto const begin = GetMainPageIndexOfBegin(ms.segment);
-            m_freeMainSegments.emplace_back(IndexedSegment{ begin, segmentSize });
+            m_freeMainSegments.emplace_back(IndexedSegment{ begin, std::numeric_limits<Index>::max() });
             HandleFreeSegmentChange(m_freeMainSegments.end() - 1, begin, segmentSize);
           }
         }
