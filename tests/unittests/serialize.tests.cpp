@@ -1,118 +1,191 @@
 #include "pch.h"
 
+#define ORTHOTREE__PUBLIC_NODE_INTERFACE
+
 #include "orthotree/bvh.h"
+#include "orthotree/octree.h"
 #include "orthotree/serialization.h"
 #include "orthotree/serialization/binary_archive.h"
-#include "orthotree/serialization/text_archives.h"
 
-#include <array>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <type_traits>
+#include <unordered_map>
 #include <vector>
-
-// --- Test Implementation ---
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-using namespace OrthoTree;
 
 namespace OrthoTree
 {
   struct TestObject
   {
-    int id = 1;
-    double value = 3.14;
-    std::vector<int> data = { 1, 2, 3 };
+    int Tag = 1;
+    double Value = 3.14;
+    std::vector<int> Data = { 1, 2, 3 };
+
+    bool operator==(const TestObject& other) const { return Tag == other.Tag && Value == other.Value && Data == other.Data; }
   };
 
   template<typename TArchive>
-  void serialize(TArchive& ar, TestObject& obj, [[maybe_unused]] const unsigned int version)
+  void serialize(TArchive& ar, TestObject& obj)
   {
-    ar& ORTHOTREE_NVP_M(obj, id);
-    ar& ORTHOTREE_NVP_M(obj, value);
-    ar& ORTHOTREE_NVP_M(obj, data);
+    ar& make_nvp("Tag", obj.Tag);
+    ar& make_nvp("Value", obj.Value);
+    ar& make_nvp("Data", obj.Data);
   }
 } // namespace OrthoTree
 
-namespace UnitTests
+using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+using namespace OrthoTree;
+
+namespace Microsoft::VisualStudio::CppUnitTestFramework
+{
+  // Specializations for OrthoTree types to integrate with Assert::AreEqual
+  template<>
+  inline std::wstring ToString<OrthoTree::Point3D>(const OrthoTree::Point3D& p)
+  {
+    std::wstringstream ss;
+    ss << L"[" << p[0] << L", " << p[1] << L", " << p[2] << L"]";
+    return ss.str();
+  }
+
+  template<>
+  inline std::wstring ToString<OrthoTree::BoundingBox3D>(const OrthoTree::BoundingBox3D& b)
+  {
+    std::wstringstream ss;
+    ss << L"{Min: " << ToString(b.Min).c_str() << L", Max: " << ToString(b.Max).c_str() << L"}";
+    return ss.str();
+  }
+} // namespace Microsoft::VisualStudio::CppUnitTestFramework
+
+namespace SerializeTests
 {
   TEST_CLASS(SerializeTests)
   {
   public:
-    TEST_METHOD(TestJSONOutputArchive)
+    template<typename TOutputArchive, typename TInputArchive, typename TTree>
+    void RoundTripTest(TTree const& tree_save, std::ios::openmode mode)
     {
-      OrthoTree::TestObject obj;
-      std::stringstream ss;
+      std::stringstream ss(mode);
       {
-        OrthoTree::JSONOutputArchive ar(ss);
-        ar& make_nvp("test_obj", obj);
+        TOutputArchive ar_out(ss);
+        ar_out& make_nvp("tree", tree_save);
       }
 
-      std::string json = ss.str();
-      Assert::AreNotEqual(std::string::npos, json.find("\"id\": 1"));
-      Assert::AreNotEqual(std::string::npos, json.find("\"value\": 3.14"));
-    }
-
-    TEST_METHOD(TestXMLOutputArchive)
-    {
-      OrthoTree::Point3D pt{ 1.0, 2.0, 3.0 };
-      std::stringstream ss;
+      // Display serialized content for debugging purposes (skipping binary)
+      if constexpr (!std::is_same_v<TOutputArchive, BinaryOutputArchive>)
       {
-        OrthoTree::XMLOutputArchive ar(ss);
-        ar& make_nvp("point", pt);
-      }
-
-      std::string xml = ss.str();
-      Assert::AreNotEqual(std::string::npos, xml.find("<point>"));
-      Assert::AreNotEqual(std::string::npos, xml.find("1"));
-    }
-
-    TEST_METHOD(TestBinaryArchive)
-    {
-      OrthoTree::BoundingBox3D box_save{
-        { 1.0, 2.0, 3.0 },
-        { 4.0, 5.0, 6.0 }
-      };
-      std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
-
-      {
-        OrthoTree::BinaryOutputArchive ar(ss);
-        ar & box_save;
+        Logger::WriteMessage("\n--- Serialized Content ---\n");
+        Logger::WriteMessage(ss.str().c_str());
+        Logger::WriteMessage("\n--- End of content ---\n");
       }
 
       ss.seekg(0);
 
-      OrthoTree::BoundingBox3D box_load;
+      TTree tree_load;
       {
-        OrthoTree::BinaryInputArchive ar(ss);
-        ar & box_load;
+        TInputArchive ar_in(ss);
+        ar_in& make_nvp("tree", tree_load);
       }
 
-      Assert::AreEqual(box_save.Min[0], box_load.Min[0]);
-      Assert::AreEqual(box_save.Max[2], box_load.Max[2]);
+      // Integrity checks
+      auto const& entities_save = tree_save.GetData();
+      auto const& entities_load = tree_load.GetData();
+
+      Assert::AreEqual(entities_save.size(), entities_load.size(), L"Entity count mismatch");
+
+      if constexpr (std::is_same_v<std::decay_t<decltype(entities_save)>, std::vector<typename TTree::Entity>>)
+      {
+        for (size_t i = 0; i < entities_save.size(); ++i)
+        {
+          if constexpr (std::is_same_v<typename TTree::Entity, BoundingBox3D>)
+          {
+            Assert::IsTrue(entities_save[i].Min == entities_load[i].Min, L"Min point mismatch");
+            Assert::IsTrue(entities_save[i].Max == entities_load[i].Max, L"Max point mismatch");
+          }
+          else
+          {
+            Assert::IsTrue(entities_save[i] == entities_load[i], L"Entity data mismatch at index");
+          }
+        }
+      }
+
+      // Perform a small query to ensure the tree structure is also functional
+      auto box = tree_save.GetBox();
+      auto results_save = tree_save.RangeSearch(box);
+      auto results_load = tree_load.RangeSearch(box);
+      Assert::AreEqual(results_save.size(), results_load.size(), L"Query results count mismatch");
     }
 
-    TEST_METHOD(TestCoreBinarySerialization)
+    // --- Octree Tests ---
+
+    TEST_METHOD(TestOctreePointBinary)
     {
-      OrthoTree::Point3D vpt[] = {
-        { 0, 0, 0 },
-        { 1, 1, 1 }
+      OctreePointM tree(
+        {
+          { 0, 0, 0 },
+          { 1, 1, 1 }
+      },
+        3);
+      tree.Add({ 0.1, 0.1, 0.1 });
+      tree.Add({ 0.9, 0.9, 0.9 });
+      RoundTripTest<BinaryOutputArchive, BinaryInputArchive>(tree, std::ios::in | std::ios::out | std::ios::binary);
+    }
+
+    TEST_METHOD(TestStaticOctreeBinary)
+    {
+      std::vector<Point3D> points = {
+        { 0.1, 0.1, 0.1 },
+        { 0.9, 0.9, 0.9 }
       };
-      OrthoTree::StaticBVHPoint3D core_save(vpt, 1);
+      StaticOctreePointM tree(
+        points,
+        {
+          { 0, 0, 0 },
+          { 1, 1, 1 }
+      },
+        3);
+      RoundTripTest<BinaryOutputArchive, BinaryInputArchive>(tree, std::ios::in | std::ios::out | std::ios::binary);
+    }
+
+    TEST_METHOD(TestOctreeBoxBinary)
+    {
+      OctreeBoxM tree(
+        {
+          { 0, 0, 0 },
+          { 1, 1, 1 }
+      },
+        3);
+      tree.Add(
+        {
+          { 0.1, 0.1, 0.1 },
+          { 0.2, 0.2, 0.2 }
+      });
+      RoundTripTest<BinaryOutputArchive, BinaryInputArchive>(tree, std::ios::in | std::ios::out | std::ios::binary);
+    }
+
+    // --- BVH Tests ---
+
+    TEST_METHOD(TestBVHPointBinary)
+    {
+      std::vector<Point3D> points = {
+        { 0.1, 0.1, 0.1 },
+        { 0.9, 0.9, 0.9 }
+      };
+      StaticBVHPoint3D bvh(points, 2);
 
       std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
       {
-        OrthoTree::BinaryOutputArchive ar(ss);
-        ar & core_save;
+        BinaryOutputArchive ar_out(ss);
+        ar_out& make_nvp("bvh", bvh);
       }
 
       ss.seekg(0);
-
-      OrthoTree::StaticBVHPoint3D core_load;
+      StaticBVHPoint3D bvh_load;
       {
-        OrthoTree::BinaryInputArchive ar(ss);
-        ar & core_load;
+        BinaryInputArchive ar_in(ss);
+        ar_in& make_nvp("bvh", bvh_load);
       }
+
+      Assert::AreEqual(bvh.GetNodeCount(), bvh_load.GetNodeCount());
     }
   };
-} // namespace UnitTests
+} // namespace SerializeTests
