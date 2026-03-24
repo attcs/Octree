@@ -9,7 +9,7 @@ For ease of use, the library provides several aliases for common configurations 
 * Main header files
   * **octree.h**: Main header file for OrthoTree-based solution.
   * **bvh.h**: Main header file for static BVH solution.
-  * **Serialization** (`serialization.h`, `serialization/*.h`): Serialization related files. See [Serialization](#serialization).
+  * **Serialization** (`serialization.h`, `serialization/*.h`): Serialization-related files. See [Serialization](#serialization).
   * **Adapters** (`adapters/*.h`): Adapters map user-defined or third-party geometric types (vector, box) to the generic concepts required by OrthoTree. Ready-made adapters exist for GLM, Eigen, Unreal, CGAL, etc.
 * Internal files
   * **`core/`**: Strongly connected Core functionalities for internal use.
@@ -560,7 +560,7 @@ tree.TraverseEntitiesByPriority(
 
 OrthoTree provides a flexible, non-intrusive serialization architecture designed for easy integration with existing C++ serialization libraries like **Cereal** and **Boost.Serialization**, while also providing lightweight built-in archives for common formats. 
 * The `orthotree/serialization.h` header provides the non-intrusive serialization functions for all OrthoTree types.
-* The `orthotree/serialization/*_archiver.h`s are built-in archivers for binary/MsgPack.
+* The `orthotree/serialization/*_archive.h` files are built-in archives for binary/MsgPack.
 * Your types can be serialized by providing a member `serialize` function or a non-intrusive standalone function. See [Serializing Your Custom Types](#serializing-your-custom-types) for more information.
 
 ### Integration with Third-Party Libraries
@@ -705,7 +705,7 @@ public:
 
 To make your own types serializable by OrthoTree's built-in archives (or integrated third-party libraries), you can provide either a member `serialize` function or a non-intrusive standalone function. 
 
-For text output (E.g. JSON, XML, YAML), the library provides following metadata:
+For text output (e.g., JSON, XML, YAML), the library provides the following metadata:
 * **Named Value Pairs (NVP)**: Used to identify members.
 * **Size Tags**: Used for sequence validation and boundary checks.
 

@@ -16,6 +16,7 @@ What is a Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Differentiated Static and Dynamic solution
 * Optionally Loose octree
 * Static BVH tree
+* Serialization support (Built-in binary archives, MsgPack archiver, compatible with Boost and Cereal)
 * Parallelization is available (via `std::execution` policies)
 * Edit functions to Insert/Update/Erase entities
 * Wide range of search functions for both AABBs and points
@@ -320,7 +321,7 @@ For more examples, see the unit tests. E.g., [example.tests.cpp](./tests/unittes
 | **Spatial structures** | **Loose- / Octree / BVH** | KD | R*-Tree / MVR | BVH | Octree / KD | R*-Tree | KD / AABB | Octree / KD | BVH | Loose Octree |
 | **Static / Dynamic** | **Both** | Static | Both | Static | Both | Both | Both | Both | Both | Both |
 | **Native C API** | ✗ | ✗ | **✓** | ✗ | **✓** | ✗ | ✗ | ✗ | **✓** | ✗ |
-| **Serialize** | **✗** | Bin | Bin, Custom | Bin | Bin, JSON | ✗ | (✓) Text/Bin | Bin, Text | ✗ | (✓) Bin |
+| **Serialize** | **✓** | Bin | Bin, Custom | Bin | Bin, JSON | ✗ | (✓) Text/Bin | Bin, Text | ✗ | (✓) Bin |
 | **Parallel build** | **✓ (STL)** | ✗ | ✗ | **✓** | ✓ | ✗ | ✓ | ✓ | **✓** | (✓) |
 | **GPU acceleration** | ✗ | ✗ | ✗ | ✗ | **✓** | ✗ | ✗ | ✗ | **✓** | **✓** |
 
