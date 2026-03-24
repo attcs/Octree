@@ -50,7 +50,7 @@ include(FetchContent)
 FetchContent_Declare(
   OrthoTree
   GIT_REPOSITORY https://github.com/attcs/Octree.git
-  GIT_TAG v3.1.0 # Or use a specific commit hash
+  GIT_TAG v3.2.0 # Or use a specific commit hash
 )
 FetchContent_MakeAvailable(OrthoTree)
 
@@ -64,7 +64,7 @@ Or using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake):
 CPMAddPackage(
   NAME OrthoTree
   GITHUB_REPOSITORY attcs/Octree
-  GIT_TAG v3.1.0
+  GIT_TAG v3.2.0
 )
 
 target_link_libraries(your_project PRIVATE OrthoTree::OrthoTree)
