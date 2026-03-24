@@ -9,6 +9,7 @@ For ease of use, the library provides several aliases for common configurations 
 * Main header files
   * **octree.h**: Main header file for OrthoTree-based solution.
   * **bvh.h**: Main header file for static BVH solution.
+  * **Serialization** (`serialization.h`, `serialization/*.h`): Serialization-related files. See [Serialization](#serialization).
   * **Adapters** (`adapters/*.h`): Adapters map user-defined or third-party geometric types (vector, box) to the generic concepts required by OrthoTree. Ready-made adapters exist for GLM, Eigen, Unreal, CGAL, etc.
 * Internal files
   * **`core/`**: Strongly connected Core functionalities for internal use.
@@ -17,8 +18,8 @@ For ease of use, the library provides several aliases for common configurations 
     * **Static BVH Core** (`core/bvh_static_linear_core.h`): An immutable, linear memory layout, binned SAH bvh-tree. It is built once and cannot be modified (no insertion/removal after build), but it provides the highest cache coherency and fastest query performance. Best for static environments and one-time spatial setups. It aims minimal memory footprint. E.g: `StaticOctreeBox`
     * **Query** layer (`core/ot_query.h`): It is an additional layer on top of the cores. Contains the geometric search algorithms that operate on the trees, such as Range search, Collision detection, K-Nearest Neighbors (KNN), and Raycasting. With the proper interface it can be used for other types of Cores (e.g., BVH, RTree, etc.).
     * **Managed** (`core/ot_managed.h`): High-level wrapper classes (e.g., `OctreePointM`) that manage both the tree structure and the user's entity storage. They provide a simpler, object-oriented API for interacting with the tree.
-
   * **`detail/`**: Other utilities.
+  * **serialization/**: Serialization related files.
 
 > [!CAUTION]
 > **Core types**: Tree cores do not store `Entities`, just `EntityID`s. Usage requires attention to the proper updating order: if element geometries are modified before calling `Update` or `Insert`, the overflowing mechanism may find elements that do not geographically fit in the current node.
@@ -554,3 +555,229 @@ tree.TraverseEntitiesByPriority(
     return dist;
   });
 ```
+
+## Serialization
+
+OrthoTree provides a flexible, non-intrusive serialization architecture designed for easy integration with existing C++ serialization libraries like **Cereal** and **Boost.Serialization**, while also providing lightweight built-in archives for common formats. 
+* The `orthotree/serialization.h` header provides the non-intrusive serialization functions for all OrthoTree types.
+* The `orthotree/serialization/*_archive.h` files are built-in archives for binary/MsgPack.
+* Your types can be serialized by providing a member `serialize` function or a non-intrusive standalone function. See [Serializing Your Custom Types](#serializing-your-custom-types) for more information.
+
+### Integration with Third-Party Libraries
+
+The library's core structures (Octree, BVH, Managed containers) and all geometric types (Point, Box, Ray, Plane) are ready to be serialized using any library that supports the `archive & object` or `archive(object)` pattern.
+
+#### Cereal & Boost.Serialization
+OrthoTree automatically detects if **Cereal** or **Boost.Serialization** headers are included before its own headers. If found, it enables specialized bridges to ensure Named Value Pairs (NVPs) and versioning work seamlessly with these libraries.
+
+<details><summary>Cereal Integration Example</summary>
+
+```cpp
+#include <cereal/archives/binary.hpp>
+#include <cereal/archives/json.hpp>
+#include <cereal/types/vector.hpp>
+#include <orthotree/octree.h>
+#include <orthotree/serialization.h> // Include this for serialization support
+
+// Saving
+{
+  std::ofstream os("tree.json");
+  cereal::JSONOutputArchive archive(os);
+  archive(cereal::make_nvp("myTree", managedTree));
+}
+
+// Loading
+{
+  std::ifstream is("tree.json");
+  cereal::JSONInputArchive archive(is);
+  archive(cereal::make_nvp("myTree", managedTree));
+}
+```
+</details>
+
+### Built-in Archives
+
+For projects that want to avoid additional dependencies, OrthoTree includes lightweight, header-only archives in the `orthotree/serialization/` directory.
+
+* **Binary** (`binary_archive.h`): Compact binary format with endianness support. Recommended for production persistence. Supports full **Round-Trip** (Read/Write).
+* **MsgPack** (`msgpack_archive.h`): Compact binary format compatible with the MessagePack specification (requires `msgpack-cxx`).
+
+<details><summary>Built-in Binary Archive Example (Read/Write)</summary>
+
+```cpp
+#include <orthotree/octree.h>
+#include <orthotree/serialization.h>
+#include <orthotree/serialization/binary_archive.h>
+
+#include <fstream>
+
+using namespace OrthoTree;
+
+// Save
+{
+  std::fstream fs("data.bin", std::ios::out | std::ios::binary);
+  BinaryOutputArchive ar(fs);
+  ar & make_nvp("tree", tree);
+}
+
+// Load
+{
+  std::fstream fs("data.bin", std::ios::in | std::ios::binary);
+  BinaryInputArchive ar(fs);
+  ar & make_nvp("tree", tree);
+}
+```
+</details>
+
+### Serialization for built-in adapters
+
+For built-in adapters, the serialization functions are provided in the `orthotree/serialization/adapters/` directory. You need to include the corresponding adapter header file to enable the serialization functions for the adapter.
+
+<details><summary>Eigen Adapter Example</summary>
+
+```cpp
+#include "orthotree/octree.h"
+#include "orthotree/serialization.h"
+#include "orthotree/serialization/binary_archive.h"
+#include "orthotree/serialization/adapters/eigen.h"
+
+void example() {
+    Eigen::OctreePointM3d tree(
+      Eigen::AlignedBox3d(Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d(1.0, 1.0, 1.0)),
+      3);
+    tree.Add(Eigen::Vector3d{ 0.1, 0.1, 0.1 });
+    tree.Add(Eigen::Vector3d{ 0.9, 0.9, 0.9 });
+
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    {
+      OrthoTree::BinaryOutputArchive ar_out(ss);
+      ar_out& make_nvp("tree", tree);
+    }
+
+    ss.seekg(0);
+    Eigen::OctreePointM3d tree_load;
+    {
+      OrthoTree::BinaryInputArchive ar_in(ss);
+      ar_in& make_nvp("tree", tree_load);
+    }
+}
+```
+</details>
+
+### Implementing Your Own Archive
+
+* `is_loading()` / `is_saving()` methods (or member types like `using is_loading = std::true_type`).
+* `operator&` for primitive types and NVPs.
+* `operator&` for `SizeTag` (required for collections/arrays).
+
+<details><summary>Custom Archive Interface</summary>
+
+```cpp
+class MyCustomArchive {
+public:
+  // Both method and type-alias (std::true_type) styles are supported
+  bool is_loading() const { return false; }
+  using is_saving = std::true_type; 
+
+  // Primitive types
+  template<typename T>
+  MyCustomArchive& operator&(T& val) {
+    if constexpr (std::is_arithmetic_v<T>) { /* ... */ }
+    return *this;
+  }
+
+  // Named Value Pairs
+  template<typename T>
+  MyCustomArchive& operator&(NameValuePair<T> nvp) {
+    return (*this & nvp.value);
+  }
+
+  // Size Tags (required for arrays/collections)
+  template<typename T>
+  MyCustomArchive& operator&(SizeTag<T> tag) {
+    return (*this & tag.value);
+  }
+};
+```
+</details>
+
+### Serializing Your Custom Types
+
+To make your own types serializable by OrthoTree's built-in archives (or integrated third-party libraries), you can provide either a member `serialize` function or a non-intrusive standalone function. 
+
+For text output (e.g., JSON, XML, YAML), the library provides the following metadata:
+* **Named Value Pairs (NVP)**: Used to identify members.
+* **Size Tags**: Used for sequence validation and boundary checks.
+
+<details><summary>Intrusive Member Function Example</summary>
+
+```cpp
+struct MyEntity {
+  int id;
+  float data;
+
+  template<typename TArchive>
+  void serialize(TArchive& ar) {
+    ar & make_nvp("id", id);
+    ar & make_nvp("data", data);
+  }
+};
+```
+</details>
+
+<details><summary>Non-Intrusive Standalone Function Example</summary>
+
+```cpp
+namespace MyNamespace {
+  struct MyPoint { float x, y; };
+
+  template<typename TArchive>
+  void serialize(TArchive& ar, MyPoint& pt) {
+    ar & make_nvp("x", pt.x);
+    ar & make_nvp("y", pt.y);
+  }
+}
+```
+*Note: Standalone functions should be placed in the same namespace as the type or in the `OrthoTree` namespace to be found via ADL.*
+</details>
+
+<details><summary>Non-Default Constructible Types</summary>
+
+If your type does not have a default constructor, you must specialize the `OrthoTree::load_construct` template. This factory-like mechanism allows you to handle manual instantiation during the load process.
+
+```cpp
+struct RigidPoint {
+  float x, y;
+  RigidPoint(float x, float y) : x(x), y(y) {} // No default constructor
+};
+
+namespace OrthoTree {
+  template<typename TArchive>
+  struct load_construct<TArchive, RigidPoint> {
+    static RigidPoint load(TArchive& ar) {
+      float x, y;
+      ar & make_nvp("x", x);
+      ar & make_nvp("y", y);
+      return RigidPoint(x, y);
+    }
+  };
+}
+```
+</details>
+
+### Error Handling & Versioning
+
+OrthoTree follows the established pattern of delegating error handling (such as data corruption, version mismatch, or structural inconsistencies) to the archive library. 
+
+#### Versioning Policy
+Data integrity and backward compatibility are managed through the internal `SERIALIZED_VERSION_ID` for each complex type. 
+* **Standard Updates**: While we strive for full backward compatibility, version changes that are handled internally may only result in a patch version (3rd digit) increment of the library.
+* **Breaking Changes**: In cases of major architectural refactoring where maintaining compatibility is not feasible within reasonable effort, the `SERIALIZED_VERSION_ID` will be incremented. Such breaking changes will be documented in the [CHANGELOG](../CHANGELOG.md) and will trigger a **Minor version** increment in the release tag.
+
+#### Error Handling
+The error reporting strategy depends on the archive implementation:
+* **Cereal / Boost.Serialization / MsgPack**: These libraries typically use and report errors by throwing **Exceptions** (e.g., `cereal::Exception`). When using these integration points, **client code must be prepared to handle exceptions** during load and save operations.
+* **Built-in Archives**: Designed for high-performance, `noexcept` environments, the built-in archives (Binary, JSON, XML) rely on the underlying `std::iostream` state. Instead of catching exceptions, you should verify the stream state (e.g., `if (stream.fail())`) after the operation.
+
+> [!TIP]
+> When using third-party archives, you can use their native versioning features (e.g., `CEREAL_CLASS_VERSION`) or rely on OrthoTree's internal versioning preserved within the archive.

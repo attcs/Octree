@@ -43,6 +43,7 @@ SOFTWARE.
 #include <optional>
 #include <queue>
 #include <span>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <variant>

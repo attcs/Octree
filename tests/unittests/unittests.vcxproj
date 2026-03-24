@@ -106,7 +106,7 @@
       <UseFullPaths>true</UseFullPaths>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/bigobj /FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -123,7 +123,7 @@
       <UseFullPaths>true</UseFullPaths>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/bigobj /FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -145,7 +145,7 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnableParallelCodeGeneration>false</EnableParallelCodeGeneration>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/bigobj /FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -169,7 +169,7 @@
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnableParallelCodeGeneration>false</EnableParallelCodeGeneration>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/bigobj /FS %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -193,8 +193,14 @@
     <ClCompile Include="adapter.tests.cpp" />
     <ClCompile Include="performance.tests.cpp" />
     <ClCompile Include="random.tests.cpp" />
+    <ClCompile Include="serialize.tests.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\orthotree\serialization.h" />
+    <ClInclude Include="..\..\include\orthotree\serialization\nvp.h" />
+    <ClInclude Include="..\..\include\orthotree\serialization\traits.h" />
+    <ClInclude Include="..\..\include\orthotree\serialization\stl.h" />
+    <ClInclude Include="..\..\include\orthotree\serialization\binary_archive.h" />
     <ClInclude Include="..\..\include\orthotree\adapters\boost.h" />
     <ClInclude Include="..\..\include\orthotree\adapters\cgal.h" />
     <ClInclude Include="..\..\include\orthotree\adapters\concepts.h" />

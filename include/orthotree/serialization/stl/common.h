@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2026 Attila Csikós
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,38 +24,29 @@ SOFTWARE.
 
 #pragma once
 
-#ifndef ORTHOTREE__BVH_H_INCLUDED
-#define ORTHOTREE__BVH_H_INCLUDED
-#endif
+#include "../nvp.h"
+#include "../traits.h"
+#include <cstddef>
+#include <utility>
+#include <variant>
 
-#if defined(ORTHOTREE__USE_PMR) || defined(_MSC_VER)
-#ifndef ORTHOTREE__DISABLE_PMR
-#define ORTHOTREE_IS_PMR_USED
-#endif // !ORTHOTREE__DISABLE_PMR
-#endif
+namespace OrthoTree
+{
+  template<typename TArchive, typename T1, typename T2>
+  auto serialize(TArchive& ar, std::pair<T1, T2>& val)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {
+    ar& make_nvp("key", const_cast<std::remove_const_t<T1>&>(val.first));
+    ar& make_nvp("value", val.second);
+  }
 
-#include "detail/bitset_arithmetic.h"
-#include "detail/common.h"
-#include "detail/inplace_vector.h"
-#include "detail/internal_geometry_module.h"
-#include "detail/memory_resource.h"
-#include "detail/partitioning.h"
-#include "detail/sequence_view.h"
-#include "detail/si_mortongrid.h"
-#include "detail/utils.h"
-#include "detail/zip_view.h"
+  template<typename TArchive>
+  auto serialize(TArchive&, std::monostate&)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {}
 
-#include "core/build_config.h"
-#include "core/bvh_static_linear_core.h"
-#include "core/configuration.h"
-#include "core/entity_adapter.h"
-#include "core/types.h"
-
-
-#include "core/ot_query.h"
-
-#include "core/ot_managed.h"
-
-#include "adapters/general.h"
-
-#include "core/bvh_aliases.h"
+  template<typename TArchive>
+  auto serialize(TArchive&, std::nullptr_t&)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {}
+} // namespace OrthoTree

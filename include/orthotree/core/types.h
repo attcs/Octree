@@ -29,6 +29,7 @@ SOFTWARE.
 #include <limits>
 #include <optional>
 #include <type_traits>
+#include <vector>
 
 
 namespace OrthoTree
@@ -46,6 +47,12 @@ namespace OrthoTree
 #endif // ORTHOTREE_INDEX_INT
 #endif // ORTHOTREE_INDEX_T__UINT_FAST32_T
 #endif // ORTHOTREE_INDEX_T__SIZE_T
+ 
+#ifdef ORTHOTREE__LARGE_DATASET
+  using serialized_size_t = std::uint64_t;
+#else
+  using serialized_size_t = std::uint32_t;
+#endif
 
   // Type of the dimension
   using dim_t = uint32_t;
@@ -110,4 +117,71 @@ namespace OrthoTree
   using ParExec = ExecutionTags::Parallel;
   auto constexpr SEQ_EXEC = SeqExec{};
   auto constexpr PAR_EXEC = ParExec{};
+
+
+  namespace detail
+  {
+    template<typename TVector>
+    struct BoundingBoxMinPointAndSize
+    {
+      TVector minPoint;
+      TVector size;
+    };
+
+    template<typename TBegin, typename TLength>
+    struct Segment
+    {
+      using Begin = TBegin;
+      using Length = TLength;
+
+      TBegin begin;
+      TLength length;
+
+      constexpr Segment() noexcept
+      : begin(0)
+      , length(0)
+      {}
+      constexpr Segment(TBegin b, TLength l) noexcept
+      : begin(b)
+      , length(l)
+      {}
+    };
+
+    struct NodeStorage256
+    {
+      using NodeSegmentIndex = uint8_t;
+      using EntitySegment = Segment<uint8_t, uint8_t>;
+
+      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
+      std::vector<EntitySegment> nodeEntitySegment;
+    };
+
+    struct NodeStorage65536
+    {
+      using NodeSegmentIndex = uint16_t;
+      using EntitySegment = Segment<uint16_t, uint16_t>;
+
+      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
+      std::vector<EntitySegment> nodeEntitySegment;
+    };
+
+    struct NodeStorageGeneral
+    {
+      using NodeSegmentIndex = uint32_t;
+#ifdef ORTHOTREE__LARGE_DATASET
+      using EntitySegment = Segment<uint64_t, uint64_t>;
+#else
+      using EntitySegment = Segment<uint32_t, uint32_t>;
+#endif
+      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
+      std::vector<EntitySegment> nodeEntitySegment;
+    };
+
+    template<typename TVector>
+    struct NodeGeometryData
+    {
+      TVector minPoint;
+      TVector size;
+    };
+  } // namespace detail
 } // namespace OrthoTree

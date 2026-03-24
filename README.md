@@ -3,9 +3,9 @@
 <br>
 Lightweight, parallelizable C++ implementation of an Octree/Quadtree/N-d orthotree using Morton Z curve-based location code ordering.<br>
 <br>
-What is the Octree and what is good for? https://en.wikipedia.org/wiki/Octree <br>
-What is Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curve <br>
-What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
+What is an octree and what is it good for? https://en.wikipedia.org/wiki/Octree <br>
+What is the Morton-Z space-filling curve? https://en.wikipedia.org/wiki/Z-order_curve <br>
+What is a Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 
 [CHANGELOG](./CHANGELOG.md) | [DOCUMENTATION](./docs/README.md) | [BENCHMARKS](https://attcs.github.io/Octree/dev/docs/benchmark_viewer.html)
 
@@ -16,6 +16,7 @@ What is Loose Octree? https://anteru.net/blog/2008/loose-octrees/
 * Differentiated Static and Dynamic solution
 * Optionally Loose octree
 * Static BVH tree
+* Serialization support (Built-in binary archives, MsgPack archiver, compatible with Boost and Cereal)
 * Parallelization is available (via `std::execution` policies)
 * Edit functions to Insert/Update/Erase entities
 * Wide range of search functions for both AABBs and points
@@ -49,7 +50,7 @@ include(FetchContent)
 FetchContent_Declare(
   OrthoTree
   GIT_REPOSITORY https://github.com/attcs/Octree.git
-  GIT_TAG v3.1.0 # Or use a specific commit hash
+  GIT_TAG v3.2.0 # Or use a specific commit hash
 )
 FetchContent_MakeAvailable(OrthoTree)
 
@@ -63,7 +64,7 @@ Or using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake):
 CPMAddPackage(
   NAME OrthoTree
   GITHUB_REPOSITORY attcs/Octree
-  GIT_TAG v3.1.0
+  GIT_TAG v3.2.0
 )
 
 target_link_libraries(your_project PRIVATE OrthoTree::OrthoTree)
@@ -80,7 +81,7 @@ cmake --install build --prefix /your/install/path
 
 ## Usage
 * Use `AdaptorBasicsConcept` or `AdaptorConcept` to adapt the actual geometric system. It is not a necessary step, basic point/vector and bounding box objects are available.
-* Decide to let the geometry management for octree or not. `Managed` types could manage the geometries life-cycle, meanwhile the `non-managed` types are just update the relevant metadata about the changes.
+* Decide whether to let the octree manage the geometry or not. `Managed` types handle the geometry life-cycle, while unmanaged types only update relevant metadata about changes.
 * Use `PAR_EXEC` tag as first parameter of constructor for parallel execution
 * Use `PickSearch()` / `RangeSearch()` member functions to collect the wanted id-s
 * Use `PlaneSearch()` / `PlaneIntersection()` / `PlanePositiveSegmentation()` member functions for hyperplane related searches
@@ -90,7 +91,7 @@ cmake --install build --prefix /your/install/path
 * Use `Insert()` for split overflown nodes during entity insertion
 * Use `Managed` edit functions `Add()`, `Update()`, `Erase()` if one of the underlying geometrical element was changed 
 * Use `CollisionDetection()` member function for bounding box overlap examination.
-* Use `TraverseNodesBreadthFirst()` / `TraverseNodesDepthFirst()` / `TraverseEntitiesByPriority()` to traverse the tree from up to down (former is breadth-first search) with user-defined `procedure()`.
+* Use `TraverseEntitiesBreadthFirst()` / `TraverseEntitiesDepthFirst()` / `TraverseEntitiesByPriority()` to traverse the tree from up to down with user-defined `procedure()`.
 * Use `GetNearestNeighbors()` for kNN search. https://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm
 * Use `RayIntersectedFirst()` or `RayIntersectedAll()` to get intersected bounding boxes in order by a ray.
 
@@ -100,7 +101,7 @@ cmake --install build --prefix /your/install/path
 * Core types store only the entity ids; use Managed types to manage both the tree and the original entity data.
 * Naming
   * Managed types have "M" postfix (e.g., `OctreeBoxM`).
-  * `Map` named aliases are declared for `std::unordered_map` geometry containers (e.g.: `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapM`). Non-`Map` named aliases uses `std::span`, which is compatible with `std::vector`, `std::array` or any contiguous container.
+  * Aliases named with "Map" are declared for `std::unordered_map` geometry containers (e.g., `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapM`). Non-"Map" aliases use `std::span`, which is compatible with `std::vector`, `std::array`, or any contiguous container.
   * `s` means adjustable `LOOSE_TREE` for box-types (e.g., `OctreeBoxCs`).
 * For box types 2.0 loose tree is the default.
 * Edit functions are available but not recommended to fully build the tree with them.
@@ -320,7 +321,7 @@ For more examples, see the unit tests. E.g., [example.tests.cpp](./tests/unittes
 | **Spatial structures** | **Loose- / Octree / BVH** | KD | R*-Tree / MVR | BVH | Octree / KD | R*-Tree | KD / AABB | Octree / KD | BVH | Loose Octree |
 | **Static / Dynamic** | **Both** | Static | Both | Static | Both | Both | Both | Both | Both | Both |
 | **Native C API** | ✗ | ✗ | **✓** | ✗ | **✓** | ✗ | ✗ | ✗ | **✓** | ✗ |
-| **Serialize** | **✗** | Bin | Bin, Custom | Bin | Bin, JSON | ✗ | (✓) Text/Bin | Bin, Text | ✗ | (✓) Bin |
+| **Serialize** | **✓** | Bin | Bin, Custom | Bin | Bin, JSON | ✗ | (✓) Text/Bin | Bin, Text | ✗ | (✓) Bin |
 | **Parallel build** | **✓ (STL)** | ✗ | ✗ | **✓** | ✓ | ✗ | ✓ | ✓ | **✓** | (✓) |
 | **GPU acceleration** | ✗ | ✗ | ✗ | ✗ | **✓** | ✗ | ✗ | ✗ | **✓** | **✓** |
 

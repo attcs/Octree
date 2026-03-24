@@ -42,7 +42,7 @@ namespace OrthoTree
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
   class StaticBVHLinearCore
   {
-  public:
+  public: // Public type aliases
     using EA = TEntityAdapter;
     using GA = TGeometryAdapter;
     using CONFIG = TConfiguration;
@@ -63,70 +63,24 @@ namespace OrthoTree
     using TRay = typename GA::Ray;
     using TPlane = typename GA::Plane;
 
-  private:
-    template<typename TBegin, typename TLength>
-    struct Segment
-    {
-      using Begin = TBegin;
-      using Length = TLength;
+  private: // Internal type aliases
+    using NodeStorage256 = detail::NodeStorage256;
+    using NodeStorage65536 = detail::NodeStorage65536;
+    using NodeStorageGeneral = detail::NodeStorageGeneral;
+    using NodeGeometryData = detail::NodeGeometryData<typename IGM::Vector>;
 
-      TBegin begin;
-      TLength length;
-
-      constexpr Segment() noexcept
-      : begin(0)
-      , length(0)
-      {}
-      constexpr Segment(TBegin b, TLength l) noexcept
-      : begin(b)
-      , length(l)
-      {}
-    };
-
-    struct NodeStorage256
-    {
-      using NodeSegmentIndex = uint8_t;
-      using EntitySegment = Segment<uint8_t, uint8_t>;
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    struct NodeStorage65536
-    {
-      using NodeSegmentIndex = uint16_t;
-      using EntitySegment = Segment<uint16_t, uint16_t>;
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    struct NodeStorageGeneral
-    {
-      using NodeSegmentIndex = uint32_t;
-#ifdef ORTHOTREE__LARGE_DATASET
-      using EntitySegment = Segment<uint64_t, uint64_t>;
-#else
-      using EntitySegment = Segment<uint32_t, uint32_t>;
-#endif
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    struct NodeGeometryData
-    {
-      typename IGM::Vector minPoint;
-      typename IGM::Vector size;
-    };
-
-  private:
+  private: // Data members
     std::variant<NodeStorage256, NodeStorage65536, NodeStorageGeneral> m_nodes;
     std::vector<EntityID> m_entityStorage;
     std::vector<NodeGeometryData> m_nodeGeometry;
-    std::vector<uint8_t> m_nodeDepthIDs;
     depth_t m_maxDepthNo = 0;
     std::size_t m_maxElementNum = CONFIG::DEFAULT_TARGET_ELEMENT_NUM_IN_NODES;
+
+  private: // Serialization
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
+    friend void serialize(TArchive& ar, StaticBVHLinearCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core);
 
   public:
     // Default constructor. Requires Create call before usage.
@@ -345,7 +299,6 @@ namespace OrthoTree
       auto const nodeID = static_cast<NodeID>(GetNodeCount());
 
       m_maxDepthNo = std::max<depth_t>(m_maxDepthNo, depthID + 1);
-      m_nodeDepthIDs.push_back(depthID);
 
       std::visit(
         [&](auto& nodes) {
@@ -376,6 +329,7 @@ namespace OrthoTree
       [[maybe_unused]] EA::EntityContainerView entities,
       uint8_t maxDepthID,
       std::size_t maxElementNoInNode,
+      std::vector<uint8_t>& nodeDepthIDs,
       TExecMode execMode = {}) noexcept
     {
       struct NodeProcessingData
@@ -397,6 +351,7 @@ namespace OrthoTree
 
           if (r.length <= maxElementNoInNode || r.depthID >= maxDepthID)
           {
+            nodeDepthIDs.push_back(r.depthID);
             CreateBVHNode(r.depthID, r.beginID, r.length, 0);
             continue;
           }
@@ -439,11 +394,13 @@ namespace OrthoTree
 
           if (rangeCount == 1)
           {
+            nodeDepthIDs.push_back(r.depthID);
             CreateBVHNode(r.depthID, r.beginID, r.length, 0);
           }
           else
           {
             std::sort(subRanges.begin(), subRanges.begin() + rangeCount, [](auto const& a, auto const& b) { return a.beginID < b.beginID; });
+            nodeDepthIDs.push_back(r.depthID);
             CreateBVHNode(r.depthID, r.beginID, 0, static_cast<uint32_t>(rangeCount));
             for (int i = 0; i < rangeCount; ++i)
               q.push({ subRanges[i].beginID, subRanges[i].length, static_cast<uint8_t>(r.depthID + 1) });
@@ -530,10 +487,12 @@ namespace OrthoTree
             auto const& res = results[i];
             if (res.isLeaf)
             {
+              nodeDepthIDs.push_back(r.depthID);
               CreateBVHNode(r.depthID, r.beginID, r.length, 0);
             }
             else
             {
+              nodeDepthIDs.push_back(r.depthID);
               CreateBVHNode(r.depthID, r.beginID, 0, static_cast<uint32_t>(res.rangeCount));
               for (int j = 0; j < res.rangeCount; ++j)
                 nextLevel.push_back({ res.subRanges[j].beginID, res.subRanges[j].length, static_cast<uint8_t>(r.depthID + 1) });
@@ -546,7 +505,7 @@ namespace OrthoTree
 
 
     template<typename TExecMode = SeqExec>
-    void InitializeNodeGeometryBVH(EA::EntityContainerView entities, TExecMode execMode = {}) noexcept
+    void InitializeNodeGeometryBVH(EA::EntityContainerView entities, std::vector<uint8_t>& nodeDepthIDs, TExecMode execMode = {}) noexcept
     {
       auto const nodeCount = static_cast<uint32_t>(GetNodeCount());
       if (nodeCount == 0)
@@ -556,7 +515,7 @@ namespace OrthoTree
       auto const maxDepth = GetMaxDepthID();
       std::vector<std::vector<uint32_t>> nodesAtDepth(maxDepth + 1);
       for (uint32_t i = 0; i < nodeCount; ++i)
-        nodesAtDepth[m_nodeDepthIDs[i]].push_back(i);
+        nodesAtDepth[nodeDepthIDs[i]].push_back(i);
 
       auto const processNode = [&](uint32_t nodeID) {
         auto nodeBox = IGM::BoxInvertedInit();
@@ -658,7 +617,8 @@ namespace OrthoTree
         m_nodes = NodeStorageGeneral{ .nodeChildSegmentBegins = { 1 }, .nodeEntitySegment = {} };
 
       // Reserve space to avoid reallocations and appease compiler warnings
-      m_nodeDepthIDs.reserve(estimatedNodeCount);
+      std::vector<uint8_t> nodeDepthIDs;
+      nodeDepthIDs.reserve(estimatedNodeCount);
       m_nodeGeometry.reserve(estimatedNodeCount);
 
       std::visit(
@@ -669,14 +629,14 @@ namespace OrthoTree
         m_nodes);
 
       // Build the BVH
-      BuildBVH(buildData, entities, maxDepthID, maxElementNoInNode, execMode);
+      BuildBVH(buildData, entities, maxDepthID, maxElementNoInNode, nodeDepthIDs, execMode);
 
       // Write back entity IDs in the final sorted order
       EXEC_POL_DEF(epw);
       std::transform(EXEC_POL_ADD(epw) buildData.begin(), buildData.end(), m_entityStorage.begin(), [](auto const& ed) { return ed.entityID; });
 
       // Initialize node geometry (MBR) bottom-up
-      InitializeNodeGeometryBVH(entities, execMode);
+      InitializeNodeGeometryBVH(entities, nodeDepthIDs, execMode);
 
       return true;
     }

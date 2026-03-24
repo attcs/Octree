@@ -90,6 +90,15 @@ namespace OrthoTree
 
       Geometry m_geometry;
 
+    private:
+      static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+      template<typename TArchive, std::size_t CHILD_NO2, typename NodeID2, typename ChildID2, typename EntityID2, typename Geometry2>
+      friend void serialize(TArchive& ar, OrthoTreeNodeData<CHILD_NO2, NodeID2, ChildID2, EntityID2, Geometry2>& node);
+
+      template<typename TArchive, typename T, typename TNodes>
+      friend void serialize(TArchive& ar, MemoryResource<T>& memoryResource, TNodes& nodes);
+
     public:
       explicit constexpr OrthoTreeNodeData() noexcept = default;
 
@@ -138,6 +147,7 @@ namespace OrthoTree
       }
 
       EntityContainer& GetEntitySegment() noexcept { return m_entities; }
+      EntityContainer const& GetEntitySegment() const noexcept { return m_entities; }
 
     public: // Child handling
       constexpr void LinkChild(ChildID childID, NodeID nodeID) noexcept
@@ -274,6 +284,12 @@ namespace OrthoTree
 
     detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID> m_spaceIndexing;
     detail::MemoryResource<EntityID> m_memoryResource;
+
+  private: // Serialization
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
+    friend void serialize(TArchive& ar, DynamicHashOrthoTreeCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core);
 
   public: // Constructors
     // Default constructor. Requires InitBase call before usage.

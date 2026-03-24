@@ -24,8 +24,9 @@ SOFTWARE.
 
 #pragma once
 
-#include "common.h"
-#include "internal_geometry_module.h"
+#include "../detail/common.h"
+#include "../detail/internal_geometry_module.h"
+#include "../serialization/nvp.h"
 
 #include <algorithm>
 #include <array>
@@ -101,6 +102,13 @@ namespace OrthoTree::detail
       m_volumeOfOverallSpace = IGM::GetVolumeAD(m_boxSpace);
     }
 
+  private:
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TGA>
+    friend void serialize(TArchive& ar, GridSpaceIndexing<TGA>& grid);
+
+  public:
     constexpr IGM::Vector const& GetMinPoint() const noexcept { return m_boxSpace.Min; }
 
     constexpr IGM::Vector const& GetSize() const noexcept { return m_sizeInDimensions; }
@@ -284,6 +292,14 @@ namespace OrthoTree::detail
       IGM::Vector sizeInDimensions = {};
       IGM::Vector rasterizerFactors = {};
       IGM::Vector derasterizerFactors = {};
+
+      template<typename TArchive>
+      void serialize(TArchive& ar)
+      {
+        ar& ORTHOTREE_NVP_INT(sizeInDimensions);
+        ar& ORTHOTREE_NVP_INT(rasterizerFactors);
+        ar& ORTHOTREE_NVP_INT(derasterizerFactors);
+      }
     };
 
     // float32_t with large maxDepthID would lead to precision issues, increase double precision is required.
@@ -294,6 +310,14 @@ namespace OrthoTree::detail
       std::array<double, GA::DIMENSION_NO> sizeInDimensions = {};
       std::array<double, GA::DIMENSION_NO> rasterizerFactors = {};
       std::array<double, GA::DIMENSION_NO> derasterizerFactors = {};
+
+      template<typename TArchive>
+      void serialize(TArchive& ar)
+      {
+        ar& ORTHOTREE_NVP_INT(sizeInDimensions);
+        ar& ORTHOTREE_NVP_INT(rasterizerFactors);
+        ar& ORTHOTREE_NVP_INT(derasterizerFactors);
+      }
     };
 
   private:

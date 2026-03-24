@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csikós
+Copyright (c) 2026 Attila Csikós
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,38 +24,37 @@ SOFTWARE.
 
 #pragma once
 
-#ifndef ORTHOTREE__BVH_H_INCLUDED
-#define ORTHOTREE__BVH_H_INCLUDED
-#endif
+#include "../nvp.h"
+#include "../traits.h"
+#include "common.h"
+#include <set>
+#include <type_traits>
 
-#if defined(ORTHOTREE__USE_PMR) || defined(_MSC_VER)
-#ifndef ORTHOTREE__DISABLE_PMR
-#define ORTHOTREE_IS_PMR_USED
-#endif // !ORTHOTREE__DISABLE_PMR
-#endif
+namespace OrthoTree
+{
+  // std::set
+  template<typename TArchive, typename K, typename Compare, typename Alloc>
+  auto serialize(TArchive& ar, std::set<K, Compare, Alloc>& val)
+    -> std::enable_if_t<is_stl_serialization_enabled_v<TArchive>>
+  {
+    serialized_size_t size = static_cast<serialized_size_t>(val.size());
+    ar& make_size_tag(size);
 
-#include "detail/bitset_arithmetic.h"
-#include "detail/common.h"
-#include "detail/inplace_vector.h"
-#include "detail/internal_geometry_module.h"
-#include "detail/memory_resource.h"
-#include "detail/partitioning.h"
-#include "detail/sequence_view.h"
-#include "detail/si_mortongrid.h"
-#include "detail/utils.h"
-#include "detail/zip_view.h"
+    if (ar.is_loading())
+    {
+      val.clear();
+      for (std::size_t i = 0; i < size; ++i)
+      {
+        K key;
+        ar& key;
+        val.emplace(std::move(key));
+      }
+    }
+    else
+    {
+      for (auto& item : val)
+        ar& const_cast<K&>(item);
+    }
+  }
 
-#include "core/build_config.h"
-#include "core/bvh_static_linear_core.h"
-#include "core/configuration.h"
-#include "core/entity_adapter.h"
-#include "core/types.h"
-
-
-#include "core/ot_query.h"
-
-#include "core/ot_managed.h"
-
-#include "adapters/general.h"
-
-#include "core/bvh_aliases.h"
+} // namespace OrthoTree

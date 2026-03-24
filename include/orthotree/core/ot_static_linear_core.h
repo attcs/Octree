@@ -48,7 +48,6 @@ SOFTWARE.
 
 namespace OrthoTree
 {
-
   // Non-owning ortho-tree with compact SoA storage for not changing datasets.
   template<typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
   class StaticLinearOrthoTreeCore : public OrthoTreeCoreBase<TEntityAdapter, TGeometryAdapter, TConfiguration>
@@ -72,46 +71,13 @@ namespace OrthoTree
   private:
     using MGSI = typename detail::MortonGridSpaceIndexing<GA, CONFIG::ALLOW_OUT_OF_SPACE_INSERTION, CONFIG::LOOSE_FACTOR, CONFIG::MAX_ALLOWED_DEPTH_ID>;
 
-    template<typename TBegin, typename TLength>
-    struct Segment
-    {
-      using Begin = TBegin;
-      using Length = TLength;
+    using Segment256 = detail::NodeStorage256::EntitySegment;
+    using Segment65536 = detail::NodeStorage65536::EntitySegment;
+    using SegmentGeneral = detail::NodeStorageGeneral::EntitySegment;
 
-      TBegin begin;
-      TLength length;
-    };
-
-    struct NodeStorage256
-    {
-      using NodeSegmentIndex = uint8_t;
-      using EntitySegment = Segment<uint8_t, uint8_t>;
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    struct NodeStorage65536
-    {
-      using NodeSegmentIndex = uint16_t;
-      using EntitySegment = Segment<uint16_t, uint16_t>;
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
-
-    struct NodeStorageGeneral
-    {
-      using NodeSegmentIndex = uint32_t;
-#ifdef ORTHOTREE__LARGE_DATASET
-      using EntitySegment = Segment<uint64_t, uint64_t>;
-#else
-      using EntitySegment = Segment<uint32_t, uint32_t>;
-#endif
-
-      std::vector<NodeSegmentIndex> nodeChildSegmentBegins;
-      std::vector<EntitySegment> nodeEntitySegment;
-    };
+    using NodeStorage256 = detail::NodeStorage256;
+    using NodeStorage65536 = detail::NodeStorage65536;
+    using NodeStorageGeneral = detail::NodeStorageGeneral;
 
     using NodeGeometry =
       std::conditional_t<CONFIG::NODE_GEOMETRY_STORAGE == NodeGeometryStorage::None, std::monostate, std::vector<typename Base::NodeGeometry>>;
@@ -121,6 +87,12 @@ namespace OrthoTree
     std::vector<uint8_t> m_nodeDepthIDs;
     std::vector<EntityID> m_entityStorage;
     NodeGeometry m_nodeGeometry;
+
+  private: // Serialization
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TArchive, typename TEntityAdapter_, typename TGeometryAdapter_, typename TConfiguration_>
+    friend void serialize(TArchive& ar, StaticLinearOrthoTreeCore<TEntityAdapter_, TGeometryAdapter_, TConfiguration_>& core);
 
   public: // Constructors
     // Default constructor. Requires Create call before usage.

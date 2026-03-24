@@ -211,6 +211,24 @@ namespace OrthoTree::detail
       m_freeMainSegments.emplace_back(IndexedSegment{ 0, Index(m_pages[0].size) });
     }
 
+    constexpr std::size_t GetCapacity() const noexcept
+    {
+      std::size_t sumsize = std::size_t{};
+      for (auto const& page : m_pages)
+        sumsize += page.capacity;
+      return sumsize;
+    }
+
+    constexpr std::size_t GetFreeCapacity() const noexcept
+    {
+      std::size_t sumsize = std::size_t{};
+      for (auto const& segment : m_freeMainSegments)
+        sumsize += segment.capacity;
+      return sumsize;
+    }
+
+    constexpr std::size_t GetSize() const noexcept { return GetCapacity() - GetFreeCapacity(); }
+
     void Clone(MemoryResource& resource, std::vector<MemorySegment*> memorySegments) const noexcept
     {
       auto sumsize = std::size_t{};
@@ -616,6 +634,15 @@ namespace OrthoTree::detail
         return freeSegment.begin + freeSegment.capacity == begin;
       });
     }
+
+  private:
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+    template<typename TData, typename TNodeMap>
+    friend class MemoryResourceSerializerProxy;
+
+    template<typename TArchive, typename TData, typename TNodes>
+    friend void serialize(TArchive& ar, MemoryResource<TData>& memoryResource, TNodes& nodes);
 
   private:
     // stores the data
