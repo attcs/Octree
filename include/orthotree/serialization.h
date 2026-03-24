@@ -387,7 +387,6 @@ namespace OrthoTree
   }
 
 
-
   // StaticBVHLinearCore
   template<typename TArchive, typename TEntityAdapter, typename TGeometryAdapter, typename TConfiguration>
   void serialize(TArchive& ar, StaticBVHLinearCore<TEntityAdapter, TGeometryAdapter, TConfiguration>& core)
@@ -400,7 +399,6 @@ namespace OrthoTree
     ar& ORTHOTREE_NVP_M(core, m_maxDepthNo);
     ar& ORTHOTREE_NVP_M(core, m_maxElementNum);
     ar& ORTHOTREE_NVP_M(core, m_entityStorage);
-    ar& ORTHOTREE_NVP_M(core, m_nodeDepthIDs);
     ar& ORTHOTREE_NVP_M(core, m_nodeGeometry);
     ar& ORTHOTREE_NVP_M(core, m_nodes);
   }
