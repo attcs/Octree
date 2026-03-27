@@ -104,8 +104,6 @@ cmake --install build --prefix /your/install/path
   * Aliases named with "Map" are declared for `std::unordered_map` geometry containers (e.g., `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapM`). Non-"Map" aliases use `std::span`, which is compatible with `std::vector`, `std::array`, or any contiguous container.
   * `s` means adjustable `LOOSE_TREE` for box-types (e.g., `OctreeBoxCs`).
 * For box types 2.0 loose tree is the default.
-* Edit functions are available but not recommended to fully build the tree with them.
-* If less element is collected in a node than the max element then the child node won't be created.
 * Original geometry data is not stored in Core types, so any search function needs them as an input.
 * Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3, AppleClang 16.0.0
 
