@@ -1,5 +1,6 @@
 #include <bit>
 #include <iostream>
+#include <random>
 #include <type_traits>
 
 #include "external/benchmark/include/benchmark/benchmark.h"
@@ -828,9 +829,221 @@ namespace Benchmarks
       state.SetItemsProcessed(state.iterations() * entityNo);
     }
   } // namespace Hashing
+
+  namespace Memory
+  {
+    template<typename TMemoryResource>
+    static void Workload(benchmark::State& state)
+    {
+      using T = uint64_t;
+      TMemoryResource mr;
+
+      struct LocalSegment
+      {
+        typename TMemoryResource::MemorySegment ms;
+        size_t size = 0;
+      };
+
+      std::vector<LocalSegment> segments;
+      segments.reserve(state.range(0));
+
+      std::mt19937 rng(42);
+      // Probabilities for size categories: 70% (<4), 20% (<16), 7% (>100), 3% (>1000)
+      std::discrete_distribution<> sizeDist({ 70, 20, 7, 3 });
+      std::uniform_int_distribution<size_t> smallDist(1, 3);
+      std::uniform_int_distribution<size_t> mediumDist(4, 15);
+      std::uniform_int_distribution<size_t> largeDist(101, 200);
+      std::uniform_int_distribution<size_t> hugeDist(1001, 2000);
+
+      // Probabilities for actions: 40% Allocate, 40% Deallocate, 10% Grow (+1), 10% Shrink (-1)
+      std::discrete_distribution<> actionDist({ 40, 40, 10, 10 });
+
+      for (auto _ : state)
+      {
+        int action = actionDist(rng);
+        if (action == 0 || segments.empty()) // Allocate
+        {
+          int cat = sizeDist(rng);
+          size_t sz = 0;
+          switch (cat)
+          {
+          case 0: sz = smallDist(rng); break;
+          case 1: sz = mediumDist(rng); break;
+          case 2: sz = largeDist(rng); break;
+          case 3: sz = hugeDist(rng); break;
+          }
+          segments.push_back({ mr.Allocate(sz), sz });
+        }
+        else if (action == 1) // Deallocate
+        {
+          std::uniform_int_distribution<size_t> indexDist(0, segments.size() - 1);
+          size_t idx = indexDist(rng);
+          mr.Deallocate(segments[idx].ms);
+          segments[idx] = segments.back();
+          segments.pop_back();
+        }
+        else if (action == 2) // Grow (1-1 elem addition/increase)
+        {
+          std::uniform_int_distribution<size_t> indexDist(0, segments.size() - 1);
+          size_t idx = indexDist(rng);
+          mr.IncreaseSegment(segments[idx].ms, 1);
+          segments[idx].size += 1;
+        }
+        else // Shrink (1-1 elem deletion/decrease)
+        {
+          std::uniform_int_distribution<size_t> indexDist(0, segments.size() - 1);
+          size_t idx = indexDist(rng);
+          if (segments[idx].size > 1)
+          {
+            mr.DecreaseSegment(segments[idx].ms, 1);
+            segments[idx].size -= 1;
+          }
+        }
+      }
+
+      for (auto& s : segments)
+        mr.Deallocate(s.ms);
+
+      state.SetItemsProcessed(state.iterations());
+    }
+
+    // TreeLikePattern: simulates a complete tree lifecycle, fully measured.
+    //
+    // state.range(0) = total entity count (entityNo).
+    //
+    // Each benchmark iteration = one full tree lifecycle:
+    //
+    //   Phase 1 — Create (75%, MEASURED):
+    //     Init primary to createEntityNo = entityNo * 3/4.
+    //     Allocate createNodeCount node segments (1-11 entities each, summing to
+    //     ~createEntityNo), filling the primary buffer.  No deletions here —
+    //     mirrors tree Create().  MemoryResource serves these from the
+    //     cache-friendly contiguous primary buffer.
+    //
+    //   Phase 2 — Dynamic ops (25%, MEASURED):
+    //     dynPoolSize nodes start fresh on the fallback/heap (primary is full).
+    //     dynOpCount random ops: 50% IncreaseSegment (+1 / AddNodeEntity),
+    //                            40% DecreaseSegment (-1 / RemoveNodeEntity),
+    //                            10% node rebuild (Deallocate + Allocate).
+    //
+    // SetItemsProcessed = (createNodeCount + dynOpCount) per iteration.
+    template<typename TMemoryResource>
+    static void TreeLikePattern(benchmark::State& state)
+    {
+      using T = uint64_t;
+      size_t const entityNo       = static_cast<size_t>(state.range(0));
+      size_t const createEntityNo = entityNo * 3 / 4;  // 75 %
+
+      constexpr size_t AVG_PER_NODE = 6; // realistic for maxElementNum = 11
+      size_t const createNodeCount  = std::max<size_t>(10, createEntityNo / AVG_PER_NODE);
+      size_t const dynOpCount       = std::max<size_t>(5,  createNodeCount / 3); // ≈25 %
+      constexpr size_t dynPoolSize  = 50;
+
+      // Pre-generate all random data outside the measured loop.
+      std::mt19937 rng(42);
+      std::uniform_int_distribution<size_t> createSzDist(1, 11);
+      std::uniform_int_distribution<size_t> dynSzDist(1, 8);
+      std::uniform_int_distribution<size_t> dynIdxDist(0, dynPoolSize - 1);
+      std::discrete_distribution<>          dynActionDist({ 50, 40, 10 });
+
+      std::vector<size_t> createSizes(createNodeCount);
+      for (auto& s : createSizes) s = createSzDist(rng);
+
+      std::vector<size_t> dynInitSizes(dynPoolSize);
+      for (auto& s : dynInitSizes) s = dynSzDist(rng);
+
+      struct DynOp { size_t idx; int action; size_t newSize; };
+      std::vector<DynOp> dynOps(dynOpCount);
+      for (auto& op : dynOps)
+        op = { dynIdxDist(rng), dynActionDist(rng), dynSzDist(rng) };
+
+      struct NodeSegment
+      {
+        typename TMemoryResource::MemorySegment ms;
+        size_t                                  size = 0;
+      };
+      std::vector<NodeSegment>           createNodes(createNodeCount);
+      std::array<NodeSegment, dynPoolSize> dynNodes;
+
+      // --- Measured loop: full lifecycle per iteration -------------------
+      for (auto _ : state)
+      {
+        TMemoryResource mr;
+
+        // Phase 1: Create — fill primary buffer with create-phase node segments.
+        if constexpr (requires { mr.Init(createEntityNo); })
+          mr.Init(createEntityNo);
+
+        {
+          size_t budget = createEntityNo;
+          for (size_t i = 0; i < createNodeCount; ++i)
+          {
+            size_t const sz  = (budget > 0) ? std::min(createSizes[i], budget) : 1;
+            createNodes[i]   = { mr.Allocate(sz), sz };
+            budget           = (budget >= sz) ? budget - sz : 0;
+          }
+        }
+
+        // Phase 2: Dynamic ops — primary full, all dyn nodes land on fallback.
+        for (size_t i = 0; i < dynPoolSize; ++i)
+          dynNodes[i] = { mr.Allocate(dynInitSizes[i]), dynInitSizes[i] };
+
+        for (auto const& op : dynOps)
+        {
+          auto& node = dynNodes[op.idx];
+          switch (op.action)
+          {
+          case 0: // AddNodeEntity: grow by 1
+            mr.IncreaseSegment(node.ms, 1);
+            ++node.size;
+            break;
+          case 1: // RemoveNodeEntity: shrink by 1
+            if (node.size > 1) { mr.DecreaseSegment(node.ms, 1); --node.size; }
+            break;
+          default: // Node rebuild
+            mr.Deallocate(node.ms);
+            node = { mr.Allocate(op.newSize), op.newSize };
+            break;
+          }
+        }
+
+        // Cleanup
+        for (auto& n : dynNodes)    mr.Deallocate(n.ms);
+        for (auto& n : createNodes) mr.Deallocate(n.ms);
+      }
+
+      state.SetItemsProcessed(state.iterations() * static_cast<int64_t>(createNodeCount + dynOpCount));
+    }
+
+    // Helper for std::allocator comparison baseline
+    struct StdAllocatorWrapper
+    {
+      using T = uint64_t;
+      struct MemorySegment
+      {
+        std::vector<T> data;
+      };
+      MemorySegment Allocate(size_t n) { return { std::vector<T>(n) }; }
+      void Deallocate(MemorySegment& ms) { std::vector<T>().swap(ms.data); } // release memory immediately (fair comparison)
+      void IncreaseSegment(MemorySegment& ms, size_t n) { ms.data.resize(ms.data.size() + n); }
+      void DecreaseSegment(MemorySegment& ms, size_t n)
+      {
+        if (ms.data.size() >= n)
+          ms.data.resize(ms.data.size() - n);
+      }
+    };
+
+  } // namespace Memory
 } // namespace Benchmarks
 
 static constexpr auto unit = benchmark::kMicrosecond;
+
+
+BENCHMARK(Benchmarks::Memory::Workload<detail::MemoryResource<uint64_t>>)->Arg(1000)->Arg(10000)->Arg(100'000)->Unit(benchmark::kMicrosecond);
+BENCHMARK(Benchmarks::Memory::Workload<Benchmarks::Memory::StdAllocatorWrapper>)->Arg(1000)->Arg(10000)->Arg(100'000)->Unit(benchmark::kMicrosecond);
+
+BENCHMARK(Benchmarks::Memory::TreeLikePattern<detail::MemoryResource<uint64_t>>)->Arg(1000)->Arg(10000)->Arg(100'000)->Unit(benchmark::kMicrosecond);
+BENCHMARK(Benchmarks::Memory::TreeLikePattern<Benchmarks::Memory::StdAllocatorWrapper>)->Arg(1000)->Arg(10000)->Arg(100'000)->Unit(benchmark::kMicrosecond);
 
 
 BENCHMARK(Benchmarks::Hashing::Morton_UnorderedMap_Lookup<std::hash<uint32_t>>)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kNanosecond);
