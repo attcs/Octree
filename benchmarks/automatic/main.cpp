@@ -1,3 +1,4 @@
+#include <bit>
 #include <iostream>
 #include <type_traits>
 
@@ -790,15 +791,57 @@ namespace Benchmarks
 
     static void RayIntersectedAll(benchmark::State& state) { RayIntersectedGeneral<false>(state); }
   }; // struct BoxBenchmarks
+
+  namespace Hashing
+  {
+    template<typename THash>
+    static void Morton_UnorderedMap_Lookup(benchmark::State& state)
+    {
+      using GA = GeneralGeometryAdapterND<3>;
+      constexpr dim_t DIMENSION_NO = 3;
+      constexpr depth_t depth = 19;
+      using SI = detail::MortonSpaceIndexing<DIMENSION_NO, depth>;
+      using NodeID = typename SI::NodeID;
+      using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, NodeID, typename SI::ChildID, uint32_t, PointND<DIMENSION_NO>>;
+
+      size_t const entityNo = state.range();
+      auto const points = GeneratePointsRandom<DIMENSION_NO>(entityNo);
+      auto const boxSpace = CreateSearcBox<DIMENSION_NO>(0, rMax);
+      detail::MortonGridSpaceIndexing<GA, true, 1.0, depth> modelSpaceGrid(depth, detail::InternalGeometryModule<GA>::GetBoxAD(boxSpace));
+
+      std::vector<NodeID> nodeIDs;
+      nodeIDs.reserve(std::bit_ceil(entityNo));
+      for (auto const& p : points)
+        nodeIDs.push_back(modelSpaceGrid.GetNodeID(p));
+
+      std::unordered_map<NodeID, Node, THash> nodeMap;
+      nodeMap.reserve(std::bit_ceil(entityNo));
+      for (auto const& id : nodeIDs)
+        nodeMap.emplace(id, Node{});
+
+      for (auto _ : state)
+      {
+        for (auto const& id : nodeIDs)
+          benchmark::DoNotOptimize(nodeMap.at(id));
+      }
+
+      state.SetItemsProcessed(state.iterations() * entityNo);
+    }
+  } // namespace Hashing
 } // namespace Benchmarks
+
+static constexpr auto unit = benchmark::kMicrosecond;
+
+
+BENCHMARK(Benchmarks::Hashing::Morton_UnorderedMap_Lookup<std::hash<uint32_t>>)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kNanosecond);
+BENCHMARK(Benchmarks::Hashing::Morton_UnorderedMap_Lookup<detail::SentinelMortonHash<uint32_t>>)->Arg(1000)->Arg(10000)->Arg(100000)->Unit(benchmark::kNanosecond);
+
 
 BENCHMARK(Benchmarks::Base::GetNodeID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GetDepthID)->Arg(1000)->Unit(benchmark::kNanosecond);
 // BENCHMARK(Benchmarks::Base::GetNodeEntities)->Arg(10000)->Arg(100000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetPointGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
 BENCHMARK(Benchmarks::Base::GridSpaceIndexing_GetBoxGridID)->Arg(1000)->Unit(benchmark::kNanosecond);
-
-static constexpr auto unit = benchmark::kMicrosecond;
 
 
 // Point tree dynamic-only benchmarks
@@ -823,7 +866,7 @@ static constexpr auto unit = benchmark::kMicrosecond;
 #define POINT_BENCHMARKS(NAME, IS_DYN, NODE_STORAGE, USE_REVERSE_MAPPING, USE_PMR)                                                                    \
   namespace Benchmarks                                                                                                                                \
   {                                                                                                                                                   \
-    using NAME = PointBenchmarks<TreeType::CONCAT(IS_DYN, Ortho), NODE_STORAGE, USE_REVERSE_MAPPING>;                                                                \
+    using NAME = PointBenchmarks<TreeType::CONCAT(IS_DYN, Ortho), NODE_STORAGE, USE_REVERSE_MAPPING>;                                                 \
   }                                                                                                                                                   \
   BENCHMARK(Benchmarks::NAME::Create<3, SeqExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
   BENCHMARK(Benchmarks::NAME::Create<3, ParExec>)->Arg(10)->Arg(20)->Arg(50)->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)->Arg(1000000)->Unit(unit); \
