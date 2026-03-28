@@ -69,6 +69,43 @@ namespace OrthoTree
 {
   namespace detail
   {
+    template<typename T>
+    struct SentinelMortonHash
+    {
+      std::size_t operator()(T code) const noexcept
+      {
+#if defined(_MSC_VER)
+        if constexpr (sizeof(T) == 8)
+        {
+          if constexpr (sizeof(std::size_t) == 4)
+          {
+            uint32_t lo = (uint32_t)(code);
+            uint32_t hi = (uint32_t)(code >> 32);
+            uint32_t folded = lo ^ hi;
+            folded ^= folded >> 16;
+            folded *= 0x45d9f3bU;
+            folded ^= folded >> 16;
+            return static_cast<std::size_t>(folded);
+          }
+          else
+          {
+            code ^= code >> 30;
+            code *= 0xbf58476d1ce4e5b9ULL;
+            code ^= code >> 27;
+            code *= 0x94d049bb133111ebULL;
+            return static_cast<std::size_t>(code ^ (code >> 31));
+          }
+        }
+        else
+        {
+          return std::hash<T>{}(code);
+        }
+#else
+        return std::hash<uint64_t>{}(code);
+#endif
+      }
+    };
+
     template<std::size_t CHILD_NO, typename NodeID, typename ChildID, typename EntityID, typename Geometry>
     class OrthoTreeNodeData
     {
@@ -258,7 +295,7 @@ namespace OrthoTree
     using Node = detail::OrthoTreeNodeData<SI::CHILD_NO, NodeID, typename SI::ChildID, EntityID, NodeGeometry>;
 
     template<typename TData>
-    using LinearNodeContainer = typename CONFIG::template UMapNodeContainer<NodeID, TData, std::hash<NodeID>>;
+    using LinearNodeContainer = typename CONFIG::template UMapNodeContainer<NodeID, TData, detail::SentinelMortonHash<NodeID>>;
 
     template<typename TData>
     using NonLinearNodeContainer = typename CONFIG::template MapNodeContainer<NodeID, TData, bitset_arithmetic_compare>;
