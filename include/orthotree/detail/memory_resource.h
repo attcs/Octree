@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2021 Attila Csik�s
+Copyright (c) 2021 Attila Csikós
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,6 @@ SOFTWARE.
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -40,618 +39,550 @@ SOFTWARE.
 #include <utility>
 #include <vector>
 
-
 namespace OrthoTree::detail
 {
 
-  // MemoryResource is paged-vector style memory handler which allows to make segment deallocation independently from allocation (e.g. middle
-  // allocated segment's middle part can be deallocated). Main page is prioritized to reduce heap allocations and being cache efficient.
-  // Note: This class manages raw memory only; it does not construct or destruct objects. The caller is responsible for object lifetime.
-  template<typename T>
-  class MemoryResource
+// ============================================================================
+// RawPage
+// Typed heap buffer without object-lifetime management.
+// Construction / destruction of T is the caller's responsibility, except when
+// T is default-constructible and non-trivially-copyable (handled automatically).
+// ============================================================================
+template<typename T>
+struct RawPage
+{
+  T*          data     = nullptr;
+  std::size_t size     = 0;      // logical used size
+  std::size_t capacity = 0;      // physical allocation size
+
+  RawPage() = default;
+  RawPage(RawPage const&)            = delete;
+  RawPage& operator=(RawPage const&) = delete;
+
+  RawPage(RawPage&& o) noexcept : data(o.data), size(o.size), capacity(o.capacity)
   {
-  public:
-#ifdef ORTHOTREE__LARGE_DATASET
-    using Index = std::uint64_t;
-#else
-    using Index = std::uint32_t;
-#endif
+    o.data = nullptr;
+    o.size = o.capacity = 0;
+  }
 
-    using PageID = std::uint32_t;
-
-    static constexpr Index INVALID_PAGEID = std::numeric_limits<Index>::max();
-    static constexpr Index MAIN_PAGEID = 0;
-    static constexpr std::size_t MIN_SEGMENT_SIZE = 4;
-    static constexpr std::size_t DEFAULT_PAGE_SIZE = 4096 / sizeof(T);
-
-    using Segment = std::span<T>;
-    struct MemorySegment
+  RawPage& operator=(RawPage&& o) noexcept
+  {
+    if (this != &o)
     {
-      PageID pageID = MAIN_PAGEID;
-      Segment segment;
-    };
-
-  private:
-    struct IndexedSegment
-    {
-      Index begin = 0;
-      Index capacity = 0;
-    };
-
-    // Page structure that manages raw memory without requiring default-constructible T
-    struct Page
-    {
-      T* data = nullptr;
-      std::size_t size = 0;         // Total allocated size (capacity for main page, used for arena pages)
-      std::size_t capacity = 0;     // Allocated capacity
-      std::size_t segmentCount = 0; // Number of active segments (for arena pages)
-
-      Page() = default;
-      Page(Page const&) = delete;
-      Page& operator=(Page const&) = delete;
-
-      Page(Page&& other) noexcept
-      : data(other.data)
-      , size(other.size)
-      , capacity(other.capacity)
-      , segmentCount(other.segmentCount)
-      {
-        other.data = nullptr;
-        other.size = 0;
-        other.capacity = 0;
-        other.segmentCount = 0;
-      }
-
-      Page& operator=(Page&& other) noexcept
-      {
-        if (this != &other)
-        {
-          deallocate();
-          data = other.data;
-          size = other.size;
-          capacity = other.capacity;
-          segmentCount = other.segmentCount;
-          other.data = nullptr;
-          other.size = 0;
-          other.capacity = 0;
-          other.segmentCount = 0;
-        }
-        return *this;
-      }
-
-      ~Page() { deallocate(); }
-
-      void allocate(std::size_t cap)
-      {
-        deallocate();
-        if (cap > 0)
-        {
-          data = std::allocator<T>{}.allocate(cap);
-          capacity = cap;
-          size = cap;
-          // Trivially copyable: no initialization needed (assignment is just memcpy)
-          // Default-constructible but not trivially copyable: must construct for valid assignment
-          // Non-default-constructible: leave uninitialized (client uses placement new)
-          if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-          {
-            std::uninitialized_default_construct_n(data, cap);
-          }
-        }
-      }
-
-      void deallocate()
-      {
-        if (data)
-        {
-          // Only destroy if we constructed them (non-trivially-copyable but default-constructible)
-          if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T> && !std::is_trivially_destructible_v<T>)
-          {
-            std::destroy_n(data, size);
-          }
-          std::allocator<T>{}.deallocate(data, capacity);
-          data = nullptr;
-          size = 0;
-          capacity = 0;
-        }
-      }
-
-      void resize(std::size_t newSize)
-      {
-        if (newSize > capacity)
-        {
-          T* newData = std::allocator<T>{}.allocate(newSize);
-          if (data && size > 0)
-          {
-            if constexpr (std::is_trivially_copyable_v<T>)
-              std::memcpy(newData, data, size * sizeof(T));
-            else
-              std::uninitialized_move_n(data, size, newData);
-          }
-          // Construct new elements only if needed
-          if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-          {
-            std::uninitialized_default_construct_n(newData + size, newSize - size);
-          }
-          deallocate();
-          data = newData;
-          capacity = newSize;
-        }
-        else if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-        {
-          if (newSize > size)
-          {
-            std::uninitialized_default_construct_n(data + size, newSize - size);
-          }
-          else if constexpr (!std::is_trivially_destructible_v<T>)
-          {
-            std::destroy_n(data + newSize, size - newSize);
-          }
-        }
-        size = newSize;
-      }
-
-      T* begin() const noexcept { return data; }
-      T* end() const noexcept { return data + size; }
-      T& operator[](std::size_t i) const noexcept { return data[i]; }
-      bool empty() const noexcept { return size == 0; }
-    };
-
-  public:
-    MemoryResource() = default;
-    MemoryResource(MemoryResource const&) = delete;
-    MemoryResource(MemoryResource&&) = default;
-
-  public:
-    void Init(std::size_t firstPageSize = DEFAULT_PAGE_SIZE) noexcept
-    {
-      m_pages.reserve(10);
-      m_pages.emplace_back();
-      m_pages.back().allocate(firstPageSize + MIN_SEGMENT_SIZE);
-      m_freeMainSegments.reserve(10);
-      m_freeMainSegments.emplace_back(IndexedSegment{ 0, Index(m_pages[0].size) });
+      Free();
+      data = o.data; size = o.size; capacity = o.capacity;
+      o.data = nullptr; o.size = o.capacity = 0;
     }
+    return *this;
+  }
 
-    constexpr std::size_t GetCapacity() const noexcept
+  ~RawPage() { Free(); }
+
+  void Allocate(std::size_t cap)
+  {
+    Free();
+    if (cap == 0)
+      return;
+    data     = std::allocator<T>{}.allocate(cap);
+    capacity = cap;
+    size     = cap;
+    if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+      std::uninitialized_default_construct_n(data, cap);
+  }
+
+  void Free() noexcept
+  {
+    if (!data)
+      return;
+    if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T> && !std::is_trivially_destructible_v<T>)
+      std::destroy_n(data, size);
+    std::allocator<T>{}.deallocate(data, capacity);
+    data = nullptr; size = capacity = 0;
+  }
+
+  // Grow-only resize: allocates more if needed, default-constructs new elements.
+  void Resize(std::size_t newSize)
+  {
+    if (newSize > capacity)
     {
-      std::size_t sumsize = std::size_t{};
-      for (auto const& page : m_pages)
-        sumsize += page.capacity;
-      return sumsize;
-    }
-
-    constexpr std::size_t GetFreeCapacity() const noexcept
-    {
-      std::size_t sumsize = std::size_t{};
-      for (auto const& segment : m_freeMainSegments)
-        sumsize += segment.capacity;
-      return sumsize;
-    }
-
-    constexpr std::size_t GetSize() const noexcept { return GetCapacity() - GetFreeCapacity(); }
-
-    void Clone(MemoryResource& resource, std::vector<MemorySegment*> memorySegments) const noexcept
-    {
-      auto sumsize = std::size_t{};
-      for (auto pms : memorySegments)
-        sumsize += pms->segment.size();
-
-      resource.m_pages.resize(1);
-      auto& page = resource.m_pages[0];
-      page.resize(sumsize);
-
-      auto destIt = page.data;
-      for (auto pms : memorySegments)
+      T* nd = std::allocator<T>{}.allocate(newSize);
+      if (data && size > 0)
       {
-        auto const size = pms->segment.size();
-        if (size == 0)
-          continue;
-
         if constexpr (std::is_trivially_copyable_v<T>)
-          std::memcpy(destIt, pms->segment.data(), size * sizeof(T));
+          std::memcpy(nd, data, size * sizeof(T));
         else
-          std::uninitialized_copy_n(pms->segment.data(), size, destIt);
-
-        pms->pageID = MAIN_PAGEID;
-        pms->segment = std::span(destIt, size);
-
-        destIt += size;
+          std::uninitialized_move_n(data, size, nd);
       }
+      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+        std::uninitialized_default_construct_n(nd + size, newSize - size);
+      Free();
+      data     = nd;
+      capacity = newSize;
     }
-
-    void Reset() noexcept
+    else if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
     {
-      m_pages.clear();
-      m_freeMainSegments.clear();
-      m_freedPages.clear();
+      if (newSize > size)
+        std::uninitialized_default_construct_n(data + size, newSize - size);
+      else if constexpr (!std::is_trivially_destructible_v<T>)
+        std::destroy_n(data + newSize, size - newSize);
     }
+    size = newSize;
+  }
+};
 
-    void IncreaseSegment(MemorySegment& ms, std::size_t sizeIncrease) noexcept
+
+// ============================================================================
+// FixedBufferAllocator
+// Single pre-allocated buffer + address-sorted free list.
+//   • TryAllocate  : O(k) first-fit linear scan (k = free-segment count, typically < 32)
+//   • TryExtend    : O(log k) binary search
+//   • DeallocateRange : O(log k) binary search + O(k) insert/erase (rare)
+// Free list is kept sorted by begin address, enabling O(log k) neighbour
+// lookup during coalescing (vs. the old capacity-sorted scheme which needed
+// O(k) linear scans for FindConnecting/PrecedingFreeSegment).
+// ============================================================================
+template<typename T>
+class FixedBufferAllocator
+{
+public:
+#ifdef ORTHOTREE__LARGE_DATASET
+  using Index = std::uint64_t;
+#else
+  using Index = std::uint32_t;
+#endif
+
+  static constexpr std::size_t MIN_SEGMENT_SIZE = 4;
+
+private:
+  struct FreeSegment { Index begin = 0; Index capacity = 0; };
+
+  RawPage<T>               m_page;
+  std::vector<FreeSegment> m_free; // sorted ascending by begin address
+
+public:
+  void Init(std::size_t pageSize)
+  {
+    m_page.Allocate(pageSize + MIN_SEGMENT_SIZE);
+    m_free.reserve(16);
+    m_free.push_back({ 0, Index(m_page.size) });
+  }
+
+  T*          DataBegin() const noexcept { return m_page.data; }
+  std::size_t Capacity()  const noexcept { return m_page.capacity; }
+
+  std::size_t FreeCapacity() const noexcept
+  {
+    std::size_t s = 0;
+    for (auto const& f : m_free) s += f.capacity;
+    return s;
+  }
+
+  bool Owns(T const* ptr) const noexcept
+  {
+    return ptr >= m_page.data && ptr < m_page.data + m_page.size;
+  }
+
+  // First-fit allocation: O(k) scan. Small leftover fragments (< MIN_SEGMENT_SIZE)
+  // are consumed whole to avoid unusable slivers.
+  std::span<T> TryAllocate(std::size_t n) noexcept
+  {
+    for (auto it = m_free.begin(); it != m_free.end(); ++it)
     {
-      if (ms.segment.empty())
-      {
-        ms = Allocate(sizeIncrease);
-        return;
-      }
+      if (it->capacity < Index(n))
+        continue;
 
-      if (ms.pageID == MAIN_PAGEID)
+      T*         ptr       = m_page.data + it->begin;
+      auto const remaining = it->capacity - Index(n);
+
+      if (remaining < MIN_SEGMENT_SIZE)
       {
-        // Main page: try to extend into adjacent free segment
-        auto const sizeIncrease_ = Index(sizeIncrease);
-        auto freeSegmentIt = GetConnectingFreeSegment(ms.segment);
-        if (freeSegmentIt != m_freeMainSegments.end() && freeSegmentIt->capacity >= sizeIncrease_)
-        {
-          auto const begin = GetMainPageIndexOfBegin(ms.segment);
-          auto& page = m_pages[MAIN_PAGEID];
-          ms.segment = std::span(page.data + begin, ms.segment.size() + sizeIncrease);
-          HandleFreeSegmentChange(freeSegmentIt, freeSegmentIt->begin + sizeIncrease_, freeSegmentIt->capacity - sizeIncrease_);
-          return;
-        }
+        m_free.erase(it); // consume whole segment, no tiny leftover
       }
       else
       {
-        // Arena page: check if this segment is at the end and can extend
-        auto& page = m_pages[ms.pageID];
-        T* segmentEnd = ms.segment.data() + ms.segment.size();
-        T* pageUsedEnd = page.data + page.size;
-
-        if (segmentEnd == pageUsedEnd)
-        {
-          // Segment is at the end of used portion - can we extend within capacity?
-          std::size_t remaining = page.capacity - page.size;
-          if (remaining >= sizeIncrease)
-          {
-            page.size += sizeIncrease;
-            ms.segment = std::span(ms.segment.data(), ms.segment.size() + sizeIncrease);
-
-            // Construct new elements if needed
-            if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-            {
-              std::uninitialized_default_construct_n(segmentEnd, sizeIncrease);
-            }
-            return;
-          }
-        }
+        it->begin    += Index(n); // trim from front; order preserved
+        it->capacity  = remaining;
       }
+      return { ptr, n };
+    }
+    return {};
+  }
 
-      // Fallback: allocate new segment and copy
-      auto newPool = Allocate(ms.segment.size() + sizeIncrease);
+  // O(log k): extend seg into the immediately following free segment.
+  bool TryExtend(std::span<T>& seg, std::size_t increase) noexcept
+  {
+    if (seg.empty())
+      return false;
+    auto const endIdx    = IndexOf(seg.data()) + Index(seg.size());
+    auto const increase_ = Index(increase);
+
+    auto it = LowerBoundBegin(endIdx);
+    if (it == m_free.end() || it->begin != endIdx || it->capacity < increase_)
+      return false;
+
+    it->begin    += increase_;
+    it->capacity -= increase_;
+    if (it->capacity == 0)
+      m_free.erase(it);
+    seg = std::span<T>(seg.data(), seg.size() + increase);
+    return true;
+  }
+
+  // Return the tail `sizeDecrease` elements back to the free list and shrink seg.
+  void Trim(std::span<T>& seg, std::size_t sizeDecrease) noexcept
+  {
+    assert(seg.size() > sizeDecrease);
+    DeallocateRange(std::span<T>(seg.data() + seg.size() - sizeDecrease, sizeDecrease));
+    seg = seg.first(seg.size() - sizeDecrease);
+  }
+
+  void Deallocate(std::span<T> seg) noexcept
+  {
+    if (!seg.empty())
+      DeallocateRange(seg);
+  }
+
+  void Reset() noexcept
+  {
+    m_page.Free();
+    m_free.clear();
+  }
+
+  // Copy-compact all non-empty spans into a single contiguous block at the
+  // start of this page. Updates each span pointer in-place.
+  // Precondition: this allocator is fresh / reset.
+  void CompactInto(std::vector<std::span<T>*>& spans, std::size_t totalSize)
+  {
+    m_page.Resize(totalSize);
+    T* dest = m_page.data;
+    for (auto* s : spans)
+    {
+      if (s->empty())
+        continue;
+      auto const n = s->size();
       if constexpr (std::is_trivially_copyable_v<T>)
-        std::memcpy(newPool.segment.data(), ms.segment.data(), ms.segment.size() * sizeof(T));
+        std::memcpy(dest, s->data(), n * sizeof(T));
       else
-        std::uninitialized_move_n(ms.segment.data(), ms.segment.size(), newPool.segment.data());
+        std::uninitialized_copy_n(s->data(), n, dest);
+      *s = std::span<T>(dest, n);
+      dest += n;
+    }
+    m_free.clear();
+    std::size_t remaining = m_page.capacity - totalSize;
+    if (remaining > MIN_SEGMENT_SIZE)
+      m_free.push_back({ Index(totalSize), Index(remaining) });
+  }
 
-      Deallocate(ms);
-      ms = newPool;
+private:
+  Index IndexOf(T const* ptr) const noexcept { return Index(ptr - m_page.data); }
+
+  // First free segment with begin >= val.
+  auto LowerBoundBegin(Index val) noexcept
+  {
+    return std::lower_bound(m_free.begin(), m_free.end(), val,
+      [](FreeSegment const& f, Index v) { return f.begin < v; });
+  }
+
+  // O(log k): return freed region to the free list, coalescing with neighbours.
+  void DeallocateRange(std::span<T> seg) noexcept
+  {
+    auto const beginIdx = IndexOf(seg.data());
+    auto const segSize  = Index(seg.size());
+    auto const endIdx   = beginIdx + segSize;
+
+    // First free segment that starts at or after the freed block's end.
+    auto nextIt  = LowerBoundBegin(endIdx);
+    bool hasNext = (nextIt != m_free.end()) && (nextIt->begin == endIdx);
+
+    // The potential predecessor is the entry immediately before nextIt.
+    auto prevIt  = nextIt;
+    bool hasPrev = false;
+    if (nextIt != m_free.begin())
+    {
+      --prevIt;
+      hasPrev = (prevIt->begin + prevIt->capacity == beginIdx);
     }
 
-    void DecreaseSegment(MemorySegment& ms, std::size_t sizeDecrease)
+    if (hasPrev && hasNext)
     {
-      if (ms.segment.empty())
-        return;
-
-      assert(ms.segment.size() >= sizeDecrease);
-      if (ms.pageID == MAIN_PAGEID)
-      {
-        auto freeMemorySegment = ms;
-        freeMemorySegment.segment = ms.segment.last(sizeDecrease);
-        Deallocate(freeMemorySegment);
-      }
-      else
-      {
-        if (ms.segment.size() == sizeDecrease)
-        {
-          Deallocate(ms);
-        }
-        else
-        {
-          auto& page = m_pages[ms.pageID];
-          T* segmentEnd = ms.segment.data() + ms.segment.size();
-          T* pageUsedEnd = page.data + page.size;
-
-          if (segmentEnd == pageUsedEnd)
-            page.resize(page.size - sizeDecrease);
-        }
-      }
-
-      ms.segment = ms.segment.first(ms.segment.size() - sizeDecrease);
+      prevIt->capacity += segSize + nextIt->capacity; // merge all three
+      m_free.erase(nextIt);
+    }
+    else if (hasPrev)
+    {
+      prevIt->capacity += segSize;
+    }
+    else if (hasNext)
+    {
+      nextIt->begin     = beginIdx;  // extend backwards
+      nextIt->capacity += segSize;
+    }
+    else
+    {
+      m_free.insert(nextIt, FreeSegment{ beginIdx, segSize }); // new isolated block
     }
 
-    MemorySegment Allocate(std::size_t capacity) noexcept
-    {
-      ORTHOTREE_CRASH_IF(capacity > std::numeric_limits<Index>::max(), "Too many elements. Use ORTHOTREE__LARGE_DATASET!");
-
-      auto const capacity_ = Index(capacity);
-
-      auto freeSegmentIt = GetFreeSegmentByCapacity(capacity);
-      assert(freeSegmentIt == m_freeMainSegments.end() || freeSegmentIt->capacity >= capacity_);
-
-      auto ms = MemorySegment{};
-      if (freeSegmentIt != m_freeMainSegments.end())
-      {
-        // Allocate from main page (PAGE 0) - best-fit from free segments
-        ms.pageID = MAIN_PAGEID;
-        ms.segment = std::span(m_pages[0].data + freeSegmentIt->begin, capacity);
-        HandleFreeSegmentChange(freeSegmentIt, freeSegmentIt->begin + capacity_, freeSegmentIt->capacity - capacity_);
-      }
-      else
-      {
-        // Arena-style allocation from overflow pages
-        ms = AllocateFromArena(capacity);
-      }
-
-      return ms;
-    }
-
-  private:
-    MemorySegment AllocateFromArena(std::size_t capacity) noexcept
-    {
-      auto ms = MemorySegment{};
-
-      // Try to append to current arena page (last non-main page)
-      if (m_pages.size() > 1)
-      {
-        auto& currentArena = m_pages.back();
-        std::size_t remaining = currentArena.capacity - currentArena.size;
-        if (remaining >= capacity)
-        {
-          // Append to current arena
-          ms.pageID = Index(m_pages.size() - 1);
-          ms.segment = std::span(currentArena.data + currentArena.size, capacity);
-          currentArena.size += capacity;
-          currentArena.segmentCount++;
-
-          // Construct elements if needed
-          if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-          {
-            std::uninitialized_default_construct_n(ms.segment.data(), capacity);
-          }
-          return ms;
-        }
-      }
-
-      // Need new arena page - size it based on expected usage pattern
-      // Use at least DEFAULT_PAGE_SIZE or 2x requested capacity
-      std::size_t arenaSize = std::max(DEFAULT_PAGE_SIZE, capacity * 2);
-
-      // Check if we can reuse a freed page
-      if (!m_freedPages.empty())
-      {
-        ms.pageID = m_freedPages.back();
-        m_freedPages.pop_back();
-        m_pages[ms.pageID].allocate(arenaSize);
-      }
-      else
-      {
-        ms.pageID = Index(m_pages.size());
-        m_pages.emplace_back();
-        m_pages.back().allocate(arenaSize);
-      }
-
-      auto& newArena = m_pages[ms.pageID];
-      newArena.size = capacity; // Used portion
-      newArena.segmentCount = 1;
-      ms.segment = std::span(newArena.data, capacity);
-
-      return ms;
-    }
-
-  public:
-    void Deallocate(MemorySegment const& ms) noexcept
-    {
-      if (ms.segment.empty())
-        return;
-
-      if (ms.pageID == MAIN_PAGEID)
-      {
-        auto nextSegmentIt = GetConnectingFreeSegment(ms.segment);
-        auto prevSegmentIt = GetPreviousFreeSegment(ms.segment);
-        auto const segmentSize = Index(ms.segment.size());
-        if (prevSegmentIt != m_freeMainSegments.end() && nextSegmentIt != m_freeMainSegments.end())
-        {
-          auto const begin = prevSegmentIt->begin;
-          auto const capacity = prevSegmentIt->capacity + segmentSize + nextSegmentIt->capacity;
-
-          // one of the segments will be erased that cause iterator invalidation to the next elements
-          if (prevSegmentIt < nextSegmentIt)
-          {
-            HandleFreeSegmentChange(nextSegmentIt, 0, 0);
-            HandleFreeSegmentChange(prevSegmentIt, begin, capacity);
-          }
-          else
-          {
-            HandleFreeSegmentChange(prevSegmentIt, 0, 0);
-            HandleFreeSegmentChange(nextSegmentIt, begin, capacity);
-          }
-        }
-        else if (prevSegmentIt != m_freeMainSegments.end())
-        {
-          HandleFreeSegmentChange(prevSegmentIt, prevSegmentIt->begin, prevSegmentIt->capacity + segmentSize);
-        }
-        else if (nextSegmentIt != m_freeMainSegments.end())
-        {
-          HandleFreeSegmentChange(nextSegmentIt, nextSegmentIt->begin - segmentSize, nextSegmentIt->capacity + segmentSize);
-        }
-        else
-        {
-          if (m_freeMainSegments.empty())
-          {
-            m_freeMainSegments.push_back({ GetMainPageIndexOfBegin(ms.segment), segmentSize });
 #ifdef _DEBUG
-            FillWithPattern(m_freeMainSegments.back());
+    if constexpr (std::is_integral_v<T>)
+      std::fill(seg.begin(), seg.end(), std::numeric_limits<T>::max());
+    assert(CheckFreeList());
 #endif
-          }
-          else
-          {
-            // Insert new free segment for the freed range. The capacity of the
-            // newly freed segment is the segmentSize, not the last free segment's
-            // capacity. Use emplace_back and then handle the inserted element.
-            auto const begin = GetMainPageIndexOfBegin(ms.segment);
-            m_freeMainSegments.emplace_back(IndexedSegment{ begin, std::numeric_limits<Index>::max() });
-            HandleFreeSegmentChange(m_freeMainSegments.end() - 1, begin, segmentSize);
-          }
-        }
-      }
-      else
-      {
-        // Arena page deallocation - decrement segment count
-        auto& arenaPage = m_pages[ms.pageID];
-        assert(arenaPage.segmentCount > 0);
-        arenaPage.segmentCount--;
+  }
 
-        // If arena page is now empty, we can reclaim it
-        if (arenaPage.segmentCount == 0)
-        {
-          if (ms.pageID == Index(m_pages.size() - 1))
-          {
-            // Last page - just pop it
-            m_pages.pop_back();
-            // Also pop any trailing empty pages
-            while (m_pages.size() > 1 && m_pages.back().segmentCount == 0 && m_pages.back().data == nullptr)
-            {
-              m_pages.pop_back();
-            }
-          }
-          else
-          {
-            // Middle page - mark as reusable
-            arenaPage.deallocate();
-            m_freedPages.emplace_back(ms.pageID);
-          }
-        }
-        // else: Arena page still has other segments, memory stays allocated (no fragmentation tracking)
-      }
-    }
+  [[maybe_unused]] bool CheckFreeList() const noexcept
+  {
+    for (std::size_t i = 1; i < m_free.size(); ++i)
+      if (m_free[i - 1].begin + m_free[i - 1].capacity > m_free[i].begin)
+        return false;
+    return true;
+  }
 
-  private:
-    inline auto GetMainPageIndexOfBegin(Segment const& pool) const noexcept { return Index(pool.data() - m_pages[MAIN_PAGEID].data); }
+  template<typename T2>
+  friend class MemoryResource;
+};
 
-    inline auto GetMainPageIndexOfEnd(Segment const& pool) const noexcept { return Index(pool.data() - m_pages[MAIN_PAGEID].data + pool.size()); }
 
-    void HandleFreeSegmentChange(auto freeSegmentIt, Index newBegin, Index newCapacity) noexcept
-    {
-      assert(newCapacity != Index(-1));
+// ============================================================================
+// HeapFallbackAllocator
+// Each allocation is an independent heap allocation freed immediately on
+// Deallocate(). The capacity is implicit in the span size — no auxiliary
+// bookkeeping map needed, eliminating the unordered_map overhead.
+// ============================================================================
+template<typename T>
+class HeapFallbackAllocator
+{
+public:
+  // Allocate n elements; span.size() == capacity (no separate tracking).
+  std::span<T> Allocate(std::size_t n) noexcept
+  {
+    T* ptr = std::allocator<T>{}.allocate(n);
+    if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+      std::uninitialized_default_construct_n(ptr, n);
+    return { ptr, n };
+  }
 
-      if (newCapacity == 0)
-      {
-        m_freeMainSegments.erase(freeSegmentIt);
-        return;
-      }
+  // Immediately free the allocation; seg.size() is used as the capacity.
+  void Deallocate(std::span<T> seg) noexcept
+  {
+    if (seg.empty())
+      return;
+    if constexpr (!std::is_trivially_copyable_v<T> && !std::is_trivially_destructible_v<T>)
+      std::destroy_n(seg.data(), seg.size());
+    std::allocator<T>{}.deallocate(seg.data(), seg.size());
+  }
 
-      auto freeSegmentResultIt = freeSegmentIt;
+  // Reallocate to newSize, preserving existing data. Old span is freed.
+  std::span<T> Reallocate(std::span<T> old, std::size_t newSize) noexcept
+  {
+    if (newSize == 0) { Deallocate(old); return {}; }
+    auto const copy = std::min(old.size(), newSize);
+    T* nd = std::allocator<T>{}.allocate(newSize);
+    if constexpr (std::is_trivially_copyable_v<T>)
+      std::memcpy(nd, old.data(), copy * sizeof(T));
+    else
+      std::uninitialized_move_n(old.data(), copy, nd);
+    if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+      if (newSize > copy)
+        std::uninitialized_default_construct_n(nd + copy, newSize - copy);
+    Deallocate(old);
+    return { nd, newSize };
+  }
 
-      // this loops defer the new value assignment, until it finds the final place
-      if (newCapacity < freeSegmentIt->capacity)
-      {
-        for (; freeSegmentIt != m_freeMainSegments.begin() && (freeSegmentIt - 1)->capacity > newCapacity; --freeSegmentIt)
-        {
-          --freeSegmentResultIt;
-          *freeSegmentIt = std::move(*freeSegmentResultIt);
-        }
-      }
-      else
-      {
-        for (auto const lastFreeSegmentIt = m_freeMainSegments.end() - 1;
-             freeSegmentIt != lastFreeSegmentIt && (freeSegmentIt + 1)->capacity < newCapacity;
-             ++freeSegmentIt)
-        {
-          ++freeSegmentResultIt;
-          *freeSegmentIt = std::move(*freeSegmentResultIt);
-        }
-      }
+  // Ownership is tracked by MemorySegment::pageID, not here.
+  bool        Owns(T const*)  const noexcept { return false; }
+  std::size_t TotalCapacity() const noexcept { return 0; }
 
-      freeSegmentResultIt->begin = newBegin;
-      freeSegmentResultIt->capacity = newCapacity;
-#ifdef _DEBUG
-      FillWithPattern(*freeSegmentResultIt);
+  // No-op: callers must Deallocate() each segment individually.
+  // (MemoryResource guarantees all segments are freed before Reset/destruction.)
+  void Reset() noexcept {}
+
+  template<typename T2>
+  friend class MemoryResource;
+};
+
+
+// ============================================================================
+// MemoryResource
+// Chains FixedBufferAllocator (primary, cache-friendly pre-allocated buffer)
+// and HeapFallbackAllocator (fallback, zero-leak individual heap allocations).
+//
+// PageID == PRIMARY_PAGEID  → owned by FixedBufferAllocator
+// PageID == FALLBACK_PAGEID → owned by HeapFallbackAllocator
+// ============================================================================
+template<typename T>
+class MemoryResource
+{
+public:
+#ifdef ORTHOTREE__LARGE_DATASET
+  using Index = std::uint64_t;
+#else
+  using Index = std::uint32_t;
 #endif
-      assert(CheckFreeSegments());
-    }
 
-    constexpr bool CheckFreeSegments() const noexcept
-    {
-#ifdef _DEBUG
-      if (m_freeMainSegments.size() <= 1)
-        return true;
+  using PageID = std::uint32_t;
 
-      auto segments = m_freeMainSegments;
+  static constexpr PageID PRIMARY_PAGEID  = 0;
+  static constexpr PageID FALLBACK_PAGEID = 1;
+  static constexpr PageID MAIN_PAGEID     = PRIMARY_PAGEID; // legacy alias for serialization
+  static constexpr PageID INVALID_PAGEID  = std::numeric_limits<PageID>::max();
 
-      std::sort(segments.begin(), segments.end(), [](const auto& a, const auto& b) { return a.begin < b.begin; });
+  static constexpr std::size_t MIN_SEGMENT_SIZE  = FixedBufferAllocator<T>::MIN_SEGMENT_SIZE;
+  static constexpr std::size_t DEFAULT_PAGE_SIZE = 4096 / sizeof(T);
 
-      for (size_t i = 1; i < segments.size(); ++i)
-      {
-        const auto& prev = segments[i - 1];
-        const auto& curr = segments[i];
-        if (prev.begin + prev.capacity > curr.begin)
-        {
-          return false;
-        }
-      }
-#endif
-      return true;
-    }
+  using Segment = std::span<T>;
 
-    constexpr void FillWithPattern(IndexedSegment const& segment) noexcept
-    {
-      if constexpr (std::is_integral_v<T> && std::is_default_constructible_v<T>)
-      {
-        std::fill(m_pages[0].data + segment.begin, m_pages[0].data + segment.begin + segment.capacity, std::numeric_limits<T>::max());
-      }
-    }
-
-    constexpr auto GetFreeSegmentByCapacity(std::size_t capacity) noexcept
-    {
-      if (m_freeMainSegments.empty() || std::size_t(m_freeMainSegments.back().capacity) < capacity + MIN_SEGMENT_SIZE)
-        return m_freeMainSegments.end();
-
-      auto const requiredCapacity = Index(capacity + MIN_SEGMENT_SIZE);
-      return std::partition_point(m_freeMainSegments.begin(), m_freeMainSegments.end(), [&](auto const& freeSection) {
-        return freeSection.capacity < requiredCapacity;
-      });
-    }
-
-    auto GetConnectingFreeSegment(Segment const& allocatedSegment) noexcept
-    {
-      if (allocatedSegment.empty())
-        return m_freeMainSegments.end();
-
-      auto const begin = GetMainPageIndexOfEnd(allocatedSegment);
-      if (begin == m_pages[MAIN_PAGEID].size)
-        return m_freeMainSegments.end();
-
-      return std::find_if(m_freeMainSegments.begin(), m_freeMainSegments.end(), [begin](auto const& freeSegment) { return freeSegment.begin == begin; });
-    }
-
-    auto GetPreviousFreeSegment(Segment const& allocatedSegment) noexcept
-    {
-      if (allocatedSegment.empty())
-        return m_freeMainSegments.end();
-
-      auto const begin = GetMainPageIndexOfBegin(allocatedSegment);
-      if (begin == 0)
-        return m_freeMainSegments.end();
-
-      return std::find_if(m_freeMainSegments.begin(), m_freeMainSegments.end(), [begin](auto const& freeSegment) {
-        return freeSegment.begin + freeSegment.capacity == begin;
-      });
-    }
-
-  private:
-    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
-
-    template<typename TData, typename TNodeMap>
-    friend class MemoryResourceSerializerProxy;
-
-    template<typename TArchive, typename TData, typename TNodes>
-    friend void serialize(TArchive& ar, MemoryResource<TData>& memoryResource, TNodes& nodes);
-
-  private:
-    // stores the data
-    std::vector<Page> m_pages;
-
-    // stores the freed sections of memory in ascending order
-    std::vector<IndexedSegment> m_freeMainSegments;
-
-    // stores the freed pages
-    std::vector<Index> m_freedPages;
+  struct MemorySegment
+  {
+    PageID  pageID  = PRIMARY_PAGEID;
+    Segment segment;
   };
+
+  // ---- Lifecycle -----------------------------------------------------------
+
+  MemoryResource() = default;
+  MemoryResource(MemoryResource const&) = delete;
+  MemoryResource(MemoryResource&&)      = default;
+  MemoryResource& operator=(MemoryResource&&) = default;
+
+  void Init(std::size_t firstPageSize = DEFAULT_PAGE_SIZE) noexcept
+  {
+    m_primary.Init(firstPageSize);
+  }
+
+  void Reset() noexcept
+  {
+    m_primary.Reset();
+    m_fallback.Reset();
+  }
+
+  // ---- Capacity queries ----------------------------------------------------
+
+  std::size_t GetCapacity() const noexcept
+  {
+    return m_primary.Capacity() + m_fallback.TotalCapacity();
+  }
+
+  std::size_t GetFreeCapacity() const noexcept
+  {
+    return m_primary.FreeCapacity();
+    // Fallback allocations are always 100 % utilized from the caller's view.
+  }
+
+  std::size_t GetSize() const noexcept { return GetCapacity() - GetFreeCapacity(); }
+
+  // ---- Core operations -----------------------------------------------------
+
+  MemorySegment Allocate(std::size_t capacity) noexcept
+  {
+    ORTHOTREE_CRASH_IF(capacity > std::numeric_limits<Index>::max(),
+      "Too many elements. Use ORTHOTREE__LARGE_DATASET!");
+
+    // Hot path: fixed primary buffer (cache-friendly, no heap round-trip)
+    if (auto seg = m_primary.TryAllocate(capacity); !seg.empty())
+      return { PRIMARY_PAGEID, seg };
+
+    // Cold path: individual heap allocation — freed precisely, no leak
+    return { FALLBACK_PAGEID, m_fallback.Allocate(capacity) };
+  }
+
+  void Deallocate(MemorySegment const& ms) noexcept
+  {
+    if (ms.segment.empty())
+      return;
+    if (ms.pageID == PRIMARY_PAGEID)
+      m_primary.Deallocate(ms.segment);
+    else
+      m_fallback.Deallocate(ms.segment);  // immediate, no-leak
+  }
+
+  void IncreaseSegment(MemorySegment& ms, std::size_t sizeIncrease) noexcept
+  {
+    if (ms.segment.empty()) { ms = Allocate(sizeIncrease); return; }
+
+    if (ms.pageID == PRIMARY_PAGEID)
+    {
+      // Fast path: extend in-place into adjacent free segment
+      if (m_primary.TryExtend(ms.segment, sizeIncrease))
+        return;
+
+      // Slow path: move to new allocation (may spill to fallback)
+      auto newMs = Allocate(ms.segment.size() + sizeIncrease);
+      CopyOrMove(ms.segment, newMs.segment);
+      m_primary.Deallocate(ms.segment);
+      ms = newMs;
+    }
+    else
+    {
+      // Fallback: realloc in-place (OS may extend the allocation without copy)
+      ms.segment = m_fallback.Reallocate(ms.segment, ms.segment.size() + sizeIncrease);
+    }
+  }
+
+  void DecreaseSegment(MemorySegment& ms, std::size_t sizeDecrease)
+  {
+    if (ms.segment.empty())
+      return;
+    assert(ms.segment.size() >= sizeDecrease);
+
+    if (ms.segment.size() == sizeDecrease)
+    {
+      Deallocate(ms);
+      ms.segment = {};
+      return;
+    }
+
+    if (ms.pageID == PRIMARY_PAGEID)
+    {
+      // Return tail to the free list
+      m_primary.Trim(ms.segment, sizeDecrease);
+    }
+    else
+    {
+      // Shrink heap allocation — previously this leaked the tail
+      ms.segment = m_fallback.Reallocate(ms.segment, ms.segment.size() - sizeDecrease);
+    }
+  }
+
+  // Copy-compact all segments into a single contiguous block in dst.
+  // Updates each MemorySegment pointer to refer to the new location.
+  // After this call every segment has pageID == PRIMARY_PAGEID.
+  void Clone(MemoryResource& dst, std::vector<MemorySegment*> memorySegments) const noexcept
+  {
+    std::size_t totalSize = 0;
+    for (auto* pms : memorySegments) totalSize += pms->segment.size();
+
+    std::vector<std::span<T>*> spans;
+    spans.reserve(memorySegments.size());
+    for (auto* pms : memorySegments) spans.push_back(&pms->segment);
+
+    dst.m_primary.CompactInto(spans, totalSize);
+    dst.m_fallback.Reset();
+
+    for (auto* pms : memorySegments)
+      pms->pageID = PRIMARY_PAGEID;
+  }
+
+private:
+  static void CopyOrMove(Segment const& src, Segment& dst) noexcept
+  {
+    if constexpr (std::is_trivially_copyable_v<T>)
+      std::memcpy(dst.data(), src.data(), src.size() * sizeof(T));
+    else
+      std::uninitialized_move_n(src.data(), src.size(), dst.data());
+  }
+
+private:
+  static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+
+  template<typename TData, typename TNodeMap>
+  friend class MemoryResourceSerializerProxy;
+
+  template<typename TArchive, typename TData, typename TNodes>
+  friend void serialize(TArchive& ar, MemoryResource<TData>& memoryResource, TNodes& nodes);
+
+private:
+  FixedBufferAllocator<T>  m_primary;
+  HeapFallbackAllocator<T> m_fallback;
+};
+
 } // namespace OrthoTree::detail
