@@ -8,7 +8,7 @@
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using OrthoTree::detail::MemoryResource;
 
-namespace Tests
+namespace MemoryResourceTests
 {
   TEST_CLASS(MemoryResourceTest)
   {
@@ -152,7 +152,7 @@ namespace Tests
     TEST_METHOD(IncreaseSegmentArena)
     {
       MemoryResource<int> mr;
-      mr.Init(8);
+      mr.Init(32);
 
       auto a = mr.Allocate(16); // In arena
       auto startAddr = a.segment.data();
@@ -502,6 +502,73 @@ namespace Tests
       // b's data must still be intact
       for (int i = 0; i < 16; ++i)
         Assert::AreEqual(200 + i, b.segment[i]);
+    }
+
+    TEST_METHOD(BucketAllocator_Basic)
+    {
+      OrthoTree::detail::BucketAllocator<int, 4> allocator;
+      
+      auto a = allocator.Allocate(4);
+      Assert::AreEqual(0u, a.pageID);
+      
+      allocator.Deallocate(a);
+      
+      auto b = allocator.Allocate(4);
+      Assert::AreEqual(a.pageID, b.pageID);
+      Assert::AreEqual(reinterpret_cast<void*>(a.segment.data()), reinterpret_cast<void*>(b.segment.data()));
+    }
+
+    TEST_METHOD(BucketAllocator_MultiplePages)
+    {
+      constexpr std::size_t BUCKET_SIZE = 128;
+      using Type = OrthoTree::detail::BucketAllocator<uint64_t, BUCKET_SIZE>;
+      OrthoTree::detail::BucketAllocator<uint64_t, BUCKET_SIZE> allocator;
+      static_assert(Type::POOL_SIZE == 64);
+      std::vector<OrthoTree::detail::MemorySegment<uint64_t>> allocs;
+      
+      // Allocate 100 elements to force multiple pages if POOL_SIZE is 64
+      for (int i = 0; i < 65; ++i)
+      {
+        allocs.push_back(allocator.Allocate(4));
+      }
+      
+      Assert::IsTrue(allocs.back().pageID > 0);
+      
+      for (auto& a : allocs)
+        allocator.Deallocate(a);
+    }
+
+    TEST_METHOD(BucketAllocator_PopPageOnDeallocateLast)
+    {
+      OrthoTree::detail::BucketAllocator<int, 4> allocator;
+      
+      auto a = allocator.Allocate(4);
+      auto b = allocator.Allocate(4);
+      
+      allocator.Deallocate(b);
+      allocator.Deallocate(a);
+      
+      auto c = allocator.Allocate(4);
+      Assert::AreEqual(0u, c.pageID);
+      Assert::AreEqual(reinterpret_cast<void*>(a.segment.data()), reinterpret_cast<void*>(c.segment.data()));
+    }
+
+    TEST_METHOD(BucketAllocator_TryShrink)
+    {
+      OrthoTree::detail::BucketAllocator<int, 8> allocator;
+      auto a = allocator.Allocate(8);
+      Assert::IsTrue(allocator.TryToShrink(a.pageID, a.segment, 4));
+      Assert::AreEqual<size_t>(4, a.segment.size());
+      Assert::IsFalse(allocator.TryToShrink(a.pageID, a.segment, 4)); // would be < 1
+    }
+
+    TEST_METHOD(BucketAllocator_TryExtend)
+    {
+      OrthoTree::detail::BucketAllocator<int, 8> allocator;
+      auto a = allocator.Allocate(4);
+      Assert::IsTrue(allocator.TryToExtend(a.pageID, a.segment, 4));
+      Assert::AreEqual<size_t>(8, a.segment.size());
+      Assert::IsFalse(allocator.TryToExtend(a.pageID, a.segment, 1)); // exceeds BUCKET_SIZE
     }
   };
 } // namespace Tests
