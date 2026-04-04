@@ -56,6 +56,119 @@ namespace OrthoTree::detail
     MemoryBlock<T> segment;
   };
 
+  // RawPage: std::vector<T> like container without initialization
+  template<typename T, typename Allocator = std::allocator<T>>
+  class RawPage
+  {
+  public:
+    constexpr RawPage() noexcept = default;
+    constexpr RawPage(RawPage const&) = delete;
+    constexpr RawPage& operator=(RawPage const&) = delete;
+
+    constexpr RawPage(RawPage&& o) noexcept
+    : m_data(o.m_data)
+    , m_size(o.m_size)
+    , m_capacity(o.m_capacity)
+    {
+      o.m_data = nullptr;
+      o.m_size = o.m_capacity = 0;
+    }
+
+    constexpr RawPage& operator=(RawPage&& o) noexcept
+    {
+      if (this != &o)
+      {
+        Free();
+        m_data = o.m_data;
+        m_size = o.m_size;
+        m_capacity = o.m_capacity;
+        o.m_data = nullptr;
+        o.m_size = o.m_capacity = 0;
+      }
+      return *this;
+    }
+
+    constexpr ~RawPage() noexcept { Free(); }
+
+    constexpr void Allocate(std::size_t size, std::size_t capacity = -1) noexcept
+    {
+      Free();
+      if (size == 0)
+        return;
+
+      m_capacity = capacity == -1 ? CalcCapacity(size) : capacity;
+      m_data = Allocator{}.allocate(m_capacity);
+      m_size = size;
+      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+        std::uninitialized_default_construct_n(m_data, size);
+    }
+
+    constexpr void Free() noexcept
+    {
+      if (!m_data)
+        return;
+
+      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T> && !std::is_trivially_destructible_v<T>)
+        std::destroy_n(m_data, m_size);
+
+      Allocator{}.deallocate(m_data, m_capacity);
+      m_data = nullptr;
+      m_size = m_capacity = 0;
+    }
+
+    // Resize: allocates more if needed (doubling capacity), default-constructs new elements.
+    constexpr void Resize(std::size_t newSize) noexcept
+    {
+      if (newSize > m_capacity)
+      {
+        std::size_t newCapacity = CalcCapacity(newSize);
+        T* nd = Allocator{}.allocate(newCapacity);
+        if (m_data && m_size > 0)
+        {
+          if constexpr (std::is_trivially_copyable_v<T>)
+            std::memcpy(nd, m_data, m_size * sizeof(T));
+          else
+            std::uninitialized_move_n(m_data, m_size, nd);
+        }
+        if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+          std::uninitialized_default_construct_n(nd + m_size, newSize - m_size);
+        Free();
+        m_data = nd;
+        m_capacity = newCapacity;
+      }
+      else
+      {
+        if (newSize > m_size)
+        {
+          if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+            std::uninitialized_default_construct_n(m_data + m_size, newSize - m_size);
+        }
+        else if (newSize < m_size)
+        {
+          if constexpr (!std::is_trivially_destructible_v<T>)
+            std::destroy_n(m_data + newSize, m_size - newSize);
+        }
+      }
+      m_size = newSize;
+    }
+
+    constexpr T* Data() const noexcept { return m_data; }
+    constexpr std::size_t Size() const noexcept { return m_size; }
+    constexpr std::size_t Capacity() const noexcept { return m_capacity; }
+
+  private:
+    static constexpr std::size_t CalcCapacity(std::size_t size) noexcept
+    {
+      return std::clamp(std::bit_ceil(size), static_cast<std::size_t>(1.10 * size), static_cast<std::size_t>(1.30 * size));
+    }
+
+  private:
+    T* m_data = nullptr;
+    std::size_t m_size = 0;     // logical used size
+    std::size_t m_capacity = 0; // physical allocation size
+  };
+
+
   template<typename T>
   class AllocatorInterface
   {
@@ -80,15 +193,18 @@ namespace OrthoTree::detail
       alignas(T) std::byte m_data[POOL_SIZE * BUCKET_SIZE * sizeof(T)];
 
     public:
-      T* data() { return reinterpret_cast<T*>(m_data); }
+      constexpr T* data() noexcept { return reinterpret_cast<T*>(m_data); }
     };
 
   public:
     constexpr explicit BucketAllocator() noexcept = default;
 
-    constexpr MemorySegment<T> Allocate(std::size_t capacity) noexcept override
+    constexpr MemorySegment<T> Allocate(std::size_t size) noexcept override
     {
-      assert(capacity <= BUCKET_SIZE);
+      assert(size <= BUCKET_SIZE);
+
+      T* bucketPtr = nullptr;
+      PageID pageID = 0;
 
       if (m_freeList.empty())
       {
@@ -98,16 +214,22 @@ namespace OrthoTree::detail
           m_cursor = 0;
         }
 
-        auto pageID = PageID(m_pages.size() - 1);
-        auto* bucketPtr = m_pages.back()->data() + m_cursor;
+        pageID = PageID(m_pages.size() - 1);
+        bucketPtr = m_pages.back()->data() + m_cursor;
         m_cursor += BUCKET_SIZE;
-        return { pageID, std::span<T>(bucketPtr, capacity) };
+      }
+      else
+      {
+        auto item = m_freeList.back();
+        m_freeList.pop_back();
+        pageID = item.first;
+        bucketPtr = m_pages[pageID]->data() + item.second;
       }
 
-      auto [pageID, index] = m_freeList.back();
-      m_freeList.pop_back();
-      auto* bucketPtr = m_pages[pageID]->data() + index;
-      return { pageID, std::span<T>(bucketPtr, capacity) };
+      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+        std::uninitialized_default_construct_n(bucketPtr, size);
+
+      return { pageID, std::span<T>(bucketPtr, size) };
     }
 
     constexpr void Deallocate(MemorySegment<T>& segment) noexcept override
@@ -115,6 +237,9 @@ namespace OrthoTree::detail
       assert(segment.pageID < m_pages.size());
       if (segment.pageID >= m_pages.size())
         return;
+
+      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T> && !std::is_trivially_destructible_v<T>)
+        std::destroy_n(segment.segment.data(), segment.segment.size());
 
       assert(m_pages[segment.pageID]);
       assert(m_cursor > 0);
@@ -144,6 +269,9 @@ namespace OrthoTree::detail
       if (requestedSize > BUCKET_SIZE)
         return false;
 
+      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
+        std::uninitialized_default_construct_n(segment.data() + segment.size(), sizeIncrease);
+
       segment = std::span<T>(segment.data(), requestedSize);
       return true;
     }
@@ -158,6 +286,9 @@ namespace OrthoTree::detail
       auto const requestedSize = segment.size() - sizeDecrease;
       if (requestedSize < 1)
         return false;
+
+      if constexpr (!std::is_trivially_destructible_v<T>)
+        std::destroy_n(segment.data() + requestedSize, sizeDecrease);
 
       segment = std::span<T>(segment.data(), requestedSize);
       return true;
@@ -174,102 +305,8 @@ namespace OrthoTree::detail
     std::vector<std::unique_ptr<Page>> m_pages;
     std::vector<std::pair<PageID, std::uint16_t>> m_freeList;
     std::uint16_t m_cursor = 0;
-  };
 
-  // ============================================================================
-  // RawPage
-  // Typed heap buffer without object-lifetime management.
-  // Construction / destruction of T is the caller's responsibility, except when
-  // T is default-constructible and non-trivially-copyable (handled automatically).
-  // ============================================================================
-  template<typename T>
-  struct RawPage
-  {
-    T* data = nullptr;
-    std::size_t size = 0;     // logical used size
-    std::size_t capacity = 0; // physical allocation size
-
-    RawPage() = default;
-    RawPage(RawPage const&) = delete;
-    RawPage& operator=(RawPage const&) = delete;
-
-    RawPage(RawPage&& o) noexcept
-    : data(o.data)
-    , size(o.size)
-    , capacity(o.capacity)
-    {
-      o.data = nullptr;
-      o.size = o.capacity = 0;
-    }
-
-    RawPage& operator=(RawPage&& o) noexcept
-    {
-      if (this != &o)
-      {
-        Free();
-        data = o.data;
-        size = o.size;
-        capacity = o.capacity;
-        o.data = nullptr;
-        o.size = o.capacity = 0;
-      }
-      return *this;
-    }
-
-    ~RawPage() { Free(); }
-
-    void Allocate(std::size_t cap) noexcept
-    {
-      Free();
-      if (cap == 0)
-        return;
-      data = std::allocator<T>{}.allocate(cap);
-      capacity = cap;
-      size = cap;
-      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-        std::uninitialized_default_construct_n(data, cap);
-    }
-
-    void Free() noexcept
-    {
-      if (!data)
-        return;
-      if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T> && !std::is_trivially_destructible_v<T>)
-        std::destroy_n(data, size);
-      std::allocator<T>{}.deallocate(data, capacity);
-      data = nullptr;
-      size = capacity = 0;
-    }
-
-    // Resize: allocates more if needed (doubling capacity), default-constructs new elements.
-    void Resize(std::size_t newSize) noexcept
-    {
-      if (newSize > capacity)
-      {
-        std::size_t newCapacity = std::max(newSize, capacity * 2);
-        T* nd = std::allocator<T>{}.allocate(newCapacity);
-        if (data && size > 0)
-        {
-          if constexpr (std::is_trivially_copyable_v<T>)
-            std::memcpy(nd, data, size * sizeof(T));
-          else
-            std::uninitialized_move_n(data, size, nd);
-        }
-        if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-          std::uninitialized_default_construct_n(nd + size, newSize - size);
-        Free();
-        data = nd;
-        capacity = newCapacity;
-      }
-      else if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
-      {
-        if (newSize > size)
-          std::uninitialized_default_construct_n(data + size, newSize - size);
-        else if constexpr (!std::is_trivially_destructible_v<T>)
-          std::destroy_n(data + newSize, size - newSize);
-      }
-      size = newSize;
-    }
+    static_assert(std::numeric_limits<decltype(m_cursor)>::max() > POOL_SIZE * BUCKET_SIZE);
   };
 
 
@@ -279,7 +316,7 @@ namespace OrthoTree::detail
   public:
     constexpr explicit PagedHeapAllocator() noexcept = default;
 
-    MemorySegment<T> Allocate(std::size_t capacity) noexcept override
+    constexpr MemorySegment<T> Allocate(std::size_t capacity) noexcept override
     {
       if (capacity == 0)
         return { INVALID_PAGEID, {} };
@@ -297,10 +334,10 @@ namespace OrthoTree::detail
       }
 
       m_pages[id].Allocate(capacity);
-      return { id, std::span<T>(m_pages[id].data, capacity) };
+      return { id, std::span<T>(m_pages[id].Data(), capacity) };
     }
 
-    void Deallocate(MemorySegment<T>& segment) noexcept override
+    constexpr void Deallocate(MemorySegment<T>& segment) noexcept override
     {
       if (segment.segment.empty() || segment.pageID == INVALID_PAGEID)
         return;
@@ -314,17 +351,17 @@ namespace OrthoTree::detail
         m_pages.pop_back();
     }
 
-    bool TryToExtend(PageID pageID, MemoryBlock<T>& segment, std::size_t sizeIncrease) noexcept override
+    constexpr bool TryToExtend(PageID pageID, MemoryBlock<T>& segment, std::size_t sizeIncrease) noexcept override
     {
       assert(pageID < m_pages.size());
       auto const requestedSize = segment.size() + sizeIncrease;
 
       m_pages[pageID].Resize(requestedSize);
-      segment = std::span<T>(m_pages[pageID].data, requestedSize);
+      segment = std::span<T>(m_pages[pageID].Data(), requestedSize);
       return true;
     }
 
-    bool TryToShrink(PageID pageID, MemoryBlock<T>& segment, std::size_t sizeDecrease) noexcept override
+    constexpr bool TryToShrink(PageID pageID, MemoryBlock<T>& segment, std::size_t sizeDecrease) noexcept override
     {
       assert(pageID < m_pages.size());
       auto const requestedSize = segment.size() - sizeDecrease;
@@ -332,22 +369,14 @@ namespace OrthoTree::detail
         return false;
 
       m_pages[pageID].Resize(requestedSize);
-      segment = std::span<T>(m_pages[pageID].data, requestedSize);
+      segment = std::span<T>(m_pages[pageID].Data(), requestedSize);
       return true;
     }
 
-    void Reset() noexcept override
+    constexpr void Reset() noexcept override
     {
       m_pages.clear();
       m_freeList.clear();
-    }
-
-    std::size_t TotalCapacity() const noexcept
-    {
-      std::size_t total = 0;
-      for (auto const& page : m_pages)
-        total += page.capacity;
-      return total;
     }
 
   private:
@@ -384,50 +413,39 @@ namespace OrthoTree::detail
       Index capacity = 0;
     };
 
-    RawPage<T> m_page;
-    std::vector<FreeSegment> m_free; // sorted ascending by begin address
-
   public:
-    void Init(std::size_t pageSize)
+    constexpr void Init(std::size_t pageSize) noexcept
     {
-      m_page.Allocate(pageSize + MIN_SEGMENT_SIZE);
+      m_page.Allocate(pageSize + MIN_SEGMENT_SIZE, pageSize + MIN_SEGMENT_SIZE);
       m_free.reserve(16);
-      m_free.push_back({ 0, Index(m_page.size) });
+      m_free.push_back({ 0, Index(m_page.Size()) });
     }
-
-    T* DataBegin() const noexcept { return m_page.data; }
-    std::size_t Capacity() const noexcept { return m_page.capacity; }
-
-    std::size_t FreeCapacity() const noexcept
-    {
-      std::size_t s = 0;
-      for (auto const& f : m_free)
-        s += f.capacity;
-      return s;
-    }
-
-    bool Owns(T const* ptr) const noexcept { return ptr >= m_page.data && ptr < m_page.data + m_page.size; }
 
     // First-fit allocation: O(k) scan. Small leftover fragments (< MIN_SEGMENT_SIZE)
     // are consumed whole to avoid unusable slivers.
-    MemorySegment<T> Allocate(std::size_t n) noexcept override
+    constexpr MemorySegment<T> Allocate(std::size_t n) noexcept override
     {
-      for (auto it = m_free.begin(); it != m_free.end(); ++it)
+      auto const requiredSize = Index(n);
+      for (auto freeIt = m_free.begin(); freeIt != m_free.end(); ++freeIt)
       {
-        if (it->capacity < Index(n))
+        if (freeIt->capacity < requiredSize)
           continue;
 
-        T* ptr = m_page.data + it->begin;
-        auto const remaining = it->capacity - Index(n);
+        // In general, MIN_SEGMENT_SIZE is to increase the segment if needed
+        if (freeIt->capacity <= MIN_SEGMENT_SIZE / 2)
+          continue;
 
-        if (remaining < MIN_SEGMENT_SIZE)
+        T* ptr = m_page.Data() + freeIt->begin;
+        auto const remaining = freeIt->capacity - requiredSize;
+
+        if (remaining == 0)
         {
-          m_free.erase(it); // consume whole segment, no tiny leftover
+          m_free.erase(freeIt);
         }
         else
         {
-          it->begin += Index(n); // trim from front; order preserved
-          it->capacity = remaining;
+          freeIt->begin += requiredSize;
+          freeIt->capacity = remaining;
         }
         return {
           PRIMARY_PAGEID, { ptr, n }
@@ -437,7 +455,7 @@ namespace OrthoTree::detail
     }
 
     // O(log k): extend seg into the immediately following free segment.
-    bool TryToExtend(PageID /*pageID*/, MemoryBlock<T>& seg, std::size_t increase) noexcept override
+    constexpr bool TryToExtend(PageID /*pageID*/, MemoryBlock<T>& seg, std::size_t increase) noexcept override
     {
       if (seg.empty())
         return false;
@@ -457,7 +475,7 @@ namespace OrthoTree::detail
     }
 
     // Return the tail `sizeDecrease` elements back to the free list and shrink seg.
-    bool TryToShrink(PageID /*pageID*/, MemoryBlock<T>& seg, std::size_t sizeDecrease) noexcept override
+    constexpr bool TryToShrink(PageID /*pageID*/, MemoryBlock<T>& seg, std::size_t sizeDecrease) noexcept override
     {
       if (seg.size() <= sizeDecrease)
         return false;
@@ -466,13 +484,13 @@ namespace OrthoTree::detail
       return true;
     }
 
-    void Deallocate(MemorySegment<T>& seg) noexcept override
+    constexpr void Deallocate(MemorySegment<T>& seg) noexcept override
     {
       if (!seg.segment.empty())
         DeallocateRange(seg.segment);
     }
 
-    void Reset() noexcept
+    constexpr void Reset() noexcept override
     {
       m_page.Free();
       m_free.clear();
@@ -481,10 +499,10 @@ namespace OrthoTree::detail
     // Copy-compact all non-empty spans into a single contiguous block at the
     // start of this page. Updates each span pointer in-place.
     // Precondition: this allocator is fresh / reset.
-    void CompactInto(std::vector<std::span<T>*>& spans, std::size_t totalSize)
+    constexpr void CompactInto(std::vector<std::span<T>*>& spans, std::size_t totalSize)
     {
       m_page.Resize(totalSize);
-      T* dest = m_page.data;
+      T* dest = m_page.Data();
       for (auto* s : spans)
       {
         if (s->empty())
@@ -498,22 +516,22 @@ namespace OrthoTree::detail
         dest += n;
       }
       m_free.clear();
-      std::size_t remaining = m_page.capacity - totalSize;
+      std::size_t remaining = m_page.Size() - totalSize;
       if (remaining > MIN_SEGMENT_SIZE)
         m_free.push_back({ Index(totalSize), Index(remaining) });
     }
 
   private:
-    Index IndexOf(T const* ptr) const noexcept { return Index(ptr - m_page.data); }
+    constexpr Index IndexOf(T const* ptr) const noexcept { return Index(ptr - m_page.Data()); }
 
     // First free segment with begin >= val.
-    auto LowerBoundBegin(Index val) noexcept
+    constexpr auto LowerBoundBegin(Index val) noexcept
     {
       return std::lower_bound(m_free.begin(), m_free.end(), val, [](FreeSegment const& f, Index v) { return f.begin < v; });
     }
 
     // O(log k): return freed region to the free list, coalescing with neighbours.
-    void DeallocateRange(std::span<T> seg) noexcept
+    constexpr void DeallocateRange(std::span<T> seg) noexcept
     {
       auto const beginIdx = IndexOf(seg.data());
       auto const segSize = Index(seg.size());
@@ -558,7 +576,7 @@ namespace OrthoTree::detail
 #endif
     }
 
-    [[maybe_unused]] bool CheckFreeList() const noexcept
+    [[maybe_unused]] constexpr bool CheckFreeList() const noexcept
     {
       for (std::size_t i = 1; i < m_free.size(); ++i)
         if (m_free[i - 1].begin + m_free[i - 1].capacity > m_free[i].begin)
@@ -568,6 +586,10 @@ namespace OrthoTree::detail
 
     template<typename T2>
     friend class MemoryResource;
+
+  private:
+    RawPage<T> m_page;
+    std::vector<FreeSegment> m_free; // sorted ascending by begin address
   };
 
   template<typename T>
@@ -585,9 +607,7 @@ namespace OrthoTree::detail
     static constexpr std::size_t MIN_SEGMENT_SIZE = FixedBufferAllocator<T>::MIN_SEGMENT_SIZE;
     static constexpr std::size_t DEFAULT_PAGE_SIZE = 4096 / sizeof(T);
 
-
-    // ---- Lifecycle -----------------------------------------------------------
-
+  public:
     MemoryResource() = default;
     MemoryResource(MemoryResource const&) = delete;
     MemoryResource(MemoryResource&&) = default;
@@ -601,19 +621,6 @@ namespace OrthoTree::detail
       m_fallback.Reset();
     }
 
-    // ---- Capacity queries ----------------------------------------------------
-
-    std::size_t GetCapacity() const noexcept { return m_primary.Capacity() + m_fallback.TotalCapacity(); }
-
-    std::size_t GetFreeCapacity() const noexcept
-    {
-      return m_primary.FreeCapacity();
-      // Fallback allocations are always 100 % utilized from the caller's view.
-    }
-
-    std::size_t GetSize() const noexcept { return GetCapacity() - GetFreeCapacity(); }
-
-    // ---- Core operations -----------------------------------------------------
 
     MemorySegment Allocate(std::size_t capacity) noexcept
     {
@@ -788,12 +795,12 @@ namespace OrthoTree::detail
     }
 
   private:
-    bool IsBucketPageID(PageID pageID) const noexcept { return pageID >= (1u << 31); }
-    int GetBucketIndex(PageID pageID) const noexcept { return static_cast<int>((pageID >> 28) & 0x7); }
+    static constexpr bool IsBucketPageID(PageID pageID) noexcept { return pageID >= (1u << 31); }
+    static constexpr int GetBucketIndex(PageID pageID) noexcept { return static_cast<int>((pageID >> 28) & 0x7); }
 
-    int GetBucketIndexByCapacity(std::size_t capacity) const noexcept { return (capacity - 1) / 4; }
+    static constexpr int GetBucketIndexByCapacity(std::size_t capacity) noexcept { return (capacity - 1) / 4; }
 
-    PageID GetLocalPageID(PageID pageID) const noexcept
+    static constexpr PageID GetLocalPageID(PageID pageID) noexcept
     {
       if (IsBucketPageID(pageID))
         return pageID & 0x0FFFFFFF;
@@ -804,7 +811,7 @@ namespace OrthoTree::detail
       return pageID - 1;
     }
 
-    PageID GetGlobalPageID(PageID localPageID, int bucketIndex) const noexcept
+    static constexpr PageID GetGlobalPageID(PageID localPageID, int bucketIndex) noexcept
     {
       return (1u << 31) | (static_cast<uint32_t>(bucketIndex) << 28) | localPageID;
     }
