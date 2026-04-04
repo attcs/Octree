@@ -193,11 +193,14 @@ namespace OrthoTree::detail
       alignas(T) std::byte m_data[POOL_SIZE * BUCKET_SIZE * sizeof(T)];
 
     public:
+      std::uint16_t pageOccupancy = 0;
       constexpr T* data() noexcept { return reinterpret_cast<T*>(m_data); }
     };
 
   public:
     constexpr explicit BucketAllocator() noexcept = default;
+    constexpr explicit BucketAllocator(BucketAllocator&&) noexcept = default;
+    constexpr BucketAllocator& operator=(BucketAllocator&&) noexcept = default;
 
     constexpr MemorySegment<T> Allocate(std::size_t size) noexcept override
     {
@@ -226,6 +229,8 @@ namespace OrthoTree::detail
         bucketPtr = m_pages[pageID]->data() + item.second;
       }
 
+      ++m_pages[pageID]->pageOccupancy;
+
       if constexpr (!std::is_trivially_copyable_v<T> && std::is_default_constructible_v<T>)
         std::uninitialized_default_construct_n(bucketPtr, size);
 
@@ -242,20 +247,27 @@ namespace OrthoTree::detail
         std::destroy_n(segment.segment.data(), segment.segment.size());
 
       assert(m_pages[segment.pageID]);
-      assert(m_cursor > 0);
+      assert(m_pages[segment.pageID]->pageOccupancy > 0);
+      --m_pages[segment.pageID]->pageOccupancy;
+
+      // If it matches the current cursor, just move cursor back
       if (segment.pageID == m_pages.size() - 1 && segment.segment.data() == (m_pages.back()->data() + (m_cursor - BUCKET_SIZE)))
       {
         m_cursor -= BUCKET_SIZE;
-        if (m_cursor == 0)
-        {
-          std::erase_if(m_freeList, [pageID = segment.pageID](auto const& p) { return p.first == pageID; });
-          m_pages.pop_back();
-          m_cursor = POOL_SIZE * BUCKET_SIZE;
-        }
-        return;
+      }
+      else
+      {
+        m_freeList.push_back({ segment.pageID, static_cast<std::uint16_t>(segment.segment.data() - m_pages[segment.pageID]->data()) });
       }
 
-      m_freeList.push_back({ segment.pageID, static_cast<std::uint16_t>(segment.segment.data() - m_pages[segment.pageID]->data()) });
+      // Recursive reclamation of terminal empty pages
+      while (!m_pages.empty() && m_pages.back()->pageOccupancy == 0)
+      {
+        PageID const lastPageID = PageID(m_pages.size() - 1);
+        std::erase_if(m_freeList, [lastPageID](auto const& p) { return p.first == lastPageID; });
+        m_pages.pop_back();
+        m_cursor = POOL_SIZE * BUCKET_SIZE;
+      }
     }
 
     constexpr bool TryToExtend(PageID pageID, MemoryBlock<T>& segment, std::size_t sizeIncrease) noexcept override
@@ -346,9 +358,24 @@ namespace OrthoTree::detail
       assert(id < m_pages.size());
       m_pages[id].Free();
       if (id < m_pages.size() - 1)
+      {
         m_freeList.push_back(id);
+      }
       else
+      {
         m_pages.pop_back();
+        // Fully reclaim any trailing free pages
+        while (!m_pages.empty())
+        {
+          auto lastId = static_cast<PageID>(m_pages.size() - 1);
+          auto it = std::find(m_freeList.begin(), m_freeList.end(), lastId);
+          if (it == m_freeList.end())
+            break;
+
+          m_freeList.erase(it);
+          m_pages.pop_back();
+        }
+      }
     }
 
     constexpr bool TryToExtend(PageID pageID, MemoryBlock<T>& segment, std::size_t sizeIncrease) noexcept override
@@ -417,6 +444,7 @@ namespace OrthoTree::detail
     constexpr void Init(std::size_t pageSize) noexcept
     {
       m_page.Allocate(pageSize + MIN_SEGMENT_SIZE, pageSize + MIN_SEGMENT_SIZE);
+      m_free.clear();
       m_free.reserve(16);
       m_free.push_back({ 0, Index(m_page.Size()) });
     }
