@@ -825,7 +825,10 @@ namespace OrthoTree::detail
     }
 
   private:
-    static constexpr uint32_t SERIALIZED_VERSION_ID = 0;
+    /*
+      Version 0 -> 1: m_memorySize from std::size_t to serialized_size_t
+    */
+    static constexpr uint32_t SERIALIZED_VERSION_ID = 1;
 
     template<typename TData, typename TNodeMap>
     friend class MemoryResourceSerializerProxy;

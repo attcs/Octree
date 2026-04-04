@@ -317,11 +317,30 @@ namespace OrthoTree
         auto serializedVersionID = MemoryResource<TData>::SERIALIZED_VERSION_ID;
         ar& ORTHOTREE_NVP(serializedVersionID);
 
-        auto m_memorySize = m_memoryResource.GetSize();
-        ar& ORTHOTREE_NVP(m_memorySize);
+        serialized_size_t m_memorySize = 0;
+        if (!OrthoTree::is_loading_archive(ar))
+        {
+          for (auto& [nodeID, node] : m_nodes)
+            m_memorySize += node.GetEntitySegment().segment.size();
 
-        if (OrthoTree::is_loading_archive(ar))
+          ar& ORTHOTREE_NVP(m_memorySize);
+        }
+        else
+        {
+          // Version handling
+          if (serializedVersionID < 1)
+          {
+            std::size_t m_memorySize_old = static_cast<std::size_t>(m_memorySize);
+            ar& ORTHOTREE_NVP(m_memorySize_old);
+            m_memorySize = static_cast<serialized_size_t>(m_memorySize_old);
+          }
+          else
+          {
+            ar& ORTHOTREE_NVP(m_memorySize);
+          }
+
           m_memoryResource.Init(m_memorySize);
+        }
 
         auto m_content = MemoryResourceContentSerializerProxy(m_memoryResource, m_nodes);
         ar& ORTHOTREE_NVP(m_content);
