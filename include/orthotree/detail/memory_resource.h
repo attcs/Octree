@@ -357,6 +357,7 @@ namespace OrthoTree::detail
       PageID id = segment.pageID;
       assert(id < m_pages.size());
       m_pages[id].Free();
+
       if (id < m_pages.size() - 1)
       {
         m_freeList.push_back(id);
@@ -364,6 +365,7 @@ namespace OrthoTree::detail
       else
       {
         m_pages.pop_back();
+        /*
         // Fully reclaim any trailing free pages
         while (!m_pages.empty())
         {
@@ -375,6 +377,7 @@ namespace OrthoTree::detail
           m_freeList.erase(it);
           m_pages.pop_back();
         }
+        */
       }
     }
 
@@ -459,14 +462,10 @@ namespace OrthoTree::detail
         if (freeIt->capacity < requiredSize)
           continue;
 
-        // In general, MIN_SEGMENT_SIZE is to increase the segment if needed
-        if (freeIt->capacity <= MIN_SEGMENT_SIZE / 2)
-          continue;
-
         T* ptr = m_page.Data() + freeIt->begin;
         auto const remaining = freeIt->capacity - requiredSize;
 
-        if (remaining == 0)
+        if (remaining < MIN_SEGMENT_SIZE)
         {
           m_free.erase(freeIt);
         }
@@ -630,7 +629,7 @@ namespace OrthoTree::detail
     using Index = std::uint32_t;
 #endif
 
-    using MemorySegment = MemorySegment<T>;
+    using MemorySegment = detail::MemorySegment<T>;
 
     static constexpr std::size_t MIN_SEGMENT_SIZE = FixedBufferAllocator<T>::MIN_SEGMENT_SIZE;
     static constexpr std::size_t DEFAULT_PAGE_SIZE = 4096 / sizeof(T);
@@ -656,8 +655,11 @@ namespace OrthoTree::detail
       assert(capacity > 0);
 
       // Hot path: fixed primary buffer (cache-friendly, no heap round-trip)
-      if (auto ms = m_primary.Allocate(capacity); !ms.segment.empty())
-        return ms;
+      if (capacity > 32)
+      {
+        if (auto ms = m_primary.Allocate(capacity); !ms.segment.empty())
+          return ms;
+      }
 
       // Bucket allocators for small, frequent allocations
       auto bucketIndex = (capacity - 1) / 4;
@@ -825,8 +827,6 @@ namespace OrthoTree::detail
   private:
     static constexpr bool IsBucketPageID(PageID pageID) noexcept { return pageID >= (1u << 31); }
     static constexpr int GetBucketIndex(PageID pageID) noexcept { return static_cast<int>((pageID >> 28) & 0x7); }
-
-    static constexpr int GetBucketIndexByCapacity(std::size_t capacity) noexcept { return (capacity - 1) / 4; }
 
     static constexpr PageID GetLocalPageID(PageID pageID) noexcept
     {
