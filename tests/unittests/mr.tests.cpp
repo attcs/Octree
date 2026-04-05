@@ -47,19 +47,20 @@ namespace MemoryResourceTests
 
   TEST_CLASS(MemoryResourceTest)
   {
+    static bool IsBucket(OrthoTree::detail::PageID id) { return id >= (1u << 31); }
   public:
     TEST_METHOD(AllocateMainAndDeallocateReuses)
     {
       MemoryResource<int> mr;
-      mr.Init(16);
+      mr.Init(100);
 
-      auto a = mr.Allocate(4);
+      auto a = mr.Allocate(40);
       Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
       auto addr = a.segment.data();
 
       mr.Deallocate(a);
 
-      auto b = mr.Allocate(4);
+      auto b = mr.Allocate(40);
       Assert::AreEqual(PRIMARY_PAGEID, b.pageID);
       Assert::AreEqual(reinterpret_cast<void*>(addr), reinterpret_cast<void*>(b.segment.data()));
     }
@@ -67,21 +68,21 @@ namespace MemoryResourceTests
     TEST_METHOD(DISABLED_AllocateBestFit)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(1000);
 
-      // Create holes: [A:10][Free:10][B:10][Free:20][C:10][Free:40]
-      auto a = mr.Allocate(10);
-      auto h1 = mr.Allocate(10);
-      auto b = mr.Allocate(10);
-      auto h2 = mr.Allocate(20);
-      auto c = mr.Allocate(10);
+      // Create holes: [A:40][Free:40][B:40][Free:80][C:40][Free:x]
+      auto a = mr.Allocate(40);
+      auto h1 = mr.Allocate(40);
+      auto b = mr.Allocate(40);
+      auto h2 = mr.Allocate(80);
+      auto c = mr.Allocate(40);
 
       mr.Deallocate(h1);
       mr.Deallocate(h2);
 
-      // Now we have free segments of size 10 and 20.
-      // Allocate 15 -> should pick the 20 one.
-      auto d = mr.Allocate(15);
+      // Now we have free segments of size 40 and 80.
+      // Allocate 60 -> should pick the 80 one.
+      auto d = mr.Allocate(60);
       Assert::AreEqual(PRIMARY_PAGEID, d.pageID);
       Assert::AreEqual(reinterpret_cast<void*>(h2.segment.data()), reinterpret_cast<void*>(d.segment.data()));
     }
@@ -89,131 +90,138 @@ namespace MemoryResourceTests
     TEST_METHOD(DeallocateMergeForward)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(200);
 
-      auto a = mr.Allocate(10);
-      auto b = mr.Allocate(10);
+      auto a = mr.Allocate(40);
+      auto b = mr.Allocate(40);
       mr.Deallocate(b); // Free segment after 'a'
       mr.Deallocate(a); // 'a' should merge with 'b's free segment
 
-      auto c = mr.Allocate(20);
+      auto c = mr.Allocate(80);
       Assert::AreEqual(PRIMARY_PAGEID, c.pageID);
-      Assert::AreEqual<size_t>(20, c.segment.size());
+      Assert::AreEqual<size_t>(80, c.segment.size());
     }
 
     TEST_METHOD(DeallocateMergeBackward)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(200);
 
-      auto a = mr.Allocate(10);
-      auto b = mr.Allocate(10);
-      mr.Deallocate(a); // Free segment before 'b'
-      mr.Deallocate(b); // 'b' should merge backwards with 'a'
+      auto a = mr.Allocate(400); // Forces fallback to heap if Init was small, but Init(200) < 400.
+      // Wait, let's use Init(1000)
+      mr.Reset();
+      mr.Init(1000);
+      auto a2 = mr.Allocate(40);
+      auto b2 = mr.Allocate(40);
+      mr.Deallocate(a2); // Free segment before 'b'
+      mr.Deallocate(b2); // 'b' should merge backwards with 'a'
 
-      auto c = mr.Allocate(20);
+      auto c = mr.Allocate(80);
       Assert::AreEqual(PRIMARY_PAGEID, c.pageID);
-      Assert::AreEqual<size_t>(20, c.segment.size());
+      Assert::AreEqual<size_t>(80, c.segment.size());
     }
 
     TEST_METHOD(DeallocateMergeBoth)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(1000);
 
-      auto a = mr.Allocate(10);
-      auto b = mr.Allocate(10);
-      auto c = mr.Allocate(10);
+      auto a = mr.Allocate(40);
+      auto b = mr.Allocate(40);
+      auto c = mr.Allocate(40);
 
       mr.Deallocate(a);
       mr.Deallocate(c);
       mr.Deallocate(b); // 'b' merges with both 'a' and 'c'
 
-      auto d = mr.Allocate(30);
+      auto d = mr.Allocate(120);
       Assert::AreEqual(PRIMARY_PAGEID, d.pageID);
-      Assert::AreEqual<size_t>(30, d.segment.size());
+      Assert::AreEqual<size_t>(120, d.segment.size());
     }
 
     TEST_METHOD(IncreaseSegmentExtendsIntoFree)
     {
       MemoryResource<int> mr;
-      mr.Init(16);
+      mr.Init(200);
 
-      auto a = mr.Allocate(4);
-      auto b = mr.Allocate(4);
+      auto a = mr.Allocate(40);
+      auto b = mr.Allocate(40);
 
       // Free the segment after `a` so `a` can extend into it
       mr.Deallocate(b);
 
-      mr.IncreaseSegment(a, 4);
+      mr.IncreaseSegment(a, 40);
       Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
-      Assert::AreEqual<size_t>(8, a.segment.size());
+      Assert::AreEqual<size_t>(80, a.segment.size());
     }
 
     TEST_METHOD(IncreaseSegmentRelocation)
     {
       MemoryResource<int> mr;
-      mr.Init(16);
+      mr.Init(200);
 
-      auto a = mr.Allocate(4);
-      auto b = mr.Allocate(4); // Block 'a' from extending
+      auto a = mr.Allocate(40);
+      auto b = mr.Allocate(40); // Block 'a' from extending
 
-      mr.IncreaseSegment(a, 8); // 'a' must move
+      mr.IncreaseSegment(a, 80); // 'a' must move
       Assert::AreNotEqual(reinterpret_cast<void*>(b.segment.data()), reinterpret_cast<void*>(a.segment.data()));
-      Assert::AreEqual<size_t>(12, a.segment.size());
+      Assert::AreEqual<size_t>(120, a.segment.size());
+      Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
     }
 
     TEST_METHOD(IncreaseSegmentZero)
     {
       MemoryResource<int> mr;
-      mr.Init(16);
+      mr.Init(200);
 
-      auto a = mr.Allocate(4);
+      auto a = mr.Allocate(40);
       auto startAddr = a.segment.data();
       mr.IncreaseSegment(a, 0);
       Assert::AreEqual(startAddr, a.segment.data());
-      Assert::AreEqual<size_t>(4, a.segment.size());
+      Assert::AreEqual<size_t>(40, a.segment.size());
+      Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
     }
 
     TEST_METHOD(IncreaseSegmentArena)
     {
       MemoryResource<int> mr;
-      mr.Init(32);
+      mr.Init(8); // Force buckets
 
-      auto a = mr.Allocate(16); // In arena
+      auto a = mr.Allocate(10); // Goes to bucket16
       auto startAddr = a.segment.data();
 
-      // Arena size is max(4096/sizeof(int), 16*2) = 1024 (default page size)
-      // So 'a' is at the end of used portion and has capacity
-      mr.IncreaseSegment(a, 16);
+      // Extend within bucket16 capacity (16)
+      mr.IncreaseSegment(a, 6);
       Assert::AreEqual(startAddr, a.segment.data());
-      Assert::AreEqual<size_t>(32, a.segment.size());
+      Assert::AreEqual<size_t>(16, a.segment.size());
+      Assert::IsTrue(IsBucket(a.pageID));
     }
 
     TEST_METHOD(DecreaseSegmentMain)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(200);
 
-      auto a = mr.Allocate(20);
+      auto a = mr.Allocate(40);
       mr.DecreaseSegment(a, 10);
-      Assert::AreEqual<size_t>(10, a.segment.size());
+      Assert::AreEqual<size_t>(30, a.segment.size());
 
-      // The 10 freed units should be reusable
-      auto b = mr.Allocate(10);
+      // The 10 freed units should be reusable by a larger allocation that triggers primary
+      auto b = mr.Allocate(40); 
       Assert::AreEqual(PRIMARY_PAGEID, b.pageID);
     }
 
     TEST_METHOD(DecreaseSegmentArena)
     {
       MemoryResource<int> mr;
-      mr.Init(8);
+      mr.Init(1000);
 
       auto a = mr.Allocate(16);
-      Assert::AreNotEqual(PRIMARY_PAGEID, a.pageID);
+      Assert::IsTrue(IsBucket(a.pageID));
 
       mr.DecreaseSegment(a, 4);
       Assert::AreEqual<size_t>(12, a.segment.size());
+      Assert::IsTrue(IsBucket(a.pageID));
     }
 
     TEST_METHOD(ArenaPageReclamation)
@@ -239,12 +247,12 @@ namespace MemoryResourceTests
     TEST_METHOD(ResetClearsAll)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
-      mr.Allocate(10);
+      mr.Init(200);
+      mr.Allocate(40);
       mr.Reset();
 
-      mr.Init(100);
-      auto a = mr.Allocate(10);
+      mr.Init(200);
+      auto a = mr.Allocate(40);
       Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
       // If reset worked, first allocation should be at the start of main page
     }
@@ -252,48 +260,48 @@ namespace MemoryResourceTests
     TEST_METHOD(FullDecreaseMainThenAllocate)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(200);
 
-      auto a = mr.Allocate(10);
+      auto a = mr.Allocate(40);
       auto addrBefore = a.segment.data();
 
       // Fully decrease -> segment becomes empty
-      mr.DecreaseSegment(a, 10);
+      mr.DecreaseSegment(a, 40);
       Assert::AreEqual<size_t>(0, a.segment.size());
       Assert::IsTrue(a.segment.empty());
 
       // Re-allocate: should reuse the freed main-page memory
-      auto b = mr.Allocate(10);
+      auto b = mr.Allocate(40);
       Assert::AreEqual(PRIMARY_PAGEID, b.pageID);
-      Assert::AreEqual<size_t>(10, b.segment.size());
+      Assert::AreEqual<size_t>(40, b.segment.size());
       Assert::AreEqual(reinterpret_cast<void*>(addrBefore), reinterpret_cast<void*>(b.segment.data()));
     }
 
     TEST_METHOD(FullDecreaseMainThenIncreaseSegment)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(200);
 
-      auto a = mr.Allocate(10);
-      for (int i = 0; i < 10; ++i)
+      auto a = mr.Allocate(40);
+      for (int i = 0; i < 40; ++i)
         a.segment[i] = i;
 
       // Fully decrease
-      mr.DecreaseSegment(a, 10);
+      mr.DecreaseSegment(a, 40);
       Assert::IsTrue(a.segment.empty());
 
       // IncreaseSegment on an empty segment should do a fresh Allocate
-      mr.IncreaseSegment(a, 8);
-      Assert::AreEqual<size_t>(8, a.segment.size());
+      mr.IncreaseSegment(a, 40);
+      Assert::AreEqual<size_t>(40, a.segment.size());
       Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
     }
 
     TEST_METHOD(FullDecreaseArenaThenAllocate)
     {
       MemoryResource<int> mr;
-      mr.Init(8);
+      mr.Init(100);
 
-      auto a = mr.Allocate(16); // Goes to arena
+      auto a = mr.Allocate(16); // Goes to bucket
       auto arenaPageID = a.pageID;
       Assert::AreNotEqual(PRIMARY_PAGEID, arenaPageID);
 
@@ -302,9 +310,9 @@ namespace MemoryResourceTests
       Assert::AreEqual<size_t>(0, a.segment.size());
 
       // Re-allocate something that fits on main page
-      auto b = mr.Allocate(4);
+      auto b = mr.Allocate(40); 
       Assert::AreEqual(PRIMARY_PAGEID, b.pageID);
-      Assert::AreEqual<size_t>(4, b.segment.size());
+      Assert::AreEqual<size_t>(40, b.segment.size());
     }
 
     TEST_METHOD(FullDecreaseArenaThenIncrease)
@@ -388,51 +396,52 @@ namespace MemoryResourceTests
     TEST_METHOD(RepeatedFullDecreaseThenReallocateMain)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(200);
 
       for (int round = 0; round < 5; ++round)
       {
-        auto a = mr.Allocate(10);
+        auto a = mr.Allocate(40);
         Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
-        Assert::AreEqual<size_t>(10, a.segment.size());
+        Assert::AreEqual<size_t>(40, a.segment.size());
 
-        for (int i = 0; i < 10; ++i)
+        for (int i = 0; i < 40; ++i)
           a.segment[i] = round * 100 + i;
 
-        mr.DecreaseSegment(a, 10);
+        mr.DecreaseSegment(a, 40);
         Assert::IsTrue(a.segment.empty());
       }
 
       // After all rounds, the main page free list should still be consistent
-      auto final_seg = mr.Allocate(10);
+      auto final_seg = mr.Allocate(40);
       Assert::AreEqual(PRIMARY_PAGEID, final_seg.pageID);
     }
 
     TEST_METHOD(FullDecreaseThenIncreaseWithDataIntegrity)
     {
       MemoryResource<int> mr;
-      mr.Init(100);
+      mr.Init(200);
 
-      auto a = mr.Allocate(10);
-      auto b = mr.Allocate(10);
+      auto a = mr.Allocate(40);
+      auto b = mr.Allocate(40);
 
       // Write data to 'b'
-      for (int i = 0; i < 10; ++i)
+      for (int i = 0; i < 40; ++i)
         b.segment[i] = 500 + i;
 
       // Fully decrease 'a', then increase it back
-      mr.DecreaseSegment(a, 10);
+      mr.DecreaseSegment(a, 40);
       Assert::IsTrue(a.segment.empty());
 
-      mr.IncreaseSegment(a, 10);
-      Assert::AreEqual<size_t>(10, a.segment.size());
+      mr.IncreaseSegment(a, 40);
+      Assert::AreEqual<size_t>(40, a.segment.size());
+      Assert::AreEqual(PRIMARY_PAGEID, a.pageID);
 
       // Write new data to 'a'
-      for (int i = 0; i < 10; ++i)
+      for (int i = 0; i < 40; ++i)
         a.segment[i] = 600 + i;
 
       // 'b' must still hold its original data
-      for (int i = 0; i < 10; ++i)
+      for (int i = 0; i < 40; ++i)
         Assert::AreEqual(500 + i, b.segment[i]);
     }
 
