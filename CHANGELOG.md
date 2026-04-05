@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04 v3.2.1
+
+Performance improvements
+* Better `MemoryResource`
+
+## 2026-03 v3.2.0
+
+New feature
+* Serialization support
+
 ## 2026-03 v3.1.1
 
 Bugfixes
