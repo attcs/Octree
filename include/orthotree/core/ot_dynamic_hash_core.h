@@ -1022,7 +1022,7 @@ namespace OrthoTree
     {
       constexpr bool IS_ELEMENT_DEPTH_SPECIFIC = (EA::GEOMETRY_TYPE != GeometryType::Point);
       constexpr dim_t DIMENSION_NO = GA::DIMENSION_NO;
-      constexpr uint32_t kSortThreshold = 1024;
+      constexpr uint32_t kSortThreshold = 256;
 
       using Location = typename SI::Location;
       using LowestCommonAncestorCalculator = typename SI::template LowestCommonAncestorCalculator<IS_ELEMENT_DEPTH_SPECIFIC>;
@@ -1106,7 +1106,7 @@ namespace OrthoTree
       // Configurable digit width
       // Considering 32kB L1 cache with 64B width cache lines: 512 cache lines total is the limit.
       // 3D: 6 bits/64 buckets with 2 cache lines per bucket: 128 cache lines. Other stack variabbles (e.g. histogram / offsets) are also cached.
-      constexpr uint32_t kRadixBits = DIMENSION_NO > 8 ? std::min<uint32_t>(12, DIMENSION_NO) : (8 / DIMENSION_NO) * DIMENSION_NO;
+      constexpr uint32_t kRadixBits = DIMENSION_NO > 8 ? std::min<uint32_t>(12, DIMENSION_NO) : (9 / DIMENSION_NO) * DIMENSION_NO;
       constexpr uint32_t kRadixMaxSize = 1u << kRadixBits;
 
       auto const totalBits = static_cast<uint32_t>(maxDepthID * DIMENSION_NO);
@@ -1258,8 +1258,34 @@ namespace OrthoTree
             lcah = newLcah;
             ++clusterEnd;
           }
+          auto const clusterLocation = lcah.GetLocation(maxDepthID);
 
-          emitCluster(clusterBegin, clusterEnd, lcah.GetLocation(maxDepthID));
+          if constexpr (IS_ELEMENT_DEPTH_SPECIFIC)
+          {
+            auto const clusterDepthID = clusterLocation.GetDepthID();
+            auto const clusterSize = clusterEnd - clusterBegin;
+
+            if (clusterSize > maxElementNo && clusterDepthID < maxDepthID)
+            {
+              uint32_t stuckEnd = clusterBegin;
+              while (stuckEnd < clusterEnd && buffer[stuckEnd].location.GetDepthID() <= clusterDepthID)
+              {
+                ++stuckEnd;
+              }
+
+              if (stuckEnd < clusterEnd)
+              {
+                if (stuckEnd > clusterBegin)
+                {
+                  emitCluster(clusterBegin, stuckEnd, clusterLocation);
+                  clusterBegin = stuckEnd;
+                  continue;
+                }
+              }
+            }
+          }
+
+          emitCluster(clusterBegin, clusterEnd, clusterLocation);
           clusterBegin = clusterEnd;
         }
       };
@@ -1279,14 +1305,15 @@ namespace OrthoTree
           continue;
 
         // Terminal: fits in one node → emit directly using precomputed fold (zero scan)
-        if (elementNum <= maxElementNo || w.bitsRemaining == 0)
+        if (elementNum <= maxElementNo)
         {
           emitCluster(w.begin, w.end, w.location);
           continue;
         }
 
-        // Size-based strategy: sort+walk if fits cache, else radix partition
-        if (elementNum <= kSortThreshold)
+        // Size-based strategy: sort+walk if fits cache, else radix partition.
+        // If bitsRemaining == 0, we can't partition further, so we MUST sort and walk.
+        if (elementNum <= kSortThreshold || w.bitsRemaining == 0)
         {
           std::sort(buffer.begin() + w.begin, buffer.begin() + w.end, [](EntityData const& a, EntityData const& b) {
             return Location::template IsLess<IS_ELEMENT_DEPTH_SPECIFIC>(a.location, b.location);
