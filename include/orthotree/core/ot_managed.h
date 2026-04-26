@@ -376,6 +376,7 @@ namespace OrthoTree
     // Add entity with tree rebalancing
     template<typename TEntity = Entity>
     constexpr std::optional<EntityID> Add(TEntity&& newEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
+      requires(std::is_convertible_v<TEntity, Entity>)
     {
       auto const newEntityID = EA::Insert(m_entities, std::forward<decltype(newEntity)>(newEntity));
       bool isInserted = false;
@@ -456,7 +457,7 @@ namespace OrthoTree
     // Replace entity to the changedEntity
     template<typename TEntity = Entity>
     constexpr bool Update(EntityID entityID, TEntity&& changedEntity, InsertionMode insertionMode = InsertionMode::Balanced) noexcept
-      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed)
+      requires(EA::ENTITY_ID_STRATEGY != EntityIdStrategy::EntityKeyed && std::is_convertible_v<TEntity, Entity>)
     {
       auto oldEntity = EA::Exchange(m_entities, entityID, std::forward<decltype(changedEntity)>(changedEntity));
       bool isInserted = false;
