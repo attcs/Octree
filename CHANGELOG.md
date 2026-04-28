@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05 v3.2.2
+
+Bugfixes
+* Fix bulk-Insert logic
+
 ## 2026-04 v3.2.1
 
 Performance improvements
