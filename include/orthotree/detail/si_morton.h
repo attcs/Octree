@@ -504,7 +504,14 @@ namespace OrthoTree::detail
       else if constexpr (DIMENSION_NO == 2)
       {
 #ifdef ORTHOTREE_BMI2_PDEP_AVAILABLE
-        return _pdep_u32(gridID[1], 0b10101010'10101010'10101010'10101010) | _pdep_u32(gridID[0], 0b01010101'01010101'01010101'01010101);
+        if constexpr (IS_32BIT_LOCATION)
+        {
+          return _pdep_u32(gridID[1], 0b10101010'10101010'10101010'10101010) | _pdep_u32(gridID[0], 0b01010101'01010101'01010101'01010101);
+        }
+        else
+        {
+          return (Part1By1(gridID[1]) << 1) + Part1By1(gridID[0]);
+        }
 #else
         return (Part1By1(gridID[1]) << 1) + Part1By1(gridID[0]);
 #endif
@@ -512,8 +519,16 @@ namespace OrthoTree::detail
       else if constexpr (DIMENSION_NO == 3)
       {
 #ifdef ORTHOTREE_BMI2_PDEP_AVAILABLE
-        return _pdep_u32(gridID[2], 0b00100100'10010010'01001001'00100100) | _pdep_u32(gridID[1], 0b10010010'01001001'00100100'10010010) |
-               _pdep_u32(gridID[0], 0b01001001'00100100'10010010'01001001);
+        if constexpr (IS_32BIT_LOCATION)
+        {
+          return _pdep_u32(gridID[2], 0b00100100'10010010'01001001'00100100) | _pdep_u32(gridID[1], 0b10010010'01001001'00100100'10010010) |
+                 _pdep_u32(gridID[0], 0b01001001'00100100'10010010'01001001);
+        }
+        else
+        {
+          static constexpr auto bitPatterns = GetBitPatterns();
+          return _pdep_u64(gridID[2], bitPatterns[2]) | _pdep_u64(gridID[1], bitPatterns[1]) | _pdep_u64(gridID[0], bitPatterns[0]);
+        }
 #else
         return (Part1By2(gridID[2]) << 2) + (Part1By2(gridID[1]) << 1) + Part1By2(gridID[0]);
 #endif

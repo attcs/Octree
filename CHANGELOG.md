@@ -1,6 +1,11 @@
 # Changelog
 
-## 2026-05 v3.2.2
+## 2026-04 v3.2.3
+
+Bugfixes
+* Fix Morton code generation for 64-bit coordinates in 3D with AVX2 and BMI2 (in the case of deep trees).
+
+## 2026-04 v3.2.2
 
 Bugfixes
 * Fix bulk-Insert logic
