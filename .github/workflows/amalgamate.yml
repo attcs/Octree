@@ -1,0 +1,51 @@
+name: Auto-Amalgamate Single Header
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'include/orthotree/**'
+      - 'scripts/amalgamate.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  amalgamate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Run amalgamation script
+        run: python scripts/amalgamate.py
+
+      - name: Commit and push if single-header has changed
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add the generated single-header file
+          git add single_include/orthotree.h
+          
+          # Check if there are changes to commit
+          if git diff-index --quiet HEAD --; then
+            echo "No changes detected in amalgamated header. Skipping commit."
+          else
+            echo "Amalgamated header changed. Committing and pushing..."
+            git commit -m "chore: auto-generate amalgamated single-header [skip ci]"
+            git push
+          fi

@@ -50,7 +50,7 @@ include(FetchContent)
 FetchContent_Declare(
   OrthoTree
   GIT_REPOSITORY https://github.com/attcs/Octree.git
-  GIT_TAG v3.2.3 # Or use a specific commit hash
+  GIT_TAG v3.2.4 # Or use a specific commit hash
 )
 FetchContent_MakeAvailable(OrthoTree)
 
@@ -64,11 +64,31 @@ Or using [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake):
 CPMAddPackage(
   NAME OrthoTree
   GITHUB_REPOSITORY attcs/Octree
-  GIT_TAG v3.2.3
+  GIT_TAG v3.2.4
 )
 
 target_link_libraries(your_project PRIVATE OrthoTree::OrthoTree)
 ```
+
+### Single-Header Integration (Recommended for Quick Starts)
+Alternatively, you can use the single-header version of OrthoTree (`orthotree.h`) located in [single_include/orthotree.h](./single_include/orthotree.h). 
+
+Simply download it, drop it into your project folder, and include it:
+```cpp
+#include "orthotree.h"
+```
+
+To automatically enable third-party adapters (like Eigen, GLM, CGAL, Boost) or serialization (MsgPack), include their headers *before* including `orthotree.h`, or define the corresponding support macro:
+- **Eigen**: `#define ORTHOTREE_EIGEN_SUPPORT` (or compile with Eigen include paths)
+- **GLM**: `#define ORTHOTREE_GLM_SUPPORT` (or compile with GLM include paths)
+- **Boost**: `#define ORTHOTREE_BOOST_SUPPORT` (or compile with Boost include paths)
+- **CGAL**: `#define ORTHOTREE_CGAL_SUPPORT` (or compile with CGAL include paths)
+- **MsgPack**: `#define ORTHOTREE_SERIALIZATION_MSGPACK_SUPPORT`
+- **Unreal**: `#define ORTHOTREE_UNREAL_SUPPORT`
+
+To regenerate the single-header from the modular source files:
+- Run the Python script: `python scripts/amalgamate.py`
+- Or use the CMake target if configured: `cmake --build build --target generate_single_header`
 
 ### Manual Installation
 Since it's a header-only library, you can also just download the `include` folder and add it to your project's include paths. 
@@ -102,7 +122,7 @@ cmake --install build --prefix /your/install/path
 * Naming
   * Managed types have "M" postfix (e.g., `OctreeBoxM`).
   * Aliases named with "Map" are declared for `std::unordered_map` geometry containers (e.g., `QuadtreeBoxMap`, `OctreeBoxMap`, `OctreeBoxMapM`). Non-"Map" aliases use `std::span`, which is compatible with `std::vector`, `std::array`, or any contiguous container.
-  * `s` means adjustable `LOOSE_TREE` for box-types (e.g., `OctreeBoxCs`).
+  * `s` means adjustable `LOOSE_TREE` for box-types (e.g., `OctreeBoxMs`).
 * For box types 2.0 loose tree is the default.
 * Original geometry data is not stored in Core types, so any search function needs them as an input.
 * Tested compilers: MSVC 2022, Clang 12.0.0, GCC 11.3, AppleClang 16.0.0
@@ -110,7 +130,7 @@ cmake --install build --prefix /your/install/path
 ## Attached adapters
 * Default: 2D, 3D...63D; `std::array` based structures (`PointND`, `VectorND`, `BoundingBoxND`, `RayND`, `PlaneND`)
 * CGAL: 2D, 3D; `CGAL::OctreePoint`, `OctreeBox`, `OctreePointM`, `OctreeBoxM`, etc. (adaptor.cgal.h)
-* Eigen: 2D, 3D; `Eigen::OctreePoint3d`, `OctreePointC3d`, `OctreeBox3d`, `OctreeBoxC3d`, etc. (adaptor.eigen.h)
+* Eigen: 2D, 3D; `Eigen::OctreePoint3d`, `OctreePointM3d`, `OctreeBox3d`, `OctreeBoxM3d`, etc. (adaptor.eigen.h)
 * glm: 2D, 3D, 4D; `glm::octree_point`, `octree_box`, `octree_point_m`, `octree_box_m`, etc. (adaptor.glm.h)
 * Unreal Engine: 2D, 3D; `FOctreePoint`, `FOctreePointM`, `FOctreeBox`, `FOctreeBoxM`, etc. (adaptor.unreal.h)
 * Boost: 2D, 3D; `boost::geometry::octree_point`, `octree_box`, etc. (adaptor.boost.h)

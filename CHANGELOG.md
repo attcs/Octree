@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05 v3.2.4
+
+Miscellaneous
+* Amalgameted, easy-to-use single include header alternative. See [single_include/orthotree.h](./single_include/orthotree.h)
+
 ## 2026-04 v3.2.3
 
 Bugfixes

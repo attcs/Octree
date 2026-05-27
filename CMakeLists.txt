@@ -58,6 +58,16 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/OrthoTree
 )
 
+# --- Optional: Single Header Generation ---
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    add_custom_target(generate_single_header
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/amalgamate.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating single header orthotree.h..."
+    )
+endif()
+
 # --- Optional: Tests and Benchmarks ---
 # This allows building the tests/benchmarks if this is the top-level project
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)

@@ -60,6 +60,9 @@
     <ClCompile Include="mr.tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="single_header.tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
