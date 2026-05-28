@@ -321,7 +321,7 @@ namespace OrthoTree
         if (!OrthoTree::is_loading_archive(ar))
         {
           for (auto& [nodeID, node] : m_nodes)
-            m_memorySize += node.GetEntitySegment().segment.size();
+            m_memorySize += static_cast<serialized_size_t>(node.GetEntitySegment().segment.size());
 
           ar& ORTHOTREE_NVP(m_memorySize);
         }
