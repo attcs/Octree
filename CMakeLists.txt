@@ -79,7 +79,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     endif()
 
     if(ORTHOTREE_BUILD_TESTS)
-        # Note: tests/unittests might need its own CMakeLists.txt update
-        # add_subdirectory(tests/unittests)
+        add_subdirectory(tests/unittests)
     endif()
 endif()
