@@ -33,34 +33,16 @@ namespace OrthoTree
   }
 } // namespace OrthoTree
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+
 using namespace OrthoTree;
 
-namespace Microsoft::VisualStudio::CppUnitTestFramework
-{
-  // Specializations for OrthoTree types to integrate with Assert::AreEqual
-  template<>
-  inline std::wstring ToString<OrthoTree::Point3D>(const OrthoTree::Point3D& p)
-  {
-    std::wstringstream ss;
-    ss << L"[" << p[0] << L", " << p[1] << L", " << p[2] << L"]";
-    return ss.str();
-  }
-
-  template<>
-  inline std::wstring ToString<OrthoTree::BoundingBox3D>(const OrthoTree::BoundingBox3D& b)
-  {
-    std::wstringstream ss;
-    ss << L"{Min: " << ToString(b.Min).c_str() << L", Max: " << ToString(b.Max).c_str() << L"}";
-    return ss.str();
-  }
-} // namespace Microsoft::VisualStudio::CppUnitTestFramework
 
 namespace SerializeTests
 {
-  TEST_CLASS(SerializeTests)
+  namespace SerializeTests
+
   {
-  public:
+  // public:
     template<typename TOutputArchive, typename TInputArchive, typename TTree>
     void RoundTripTest(TTree const& tree_save, std::ios::openmode mode)
     {
@@ -73,9 +55,9 @@ namespace SerializeTests
       // Display serialized content for debugging purposes (skipping binary)
       if constexpr (!std::is_same_v<TOutputArchive, BinaryOutputArchive>)
       {
-        Logger::WriteMessage("\n--- Serialized Content ---\n");
-        Logger::WriteMessage(ss.str().c_str());
-        Logger::WriteMessage("\n--- End of content ---\n");
+        std::cout << "\n--- Serialized Content ---\n" << std::endl;
+        std::cout << ss.str().c_str() << std::endl;
+        std::cout << "\n--- End of content ---\n" << std::endl;
       }
 
       ss.seekg(0);
@@ -90,7 +72,7 @@ namespace SerializeTests
       auto const& entities_save = tree_save.GetData();
       auto const& entities_load = tree_load.GetData();
 
-      Assert::AreEqual(entities_save.size(), entities_load.size(), L"Entity count mismatch");
+      EXPECT_EQ(entities_save.size(), entities_load.size()) << "Entity count mismatch";
 
       if constexpr (std::is_same_v<std::decay_t<decltype(entities_save)>, std::vector<typename TTree::Entity>>)
       {
@@ -98,12 +80,12 @@ namespace SerializeTests
         {
           if constexpr (std::is_same_v<typename TTree::Entity, BoundingBox3D>)
           {
-            Assert::IsTrue(entities_save[i].Min == entities_load[i].Min, L"Min point mismatch");
-            Assert::IsTrue(entities_save[i].Max == entities_load[i].Max, L"Max point mismatch");
+            EXPECT_TRUE((entities_save[i].Min == entities_load[i].Min)) << "Min point mismatch";
+            EXPECT_TRUE((entities_save[i].Max == entities_load[i].Max)) << "Max point mismatch";
           }
           else
           {
-            Assert::IsTrue(entities_save[i] == entities_load[i], L"Entity data mismatch at index");
+            EXPECT_TRUE((entities_save[i] == entities_load[i])) << "Entity data mismatch at index";
           }
         }
       }
@@ -112,12 +94,12 @@ namespace SerializeTests
       auto box = tree_save.GetBox();
       auto results_save = tree_save.RangeSearch(box);
       auto results_load = tree_load.RangeSearch(box);
-      Assert::AreEqual(results_save.size(), results_load.size(), L"Query results count mismatch");
+      EXPECT_EQ(results_save.size(), results_load.size()) << "Query results count mismatch";
     }
 
     // --- Octree Tests ---
 
-    TEST_METHOD(TestOctreePointBinary)
+    TEST(SerializeTests, TestOctreePointBinary)
     {
       OctreePointM tree(
         {
@@ -130,7 +112,7 @@ namespace SerializeTests
       RoundTripTest<BinaryOutputArchive, BinaryInputArchive>(tree, std::ios::in | std::ios::out | std::ios::binary);
     }
 
-    TEST_METHOD(TestStaticOctreeBinary)
+    TEST(SerializeTests, TestStaticOctreeBinary)
     {
       std::vector<Point3D> points = {
         { 0.1, 0.1, 0.1 },
@@ -146,7 +128,7 @@ namespace SerializeTests
       RoundTripTest<BinaryOutputArchive, BinaryInputArchive>(tree, std::ios::in | std::ios::out | std::ios::binary);
     }
 
-    TEST_METHOD(TestOctreeBoxBinary)
+    TEST(SerializeTests, TestOctreeBoxBinary)
     {
       OctreeBoxM tree(
         {
@@ -164,7 +146,7 @@ namespace SerializeTests
 
     // --- BVH Tests ---
 
-    TEST_METHOD(TestBVHPointBinary)
+    TEST(SerializeTests, TestBVHPointBinary)
     {
       std::vector<Point3D> points = {
         { 0.1, 0.1, 0.1 },
@@ -185,7 +167,7 @@ namespace SerializeTests
         ar_in& make_nvp("bvh", bvh_load);
       }
 
-      Assert::AreEqual(bvh.GetNodeCount(), bvh_load.GetNodeCount());
+      EXPECT_EQ(bvh.GetNodeCount(), bvh_load.GetNodeCount());
     }
-  };
+  }
 } // namespace SerializeTests

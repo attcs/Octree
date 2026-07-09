@@ -11,9 +11,10 @@ namespace Example
 {
   using EntityID = OrthoTree::index_t;
 
-  TEST_CLASS(ExampleTests)
+  namespace ExampleTests
+
   {
-    TEST_METHOD(Example1)
+    TEST(ExampleTests, Example1)
     {
       auto constexpr points = array{
         Point3D{ 0, 0, 0 },
@@ -33,12 +34,12 @@ namespace Example
         ,
         points); //: { 1, 2 }
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDsByRange));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDsByKNN));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDsByRange)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDsByKNN)));
     }
 
 
-    TEST_METHOD(Example2)
+    TEST(ExampleTests, Example2)
     {
       auto boxes = vector{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -75,19 +76,18 @@ namespace Example
       auto pickedBoxIDs = qt.PickSearch(pickPoint, boxes); //: { 2, 4 }
 
 
-      Assert::IsTrue(
-        std::ranges::is_permutation(
+      EXPECT_TRUE((std::ranges::is_permutation(
           vector<std::pair<EntityID, EntityID>>{
             { 1, 4 },
             { 2, 4 }
       },
-          collidingIDPairs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, insideBoxIDs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 3, 4 }, overlappingBoxIDs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, pickedBoxIDs));
+          collidingIDPairs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, insideBoxIDs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 3, 4 }, overlappingBoxIDs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, pickedBoxIDs)));
     }
 
-    TEST_METHOD(Example3)
+    TEST(ExampleTests, Example3)
     {
       auto boxes = vector{
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } }  /* and more... */
@@ -96,7 +96,7 @@ namespace Example
     }
 
 
-    TEST_METHOD(Example1_Container)
+    TEST(ExampleTests, Example1_Container)
     {
       auto constexpr points = array{
         Point3D{ 0, 0, 0 },
@@ -114,12 +114,12 @@ namespace Example
       auto neighborNo = 2;
       auto pointIDsByKNN = octree.GetNearestNeighbors(Point3D{ 1.1, 1.1, 1.1 }, neighborNo); //: { 1, 2 }
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDsByKNN));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, pointIDsByKNN)));
     }
 
 
-    TEST_METHOD(Example2_Container)
+    TEST(ExampleTests, Example2_Container)
     {
       auto boxes = vector{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -159,8 +159,7 @@ namespace Example
       auto pickPoint = Point2D{ 2.5, 2.5 };
       auto pickedIDs = quadtree.PickSearch(pickPoint); //: { 2, 4 }
 
-      Assert::IsTrue(
-        std::ranges::is_permutation(
+      EXPECT_TRUE((std::ranges::is_permutation(
           vector<std::pair<EntityID, EntityID>>{
             { 1, 4 },
             { 2, 4 },
@@ -168,14 +167,14 @@ namespace Example
             { 0, 6 },
             { 5, 6 }
       },
-          collidingIDPairs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, insideBoxIDs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 3, 4 }, overlappingBoxIDs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, pickedIDs));
+          collidingIDPairs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, insideBoxIDs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 3, 4 }, overlappingBoxIDs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, pickedIDs)));
     }
 
 
-    TEST_METHOD(Example3_Container)
+    TEST(ExampleTests, Example3_Container)
     {
       auto boxes = vector{
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } }  /* and more... */
@@ -192,7 +191,7 @@ namespace Example
       // OrthoTreeBoxND<3>::template Create<true>(boxes, 3);
     }
 
-    TEST_METHOD(Example2Map)
+    TEST(ExampleTests, Example2Map)
     {
       auto boxes = std::unordered_map<OrthoTree::index_t, BoundingBox2D>{
         { 10, BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } } },
@@ -227,16 +226,15 @@ namespace Example
       auto pickedBoxIDs = qt.PickSearch(pickPoint, boxes); //: { 2, 4 }
 
 
-      Assert::IsTrue(
-        std::ranges::is_permutation(
+      EXPECT_TRUE((std::ranges::is_permutation(
           vector<std::pair<EntityID, EntityID>>{
             { 11, 14 },
             { 12, 14 }
       },
-          collidingIDPairs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 11, 12, 14 }, insideBoxIDs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 11, 12, 13, 14 }, overlappingBoxIDs));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 12, 14 }, pickedBoxIDs));
+          collidingIDPairs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 11, 12, 14 }, insideBoxIDs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 11, 12, 13, 14 }, overlappingBoxIDs)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 12, 14 }, pickedBoxIDs)));
     }
-  };
+  }
 } // namespace Example

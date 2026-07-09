@@ -258,9 +258,10 @@ namespace PerformaceTest
   }
 
 
-  TEST_CLASS(PointTest)
+  namespace PointTest
+
   {
-  private:
+  // private:
 
     template<dim_t nDim>
     static OrthoTreePointND<nDim> CreateTest(depth_t depth, std::span<PointND<nDim> const> const& aPoint, bool fPar = false)
@@ -276,21 +277,21 @@ namespace PerformaceTest
       return nt;
     }
 
-  public:
-    TEST_METHOD(Create_2D_1M_d3) { CreateTest<2>(3, PreCalculated::aPoint2D_1M); }
-    TEST_METHOD(Create_2D_1M_d4) { CreateTest<2>(4, PreCalculated::aPoint2D_1M); }
-    TEST_METHOD(Create_3D_1M_d3) { CreateTest<3>(3, PreCalculated::aPoint3D_1M); }
-    TEST_METHOD(Create_3D_1M_d4) { CreateTest<3>(4, PreCalculated::aPoint3D_1M); }
-    TEST_METHOD(Create_3D_10M_d4_S) { CreateTest<3>(4, PreCalculated::sPoint3D_10M); }
-    TEST_METHOD(Create_3D_10M_d4_S_PAR) { CreateTest<3>(4, PreCalculated::aPoint3D_10M, true); }
-    TEST_METHOD(Create_3D_10M_d4_R) { CreateTest<3>(4, PreCalculated::aPoint3D_10MR); }
-    TEST_METHOD(Create_3D_10MR_d4_R_PAR) { CreateTest<3>(4, PreCalculated::aPoint3D_10MR, true); }
+  // public:
+    TEST(PointTest, Create_2D_1M_d3) { CreateTest<2>(3, PreCalculated::aPoint2D_1M); }
+    TEST(PointTest, Create_2D_1M_d4) { CreateTest<2>(4, PreCalculated::aPoint2D_1M); }
+    TEST(PointTest, Create_3D_1M_d3) { CreateTest<3>(3, PreCalculated::aPoint3D_1M); }
+    TEST(PointTest, Create_3D_1M_d4) { CreateTest<3>(4, PreCalculated::aPoint3D_1M); }
+    TEST(PointTest, Create_3D_10M_d4_S) { CreateTest<3>(4, PreCalculated::sPoint3D_10M); }
+    TEST(PointTest, Create_3D_10M_d4_S_PAR) { CreateTest<3>(4, PreCalculated::aPoint3D_10M, true); }
+    TEST(PointTest, Create_3D_10M_d4_R) { CreateTest<3>(4, PreCalculated::aPoint3D_10MR); }
+    TEST(PointTest, Create_3D_10MR_d4_R_PAR) { CreateTest<3>(4, PreCalculated::aPoint3D_10MR, true); }
 
-    TEST_METHOD(Create_4D_1M_d2) { CreateTest<4>(2, PreCalculated::aPoint4D_1M); }
-    TEST_METHOD(Create_16D_1M_d3) { CreateTest<16>(3, PreCalculated::aPoint16D_1M, true); }
-    TEST_METHOD(Create_63D_1M_d3) { CreateTest<63>(3, PreCalculated::aPoint63D_1M); }
+    TEST(PointTest, Create_4D_1M_d2) { CreateTest<4>(2, PreCalculated::aPoint4D_1M); }
+    TEST(PointTest, Create_16D_1M_d3) { CreateTest<16>(3, PreCalculated::aPoint16D_1M, true); }
+    TEST(PointTest, Create_63D_1M_d3) { CreateTest<63>(3, PreCalculated::aPoint63D_1M); }
 
-    TEST_METHOD(RangeSearch_2D_10M)
+    TEST(PointTest, RangeSearch_2D_10M)
     {
       auto constexpr n = 100;
 
@@ -299,7 +300,7 @@ namespace PerformaceTest
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreePoint2D.RangeSearch(search_box, PreCalculated::aPoint2D_10M);
     }
-    TEST_METHOD(RangeSearch_3D_10M)
+    TEST(PointTest, RangeSearch_3D_10M)
     {
       auto constexpr n = 100;
 
@@ -309,12 +310,13 @@ namespace PerformaceTest
         vvid[i] = PreCalculated::TreePoint3D.RangeSearch(search_box, PreCalculated::aPoint3D_10M);
     }
 
-  };
+  }
 
 
-  TEST_CLASS(BoxTest)
+  namespace BoxTest
+
   {
-  private:
+  // private:
     template<dim_t nDim>
     static auto CreateTest(depth_t depth, std::span<BoundingBoxND<nDim> const> const& aBox, bool fPar = false)
     {
@@ -330,22 +332,22 @@ namespace PerformaceTest
     }
 
 
-  public:
-    TEST_METHOD(Create_2D_1M_d3) { CreateTest(3, PreCalculated::aBox2D_1M); }
-    TEST_METHOD(Create_2D_1M_d4) { CreateTest(4, PreCalculated::aBox2D_1M); }
+  // public:
+    TEST(BoxTest, Create_2D_1M_d3) { CreateTest(3, PreCalculated::aBox2D_1M); }
+    TEST(BoxTest, Create_2D_1M_d4) { CreateTest(4, PreCalculated::aBox2D_1M); }
 
-    TEST_METHOD(Create_3D_1M_d3) { CreateTest(3, PreCalculated::aBox3D_1M); }
-    TEST_METHOD(Create_3D_1M_d4) { CreateTest(4, PreCalculated::aBox3D_1M); }
-    TEST_METHOD(Create_3D_10M_d4_S) { CreateTest(4, PreCalculated::aBox3D_10M); }
-    TEST_METHOD(Create_3D_10M_d4_S_PAR) { CreateTest<3>(4, PreCalculated::aBox3D_10M, true); }
-    TEST_METHOD(Create_3D_10M_d4_R) { CreateTest<3>(4, PreCalculated::aBox3D_10MR); }
-    TEST_METHOD(Create_3D_10M_d4_R_PAR) { CreateTest<3>(4, PreCalculated::aBox3D_10MR, true); }
+    TEST(BoxTest, Create_3D_1M_d3) { CreateTest(3, PreCalculated::aBox3D_1M); }
+    TEST(BoxTest, Create_3D_1M_d4) { CreateTest(4, PreCalculated::aBox3D_1M); }
+    TEST(BoxTest, Create_3D_10M_d4_S) { CreateTest(4, PreCalculated::aBox3D_10M); }
+    TEST(BoxTest, Create_3D_10M_d4_S_PAR) { CreateTest<3>(4, PreCalculated::aBox3D_10M, true); }
+    TEST(BoxTest, Create_3D_10M_d4_R) { CreateTest<3>(4, PreCalculated::aBox3D_10MR); }
+    TEST(BoxTest, Create_3D_10M_d4_R_PAR) { CreateTest<3>(4, PreCalculated::aBox3D_10MR, true); }
 
-    TEST_METHOD(Create_4D_1M_d4) { CreateTest<4>(4, PreCalculated::aBox4D_1M); }
+    TEST(BoxTest, Create_4D_1M_d4) { CreateTest<4>(4, PreCalculated::aBox4D_1M); }
 
-    TEST_METHOD(Create_63D_1M_d4) { CreateTest<63>(3, PreCalculated::aBox63D_1M, true); }
+    TEST(BoxTest, Create_63D_1M_d4) { CreateTest<63>(3, PreCalculated::aBox63D_1M, true); }
 
-    TEST_METHOD(RangeSearch_2D_10M)
+    TEST(BoxTest, RangeSearch_2D_10M)
     {
       auto constexpr nDim = 2;
       auto constexpr n = 10;
@@ -356,7 +358,7 @@ namespace PerformaceTest
         vvid[i] = PreCalculated::TreeBox2D_10M.RangeSearch(search_box, PreCalculated::aBox2D_10M);
     }
 
-    TEST_METHOD(RangeSearch_3D_10M)
+    TEST(BoxTest, RangeSearch_3D_10M)
     {
       auto constexpr nDim = 3;
       auto constexpr n = 10;
@@ -366,7 +368,7 @@ namespace PerformaceTest
       for (int i = 0; i < n; ++i)
         vvid[i] = PreCalculated::TreeBox3D_10M.RangeSearch(search_box, PreCalculated::aBox3D_10MR);
     }
-  };
+  }
 }
 
 #endif

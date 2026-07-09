@@ -10,21 +10,6 @@ using namespace OrthoTree;
 using std::array;
 using std::vector;
 
-namespace Microsoft
-{
-  namespace VisualStudio
-  {
-    namespace CppUnitTestFramework
-    {
-      template<>
-      [[maybe_unused]] inline std::wstring ToString<std::bitset<65>>(const std::bitset<65>& t)
-      {
-        RETURN_WIDE_STRING(t);
-      }
-
-    } // namespace CppUnitTestFramework
-  } // namespace VisualStudio
-} // namespace Microsoft
 
 namespace RandomTests
 {
@@ -245,9 +230,10 @@ namespace RandomTests
     return vElementFound;
   }
 
-  TEST_CLASS(RandomTests)
+  namespace RandomTests
+
   {
-  private:
+  // private:
     template<int DIMENSION_NO, typename TScalar>
     void PointND_RangeSearch(size_t pointsNo, size_t boxesNo, TScalar rMin, TScalar rMax)
     {
@@ -266,12 +252,12 @@ namespace RandomTests
       {
         auto elementIDsTreeCore = treeCore.RangeSearch(box, points);
         auto const elementIDsTreeContainer = treeContainer.RangeSearch(box);
-        Assert::IsTrue(elementIDsTreeCore == elementIDsTreeContainer);
+        EXPECT_TRUE((elementIDsTreeCore == elementIDsTreeContainer));
 
         auto const elementIDsNaive = RangeSearchNaive<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>(box, points);
         std::ranges::sort(elementIDsTreeCore);
         assert(elementIDsNaive == elementIDsTreeCore);
-        Assert::IsTrue(elementIDsNaive == elementIDsTreeCore);
+        EXPECT_TRUE((elementIDsNaive == elementIDsTreeCore));
       }
     } // namespace RandomTests
 
@@ -323,12 +309,12 @@ namespace RandomTests
       {
         auto elementIDsTreeCore = treeCore.RangeSearch(searchBox, entityBoxes, RangeSearchMode::Overlap);
         auto const elementIDsTreeContainer = treeContainer.RangeSearch(searchBox, RangeSearchMode::Overlap);
-        Assert::IsTrue(elementIDsTreeCore == elementIDsTreeContainer);
+        EXPECT_TRUE((elementIDsTreeCore == elementIDsTreeContainer));
 
         auto const elementIDsNaive = RangeSearchNaive<DIMENSION_NO, TVector, TBox, TRay, TPlane, TScalar>(searchBox, entityBoxes);
         std::ranges::sort(elementIDsTreeCore);
         assert(elementIDsNaive == elementIDsTreeCore);
-        Assert::IsTrue(elementIDsNaive == elementIDsTreeCore);
+        EXPECT_TRUE((elementIDsNaive == elementIDsTreeCore));
       }
     }
 
@@ -375,11 +361,8 @@ namespace RandomTests
       }
     }
 
-  public:
-    BEGIN_TEST_METHOD_ATTRIBUTE(Point_RangeSearch)
-      TEST_IGNORE()
-      END_TEST_METHOD_ATTRIBUTE()
-        TEST_METHOD(Point_RangeSearch)
+  // public:
+    TEST(RandomTests, DISABLED_Point_RangeSearch)
         {
           srand(0);
           /*
@@ -388,10 +371,7 @@ namespace RandomTests
           PointT_RangeSearch<int>();
           */
         }
-        BEGIN_TEST_METHOD_ATTRIBUTE(Box_RangeSearch)
-          TEST_IGNORE()
-          END_TEST_METHOD_ATTRIBUTE()
-            TEST_METHOD(Box_RangeSearch)
+        TEST(RandomTests, DISABLED_Box_RangeSearch)
             {
               srand(0);
               /*
@@ -400,5 +380,5 @@ namespace RandomTests
               BoxT_RangeSearch<int>();
               */
             }
-  };
+  }
 } // namespace RandomTests

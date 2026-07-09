@@ -20,11 +20,9 @@
 #include "orthotree/detail/utils.h"
 #include "orthotree/detail/zip_view.h"
 
-#include "CppUnitTest.h"
+#include <gtest/gtest.h>
 
 #endif // PCH_H
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 template<typename T1, typename T2>
 static bool AreContainersItemsEqual(T1 const& l, T2 const& r)

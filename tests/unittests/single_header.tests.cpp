@@ -1,15 +1,16 @@
-#include "CppUnitTest.h"
+#include <gtest/gtest.h>
 #include "../../single_include/orthotree.h"
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+
 using namespace OrthoTree;
 
 namespace SingleHeaderTest
 {
-  TEST_CLASS(SingleHeaderTests)
+  namespace SingleHeaderTests
+
   {
-  public:
-    TEST_METHOD(TestOctreeFromSingleHeader)
+  // public:
+    TEST(SingleHeaderTests, TestOctreeFromSingleHeader)
     {
       auto constexpr points = std::array{
         Point3D{ 0.0, 0.0, 0.0 },
@@ -21,12 +22,12 @@ namespace SingleHeaderTest
       auto const searchBox = BoundingBox3D{ { 0.5, 0.5, 0.5 }, { 2.5, 2.5, 2.5 } };
       auto pointIDs = octree.RangeSearch(searchBox);
       
-      Assert::AreEqual(size_t(2), pointIDs.size());
-      Assert::AreEqual(OrthoTree::index_t(1), pointIDs[0]);
-      Assert::AreEqual(OrthoTree::index_t(2), pointIDs[1]);
+      EXPECT_EQ(size_t(2), pointIDs.size());
+      EXPECT_EQ(OrthoTree::index_t(1), pointIDs[0]);
+      EXPECT_EQ(OrthoTree::index_t(2), pointIDs[1]);
     }
 
-    TEST_METHOD(TestBVHFromSingleHeader)
+    TEST(SingleHeaderTests, TestBVHFromSingleHeader)
     {
       auto boxes = std::vector{
         BoundingBox3D{ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } },
@@ -37,7 +38,7 @@ namespace SingleHeaderTest
       auto searchBox = BoundingBox3D{ { 0.5, 0.5, 0.5 }, { 2.5, 2.5, 2.5 } };
       auto overlaps = bvh.RangeSearch(searchBox, RangeSearchMode::Overlap);
       
-      Assert::AreEqual(size_t(2), overlaps.size());
+      EXPECT_EQ(size_t(2), overlaps.size());
     }
-  };
+  }
 }

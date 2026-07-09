@@ -20,21 +20,6 @@ using namespace OrthoTree;
 using std::array;
 using std::vector;
 
-namespace Microsoft
-{
-  namespace VisualStudio
-  {
-    namespace CppUnitTestFramework
-    {
-      template<>
-      inline std::wstring ToString<std::bitset<65>>(const std::bitset<65>& t)
-      {
-        RETURN_WIDE_STRING(t);
-      }
-
-    } // namespace CppUnitTestFramework
-  } // namespace VisualStudio
-} // namespace Microsoft
 
 namespace
 {
@@ -133,92 +118,94 @@ namespace
 
 namespace GeneralTest
 {
-  TEST_CLASS(MortonTest)
+  namespace MortonTest
+
   {
-  public:
-    TEST_METHOD(M1D_0_0)
+  // public:
+    TEST(MortonTest, M1D_0_0)
     {
       auto constexpr arr = array<GridID, 1>{ 0 };
-      Assert::AreEqual(SI1D::LocationID{ 0 }, SI1D::Encode(arr));
+      EXPECT_EQ(SI1D::LocationID{ 0 }, SI1D::Encode(arr));
     } // namespace GeneralTest
 
-    TEST_METHOD(M1D_4_4)
+    TEST(MortonTest, M1D_4_4)
     {
       auto constexpr arr = array<GridID, 1>{ 4 };
-      Assert::AreEqual(SI1D::LocationID{ 4 }, SI1D::Encode(arr));
+      EXPECT_EQ(SI1D::LocationID{ 4 }, SI1D::Encode(arr));
     }
 
 
-    TEST_METHOD(M2D_00_0)
+    TEST(MortonTest, M2D_00_0)
     {
       auto constexpr arr = array<GridID, 2>{ 0, 0 };
-      Assert::AreEqual(SI2D::LocationID{ 0 }, SI2D::Encode(arr));
+      EXPECT_EQ(SI2D::LocationID{ 0 }, SI2D::Encode(arr));
     }
 
-    TEST_METHOD(M2D_20_4)
+    TEST(MortonTest, M2D_20_4)
     {
       auto constexpr arr = array<GridID, 2>{ 2, 0 };
-      Assert::AreEqual(SI2D::LocationID{ 4 }, SI2D::Encode(arr));
+      EXPECT_EQ(SI2D::LocationID{ 4 }, SI2D::Encode(arr));
     }
 
-    TEST_METHOD(M2D_02_8)
+    TEST(MortonTest, M2D_02_8)
     {
       auto constexpr arr = array<GridID, 2>{ 0, 2 };
-      Assert::AreEqual(SI2D::LocationID{ 8 }, SI2D::Encode(arr));
+      EXPECT_EQ(SI2D::LocationID{ 8 }, SI2D::Encode(arr));
     }
 
-    TEST_METHOD(M2D_22_12)
+    TEST(MortonTest, M2D_22_12)
     {
       auto constexpr arr = array<GridID, 2>{ 2, 2 };
-      Assert::AreEqual(SI2D::LocationID{ 12 }, SI2D::Encode(arr));
+      EXPECT_EQ(SI2D::LocationID{ 12 }, SI2D::Encode(arr));
     }
 
-    TEST_METHOD(M2D_13_11)
+    TEST(MortonTest, M2D_13_11)
     {
       auto constexpr arr = array<GridID, 2>{ 1, 3 };
-      Assert::AreEqual(SI2D::LocationID{ 11 }, SI2D::Encode(arr));
+      EXPECT_EQ(SI2D::LocationID{ 11 }, SI2D::Encode(arr));
     }
 
-    TEST_METHOD(M3D_000_0)
+    TEST(MortonTest, M3D_000_0)
     {
       auto constexpr arr = array<GridID, 3>{ 0, 0, 0 };
-      Assert::AreEqual(SI3D::LocationID{ 0 }, SI3D::Encode(arr));
+      EXPECT_EQ(SI3D::LocationID{ 0 }, SI3D::Encode(arr));
     }
 
-    TEST_METHOD(M3D_100_1)
+    TEST(MortonTest, M3D_100_1)
     {
       auto constexpr arr = array<GridID, 3>{ 1, 0, 0 };
-      Assert::AreEqual(SI3D::LocationID{ 1 }, SI3D::Encode(arr));
+      EXPECT_EQ(SI3D::LocationID{ 1 }, SI3D::Encode(arr));
     }
 
-    TEST_METHOD(M3D_001_4)
+    TEST(MortonTest, M3D_001_4)
     {
       auto constexpr arr = array<GridID, 3>{ 0, 0, 1 };
-      Assert::AreEqual(SI3D::LocationID{ 4 }, SI3D::Encode(arr));
+      EXPECT_EQ(SI3D::LocationID{ 4 }, SI3D::Encode(arr));
     }
 
-    TEST_METHOD(M3D_111_7)
+    TEST(MortonTest, M3D_111_7)
     {
       auto constexpr arr = array<GridID, 3>{ 1, 1, 1 };
-      Assert::AreEqual(SI3D::LocationID{ 7 }, SI3D::Encode(arr));
+      EXPECT_EQ(SI3D::LocationID{ 7 }, SI3D::Encode(arr));
     }
 
-    TEST_METHOD(M4D_1111_15)
+    TEST(MortonTest, M4D_1111_15)
     {
       auto constexpr arr = array<GridID, 4>{ 1, 1, 1, 1 };
-      Assert::AreEqual(SI4D::LocationID{ 15 }, SI4D::Encode(arr));
+      EXPECT_EQ(SI4D::LocationID{ 15 }, SI4D::Encode(arr));
     }
 
-    TEST_METHOD(M4D_2111_30)
+    TEST(MortonTest, M4D_2111_30)
     {
       auto constexpr arr = array<GridID, 4>{ 2, 1, 1, 1 };
-      Assert::AreEqual(SI4D::LocationID{ 30 }, SI4D::Encode(arr));
+      EXPECT_EQ(SI4D::LocationID{ 30 }, SI4D::Encode(arr));
     }
-  };
+  }
 
-  TEST_CLASS(NodeTest)
+  namespace NodeTest
+
   {
-  private:
+  // private:
     template<dim_t N>
     static void _complex_ND_Only1()
     {
@@ -226,52 +213,52 @@ namespace GeneralTest
       using NodeID = typename OrthoTreeBoxND<N>::NodeID;
 
       auto node = detail::OrthoTreeNodeData<2 << N, NodeID, child_id_type_, typename OrthoTreeBoxND<N>::EntityID, std::monostate>();
-      Assert::IsFalse(node.IsAnyChildExist());
+      EXPECT_FALSE((node.IsAnyChildExist()));
 
       auto constexpr nChild = 1 << N;
       for (child_id_type_ iChild = 0; iChild < nChild; ++iChild)
       {
         auto idChild = nChild - iChild - 1;
         node.LinkChild(idChild, NodeID(idChild));
-        Assert::IsTrue(node.HasChild(idChild));
-        Assert::IsTrue(node.IsAnyChildExist());
+        EXPECT_TRUE((node.HasChild(idChild)));
+        EXPECT_TRUE((node.IsAnyChildExist()));
 
         auto const vChild = node.GetChildren();
-        Assert::AreEqual<std::size_t>(1, vChild.size());
-        Assert::AreEqual(NodeID(idChild), *vChild.begin());
+        EXPECT_EQ(1, vChild.size());
+        EXPECT_EQ(NodeID(idChild), *vChild.begin());
 
         node.UnlinkChild(idChild);
         auto const vChild2 = node.GetChildren();
-        Assert::AreEqual<std::size_t>(0, vChild2.size());
+        EXPECT_EQ(0, vChild2.size());
       }
     }
 
-  public:
-    TEST_METHOD(Complex_1D_Only1)
+  // public:
+    TEST(NodeTest, Complex_1D_Only1)
     {
       _complex_ND_Only1<1>();
     }
-    TEST_METHOD(Complex_2D_Only1)
+    TEST(NodeTest, Complex_2D_Only1)
     {
       _complex_ND_Only1<2>();
     }
-    TEST_METHOD(Complex_3D_Only1)
+    TEST(NodeTest, Complex_3D_Only1)
     {
       _complex_ND_Only1<3>();
     }
-    TEST_METHOD(Complex_4D_Only1)
+    TEST(NodeTest, Complex_4D_Only1)
     {
       _complex_ND_Only1<4>();
     }
 
-    TEST_METHOD(Complex_16D_Only1)
+    TEST(NodeTest, Complex_16D_Only1)
     {
       _complex_ND_Only1<16>();
     }
-    // TEST_METHOD(Complex_24D_Only1) { Complex_ND_Only1<24>(); }
+    // TEST(NodeTest, Complex_24D_Only1) { Complex_ND_Only1<24>(); }
 
 
-  private:
+  // private:
     template<dim_t N>
     static void _complex_All_ND()
     {
@@ -284,11 +271,11 @@ namespace GeneralTest
       {
         auto const kChild = NodeID(idChild);
         node.LinkChild(idChild, kChild);
-        Assert::IsTrue(node.HasChild(kChild));
-        Assert::IsTrue(node.IsAnyChildExist());
+        EXPECT_TRUE((node.HasChild(kChild)));
+        EXPECT_TRUE((node.IsAnyChildExist()));
 
         auto const vChild = node.GetChildren();
-        Assert::AreEqual(static_cast<std::size_t>(idChild) + 1, vChild.size());
+        EXPECT_EQ(static_cast<std::size_t>(idChild) + 1, vChild.size());
       }
 
       for (ChildID idChild = 0; idChild < nChild; ++idChild)
@@ -300,43 +287,44 @@ namespace GeneralTest
         auto vChildExpected = vector<NodeID>(std::size_t(nChild - idChild - 1));
         std::iota(begin(vChildExpected), end(vChildExpected), NodeID(idChild + 1));
         auto const isPerm = std::is_permutation(vChildActual.begin(), vChildActual.end(), vChildExpected.begin());
-        Assert::IsTrue(isPerm);
+        EXPECT_TRUE((isPerm));
       }
 
-      Assert::IsFalse(node.IsAnyChildExist());
+      EXPECT_FALSE((node.IsAnyChildExist()));
     }
 
-  public:
-    TEST_METHOD(Complex_1D_All)
+  // public:
+    TEST(NodeTest, Complex_1D_All)
     {
       _complex_All_ND<1>();
     }
-    TEST_METHOD(Complex_2D_All)
+    TEST(NodeTest, Complex_2D_All)
     {
       _complex_All_ND<2>();
     }
-    TEST_METHOD(Complex_3D_All)
+    TEST(NodeTest, Complex_3D_All)
     {
       _complex_All_ND<3>();
     }
-    TEST_METHOD(Complex_4D_All)
+    TEST(NodeTest, Complex_4D_All)
     {
       _complex_All_ND<4>();
     }
 
-    TEST_METHOD(Complex_8D_All)
+    TEST(NodeTest, Complex_8D_All)
     {
       _complex_All_ND<8>();
     }
-    // TEST_METHOD(Complex_24D_All) { Complex_All_ND<24>(); }
-  };
+    // TEST(NodeTest, Complex_24D_All) { Complex_All_ND<24>(); }
+  }
 
 
-  TEST_CLASS(BasicFunctionsTest)
+  namespace BasicFunctionsTest
+
   {
     using NodeID = DualtreePoint::NodeID;
 
-    TEST_METHOD(Ctor_Point_SameAsCreate__True)
+    TEST(BasicFunctionsTest, Ctor_Point_SameAsCreate__True)
     {
       auto constexpr N = 16;
       auto constexpr vPoint = getPointSetNo1<N>();
@@ -345,14 +333,14 @@ namespace GeneralTest
 
       auto const& nodesE = treeExpected.GetNodes();
       auto const& nodesA = treeActual.GetNodes();
-      Assert::AreEqual(nodesE.size(), nodesA.size());
+      EXPECT_EQ(nodesE.size(), nodesA.size());
 
       auto const vidE = treeExpected.GetEntitiesBreadthFirst();
       auto const vidA = treeActual.GetEntitiesBreadthFirst();
-      Assert::IsTrue(vidE == vidA);
+      EXPECT_TRUE((vidE == vidA));
     }
 
-    TEST_METHOD(Ctor_Box_SameAsCreate__True)
+    TEST(BasicFunctionsTest, Ctor_Box_SameAsCreate__True)
     {
       auto constexpr N = 16;
       using BoundingBoxXD = BoundingBoxND<N>;
@@ -371,14 +359,14 @@ namespace GeneralTest
 
       auto const& nodesE = treeExpected.GetNodes();
       auto const& nodesA = treeActual.GetNodes();
-      Assert::AreEqual(nodesE.size(), nodesA.size());
+      EXPECT_EQ(nodesE.size(), nodesA.size());
 
       auto const vidE = treeExpected.GetEntitiesBreadthFirst();
       auto const vidA = treeActual.GetEntitiesBreadthFirst();
-      Assert::IsTrue(vidE == vidA);
+      EXPECT_TRUE((vidE == vidA));
     }
 
-    TEST_METHOD(Ctor_Box_Move)
+    TEST(BasicFunctionsTest, Ctor_Box_Move)
     {
       auto constexpr N = 3;
       using BoundingBoxXD = BoundingBoxND<N>;
@@ -399,14 +387,14 @@ namespace GeneralTest
 
       auto const& nodesE = treeExpected.GetNodes();
       auto const& nodesA = treeActual.GetNodes();
-      Assert::AreEqual(nodesE.size(), nodesA.size());
+      EXPECT_EQ(nodesE.size(), nodesA.size());
 
       auto const vidE = treeExpected.GetEntitiesBreadthFirst();
       auto const vidA = treeActual.GetEntitiesBreadthFirst();
-      Assert::IsTrue(vidE == vidA);
+      EXPECT_TRUE((vidE == vidA));
     }
 
-    TEST_METHOD(Ctor_Box_Copy)
+    TEST(BasicFunctionsTest, Ctor_Box_Copy)
     {
       auto constexpr N = 3;
       using BoundingBoxXD = BoundingBoxND<N>;
@@ -427,14 +415,14 @@ namespace GeneralTest
 
       auto const& nodesE = treeExpected.GetNodes();
       auto const& nodesA = treeActual.GetNodes();
-      Assert::AreEqual(nodesE.size(), nodesA.size());
+      EXPECT_EQ(nodesE.size(), nodesA.size());
 
       auto const vidE = treeExpected.GetEntitiesBreadthFirst();
       auto const vidA = treeActual.GetEntitiesBreadthFirst();
-      Assert::IsTrue(vidE == vidA);
+      EXPECT_TRUE((vidE == vidA));
     }
 
-    TEST_METHOD(Ctor_Box_CopyAssignment)
+    TEST(BasicFunctionsTest, Ctor_Box_CopyAssignment)
     {
       auto constexpr N = 3;
       using BoundingBoxXD = BoundingBoxND<N>;
@@ -455,59 +443,59 @@ namespace GeneralTest
 
       auto const& nodesE = treeExpected.GetNodes();
       auto const& nodesA = treeActual.GetNodes();
-      Assert::AreEqual(nodesE.size(), nodesA.size());
+      EXPECT_EQ(nodesE.size(), nodesA.size());
 
       auto const vidE = treeExpected.GetEntitiesBreadthFirst();
       auto const vidA = treeActual.GetEntitiesBreadthFirst();
-      Assert::IsTrue(vidE == vidA);
+      EXPECT_TRUE((vidE == vidA));
     }
 
-    TEST_METHOD(GetNodeID__00_1)
+    TEST(BasicFunctionsTest, GetNodeID__00_1)
     {
-      Assert::AreEqual(DualtreePoint::NodeID{ 1 }, SI1D::GetNodeID(0, 0));
+      EXPECT_EQ(DualtreePoint::NodeID{ 1 }, SI1D::GetNodeID(0, 0));
     }
 
-    TEST_METHOD(GetNodeIDh__11_3)
+    TEST(BasicFunctionsTest, GetNodeIDh__11_3)
     {
-      Assert::AreEqual(DualtreePoint::NodeID{ 3 }, SI1D::GetNodeID(1, 1));
+      EXPECT_EQ(DualtreePoint::NodeID{ 3 }, SI1D::GetNodeID(1, 1));
     }
-    TEST_METHOD(GetNodeID__22_4)
+    TEST(BasicFunctionsTest, GetNodeID__22_4)
     {
-      Assert::AreEqual(DualtreePoint::NodeID{ 6 }, SI1D::GetNodeID(2, 2));
-    }
-
-    TEST_METHOD(GetNodeIDh__37_15)
-    {
-      Assert::AreEqual(DualtreePoint::NodeID{ 15 }, SI1D::GetNodeID(7, 3));
+      EXPECT_EQ(DualtreePoint::NodeID{ 6 }, SI1D::GetNodeID(2, 2));
     }
 
-    TEST_METHOD(GetDepth__37_15__3)
+    TEST(BasicFunctionsTest, GetNodeIDh__37_15)
+    {
+      EXPECT_EQ(DualtreePoint::NodeID{ 15 }, SI1D::GetNodeID(7, 3));
+    }
+
+    TEST(BasicFunctionsTest, GetDepth__37_15__3)
     {
       auto const lc = SI1D::GetDepthID(SI1D::GetNodeID(7, 3));
-      Assert::AreEqual(depth_t{ 3 }, lc);
+      EXPECT_EQ(depth_t{ 3 }, lc);
     }
 
-    TEST_METHOD(RemoveSentinelBit__37_15__7)
+    TEST(BasicFunctionsTest, RemoveSentinelBit__37_15__7)
     {
       auto const lc = SI1D::RemoveSentinelBit(SI1D::GetNodeID(7, 3));
-      Assert::AreEqual(NodeID{ 7 }, lc);
+      EXPECT_EQ(NodeID{ 7 }, lc);
     }
 
-    TEST_METHOD(Init)
+    TEST(BasicFunctionsTest, Init)
     {
       auto tree = DualtreePoint{};
       auto const bb = BoundingBox1D{ -1, +1 };
       tree.Init(bb, 3, 10);
       auto const& box = tree.GetBox();
 
-      Assert::IsTrue(AreEqualAlmost(bb, BoundingBox1D{ .Min = box.Min, .Max = box.Max }));
+      EXPECT_TRUE((AreEqualAlmost(bb, BoundingBox1D{ .Min = box.Min, .Max = box.Max })));
 
       auto const& nodes = tree.GetNodes();
-      Assert::AreEqual<std::size_t>(1, nodes.size());
-      Assert::AreEqual<depth_t>(3, tree.GetMaxDepthID());
+      EXPECT_EQ(1, nodes.size());
+      EXPECT_EQ(3, tree.GetMaxDepthID());
     }
 
-    TEST_METHOD(InitThenInsert)
+    TEST(BasicFunctionsTest, InitThenInsert)
     {
       auto tree = DualtreeBoxM{};
       auto const handledSpaceDomain = BoundingBox1D{ -2, +2 };
@@ -526,16 +514,16 @@ namespace GeneralTest
         for (auto const& box : boxes)
         {
           auto const entityIDIfInserted = tree.Add(box, InsertionMode::LowestLeaf);
-          Assert::IsTrue(entityIDIfInserted.has_value());
+          EXPECT_TRUE((entityIDIfInserted.has_value()));
         }
 
         auto const& nodes = tree.GetCore().GetNodes();
         auto const entitiesInBFS = tree.GetCore().GetEntitiesBreadthFirst();
         auto const entitiesInDFS = tree.GetCore().GetEntitiesDepthFirst();
 
-        Assert::AreEqual<std::size_t>(7, nodes.size());
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 4, 0, 1, 2, 3 }, entitiesInBFS));
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 4, 0, 1, 2, 3 }, entitiesInDFS));
+        EXPECT_EQ(7, nodes.size());
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 4, 0, 1, 2, 3 }, entitiesInBFS)));
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 4, 0, 1, 2, 3 }, entitiesInDFS)));
       }
 
       // Adding nodes in the current structure
@@ -550,7 +538,7 @@ namespace GeneralTest
         for (auto const box : boxes)
         {
           auto const entityIDIfInserted = tree.Add(box, InsertionMode::ExistingLeaf);
-          Assert::IsTrue(entityIDIfInserted.has_value());
+          EXPECT_TRUE((entityIDIfInserted.has_value()));
         }
       }
 
@@ -559,23 +547,23 @@ namespace GeneralTest
       {
         auto const boxIsNotInTheHandledSpace = BoundingBox1D{ 1, 3 }; // Min point inside, max point outside, it should adjust the root
         auto const entityIDIfInserted = tree.Add(boxIsNotInTheHandledSpace, InsertionMode::Balanced);
-        Assert::IsTrue(entityIDIfInserted.has_value());
+        EXPECT_TRUE((entityIDIfInserted.has_value()));
       }
 
       auto const& nodes = tree.GetCore().GetNodes();
       auto const entitiesInBFS = tree.GetCore().GetEntitiesBreadthFirst();
       auto const entitiesInDFS = tree.GetCore().GetEntitiesDepthFirst();
 
-      Assert::AreEqual<std::size_t>(7, nodes.size());
-      Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 4, 8, 9, 6, 0, 5, 1, 2, 7, 3 }, entitiesInBFS));
-      Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 4, 8, 9, 6, 0, 5, 1, 2, 7, 3 }, entitiesInDFS));
+      EXPECT_EQ(7, nodes.size());
+      EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 4, 8, 9, 6, 0, 5, 1, 2, 7, 3 }, entitiesInBFS)));
+      EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 4, 8, 9, 6, 0, 5, 1, 2, 7, 3 }, entitiesInDFS)));
 
       auto const idsActual = tree.RangeSearch(BoundingBox1D{ -1.1, 0.9 }, RangeSearchMode::Overlap);
       auto const idsExpected = vector<EntityID>{ /* 1. phase */ 0, 1, 2, 4, /* 2. phase */ 6, 7, 8 };
-      Assert::IsTrue(std::ranges::is_permutation(idsActual, idsExpected));
+      EXPECT_TRUE((std::ranges::is_permutation(idsActual, idsExpected)));
     }
 
-    TEST_METHOD(InitThenInsertToLeaf)
+    TEST(BasicFunctionsTest, InitThenInsertToLeaf)
     {
       auto tree = OrthoTreeBoxND<3, false>();
       tree.Init(
@@ -590,9 +578,9 @@ namespace GeneralTest
       };
 
       tree.InsertIntoLeaf(0, entity, InsertionMode::LowestLeaf);
-      Assert::AreEqual<std::size_t>(2, tree.GetNodeCount());
+      EXPECT_EQ(2, tree.GetNodeCount());
     }
-    TEST_METHOD(InsertWithRebalancing_EmptyTree_SingleEntity)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_EmptyTree_SingleEntity)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -611,11 +599,11 @@ namespace GeneralTest
 
       tree.Insert(0, entities[0], entities);
 
-      Assert::AreEqual<std::size_t>(1, tree.GetNodeCount());
-      Assert::AreEqual<std::size_t>(1, tree.GetNodeEntityCount(tree.GetRootNodeValue()));
+      EXPECT_EQ(1, tree.GetNodeCount());
+      EXPECT_EQ(1, tree.GetNodeEntityCount(tree.GetRootNodeValue()));
     }
 
-    TEST_METHOD(InsertWithRebalancing_ExactCapacity_NoSplit)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_ExactCapacity_NoSplit)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -637,11 +625,11 @@ namespace GeneralTest
       for (size_t i = 0; i < entities.size(); ++i)
         tree.Insert(EntityID(i), entities[i], entities);
 
-      Assert::AreEqual<std::size_t>(1, tree.GetNodeCount(), L"Should remain single node at capacity");
-      Assert::AreEqual<std::size_t>(3, tree.GetNodeEntityCount(tree.GetRootNodeValue()));
+      EXPECT_EQ(1, tree.GetNodeCount()) << "Should remain single node at capacity";
+      EXPECT_EQ(3, tree.GetNodeEntityCount(tree.GetRootNodeValue()));
     }
 
-    TEST_METHOD(InsertWithRebalancing_OverCapacity_TriggersSplit)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_OverCapacity_TriggersSplit)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -664,10 +652,10 @@ namespace GeneralTest
       tree.Insert(1, entities[1], entities);
       tree.Insert(2, entities[2], entities);
 
-      Assert::IsTrue(tree.GetNodeCount() > 1, L"Should split after exceeding capacity");
+      EXPECT_TRUE((tree.GetNodeCount() > 1)) << "Should split after exceeding capacity";
     }
 
-    TEST_METHOD(InsertWithRebalancing_LargeEntity_StaysInRoot)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_LargeEntity_StaysInRoot)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -687,10 +675,10 @@ namespace GeneralTest
       tree.Insert(0, entities[0], entities);
 
       auto const allEntities = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(allEntities == std::vector<EntityID>{ 0 });
+      EXPECT_TRUE((allEntities == std::vector<EntityID>{ 0 }));
     }
 
-    TEST_METHOD(InsertWithRebalancing_MultipleOctants_CorrectDistribution)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_MultipleOctants_CorrectDistribution)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -716,11 +704,11 @@ namespace GeneralTest
       auto const allEntities = tree.GetEntitiesBreadthFirst();
       auto const nodeCount = tree.GetNodeCount();
 
-      Assert::IsTrue(allEntities == std::vector<EntityID>{ 0, 1, 2, 3 });
-      Assert::AreEqual<size_t>(5, nodeCount);
+      EXPECT_TRUE((allEntities == std::vector<EntityID>{ 0, 1, 2, 3 }));
+      EXPECT_EQ(5, nodeCount);
     }
 
-    TEST_METHOD(InsertWithRebalancing_MaxDepth_StopsSubdivision)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_MaxDepth_StopsSubdivision)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -750,10 +738,10 @@ namespace GeneralTest
         return TraverseControl::Continue;
       });
 
-      Assert::IsTrue(maxDepthID <= 2, L"Should not exceed max depth");
+      EXPECT_TRUE((maxDepthID <= 2)) << "Should not exceed max depth";
     }
 
-    TEST_METHOD(InsertWithRebalancing_TinyEntities_ProperPlacement)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_TinyEntities_ProperPlacement)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -774,10 +762,10 @@ namespace GeneralTest
       tree.Insert(0, entities[0], entities);
       tree.Insert(1, entities[1], entities);
 
-      Assert::IsTrue(tree.GetNodeCount() > 1, L"Tiny entities should trigger subdivision");
+      EXPECT_TRUE((tree.GetNodeCount() > 1)) << "Tiny entities should trigger subdivision";
     }
 
-    TEST_METHOD(InsertWithRebalancing_IdenticalLocations_HandledCorrectly)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_IdenticalLocations_HandledCorrectly)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -805,10 +793,10 @@ namespace GeneralTest
         return TraverseControl::Continue;
       });
 
-      Assert::IsTrue(maxDepthID == 5, L"Should add into a deepest level.");
+      EXPECT_TRUE((maxDepthID == 5)) << "Should add into a deepest level.";
     }
 
-    TEST_METHOD(InsertWithRebalancing_MixedSizes_OptimalDistribution)
+    TEST(BasicFunctionsTest, InsertWithRebalancing_MixedSizes_OptimalDistribution)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -833,11 +821,11 @@ namespace GeneralTest
       auto const allEntities = tree.GetEntitiesDepthFirst();
       auto const nodeCount = tree.GetNodeCount();
 
-      Assert::IsTrue(allEntities == std::vector<EntityID>{ 2, 0, 1 });
-      Assert::AreEqual<size_t>(3, nodeCount);
+      EXPECT_TRUE((allEntities == std::vector<EntityID>{ 2, 0, 1 }));
+      EXPECT_EQ(3, nodeCount);
     }
 
-    TEST_METHOD(InitThenInsertWithRebalancingLooseOctree)
+    TEST(BasicFunctionsTest, InitThenInsertWithRebalancingLooseOctree)
     {
       using TreeBox = OrthoTreeBoxND<3, true>;
 
@@ -868,8 +856,8 @@ namespace GeneralTest
       tree.Insert(0, entities[0], entities);
       tree.Insert(1, entities[1], entities);
 
-      Assert::AreEqual<std::size_t>(1, tree.GetNodeCount(), L"Tree should have 1 node (Root) before split");
-      Assert::AreEqual<std::size_t>(2, tree.GetNodeEntityCount(tree.GetRootNodeValue()), L"Root should have 2 entities");
+      EXPECT_EQ(1, tree.GetNodeCount()) << "Tree should have 1 node (Root) before split";
+      EXPECT_EQ(2, tree.GetNodeEntityCount(tree.GetRootNodeValue())) << "Root should have 2 entities";
 
       // 2. Insert third element (Triggers split)
       // All 3 items are small and belong to the same octant.
@@ -886,11 +874,11 @@ namespace GeneralTest
       auto const idsInBFS = tree.GetEntitiesBreadthFirst(TreeBox::GetRootNodeID(), true);
       auto const idsInDFS = tree.GetEntitiesDepthFirst(TreeBox::SI::GetRootKey(), true);
 
-      Assert::IsTrue(idsInBFS == std::vector<EntityID>{ 3, 0, 1, 2 });
-      Assert::IsTrue(idsInDFS == std::vector<EntityID>{ 3, 0, 1, 2 });
+      EXPECT_TRUE((idsInBFS == std::vector<EntityID>{ 3, 0, 1, 2 }));
+      EXPECT_TRUE((idsInDFS == std::vector<EntityID>{ 3, 0, 1, 2 }));
     }
 
-    TEST_METHOD(EraseFromEmpty)
+    TEST(BasicFunctionsTest, EraseFromEmpty)
     {
       auto const handledSpaceDomain = BoundingBox1D{ -2, +2 };
 
@@ -898,19 +886,19 @@ namespace GeneralTest
       tree.Reset();
       tree.Init(handledSpaceDomain, 10, 4);
       auto const isErased = tree.Erase(0);
-      Assert::IsFalse(isErased);
+      EXPECT_FALSE((isErased));
     }
 
-    TEST_METHOD(VisitNodes__points__0123)
+    TEST(BasicFunctionsTest, VisitNodes__points__0123)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const tree = DualtreePoint(vpt, 2, std::nullopt, 2);
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 0, 1, 2, 3 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 0, 1, 2, 3 }));
     }
 
-    TEST_METHOD(VisitNodes__boxes__0123)
+    TEST(BasicFunctionsTest, VisitNodes__boxes__0123)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -924,27 +912,27 @@ namespace GeneralTest
       auto const tree = DualtreeBox(vBox, 3, std::nullopt, 1);
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 6, 4, 5, 0, 1, 2, 3 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 6, 4, 5, 0, 1, 2, 3 }));
     }
 
 
-    TEST_METHOD(EraseId__2__EmptyNode11)
+    TEST(BasicFunctionsTest, EraseId__2__EmptyNode11)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 2, std::nullopt, 1);
 
       auto const kNode = SI1D::GetNodeID(2, 2);
-      Assert::AreEqual<std::size_t>(tree.GetNodeEntityCount(tree.GetNodeValue(kNode)), 1);
+      EXPECT_EQ(tree.GetNodeEntityCount(tree.GetNodeValue(kNode)), 1);
       tree.Erase(2);
       auto const& nodes = tree.GetNodes();
-      Assert::IsTrue(nodes.find(kNode) == nodes.end());
+      EXPECT_TRUE((nodes.find(kNode) == nodes.end()));
 
       auto const kNode3 = SI1D::GetNodeID(3, 2);
-      Assert::AreEqual<EntityID>(*tree.GetNodeEntities(tree.GetNodeValue(kNode3)).begin(), 2);
+      EXPECT_EQ(*tree.GetNodeEntities(tree.GetNodeValue(kNode3)).begin(), 2);
     }
 
 
-    TEST_METHOD(UpdateIndexes__None__NothingsChange)
+    TEST(BasicFunctionsTest, UpdateIndexes__None__NothingsChange)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -959,11 +947,11 @@ namespace GeneralTest
       tree.UpdateIndexes({});
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 6, 4, 5, 0, 1, 2, 3 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 6, 4, 5, 0, 1, 2, 3 }));
     }
 
 
-    TEST_METHOD(UpdateIndexes__2to7__6450173)
+    TEST(BasicFunctionsTest, UpdateIndexes__2to7__6450173)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -981,10 +969,10 @@ namespace GeneralTest
       });
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 6, 4, 5, 0, 1, 7, 3 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 6, 4, 5, 0, 1, 7, 3 }));
     }
 
-    TEST_METHOD(UpdateIndexes__2toMax__2Removed)
+    TEST(BasicFunctionsTest, UpdateIndexes__2toMax__2Removed)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -1003,10 +991,10 @@ namespace GeneralTest
       });
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 6, 4, 5, 0, 2, 1, 3 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 6, 4, 5, 0, 2, 1, 3 }));
     }
 
-    TEST_METHOD(UpdateIndexes__Swap3And6)
+    TEST(BasicFunctionsTest, UpdateIndexes__Swap3And6)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -1026,10 +1014,10 @@ namespace GeneralTest
 
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 3, 4, 5, 0, 1, 2, 6 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 3, 4, 5, 0, 1, 2, 6 }));
     }
 
-    TEST_METHOD(UpdateIndexes__Swap0And1)
+    TEST(BasicFunctionsTest, UpdateIndexes__Swap0And1)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -1049,11 +1037,11 @@ namespace GeneralTest
 
 
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 6, 4, 5, 1, 0, 2, 3 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 6, 4, 5, 1, 0, 2, 3 }));
     }
 
 
-    TEST_METHOD(UpdateIndexes__3to4_4to5_5to6_6Removed)
+    TEST(BasicFunctionsTest, UpdateIndexes__3to4_4to5_5to6_6Removed)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -1076,10 +1064,10 @@ namespace GeneralTest
 
       auto const ids = tree.GetEntitiesBreadthFirst();
 
-      Assert::IsTrue(ids == vector<EntityID>{ 3, 5, 1, 0, 4, 2, 6 }); // instead of { 6, 4, 5, 0, 1, 2, 3 }
+      EXPECT_TRUE((ids == vector<EntityID>{ 3, 5, 1, 0, 4, 2, 6 })); // instead of { 6, 4, 5, 0, 1, 2, 3 }
     }
 
-    TEST_METHOD(Clear__EmptyRootRemains)
+    TEST(BasicFunctionsTest, Clear__EmptyRootRemains)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 4.0 },
@@ -1093,21 +1081,21 @@ namespace GeneralTest
       auto tree = DualtreeBox(vBox, 3, std::nullopt, 1);
 
       auto const& nodes = tree.GetNodes();
-      Assert::AreEqual<std::size_t>(7, nodes.size());
+      EXPECT_EQ(7, nodes.size());
 
       tree.Clear();
-      Assert::AreEqual<std::size_t>(1, nodes.size());
-      Assert::IsTrue(tree.IsNodeEntitiesEmpty(tree.GetNodeValue(DualtreeBox::SI::GetNodeID(0, 0))));
+      EXPECT_EQ(1, nodes.size());
+      EXPECT_TRUE((tree.IsNodeEntitiesEmpty(tree.GetNodeValue(DualtreeBox::SI::GetNodeID(0, 0)))));
     }
 
-    TEST_METHOD(Contains_EmptyTree__False)
+    TEST(BasicFunctionsTest, Contains_EmptyTree__False)
     {
       auto const tree = DualtreePoint({}, 3, std::nullopt, 2);
       auto const isPointContained = tree.Contains({}, {}, 1.0);
-      Assert::IsFalse(isPointContained);
+      EXPECT_FALSE((isPointContained));
     }
 
-  private:
+  // private:
     template<dim_t N>
     bool _isOnePointTreeContains()
     {
@@ -1117,33 +1105,33 @@ namespace GeneralTest
       return tree.Contains(vPoint[0], vPoint, 0.01);
     }
 
-  public:
-    TEST_METHOD(Contains_OnePointTree_1D__True)
+  // public:
+    TEST(BasicFunctionsTest, Contains_OnePointTree_1D__True)
     {
-      Assert::IsTrue(_isOnePointTreeContains<1>());
+      EXPECT_TRUE((_isOnePointTreeContains<1>()));
     }
 
-    TEST_METHOD(Contains_OnePointTree_2D__True)
+    TEST(BasicFunctionsTest, Contains_OnePointTree_2D__True)
     {
-      Assert::IsTrue(_isOnePointTreeContains<2>());
+      EXPECT_TRUE((_isOnePointTreeContains<2>()));
     }
 
-    TEST_METHOD(Contains_OnePointTree_3D__True)
+    TEST(BasicFunctionsTest, Contains_OnePointTree_3D__True)
     {
-      Assert::IsTrue(_isOnePointTreeContains<3>());
+      EXPECT_TRUE((_isOnePointTreeContains<3>()));
     }
 
-    TEST_METHOD(Contains_OnePointTree_4D__True)
+    TEST(BasicFunctionsTest, Contains_OnePointTree_4D__True)
     {
-      Assert::IsTrue(_isOnePointTreeContains<4>());
+      EXPECT_TRUE((_isOnePointTreeContains<4>()));
     }
 
-    TEST_METHOD(Contains_OnePointTree_16D__True)
+    TEST(BasicFunctionsTest, Contains_OnePointTree_16D__True)
     {
-      Assert::IsTrue(_isOnePointTreeContains<16>());
+      EXPECT_TRUE((_isOnePointTreeContains<16>()));
     }
 
-  private:
+  // private:
     template<dim_t N>
     bool _isTreeContainsPointSetNo1()
     {
@@ -1152,51 +1140,51 @@ namespace GeneralTest
       return tree.Contains(vPoint[4], vPoint, 0.0);
     }
 
-  public:
-    TEST_METHOD(Contains_PointSetNo1_2D__True)
+  // public:
+    TEST(BasicFunctionsTest, Contains_PointSetNo1_2D__True)
     {
-      Assert::IsTrue(_isTreeContainsPointSetNo1<2>());
+      EXPECT_TRUE((_isTreeContainsPointSetNo1<2>()));
     }
 
-    TEST_METHOD(Contains_PointSetNo1_3D__True)
+    TEST(BasicFunctionsTest, Contains_PointSetNo1_3D__True)
     {
-      Assert::IsTrue(_isTreeContainsPointSetNo1<3>());
+      EXPECT_TRUE((_isTreeContainsPointSetNo1<3>()));
     }
 
-    TEST_METHOD(Contains_PointSetNo1_16D__True)
+    TEST(BasicFunctionsTest, Contains_PointSetNo1_16D__True)
     {
-      Assert::IsTrue(_isTreeContainsPointSetNo1<16>());
+      EXPECT_TRUE((_isTreeContainsPointSetNo1<16>()));
     }
 
-    TEST_METHOD(Contains_PointSetNo1_16D__False)
+    TEST(BasicFunctionsTest, Contains_PointSetNo1_16D__False)
     {
       auto constexpr N = 16;
       auto constexpr vPoint = getPointSetNo1<N>();
       auto const tree = OrthoTreePointND<N>(vPoint, 3);
       auto const fContain = tree.Contains(PointND<N>{ -1.0, -1.0 }, vPoint, 0.0);
 
-      Assert::IsFalse(fContain);
+      EXPECT_FALSE((fContain));
     }
 
-    TEST_METHOD(Contains_PointSetNo1_3D__False)
+    TEST(BasicFunctionsTest, Contains_PointSetNo1_3D__False)
     {
       auto constexpr N = 3;
       auto constexpr vPoint = getPointSetNo1<N>();
       auto const tree = OrthoTreePointND<N>(vPoint, 3);
       auto const fContain = tree.Contains(PointND<N>{ 7.0, 9.0 }, vPoint, 0.0);
 
-      Assert::IsFalse(fContain);
+      EXPECT_FALSE((fContain));
     }
 
 
-    TEST_METHOD(Move__Empty__NotCrash)
+    TEST(BasicFunctionsTest, Move__Empty__NotCrash)
     {
       auto tree = DualtreePoint();
       tree.Move({});
     }
 
 
-  private:
+  // private:
     template<typename tree_type, std::size_t N>
     bool _isMoveOfTwoTreeProper(tree_type const& tPre, tree_type const& tAfter, PointND<N> const& vMoveExpected)
     {
@@ -1229,8 +1217,8 @@ namespace GeneralTest
     }
 
 
-  public:
-    TEST_METHOD(MoveP__P0__Same)
+  // public:
+    TEST(BasicFunctionsTest, MoveP__P0__Same)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const treePre = DualtreePoint(vpt, 3, std::nullopt, 2);
@@ -1239,11 +1227,11 @@ namespace GeneralTest
       auto constexpr vMove = Point1D{ 0.0 };
       treeAfter.Move(vMove);
 
-      Assert::IsTrue(_isMoveOfTwoTreeProper(treePre, treeAfter, vMove));
+      EXPECT_TRUE((_isMoveOfTwoTreeProper(treePre, treeAfter, vMove)));
     }
 
 
-    TEST_METHOD(MoveP__P1__Moved)
+    TEST(BasicFunctionsTest, MoveP__P1__Moved)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const treePre = DualtreePoint(vpt, 3, std::nullopt, 2);
@@ -1252,11 +1240,11 @@ namespace GeneralTest
       auto constexpr vMove = Point1D{ 1.0 };
       treeAfter.Move(vMove);
 
-      Assert::IsTrue(_isMoveOfTwoTreeProper(treePre, treeAfter, vMove));
+      EXPECT_TRUE((_isMoveOfTwoTreeProper(treePre, treeAfter, vMove)));
     }
 
 
-    TEST_METHOD(MoveB__M20__Moved)
+    TEST(BasicFunctionsTest, MoveB__M20__Moved)
     {
       auto constexpr vBox = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -1273,11 +1261,11 @@ namespace GeneralTest
       auto constexpr vMove = Point1D{ -20.0 };
       treeAfter.Move(vMove);
 
-      Assert::IsTrue(_isMoveOfTwoTreeProper(treePre, treeAfter, vMove));
+      EXPECT_TRUE((_isMoveOfTwoTreeProper(treePre, treeAfter, vMove)));
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__XRay__None)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__XRay__None)
     {
       auto constexpr rayBase = Point2D{ 0.0, -1.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1289,11 +1277,11 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(oid.empty());
+      EXPECT_TRUE((oid.empty()));
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__YRay__None)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__YRay__None)
     {
       auto constexpr rayBase = Point2D{ 5.0, 0.0 };
       auto constexpr rayHeading = Point2D{ 0.0, 1.0 };
@@ -1305,11 +1293,11 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(oid.empty());
+      EXPECT_TRUE((oid.empty()));
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__YRay2__None)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__YRay2__None)
     {
       auto constexpr rayBase = Point2D{ 4.2, 4.4 };
       auto constexpr rayHeading = Point2D{ std::numbers::sqrt2 * 0.5, std::numbers::sqrt2 * 0.5 };
@@ -1321,11 +1309,11 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(oid.empty());
+      EXPECT_TRUE((oid.empty()));
     }
 
 
-    TEST_METHOD(RayIntersectedFirst_InsideTheTree_Neg_None)
+    TEST(BasicFunctionsTest, RayIntersectedFirst_InsideTheTree_Neg_None)
     {
       auto constexpr rayBase = Point2D{ 1.5, 2.6 };
       auto constexpr rayHeading = Point2D{ std::numbers::sqrt2 * -0.5, std::numbers::sqrt2 * -0.5 };
@@ -1337,11 +1325,11 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(oid.empty());
+      EXPECT_TRUE((oid.empty()));
     }
 
 
-    TEST_METHOD(RayIntersectedFirst_OutsideTheTree_Neg_None)
+    TEST(BasicFunctionsTest, RayIntersectedFirst_OutsideTheTree_Neg_None)
     {
       auto constexpr rayBase = Point2D{ 7.0, 2.0 };
       auto constexpr rayHeading = Point2D{ std::numbers::sqrt2 * -0.5, std::numbers::sqrt2 * -0.5 };
@@ -1353,11 +1341,11 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(oid.empty());
+      EXPECT_TRUE((oid.empty()));
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__XRay__0)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__XRay__0)
     {
       auto constexpr rayBase = Point2D{ 0.0, 0.5 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1369,12 +1357,12 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::AreEqual<size_t>(1, oid.size());
-      Assert::AreEqual<EntityID>(0, oid[0]);
+      EXPECT_EQ(1, oid.size());
+      EXPECT_EQ(0, oid[0]);
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__XRay__1)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__XRay__1)
     {
       auto constexpr rayBase = Point2D{ 0.0, 2.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1386,13 +1374,13 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::AreEqual<size_t>(2, oid.size());
-      Assert::AreEqual<EntityID>(2, oid[0]);
-      Assert::AreEqual<EntityID>(1, oid[1]);
+      EXPECT_EQ(2, oid.size());
+      EXPECT_EQ(2, oid[0]);
+      EXPECT_EQ(1, oid[1]);
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__XRayInsideTheTreePos__1)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__XRayInsideTheTreePos__1)
     {
       auto constexpr rayBase = Point2D{ 1.5, 1.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1404,12 +1392,12 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::AreEqual<size_t>(1, oid.size());
-      Assert::AreEqual<EntityID>(1, oid[0]);
+      EXPECT_EQ(1, oid.size());
+      EXPECT_EQ(1, oid[0]);
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__XRayInsideTheTreeNeg__1)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__XRayInsideTheTreeNeg__1)
     {
       auto constexpr rayBase = Point2D{ 1.5, 1.0 };
       auto constexpr rayHeading = Point2D{ -1.0, 0.0 };
@@ -1421,13 +1409,13 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::AreEqual<size_t>(2, oid.size());
-      Assert::AreEqual<EntityID>(0, oid[0]);
-      Assert::AreEqual<EntityID>(1, oid[1]);
+      EXPECT_EQ(2, oid.size());
+      EXPECT_EQ(0, oid[0]);
+      EXPECT_EQ(1, oid[1]);
     }
 
 
-    TEST_METHOD(RayIntersectedFirst__XRayInsideTheTreeNeg__3)
+    TEST(BasicFunctionsTest, RayIntersectedFirst__XRayInsideTheTreeNeg__3)
     {
       auto const rayBase = Point2D{ 3.5, 3.5 };
       auto const rayHeading = Point2D{ -1.0 / std::sqrt(5.0), -2.0 / std::sqrt(5.0) };
@@ -1439,11 +1427,11 @@ namespace GeneralTest
       };
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const oid = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0);
-      Assert::AreEqual<size_t>(1, oid.size());
-      Assert::AreEqual<EntityID>(3, oid[0]);
+      EXPECT_EQ(1, oid.size());
+      EXPECT_EQ(3, oid[0]);
     }
 
-    TEST_METHOD(RayIntersectedFirst_MultipleHits_ReturnsReverseSorted)
+    TEST(BasicFunctionsTest, RayIntersectedFirst_MultipleHits_ReturnsReverseSorted)
     {
       auto constexpr rayBase = Point2D{ -1.0, 0.5 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1456,13 +1444,13 @@ namespace GeneralTest
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const result = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0.0);
 
-      Assert::AreEqual<size_t>(3, result.size());
-      Assert::AreEqual((size_t)2, (size_t)result[0]);
-      Assert::AreEqual((size_t)1, (size_t)result[1]);
-      Assert::AreEqual((size_t)0, (size_t)result[2]);
+      EXPECT_EQ(3, result.size());
+      EXPECT_EQ((size_t)2, (size_t)result[0]);
+      EXPECT_EQ((size_t)1, (size_t)result[1]);
+      EXPECT_EQ((size_t)0, (size_t)result[2]);
     }
 
-    TEST_METHOD(RayIntersectedFirst_Tolerance_AllowsGrazingHit)
+    TEST(BasicFunctionsTest, RayIntersectedFirst_Tolerance_AllowsGrazingHit)
     {
       auto constexpr rayBase = Point2D{ 0.0, 1.001 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1475,11 +1463,11 @@ namespace GeneralTest
 
       auto const result = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0.01);
 
-      Assert::AreEqual<size_t>(1, result.size());
-      Assert::AreEqual((size_t)0, (size_t)result[0]);
+      EXPECT_EQ(1, result.size());
+      EXPECT_EQ((size_t)0, (size_t)result[0]);
     }
 
-    TEST_METHOD(RayIntersectedFirst_ToleranceIncrement_PrunesLaterHits)
+    TEST(BasicFunctionsTest, RayIntersectedFirst_ToleranceIncrement_PrunesLaterHits)
     {
       auto constexpr rayBase = Point2D{ -1.0, 0.5 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1493,11 +1481,11 @@ namespace GeneralTest
 
       auto const result = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0.0, 0.5);
 
-      Assert::AreEqual<size_t>(1, result.size());
-      Assert::AreEqual((size_t)0, (size_t)result[0]);
+      EXPECT_EQ(1, result.size());
+      EXPECT_EQ((size_t)0, (size_t)result[0]);
     }
 
-    TEST_METHOD(RayIntersectedFirst_MaxDistance_CutsOff)
+    TEST(BasicFunctionsTest, RayIntersectedFirst_MaxDistance_CutsOff)
     {
       auto constexpr rayBase = Point2D{ -1.0, 0.5 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1512,12 +1500,12 @@ namespace GeneralTest
 
       auto const result = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0.0, 0.0, 5.0);
 
-      Assert::AreEqual<size_t>(2, result.size());
-      Assert::AreEqual((size_t)1, (size_t)result[0]);
-      Assert::AreEqual((size_t)0, (size_t)result[1]);
+      EXPECT_EQ(2, result.size());
+      EXPECT_EQ((size_t)1, (size_t)result[0]);
+      EXPECT_EQ((size_t)0, (size_t)result[1]);
     }
 
-    TEST_METHOD(RayIntersectedFirst_UserHitTest_FiltersEntity)
+    TEST(BasicFunctionsTest, RayIntersectedFirst_UserHitTest_FiltersEntity)
     {
       auto constexpr rayBase = Point2D{ -1.0, 0.5 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1538,11 +1526,11 @@ namespace GeneralTest
 
       auto const result = qt.RayIntersectedFirst(rayBase, rayHeading, boxes, 0.0, 0.0, std::numeric_limits<double>::max(), hitTest);
 
-      Assert::AreEqual<size_t>(1, result.size());
-      Assert::AreEqual((size_t)1, (size_t)result[0]);
+      EXPECT_EQ(1, result.size());
+      EXPECT_EQ((size_t)1, (size_t)result[0]);
     }
 
-    TEST_METHOD(RayIntersectedAll_2D_General_234)
+    TEST(BasicFunctionsTest, RayIntersectedAll_2D_General_234)
     {
       auto constexpr rayBase = Point2D{ 2.7, 2.6 };
       auto constexpr rayHeading = Point2D{ std::numbers::sqrt2 * 0.5, std::numbers::sqrt2 * 0.5 };
@@ -1557,10 +1545,10 @@ namespace GeneralTest
 
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(vector<EntityID>{ 4, 2, 3 } == entities);
+      EXPECT_TRUE((vector<EntityID>{ 4, 2, 3 } == entities));
     }
 
-    TEST_METHOD(RayIntersectedAll_2D_General_34)
+    TEST(BasicFunctionsTest, RayIntersectedAll_2D_General_34)
     {
       auto constexpr rayBase = Point2D{ 2.6, 2.8 };
       auto constexpr rayHeading = Point2D{ std::numbers::sqrt2 * 0.5, std::numbers::sqrt2 * 0.5 };
@@ -1575,10 +1563,10 @@ namespace GeneralTest
 
       auto const qt = QuadtreeBox(boxes, 3, std::nullopt, 2);
       auto const entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 3, 4 }, entities));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 3, 4 }, entities)));
     }
 
-    TEST_METHOD(RayIntersectedAll_3D_General_34)
+    TEST(BasicFunctionsTest, RayIntersectedAll_3D_General_34)
     {
       auto constexpr rayBase = Point3D{ 2.6, 2.8, 1.0 };
       auto constexpr rayHeading = Point3D{ std::numbers::inv_sqrt3, std::numbers::inv_sqrt3, std::numbers::inv_sqrt3 };
@@ -1593,10 +1581,10 @@ namespace GeneralTest
 
       auto const qt = OctreeBox(boxes, 3, std::nullopt, 2);
       auto const entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 3, 4 }, entities));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 3, 4 }, entities)));
     }
 
-    TEST_METHOD(RayIntersectedAll_5D_General_34)
+    TEST(BasicFunctionsTest, RayIntersectedAll_5D_General_34)
     {
       auto constexpr N = 5;
       auto constexpr rayBase = PointND<N>{ 2.6, 2.8, 1.0, 0.0, 0.0 };
@@ -1612,10 +1600,10 @@ namespace GeneralTest
 
       auto const qt = OrthoTreeBoxND<N>(boxes, 3, std::nullopt, 2);
       auto const entities = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 3, 4 }, entities));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 3, 4 }, entities)));
     }
 
-    TEST_METHOD(RayIntersectedAll_ToleranceTest)
+    TEST(BasicFunctionsTest, RayIntersectedAll_ToleranceTest)
     {
       auto const boxes = vector{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -1672,15 +1660,15 @@ namespace GeneralTest
         boxes,
         0.901);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 4, 2 }, raySearchWithTolerance__0_000));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 4, 2 }, raySearchWithTolerance__0_001));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, raySearchWithTolerance__0_001_2));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 4, 2 }, raySearchWithTolerance__0_899));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 4, 2 }, raySearchWithTolerance__0_900));
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1, 4, 2 }, raySearchWithTolerance__0_901));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 4, 2 }, raySearchWithTolerance__0_000)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 4, 2 }, raySearchWithTolerance__0_001)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, raySearchWithTolerance__0_001_2)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 4, 2 }, raySearchWithTolerance__0_899)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 4, 2 }, raySearchWithTolerance__0_900)));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 1, 4, 2 }, raySearchWithTolerance__0_901)));
     }
 
-    TEST_METHOD(RayIntersectedAll_ToleranceIncrement_AllowsHit)
+    TEST(BasicFunctionsTest, RayIntersectedAll_ToleranceIncrement_AllowsHit)
     {
       auto constexpr rayBase = Point2D{ 0.0, 0.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1700,7 +1688,7 @@ namespace GeneralTest
           boxes,
           /*tolerance=*/0.0,
           /*toleranceIncrement=*/0.0);
-        Assert::IsTrue(result.empty());
+        EXPECT_TRUE((result.empty()));
       }
 
       // Positive tolerance increment -> hit expected
@@ -1711,12 +1699,12 @@ namespace GeneralTest
           boxes,
           /*tolerance=*/0.0,
           /*toleranceIncrement=*/0.01);
-        Assert::AreEqual<size_t>(1, result.size());
-        Assert::AreEqual<EntityID>(0, result[0]);
+        EXPECT_EQ(1, result.size());
+        EXPECT_EQ(0, result[0]);
       }
     }
 
-    TEST_METHOD(RayIntersectedAll_MaxExaminationDistance_CutsResults)
+    TEST(BasicFunctionsTest, RayIntersectedAll_MaxExaminationDistance_CutsResults)
     {
       auto constexpr rayBase = Point2D{ 0.0, 0.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1737,18 +1725,18 @@ namespace GeneralTest
           /*tolerance=*/0.0,
           /*toleranceIncrement=*/0.0,
           /*maxExaminationDistance=*/5.0);
-        Assert::AreEqual<size_t>(1, result.size());
-        Assert::AreEqual<EntityID>(0, result[0]);
+        EXPECT_EQ(1, result.size());
+        EXPECT_EQ(0, result[0]);
       }
 
       // Distance limit large -> both hits expected
       {
         auto const result = qt.RayIntersectedAll(rayBase, rayHeading, boxes, 0.0, 0.0, 100.0);
-        Assert::AreEqual<size_t>(2, result.size());
-        Assert::IsTrue(result[0] == 0 && result[1] == 1);
+        EXPECT_EQ(2, result.size());
+        EXPECT_TRUE((result[0] == 0 && result[1] == 1));
       }
     }
-    TEST_METHOD(RayIntersectedAll_EntityRayHitTester_FiltersIDs)
+    TEST(BasicFunctionsTest, RayIntersectedAll_EntityRayHitTester_FiltersIDs)
     {
       auto constexpr rayBase = Point2D{ 0.0, 0.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1777,11 +1765,11 @@ namespace GeneralTest
         /*maxDistance=*/100.0,
         tester);
 
-      Assert::AreEqual<size_t>(1, result.size());
-      Assert::AreEqual<EntityID>(1, result[0]);
+      EXPECT_EQ(1, result.size());
+      EXPECT_EQ(1, result[0]);
     }
 
-    TEST_METHOD(RayIntersectedAll_Split_NoSort)
+    TEST(BasicFunctionsTest, RayIntersectedAll_Split_NoSort)
     {
       auto constexpr rayBase = Point2D{ 0.0, 0.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1804,11 +1792,11 @@ namespace GeneralTest
         /*toleranceIncrement=*/0.0,
         /*maxDistance=*/100.0);
 
-      Assert::AreEqual<size_t>(3, result.size());
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1, 2 }, result));
+      EXPECT_EQ(3, result.size());
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 1, 2 }, result)));
     }
 
-    TEST_METHOD(RayIntersectedAll_NoSplit_NoSort)
+    TEST(BasicFunctionsTest, RayIntersectedAll_NoSplit_NoSort)
     {
       auto constexpr rayBase = Point2D{ 0.0, 0.0 };
       auto constexpr rayHeading = Point2D{ 1.0, 0.0 };
@@ -1831,118 +1819,120 @@ namespace GeneralTest
         /*toleranceIncrement=*/0.0,
         /*maxDistance=*/100.0);
 
-      Assert::AreEqual<size_t>(3, result.size());
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1, 2 }, result));
+      EXPECT_EQ(3, result.size());
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 1, 2 }, result)));
     }
-  };
+  }
 } // namespace GeneralTest
 
 namespace Tree1DTest
 {
-  TEST_CLASS(Point_CreateTest)
+  namespace Point_CreateTest
+
   {
-  public:
-    TEST_METHOD(Empty)
+  // public:
+    TEST(Point_CreateTest, Empty)
     {
       auto const tree = DualtreePoint({}, 2);
-      Assert::IsTrue(tree.GetNodeCount() == 1);
-      Assert::IsTrue(tree.IsNodeEntitiesEmpty(tree.GetNodeValue(1)));
+      EXPECT_TRUE((tree.GetNodeCount() == 1));
+      EXPECT_TRUE((tree.IsNodeEntitiesEmpty(tree.GetNodeValue(1))));
 
       auto const& box = tree.GetBox();
-      Assert::IsTrue(AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, {}));
+      EXPECT_TRUE((AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, {})));
     } // namespace Tree1DTest
 
     // ext    //!
-    TEST_METHOD(NoPt1)
+    TEST(Point_CreateTest, NoPt1)
     {
       auto const tree = DualtreePoint(vector<Point1D>{ { 1.0 } }, 2);
-      Assert::IsTrue(tree.GetNodeCount() == 1);
-      Assert::IsFalse(tree.IsNodeEntitiesEmpty(tree.GetNodeValue(1)));
+      EXPECT_TRUE((tree.GetNodeCount() == 1));
+      EXPECT_FALSE((tree.IsNodeEntitiesEmpty(tree.GetNodeValue(1))));
 
       auto const& box = tree.GetBox();
-      Assert::IsTrue(AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, BoundingBox1D{ Point1D{ 1.0 }, Point1D{ 1.0 } }));
+      EXPECT_TRUE((AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, BoundingBox1D{ Point1D{ 1.0 }, Point1D{ 1.0 } })));
     }
 
     // ext     //!
-    TEST_METHOD(NoPt2)
+    TEST(Point_CreateTest, NoPt2)
     {
       auto const tree = DualtreePoint({}, 2);
-      Assert::IsTrue(tree.GetNodeCount() == 1);
-      Assert::IsTrue(tree.IsNodeEntitiesEmpty(tree.GetNodeValue(1)));
+      EXPECT_TRUE((tree.GetNodeCount() == 1));
+      EXPECT_TRUE((tree.IsNodeEntitiesEmpty(tree.GetNodeValue(1))));
     }
 
-    TEST_METHOD(NoPt4)
+    TEST(Point_CreateTest, NoPt4)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
 
-      Assert::AreEqual<std::size_t>(tree.GetNodeCount(), 7);
+      EXPECT_EQ(tree.GetNodeCount(), 7);
 
       auto const& box = tree.GetBox();
-      Assert::IsTrue(AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, BoundingBox1D{ Point1D{ 0.0 }, Point1D{ 3.0 } }));
+      EXPECT_TRUE((AreEqualAlmost(BoundingBox1D{ .Min = box.Min, .Max = box.Max }, BoundingBox1D{ Point1D{ 0.0 }, Point1D{ 3.0 } })));
     }
 
     //!
-    TEST_METHOD(Init)
+    TEST(Point_CreateTest, Init)
     {
       auto tree = DualtreePoint{};
       tree.Init(BoundingBox1D{ { -1.0 }, { +1.0 } }, 2);
 
-      Assert::IsTrue(tree.GetNodeCount() == 1);
-      Assert::IsTrue(tree.IsNodeEntitiesEmpty(tree.GetRootNodeValue()));
+      EXPECT_TRUE((tree.GetNodeCount() == 1));
+      EXPECT_TRUE((tree.IsNodeEntitiesEmpty(tree.GetRootNodeValue())));
     }
-  };
+  }
 
 
-  TEST_CLASS(Point_SearchTest)
+  namespace Point_SearchTest
+
   {
-    TEST_METHOD(RangeSearch__EqualAtBorder__12)
+    TEST(Point_SearchTest, RangeSearch__EqualAtBorder__12)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.0, 2.0 }, vpt);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2 }, ids)));
     }
 
-    TEST_METHOD(RangeSearch__Usual__23)
+    TEST(Point_SearchTest, RangeSearch__Usual__23)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.1, 3.1 }, vpt);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids)));
     }
 
-    TEST_METHOD(RangeSearch__AtNodeBorder__2)
+    TEST(Point_SearchTest, RangeSearch__AtNodeBorder__2)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.5, 2.25 }, vpt);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2 }, ids)));
     }
 
-    TEST_METHOD(RangeSearch__ZeroBox__Empty)
+    TEST(Point_SearchTest, RangeSearch__ZeroBox__Empty)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({}, vpt);
 
-      Assert::IsTrue(ids.empty());
+      EXPECT_TRUE((ids.empty()));
     }
 
-    TEST_METHOD(RangeSearch__Empty)
+    TEST(Point_SearchTest, RangeSearch__Empty)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto const tree = DualtreePoint(vpt, 2, std::nullopt, 1);
       auto const ids = tree.RangeSearch({ 1.5, 1.75 }, vpt);
 
-      Assert::IsTrue(ids.empty());
+      EXPECT_TRUE((ids.empty()));
     }
 
 
-    TEST_METHOD(Query)
+    TEST(Point_SearchTest, Query)
     {
       auto constexpr vpt = array{
         Point2D{ 0.0, 0.0 },
@@ -1968,16 +1958,16 @@ namespace Tree1DTest
       };
 
       auto const idsAnd = tree.Query(conditions, vpt);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 7, 8 }, idsAnd));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 7, 8 }, idsAnd)));
 
       auto const idsOr = tree.Query<LogicalOperator::Or>(conditions, vpt);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 3, 4, 5, 6, 7, 8 }, idsOr));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 3, 4, 5, 6, 7, 8 }, idsOr)));
 
       auto const treeC = QuadtreePointM(vpt, 3, std::nullopt, 1);
       auto const idsAndC = treeC.Query(conditions);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 7, 8 }, idsAndC));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 7, 8 }, idsAndC)));
     }
-  };
+  }
 
   struct UserDefinedConfig : Configuration<>
   {
@@ -1986,139 +1976,141 @@ namespace Tree1DTest
   };
   using DualtreePointStrictBound = OrthoTreeBase<PointEntitySpanAdapter<Point1D>, GeneralGeometryAdapterND<1>, UserDefinedConfig>;
 
-  TEST_CLASS(Point_EditTest)
+  namespace Point_EditTest
+
   {
-    TEST_METHOD(Insert__NonLeaf__Successful)
+    TEST(Point_EditTest, Insert__NonLeaf__Successful)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.InsertIntoLeaf(4, Point1D{ 2.5 }, InsertionMode::ExistingLeaf));
+      EXPECT_TRUE((tree.InsertIntoLeaf(4, Point1D{ 2.5 }, InsertionMode::ExistingLeaf)));
 
-      Assert::AreEqual<std::size_t>(7, tree.GetNodeCount());
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(7)), vector<EntityID>{ 3, 4 }));
+      EXPECT_EQ(7, tree.GetNodeCount());
+      EXPECT_TRUE((AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(7)), vector<EntityID>{ 3, 4 })));
     }
 
-    TEST_METHOD(Insert__Leaf__Successful)
+    TEST(Point_EditTest, Insert__Leaf__Successful)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.InsertIntoLeaf(4, Point1D{ 2.5 }, InsertionMode::LowestLeaf));
+      EXPECT_TRUE((tree.InsertIntoLeaf(4, Point1D{ 2.5 }, InsertionMode::LowestLeaf)));
 
       auto const& nodes = tree.GetNodes();
-      Assert::AreEqual<std::size_t>(nodes.size(), 8);
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(14)), vector<EntityID>{ 4 }));
+      EXPECT_EQ(nodes.size(), 8);
+      EXPECT_TRUE((AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(14)), vector<EntityID>{ 4 })));
     }
 
-    TEST_METHOD(Insert__OutOfSpace__ReturnsFalse)
+    TEST(Point_EditTest, Insert__OutOfSpace__ReturnsFalse)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePointStrictBound(vpt, 3, std::nullopt, 1);
-      Assert::IsFalse(tree.InsertIntoLeaf(4, Point1D{ 4.0 }, InsertionMode::LowestLeaf));
+      EXPECT_FALSE((tree.InsertIntoLeaf(4, Point1D{ 4.0 }, InsertionMode::LowestLeaf)));
 
       auto const& nodes = tree.GetNodes();
-      Assert::AreEqual<std::size_t>(nodes.size(), 7);
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(7)), vector<EntityID>{ 3 }));
+      EXPECT_EQ(nodes.size(), 7);
+      EXPECT_TRUE((AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(7)), vector<EntityID>{ 3 })));
     }
 
 
-    TEST_METHOD(Update3p_)
+    TEST(Point_EditTest, Update3p_)
     {
       //!
     }
 
-    TEST_METHOD(Update2p__Update3__Successful)
+    TEST(Point_EditTest, Update2p__Update3__Successful)
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.Update(3, { 1.1 }));
+      EXPECT_TRUE((tree.Update(3, { 1.1 })));
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 0, 1, 3, 2 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 0, 1, 3, 2 }));
     }
 
-    TEST_METHOD(Update2p__Update2__Successful)
+    TEST(Point_EditTest, Update2p__Update2__Successful)
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.Update(2, { 1.1 }));
+      EXPECT_TRUE((tree.Update(2, { 1.1 })));
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(ids == vector<EntityID>{ 0, 1, 2, 3 });
+      EXPECT_TRUE((ids == vector<EntityID>{ 0, 1, 2, 3 }));
     }
 
-    TEST_METHOD(Update2p__Rewrite3OutOfBox__ReturnsFalse)
+    TEST(Point_EditTest, Update2p__Rewrite3OutOfBox__ReturnsFalse)
     {
       auto vpt = vector{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
 
       auto tree = DualtreePointStrictBound(vpt, 3, std::nullopt, 1);
 
       auto const idsPre = tree.GetEntitiesBreadthFirst();
-      Assert::IsFalse(tree.Update(2, { 3.1 }));
+      EXPECT_FALSE((tree.Update(2, { 3.1 })));
       auto const idsPost = tree.GetEntitiesBreadthFirst();
 
-      Assert::IsTrue(idsPre == idsPost);
+      EXPECT_TRUE((idsPre == idsPost));
     }
 
 
-    TEST_METHOD(Erase__3__Removed)
+    TEST(Point_EditTest, Erase__3__Removed)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.Erase(3, vpt.back()));
+      EXPECT_TRUE((tree.Erase(3, vpt.back())));
       auto const ids = tree.GetEntitiesBreadthFirst();
-      Assert::IsTrue(std::ranges::find(ids, EntityID(3)) == end(ids));
+      EXPECT_TRUE((std::ranges::find(ids, EntityID(3)) == end(ids)));
     }
 
-    TEST_METHOD(Erase__Nonexist__ReturnsFalse)
+    TEST(Point_EditTest, Erase__Nonexist__ReturnsFalse)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       auto const idsPre = tree.GetEntitiesBreadthFirst();
-      Assert::IsFalse(tree.Erase(4, vpt.back()));
+      EXPECT_FALSE((tree.Erase(4, vpt.back())));
       auto const idsPost = tree.GetEntitiesBreadthFirst();
 
-      Assert::IsTrue(idsPre == idsPost);
+      EXPECT_TRUE((idsPre == idsPost));
     }
 
-    TEST_METHOD(Erase__WrongPointWasGiven__ReturnsFalse)
+    TEST(Point_EditTest, Erase__WrongPointWasGiven__ReturnsFalse)
     {
       auto constexpr vpt = array{ Point1D{ 0.0 }, Point1D{ 1.0 }, Point1D{ 2.0 }, Point1D{ 3.0 } };
       auto tree = DualtreePoint(vpt, 3, std::nullopt, 1);
 
       auto const idsPre = tree.GetEntitiesBreadthFirst();
-      Assert::IsFalse(tree.Erase(3, vpt.front()));
+      EXPECT_FALSE((tree.Erase(3, vpt.front())));
       auto const idsPost = tree.GetEntitiesBreadthFirst();
 
-      Assert::IsTrue(idsPre == idsPost);
+      EXPECT_TRUE((idsPre == idsPost));
     }
-  };
+  }
 
 
-  TEST_CLASS(Box_SearchTest)
+  namespace Box_SearchTest
+
   {
-    TEST_METHOD(FindSmallestNode_)
+    TEST(Box_SearchTest, FindSmallestNode_)
     {
       //!
     }
 
-    TEST_METHOD(PickSearch_)
+    TEST(Box_SearchTest, PickSearch_)
     {
       //!
     }
 
 
-    TEST_METHOD(RangeSearch_)
+    TEST(Box_SearchTest, RangeSearch_)
     {
       //!
     }
 
-    TEST_METHOD(LooseStrategy_Seq)
+    TEST(Box_SearchTest, LooseStrategy_Seq)
     {
       auto const boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2143,13 +2135,13 @@ namespace Tree1DTest
       auto const entitiesInBFS = quadtreebox.GetEntitiesBreadthFirst();
       auto const entitiesInDFS = quadtreebox.GetEntitiesDepthFirst();
 
-      Assert::AreEqual<std::size_t>(nodes.size(), 9);
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 5, 4, 0, 6, 1, 2, 3 }));
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 0, 6, 1, 5, 4, 2, 3 }));
+      EXPECT_EQ(nodes.size(), 9);
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 5, 4, 0, 6, 1, 2, 3 })));
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 0, 6, 1, 5, 4, 2, 3 })));
     }
 
 
-    TEST_METHOD(LooseStrategy_Par)
+    TEST(Box_SearchTest, LooseStrategy_Par)
     {
       auto const boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2176,13 +2168,13 @@ namespace Tree1DTest
       auto const entitiesInBFS = quadtreebox.GetEntitiesBreadthFirst();
       auto const entitiesInDFS = quadtreebox.GetEntitiesDepthFirst();
 
-      Assert::AreEqual<std::size_t>(nodes.size(), 9);
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 5, 4, 0, 6, 1, 2, 3 }));
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 0, 6, 1, 5, 4, 2, 3 }));
+      EXPECT_EQ(nodes.size(), 9);
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 5, 4, 0, 6, 1, 2, 3 })));
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 0, 6, 1, 5, 4, 2, 3 })));
     }
 
 
-    TEST_METHOD(CollistionDetection__0040_3565__P30)
+    TEST(Box_SearchTest, CollistionDetection__0040_3565__P30)
     {
       auto constexpr vBoxL = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -2202,13 +2194,13 @@ namespace Tree1DTest
       auto const ret = DualtreeBox::CollisionDetection(treeL, vBoxL, treeR, vBoxR);
 
       auto constexpr aExpected = std::pair{ 3, 0 };
-      Assert::AreEqual<std::size_t>(ret.size(), 1);
-      Assert::AreEqual<EntityID>(ret[0].first, aExpected.first);
-      Assert::AreEqual<EntityID>(ret[0].second, aExpected.second);
+      EXPECT_EQ(ret.size(), 1);
+      EXPECT_EQ(ret[0].first, aExpected.first);
+      EXPECT_EQ(ret[0].second, aExpected.second);
     }
 
 
-    TEST_METHOD(CollistionDetection__Complex1)
+    TEST(Box_SearchTest, CollistionDetection__Complex1)
     {
       auto constexpr vBoxL = array{
         BoundingBox1D{ 0.0, 4.0 },
@@ -2251,15 +2243,15 @@ namespace Tree1DTest
         EntityPair{ 6, 1 },
         EntityPair{ 6, 4 }, // ==
       };
-      Assert::AreEqual(aExpected.size(), vActual.size());
-      Assert::IsTrue(
-        std::ranges::is_permutation(aExpected, vActual, [](auto const& p1, auto const& p2) { return p1.first == p2.first && p1.second == p2.second; }));
+      EXPECT_EQ(aExpected.size(), vActual.size());
+      EXPECT_TRUE((std::ranges::is_permutation(aExpected, vActual, [](auto const& p1, auto const& p2) { return p1.first == p2.first && p1.second == p2.second; })));
     }
-  };
+  }
 
-  TEST_CLASS(Box_EditTest)
+  namespace Box_EditTest
+
   {
-    TEST_METHOD(Insert_IntoRoot_Successful)
+    TEST(Box_EditTest, Insert_IntoRoot_Successful)
     {
       auto constexpr vBoxL = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -2269,15 +2261,15 @@ namespace Tree1DTest
       };
       auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.InsertIntoLeaf(4, BoundingBox1D{ 0, 4 }, InsertionMode::ExistingLeaf));
+      EXPECT_TRUE((tree.InsertIntoLeaf(4, BoundingBox1D{ 0, 4 }, InsertionMode::ExistingLeaf)));
 
       auto const& nodes = tree.GetNodes();
-      Assert::AreEqual<std::size_t>(nodes.size(), 7);
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(tree.GetRootNodeValue()), vector<EntityID>{ 4 }));
+      EXPECT_EQ(nodes.size(), 7);
+      EXPECT_TRUE((AreContainersItemsEqual(tree.GetNodeEntities(tree.GetRootNodeValue()), vector<EntityID>{ 4 })));
     }
 
 
-    TEST_METHOD(Insert_NonLeaf_Successful)
+    TEST(Box_EditTest, Insert_NonLeaf_Successful)
     {
       auto constexpr vBoxL = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -2287,14 +2279,14 @@ namespace Tree1DTest
       };
       auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.InsertIntoLeaf(4, BoundingBox1D{ 3.5, 3.7 }, InsertionMode::ExistingLeaf));
+      EXPECT_TRUE((tree.InsertIntoLeaf(4, BoundingBox1D{ 3.5, 3.7 }, InsertionMode::ExistingLeaf)));
 
       auto const& nodes = tree.GetNodes();
-      Assert::AreEqual<std::size_t>(nodes.size(), 7);
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(7)), vector<EntityID>{ 3, 4 }));
+      EXPECT_EQ(nodes.size(), 7);
+      EXPECT_TRUE((AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(7)), vector<EntityID>{ 3, 4 })));
     }
 
-    TEST_METHOD(Insert_Leaf_Successful)
+    TEST(Box_EditTest, Insert_Leaf_Successful)
     {
       auto constexpr vBoxL = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -2304,37 +2296,15 @@ namespace Tree1DTest
       };
       auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.InsertIntoLeaf(4, BoundingBox1D{ 3.5, 3.7 }, InsertionMode::LowestLeaf));
+      EXPECT_TRUE((tree.InsertIntoLeaf(4, BoundingBox1D{ 3.5, 3.7 }, InsertionMode::LowestLeaf)));
 
       auto const& nodes = tree.GetNodes();
-      Assert::AreEqual<std::size_t>(nodes.size(), 8);
-      Assert::IsTrue(AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(15)), vector<EntityID>{ 4 }));
-    }
-
-
-    TEST_METHOD(Insert_LeafBut1_Successful)
-    {
-      auto constexpr vBoxL = array{
-        BoundingBox1D{ 0.0, 1.0 },
-        BoundingBox1D{ 1.0, 2.0 },
-        BoundingBox1D{ 2.0, 3.0 },
-        BoundingBox1D{ 3.0, 4.0 }
-      };
-      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
-
-      Assert::IsTrue(tree.InsertIntoLeaf(4, BoundingBox1D{ 1.0, 3.0 }, InsertionMode::LowestLeaf));
-
-      auto const& nodes = tree.GetNodes();
-      auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
-      auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
-
-      Assert::AreEqual<std::size_t>(nodes.size(), 7);
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 4, 0, 1, 2, 3 }));
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 0, 1, 4, 2, 3 }));
+      EXPECT_EQ(nodes.size(), 8);
+      EXPECT_TRUE((AreContainersItemsEqual(tree.GetNodeEntities(tree.GetNodeValue(15)), vector<EntityID>{ 4 })));
     }
 
 
-    TEST_METHOD(Insert_LeafBut2_Successful)
+    TEST(Box_EditTest, Insert_LeafBut1_Successful)
     {
       auto constexpr vBoxL = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -2344,19 +2314,41 @@ namespace Tree1DTest
       };
       auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
 
-      Assert::IsTrue(tree.InsertIntoLeaf(4, BoundingBox1D{ 0.0, 2.0 }, InsertionMode::LowestLeaf));
+      EXPECT_TRUE((tree.InsertIntoLeaf(4, BoundingBox1D{ 1.0, 3.0 }, InsertionMode::LowestLeaf)));
 
       auto const& nodes = tree.GetNodes();
       auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
       auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-      Assert::AreEqual<std::size_t>(nodes.size(), 7);
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 4, 0, 1, 2, 3 }));
-      Assert::IsTrue(AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 4, 0, 1, 2, 3 }));
+      EXPECT_EQ(nodes.size(), 7);
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 4, 0, 1, 2, 3 })));
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 0, 1, 4, 2, 3 })));
     }
 
 
-    TEST_METHOD(Complex)
+    TEST(Box_EditTest, Insert_LeafBut2_Successful)
+    {
+      auto constexpr vBoxL = array{
+        BoundingBox1D{ 0.0, 1.0 },
+        BoundingBox1D{ 1.0, 2.0 },
+        BoundingBox1D{ 2.0, 3.0 },
+        BoundingBox1D{ 3.0, 4.0 }
+      };
+      auto tree = DualtreeBox(vBoxL, 3, std::nullopt, 1);
+
+      EXPECT_TRUE((tree.InsertIntoLeaf(4, BoundingBox1D{ 0.0, 2.0 }, InsertionMode::LowestLeaf)));
+
+      auto const& nodes = tree.GetNodes();
+      auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
+      auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
+
+      EXPECT_EQ(nodes.size(), 7);
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInBFS, vector<EntityID>{ 4, 0, 1, 2, 3 })));
+      EXPECT_TRUE((AreContainersItemsEqual(entitiesInDFS, vector<EntityID>{ 4, 0, 1, 2, 3 })));
+    }
+
+
+    TEST(Box_EditTest, Complex)
     {
       auto constexpr vBoxL = array{
         BoundingBox1D{ 0.0, 1.0 },
@@ -2373,38 +2365,39 @@ namespace Tree1DTest
       tree.Update(1, vBoxL[1]);
     }
 
-    TEST_METHOD(Update2p_)
+    TEST(Box_EditTest, Update2p_)
     {
       //!
     }
 
-    TEST_METHOD(Update3p_)
+    TEST(Box_EditTest, Update3p_)
     {
       //!
     }
-    TEST_METHOD(Erase_)
+    TEST(Box_EditTest, Erase_)
     {
       //!
     }
-  };
+  }
 } // namespace Tree1DTest
 
 
 namespace Tree2DTest
 {
 
-  TEST_CLASS(Point_General)
+  namespace Point_General
+
   {
-    TEST_METHOD(Create_SetNo1)
+    TEST(Point_General, Create_SetNo1)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
       auto const nt = OrthoTreePointND<N>(points, 3, std::nullopt, 2);
       auto const& nodes = nt.GetNodes();
-      Assert::AreEqual<std::size_t>(22, nodes.size());
+      EXPECT_EQ(22, nodes.size());
     } // namespace Tree2DTest
 
-    TEST_METHOD(PlaneSearch_3D_XY_dP0)
+    TEST(Point_General, PlaneSearch_3D_XY_dP0)
     {
       auto const vpt = vector{
         Point3D{ 2.0, -1.0,     0.0 },
@@ -2417,11 +2410,11 @@ namespace Tree2DTest
       auto const tree = OctreePoint(vpt, 3, std::nullopt, 2);
 
       auto const ids = tree.PlaneSearch(0.0, Point3D{ 0.0, 0.0, 1.0 }, vpt, 0.01);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 3, 4 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 3, 4 }, ids)));
     }
 
 
-    TEST_METHOD(PlaneSearch_3D_XY_dP1)
+    TEST(Point_General, PlaneSearch_3D_XY_dP1)
     {
       auto const vpt = vector{
         Point3D{ 2.0, -1.0,     0.0 },
@@ -2434,11 +2427,11 @@ namespace Tree2DTest
       auto const tree = OctreePoint(vpt, 3, std::nullopt, 2);
 
       auto const ids = tree.PlaneSearch(1.0, Point3D{ 0.0, 0.0, 1.0 }, vpt, 0.01);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 4 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 4 }, ids)));
     }
 
 
-    TEST_METHOD(PlaneSearch_3D_XZ_dP4)
+    TEST(Point_General, PlaneSearch_3D_XZ_dP4)
     {
       auto const vpt = vector{
         Point3D{ 2.0, -1.0,     0.0 },
@@ -2451,11 +2444,11 @@ namespace Tree2DTest
       auto const tree = OctreePoint(vpt, 3, std::nullopt, 2);
 
       auto const ids = tree.PlaneSearch(4.0, Point3D{ 1.0, 0.0, 0.0 }, vpt, 0.01);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids)));
     }
 
 
-    TEST_METHOD(PlaneSearchC_3D_XZ_dP4)
+    TEST(Point_General, PlaneSearchC_3D_XZ_dP4)
     {
       auto const vpt = vector{
         Point3D{ 2.0, -1.0,     0.0 },
@@ -2468,13 +2461,14 @@ namespace Tree2DTest
       auto const tree = OctreePointM(vpt, 3, std::nullopt, 2);
 
       auto const ids = tree.PlaneSearch(4.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2, 3 }, ids)));
     }
-  };
+  }
 
-  TEST_CLASS(Point_kNNTest)
+  namespace Point_kNNTest
+
   {
-    TEST_METHOD(N103_k2_RemainInSmallestNode__17_18)
+    TEST(Point_kNNTest, N103_k2_RemainInSmallestNode__17_18)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2482,10 +2476,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 3.5, 5.5 };
       auto const vnn = tree.GetNearestNeighbors(pt, 2, points, 0.0);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 17, 18 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 17, 18 }, vnn)));
     }
 
-    TEST_METHOD(N103_k3__14_17_18)
+    TEST(Point_kNNTest, N103_k3__14_17_18)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2493,10 +2487,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 3.5, 5.5 };
       auto const vnn = tree.GetNearestNeighbors(pt, 3, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 17, 18, 14 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 17, 18, 14 }, vnn)));
     }
 
-    TEST_METHOD(N103_k4__14_16_17_18)
+    TEST(Point_kNNTest, N103_k4__14_16_17_18)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2504,10 +2498,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 3.5, 5.5 };
       auto const vnn = tree.GetNearestNeighbors(pt, 4, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 17, 18, 14, 16 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 17, 18, 14, 16 }, vnn)));
     }
 
-    TEST_METHOD(N103_k4_within0__17_18)
+    TEST(Point_kNNTest, N103_k4_within0__17_18)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2515,10 +2509,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 3.5, 5.5 };
       auto const vnn = tree.GetNearestNeighbors(pt, 4, 0, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 17, 18 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 17, 18 }, vnn)));
     }
 
-    TEST_METHOD(N103_k5_within1__14_17_18_16)
+    TEST(Point_kNNTest, N103_k5_within1__14_17_18_16)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2526,10 +2520,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 3.5, 5.5 };
       auto const vnn = tree.GetNearestNeighbors(pt, 5, 1.0, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 17, 18, 14, 16 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 17, 18, 14, 16 }, vnn)));
     }
 
-    TEST_METHOD(N103_k100_OverTheContainingElements__All)
+    TEST(Point_kNNTest, N103_k100_OverTheContainingElements__All)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2537,14 +2531,14 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 3.5, 5.5 };
       auto const vnn = tree.GetNearestNeighbors(pt, 100, points);
-      Assert::AreEqual(points.size(), vnn.size());
+      EXPECT_EQ(points.size(), vnn.size());
 
       auto Entities = vector<EntityID>(points.size());
       iota(begin(Entities), end(Entities), 0);
-      Assert::IsTrue(std::ranges::is_permutation(Entities, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(Entities, vnn)));
     }
 
-    TEST_METHOD(N4_k1__1)
+    TEST(Point_kNNTest, N4_k1__1)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2552,10 +2546,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 2.0, 2.0 };
       auto const vnn = tree.GetNearestNeighbors(pt, 1, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1 }, vnn)));
     }
 
-    TEST_METHOD(N4_k2__1_11_12)
+    TEST(Point_kNNTest, N4_k2__1_11_12)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2563,10 +2557,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 2.0, 2.0 };
       auto const vnn = tree.GetNearestNeighbors(pt, 2, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 11 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 11 }, vnn)));
     }
 
-    TEST_METHOD(N4_k3__1_11_12)
+    TEST(Point_kNNTest, N4_k3__1_11_12)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2574,12 +2568,12 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ 2.0, 2.0 };
       auto const vnn = tree.GetNearestNeighbors(pt, 3, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 11, 12 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 11, 12 }, vnn)));
     }
 
     // outside
 
-    TEST_METHOD(OutSide_k1__0)
+    TEST(Point_kNNTest, OutSide_k1__0)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2587,10 +2581,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ -1.0, -1.0 };
       auto const vnn = tree.GetNearestNeighbors(pt, 1, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0 }, vnn)));
     }
 
-    TEST_METHOD(OutSide_k5__0_1_5_6_11)
+    TEST(Point_kNNTest, OutSide_k5__0_1_5_6_11)
     {
       auto constexpr N = 2;
       auto constexpr points = getPointSetNo1<N>();
@@ -2598,10 +2592,10 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ -1.0, -1.0 };
       auto const vnn = tree.GetNearestNeighbors(pt, 5, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1, 5, 6, 11 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 1, 5, 6, 11 }, vnn)));
     }
 
-    TEST_METHOD(OutSide_k5_16D__0_1_5_6_11)
+    TEST(Point_kNNTest, OutSide_k5_16D__0_1_5_6_11)
     {
       auto constexpr N = 23;
       auto constexpr points = getPointSetNo1<N>();
@@ -2609,11 +2603,11 @@ namespace Tree2DTest
 
       auto constexpr pt = PointND<N>{ -1.0, -1.0 };
       auto const vnn = tree.GetNearestNeighbors(pt, 5, points);
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1, 5, 6, 11 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 1, 5, 6, 11 }, vnn)));
     }
 
 
-    TEST_METHOD(GetNearestNeighbors_EntityDistanceFn)
+    TEST(Point_kNNTest, GetNearestNeighbors_EntityDistanceFn)
     {
       using Box = BoundingBox2D;
       using Pt = Point2D;
@@ -2641,11 +2635,11 @@ namespace Tree2DTest
         tree.GetNearestNeighbors(searchPt, 1, std::numeric_limits<double>::max(), boxes, std::numeric_limits<double>::epsilon(), realEntityDistance);
 
       vector<EntityID> expected{ 0 };
-      Assert::AreEqual<size_t>(1, result.size());
-      Assert::IsTrue(std::ranges::is_permutation(result, expected));
+      EXPECT_EQ(1, result.size());
+      EXPECT_TRUE((std::ranges::is_permutation(result, expected)));
     }
 
-    TEST_METHOD(GetNearestNeighbors_MinMaxDistance)
+    TEST(Point_kNNTest, GetNearestNeighbors_MinMaxDistance)
     {
       using Box = BoundingBox2D;
       using Pt = Point2D;
@@ -2667,11 +2661,11 @@ namespace Tree2DTest
       auto const result = tree.GetNearestNeighbors(searchPt, 1, std::numeric_limits<double>::max(), boxes, std::numeric_limits<double>::epsilon());
 
       vector<EntityID> expected{ 0, 2, 4 };
-      Assert::AreEqual<size_t>(expected.size(), result.size());
-      Assert::IsTrue(std::ranges::is_permutation(result, expected));
+      EXPECT_EQ(expected.size(), result.size());
+      EXPECT_TRUE((std::ranges::is_permutation(result, expected)));
     }
 
-    TEST_METHOD(Issue9_2D)
+    TEST(Point_kNNTest, Issue9_2D)
     {
       auto const poses = vector<array<double, 2>>{
         { 78.2619,  77.843 },
@@ -2717,11 +2711,11 @@ namespace Tree2DTest
       auto tree = QuadtreePointM(poses, 9, inspection_space);
 
       auto neighbors = tree.GetNearestNeighbors(search_point, 1);
-      Assert::AreEqual<EntityID>(EntityID(std::distance(poses.begin(), itMin)), neighbors[0]);
+      EXPECT_EQ(EntityID(std::distance(poses.begin(), itMin)), neighbors[0]);
     }
 
 
-    TEST_METHOD(Issue9_6D)
+    TEST(Point_kNNTest, Issue9_6D)
     {
       using VectorType = array<double, 6>;
 
@@ -2766,10 +2760,10 @@ namespace Tree2DTest
 
       auto const neighbors = tree.GetNearestNeighbors(search_point, 1, poses);
       auto const idMinExpected = EntityID(std::distance(poses.begin(), itMinExpected));
-      Assert::AreEqual<EntityID>(idMinExpected, neighbors[0]);
+      EXPECT_EQ(idMinExpected, neighbors[0]);
     }
 
-    TEST_METHOD(BoxNN_k1__InsideSingleBox)
+    TEST(Point_kNNTest, BoxNN_k1__InsideSingleBox)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } }, // 0
@@ -2782,10 +2776,10 @@ namespace Tree2DTest
       auto constexpr pt = Point2D{ 2.0, 2.0 }; // inside box 1
       auto const vnn = tree.GetNearestNeighbors(pt, 1, boxes);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1 }, vnn)));
     }
 
-    TEST_METHOD(BoxNN_k1__OutsideSingleBox)
+    TEST(Point_kNNTest, BoxNN_k1__OutsideSingleBox)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } }, // 0
@@ -2798,13 +2792,14 @@ namespace Tree2DTest
       auto constexpr pt = Point2D{ -1.0, 1.0 }; // outside of the box, further distance rank lower the [1].
       auto const vnn = tree.GetNearestNeighbors(pt, 1, boxes);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0 }, vnn));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0 }, vnn)));
     }
-  };
+  }
 
-  TEST_CLASS(Box_General)
+  namespace Box_General
+
   {
-    TEST_METHOD(Create_d3__Node7)
+    TEST(Box_General, Create_d3__Node7)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2816,31 +2811,31 @@ namespace Tree2DTest
 
       auto const quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 1);
       auto const nodes = quadtreebox.GetNodes();
-      Assert::AreEqual<std::size_t>(7, nodes.size());
-      Assert::IsTrue(nodes.contains(1));
-      Assert::IsTrue(quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetRootNodeValue()));
+      EXPECT_EQ(7, nodes.size());
+      EXPECT_TRUE((nodes.contains(1)));
+      EXPECT_TRUE((quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetRootNodeValue())));
 
-      Assert::IsTrue(nodes.contains(4));
-      Assert::IsTrue(quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetRootNodeValue()));
+      EXPECT_TRUE((nodes.contains(4)));
+      EXPECT_TRUE((quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetRootNodeValue())));
 
-      Assert::IsTrue(nodes.contains(7));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(7)), vector<EntityID>{ 4 }));
+      EXPECT_TRUE((nodes.contains(7)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(7)), vector<EntityID>{ 4 })));
 
-      Assert::IsTrue(nodes.contains(16));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(16)), vector<EntityID>{ 0 }));
+      EXPECT_TRUE((nodes.contains(16)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(16)), vector<EntityID>{ 0 })));
 
-      Assert::IsTrue(nodes.contains(19));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(19)), vector<EntityID>{ 1 }));
+      EXPECT_TRUE((nodes.contains(19)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(19)), vector<EntityID>{ 1 })));
 
-      Assert::IsTrue(nodes.contains(28));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(28)), vector<EntityID>{ 2 }));
+      EXPECT_TRUE((nodes.contains(28)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(28)), vector<EntityID>{ 2 })));
 
-      Assert::IsTrue(nodes.contains(31));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(31)), vector<EntityID>{ 3 }));
+      EXPECT_TRUE((nodes.contains(31)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(31)), vector<EntityID>{ 3 })));
     }
 
 
-    TEST_METHOD(Create_d3__Node8)
+    TEST(Box_General, Create_d3__Node8)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2853,37 +2848,38 @@ namespace Tree2DTest
 
       auto const quadtreebox = QuadtreeBox(boxes, 3, std::nullopt, 1);
       auto const nodes = quadtreebox.GetNodes();
-      Assert::AreEqual<std::size_t>(8, nodes.size());
+      EXPECT_EQ(8, nodes.size());
 
-      Assert::IsTrue(nodes.contains(1));
-      Assert::IsTrue(quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetNodeValue(1)));
+      EXPECT_TRUE((nodes.contains(1)));
+      EXPECT_TRUE((quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetNodeValue(1))));
 
-      Assert::IsTrue(nodes.contains(4));
-      Assert::IsTrue(quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetNodeValue(4)));
+      EXPECT_TRUE((nodes.contains(4)));
+      EXPECT_TRUE((quadtreebox.IsNodeEntitiesEmpty(quadtreebox.GetNodeValue(4))));
 
-      Assert::IsTrue(nodes.contains(7));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(7)), vector<EntityID>{ 4 }));
+      EXPECT_TRUE((nodes.contains(7)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(7)), vector<EntityID>{ 4 })));
 
-      Assert::IsTrue(nodes.contains(16));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(16)), vector<EntityID>{ 0 }));
+      EXPECT_TRUE((nodes.contains(16)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(16)), vector<EntityID>{ 0 })));
 
-      Assert::IsTrue(nodes.contains(19));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(19)), vector<EntityID>{ 1 }));
+      EXPECT_TRUE((nodes.contains(19)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(19)), vector<EntityID>{ 1 })));
 
-      Assert::IsTrue(nodes.contains(28));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(28)), vector<EntityID>{ 2 }));
+      EXPECT_TRUE((nodes.contains(28)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(28)), vector<EntityID>{ 2 })));
 
-      Assert::IsTrue(nodes.contains(31));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(31)), vector<EntityID>{ 3 }));
+      EXPECT_TRUE((nodes.contains(31)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(31)), vector<EntityID>{ 3 })));
 
-      Assert::IsTrue(nodes.contains(79));
-      Assert::IsTrue(AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(79)), vector<EntityID>{ 5 }));
+      EXPECT_TRUE((nodes.contains(79)));
+      EXPECT_TRUE((AreContainersItemsEqual(quadtreebox.GetNodeEntities(quadtreebox.GetNodeValue(79)), vector<EntityID>{ 5 })));
     }
-  };
+  }
 
-  TEST_CLASS(Box_SearchTest)
+  namespace Box_SearchTest
+
   {
-    TEST_METHOD(RangeSearch__Inside__124)
+    TEST(Box_SearchTest, RangeSearch__Inside__124)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2901,10 +2897,10 @@ namespace Tree2DTest
       };
       auto const ids = quadtreebox.RangeSearch(search_box, boxes); // { 1, 2, 4 }
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, ids)));
     }
 
-    TEST_METHOD(RangeSearch__Overlap__1234)
+    TEST(Box_SearchTest, RangeSearch__Overlap__1234)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2922,10 +2918,10 @@ namespace Tree2DTest
       };
       auto const ids = quadtreebox.RangeSearch(search_box, boxes, RangeSearchMode::Overlap); // { 1, 2, 3, 4 }
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 3, 4 }, ids));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 3, 4 }, ids)));
     }
 
-    TEST_METHOD(PickSearch__24)
+    TEST(Box_SearchTest, PickSearch__24)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2940,11 +2936,11 @@ namespace Tree2DTest
       auto const ptPick = Point2D{ 2.5, 2.5 };
       auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // { 2, 4 }
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, ids_picked));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 2, 4 }, ids_picked)));
     }
 
 
-    TEST_METHOD(PickSearch__124)
+    TEST(Box_SearchTest, PickSearch__124)
     {
       auto constexpr boxes = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -2959,11 +2955,11 @@ namespace Tree2DTest
       auto const ptPick = Point2D{ 2.0, 2.0 };
       auto ids_picked = quadtreebox.PickSearch(ptPick, boxes); // { 1, 2, 4 }
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, ids_picked));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, ids_picked)));
     }
 
 
-    TEST_METHOD(PlaneIntersection_3D_XY_d0)
+    TEST(Box_SearchTest, PlaneIntersection_3D_XY_d0)
     {
       auto constexpr boxes = array{
         BoundingBox3D{  { 0.0, 0.0, 0.0 },  { 1.0, 1.0, 0.0 } },
@@ -2976,11 +2972,11 @@ namespace Tree2DTest
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
       auto const intersectedBoxes = octreebox.PlaneIntersection(0.0, Point3D{ 0.0, 0.0, 1.0 }, boxes, 0.01);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1, 4 }, intersectedBoxes));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 1, 4 }, intersectedBoxes)));
     }
 
 
-    TEST_METHOD(PlaneIntersection_3D_XY_dP1)
+    TEST(Box_SearchTest, PlaneIntersection_3D_XY_dP1)
     {
       auto constexpr boxes = array{
         BoundingBox3D{  { 0.0, 0.0, 0.0 },  { 1.0, 1.0, 0.0 } },
@@ -2993,10 +2989,10 @@ namespace Tree2DTest
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
       auto const intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 0.0, 0.0, 1.0 }, boxes, 0.01);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 4 }, intersectedBoxes));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 4 }, intersectedBoxes)));
     }
 
-    TEST_METHOD(PlaneIntersection_3D_XY_dN1)
+    TEST(Box_SearchTest, PlaneIntersection_3D_XY_dN1)
     {
       auto constexpr boxes = array{
         BoundingBox3D{  { 0.0, 0.0, 0.0 },  { 1.0, 1.0, 0.0 } },
@@ -3009,11 +3005,11 @@ namespace Tree2DTest
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
       auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 0.0, 0.0, 1.0 }, boxes, 0.01);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, intersectedBoxes));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, intersectedBoxes)));
     }
 
 
-    TEST_METHOD(PlaneIntersection_3D_YZ_dP1)
+    TEST(Box_SearchTest, PlaneIntersection_3D_YZ_dP1)
     {
       auto constexpr boxes = array{
         BoundingBox3D{  { 0.0, 0.0, 0.0 },  { 1.0, 1.0, 0.0 } },
@@ -3026,10 +3022,10 @@ namespace Tree2DTest
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
       auto const intersectedBoxes = octreebox.PlaneIntersection(1.0, Point3D{ 1.0, 0.0, 0.0 }, boxes, 0.01);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 0, 1 }, intersectedBoxes));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 0, 1 }, intersectedBoxes)));
     }
 
-    TEST_METHOD(PlaneIntersection_3D_YZ_dN1)
+    TEST(Box_SearchTest, PlaneIntersection_3D_YZ_dN1)
     {
       auto constexpr boxes = array{
         BoundingBox3D{  { 0.0, 0.0, 0.0 },  { 1.0, 1.0, 0.0 } },
@@ -3042,10 +3038,10 @@ namespace Tree2DTest
       auto const octreebox = OctreeBox(boxes, 3, std::nullopt, 2);
       auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 1.0, 0.0, 0.0 }, boxes, 0.01);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{}, intersectedBoxes));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{}, intersectedBoxes)));
     }
 
-    TEST_METHOD(PlaneIntersectionC_3D_YZ_dN1)
+    TEST(Box_SearchTest, PlaneIntersectionC_3D_YZ_dN1)
     {
       auto constexpr boxes = array{
         BoundingBox3D{  { 0.0, 0.0, 0.0 },  { 1.0, 1.0, 0.0 } },
@@ -3058,9 +3054,9 @@ namespace Tree2DTest
       auto const octreebox = OctreeBoxM(boxes, 3, std::nullopt, 2);
       auto const intersectedBoxes = octreebox.PlaneIntersection(-1.0, Point3D{ 1.0, 0.0, 0.0 }, 0.01);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{}, intersectedBoxes));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{}, intersectedBoxes)));
     }
-    TEST_METHOD(PlaneIntersection_3D_YZA_dPSQRT2)
+    TEST(Box_SearchTest, PlaneIntersection_3D_YZA_dPSQRT2)
     {
       auto constexpr boxes = array{
         BoundingBox3D{  { 0.0, 0.0, 0.0 },  { 1.0, 1.0, 0.0 } },
@@ -3074,11 +3070,11 @@ namespace Tree2DTest
       auto const sqrt2__2 = std::sqrt(2.0) * 0.5;
       auto const intersectedBoxes = octreebox.PlaneIntersection(std::sqrt(2.0), Point3D{ 0.0, sqrt2__2, sqrt2__2 }, boxes, 0.01);
 
-      Assert::IsTrue(std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, intersectedBoxes));
+      EXPECT_TRUE((std::ranges::is_permutation(vector<EntityID>{ 1, 2, 4 }, intersectedBoxes)));
     }
 
 
-    TEST_METHOD(CollistionDetection__33_24_34)
+    TEST(Box_SearchTest, CollistionDetection__33_24_34)
     {
       auto constexpr boxesL = array{
         BoundingBox2D{ { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -3105,20 +3101,21 @@ namespace Tree2DTest
         std::pair<EntityID, EntityID>{ 2, 4 },
         std::pair<EntityID, EntityID>{ 3, 4 }, // Level 1
       };
-      Assert::AreEqual(aExpectedPair.size(), aActualPair.size());
-      Assert::IsTrue(std::ranges::is_permutation(aExpectedPair, aActualPair, [](auto const& p1, auto const& p2) {
+      EXPECT_EQ(aExpectedPair.size(), aActualPair.size());
+      EXPECT_TRUE((std::ranges::is_permutation(aExpectedPair, aActualPair, [](auto const& p1, auto const& p2) {
         return p1.first == p2.first && p1.second == p2.second;
-      }));
+      })));
     }
-  };
+  }
 } // namespace Tree2DTest
 
 
 namespace Tree3DTest
 {
-  TEST_CLASS(Point_Insert)
+  namespace Point_Insert
+
   {
-    TEST_METHOD(CreateWithDataThenInsert)
+    TEST(Point_Insert, CreateWithDataThenInsert)
     {
       auto points = std::vector<Point3D>{
         { -2.0, -2.0, -2.0 },
@@ -3142,25 +3139,25 @@ namespace Tree3DTest
 
       points.emplace_back(Point3D{ +5.0, +4.0, +4.0 }); // Keep points[entityID] consistent (outsider is out-of-space, not out-of-container)
       auto const isOutsiderInserted = tree.InsertIntoLeaf(pointNo, points.back(), InsertionMode::ExistingLeaf);
-      Assert::IsTrue(isOutsiderInserted);
+      EXPECT_TRUE((isOutsiderInserted));
       ++pointNo;
 
       points.emplace_back(Point3D{ +3.0, +3.0, +3.0 });
       tree.InsertIntoLeaf(pointNo, points.back(), InsertionMode::ExistingLeaf);
       auto const nodeID_6 = tree.Find(pointNo);
-      Assert::AreEqual<OctreePoint::NodeID>(nodeID_6, 1023); // 1023: 5,6
+      EXPECT_EQ(nodeID_6, 1023); // 1023: 5,6
       ++pointNo;
 
       points.emplace_back(Point3D{ +2.0, +2.0, +2.0 });
       tree.InsertIntoLeaf(pointNo, points.back(), InsertionMode::LowestLeaf);
       auto const nodeID_7 = tree.Find(pointNo);
-      Assert::AreEqual<OctreePoint::NodeID>(nodeID_7, 33292288); // It should place in the leaf node
+      EXPECT_EQ(nodeID_7, 33292288); // It should place in the leaf node
       ++pointNo;
 
       points.emplace_back(Point3D{ +3.25, +3.25, +3.25 });
       tree.InsertIntoLeaf(pointNo, points.back(), InsertionMode::ExistingLeaf);
       auto const nodeID_8 = tree.Find(pointNo);
-      Assert::AreEqual<OctreePoint::NodeID>(nodeID_8, 1023); // Parent has a child, another child should be added.
+      EXPECT_EQ(nodeID_8, 1023); // Parent has a child, another child should be added.
       ++pointNo;
 
       // InsertIntoLeaf
@@ -3168,36 +3165,36 @@ namespace Tree3DTest
         points.emplace_back(Point3D{ +3.15, +3.15, +3.15 });
         tree.InsertIntoLeaf(pointNo, points.back(), InsertionMode::ExistingLeaf);
         auto const nodeID_9 = tree.Find(pointNo);
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_9, 1023); // It should stuck on a parent level
+        EXPECT_EQ(nodeID_9, 1023); // It should stuck on a parent level
         ++pointNo;
 
         points.emplace_back(Point3D{ +3.0, +3.0, +3.5 });
         tree.InsertIntoLeaf(pointNo, points.back(), InsertionMode::ExistingLeaf);
         auto const nodeID_10 = tree.Find(pointNo);
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_10, 1023); // It should stuck on a parent level
+        EXPECT_EQ(nodeID_10, 1023); // It should stuck on a parent level
         ++pointNo;
 
         {
           points.emplace_back(Point3D{ +3.0, +3.0, +3.15 });
           tree.InsertIntoLeaf(pointNo, points.back(), InsertionMode::ExistingLeaf);
           auto const nodeID_11 = tree.Find(pointNo);
-          Assert::AreEqual<OctreePoint::NodeID>(nodeID_11, 1023); // It should stuck on a parent level
+          EXPECT_EQ(nodeID_11, 1023); // It should stuck on a parent level
           ++pointNo;
 
           auto const& nodes = tree.GetNodes();
           auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
           auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-          Assert::AreEqual<std::size_t>(11, nodes.size());
-          Assert::IsTrue(entitiesInBFS == std::vector<EntityID>{ 6, 0, 1, 3, 5, 7, 9, 10, 11, 12, 2, 4, 8 });
-          Assert::IsTrue(entitiesInDFS == std::vector<EntityID>{ 6, 0, 1, 3, 2, 8, 4, 5, 7, 9, 10, 11, 12 });
+          EXPECT_EQ(11, nodes.size());
+          EXPECT_TRUE((entitiesInBFS == std::vector<EntityID>{ 6, 0, 1, 3, 5, 7, 9, 10, 11, 12, 2, 4, 8 }));
+          EXPECT_TRUE((entitiesInDFS == std::vector<EntityID>{ 6, 0, 1, 3, 2, 8, 4, 5, 7, 9, 10, 11, 12 }));
         }
 
         {
           points.emplace_back(Point3D{ +3.75, +3.75, +3.75 });
           tree.Insert(pointNo, points.back(), points);
           auto const nodeID_12 = tree.Find(pointNo);
-          Assert::AreEqual<OctreePoint::NodeID>(nodeID_12, 33553920);
+          EXPECT_EQ(nodeID_12, 33553920);
           ++pointNo;
 
           auto const nodeID_10_u = tree.Find(10);
@@ -3207,19 +3204,19 @@ namespace Tree3DTest
           auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
           auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-          Assert::AreEqual<OctreePoint::NodeID>(nodeID_10_u, 8184);
-          Assert::AreEqual<OctreePoint::NodeID>(nodeID_11_u, 33538048);
-          Assert::AreEqual<OctreePoint::NodeID>(nodeID_12_u, 8184);
-          Assert::AreEqual<std::size_t>(14, nodes.size());
-          Assert::IsTrue(entitiesInBFS == std::vector<EntityID>{ 6, 0, 1, 3, 2, 4, 5, 7, 9, 10, 12, 11, 13, 8 });
-          Assert::IsTrue(entitiesInDFS == std::vector<EntityID>{ 6, 0, 1, 3, 2, 8, 4, 5, 7, 9, 10, 12, 11, 13 });
+          EXPECT_EQ(nodeID_10_u, 8184);
+          EXPECT_EQ(nodeID_11_u, 33538048);
+          EXPECT_EQ(nodeID_12_u, 8184);
+          EXPECT_EQ(14, nodes.size());
+          EXPECT_TRUE((entitiesInBFS == std::vector<EntityID>{ 6, 0, 1, 3, 2, 4, 5, 7, 9, 10, 12, 11, 13, 8 }));
+          EXPECT_TRUE((entitiesInDFS == std::vector<EntityID>{ 6, 0, 1, 3, 2, 8, 4, 5, 7, 9, 10, 12, 11, 13 }));
         }
 
         points.emplace_back(Point3D{ -2.0, -2.0, -2.0 });
         tree.Insert(pointNo, points.back(), points);
         auto const nodeID_13 = tree.Find(pointNo);
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_13, 18612224);
-        Assert::AreEqual<depth_t>(8, SI3D::GetDepthID(nodeID_13));
+        EXPECT_EQ(nodeID_13, 18612224);
+        EXPECT_EQ(8, SI3D::GetDepthID(nodeID_13));
         ++pointNo;
       }
 
@@ -3227,11 +3224,11 @@ namespace Tree3DTest
       {
         auto const p1 = Point3D{ +3.75, +3.75, +3.76 };
         auto const isP1Inserted = tree.InsertUnique(p1, points, 0.01);
-        Assert::IsFalse(isP1Inserted);
+        EXPECT_FALSE((isP1Inserted));
 
         auto const p2 = Point3D{ +3.75, +3.75, +3.75 };
         auto const isP2Inserted = tree.InsertUnique(p2, points, 0.0);
-        Assert::IsTrue(isP2Inserted);
+        EXPECT_TRUE((isP2Inserted));
         if (isP2Inserted)
         {
           points.emplace_back(p2);
@@ -3240,7 +3237,7 @@ namespace Tree3DTest
 
         auto const p3 = Point3D{ +3.75, +3.75, +3.77 };
         auto const isP3Inserted = tree.InsertUnique(p3, points, 0.001);
-        Assert::IsTrue(isP3Inserted);
+        EXPECT_TRUE((isP3Inserted));
         if (isP3Inserted)
         {
           points.emplace_back(p3);
@@ -3254,9 +3251,9 @@ namespace Tree3DTest
       points[2] = { +2.0, +2.0, +2.6 };
       tree.Update(2, points[2]);
       auto const nodeID_2_u2 = tree.Find(2);
-      Assert::AreEqual<OctreePoint::NodeID>(nodeID_2_u1, 65024);
-      Assert::AreEqual<OctreePoint::NodeID>(nodeID_2_u2, 8132);
-      Assert::IsFalse(tree.HasNode(520194));
+      EXPECT_EQ(nodeID_2_u1, 65024);
+      EXPECT_EQ(nodeID_2_u2, 8132);
+      EXPECT_FALSE((tree.HasNode(520194)));
 
       points[6] = { -2.0, -2.0, -2.0 };
       tree.Update(6, points[6]);
@@ -3281,22 +3278,23 @@ namespace Tree3DTest
         auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
         auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_6_u1, 18612224);
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_2_u3, 69);
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_4_u1, 8191);
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_9_u1, 8184);
-        Assert::AreEqual<OctreePoint::NodeID>(nodeID_8_u1, 8188);
+        EXPECT_EQ(nodeID_6_u1, 18612224);
+        EXPECT_EQ(nodeID_2_u3, 69);
+        EXPECT_EQ(nodeID_4_u1, 8191);
+        EXPECT_EQ(nodeID_9_u1, 8184);
+        EXPECT_EQ(nodeID_8_u1, 8188);
 
-        Assert::AreEqual<std::size_t>(14, nodes.size());
-        Assert::IsTrue(entitiesInBFS == std::vector<EntityID>{ 1, 2, 0, 14, 6, 3, 5, 7, 9, 10, 12, 8, 4, 11, 13, 15, 16 });
-        Assert::IsTrue(entitiesInDFS == std::vector<EntityID>{ 2, 0, 14, 6, 1, 3, 5, 7, 9, 10, 12, 8, 11, 4, 13, 15, 16 });
+        EXPECT_EQ(14, nodes.size());
+        EXPECT_TRUE((entitiesInBFS == std::vector<EntityID>{ 1, 2, 0, 14, 6, 3, 5, 7, 9, 10, 12, 8, 4, 11, 13, 15, 16 }));
+        EXPECT_TRUE((entitiesInDFS == std::vector<EntityID>{ 2, 0, 14, 6, 1, 3, 5, 7, 9, 10, 12, 8, 11, 4, 13, 15, 16 }));
       }
     } // namespace Tree3DTest
-  };
+  }
 
-  TEST_CLASS(Box_InsertTest)
+  namespace Box_InsertTest
+
   {
-    TEST_METHOD(CreateWithData)
+    TEST(Box_InsertTest, CreateWithData)
     { // This gives a tree with 9 nodes.
       std::vector<BoundingBox3D> boxes = {
         { { -2.00375, -0.20375, +0.19625 }, { -1.52125, -0.19625, +0.20375 } },
@@ -3318,7 +3316,7 @@ namespace Tree3DTest
     }
 
 
-    TEST_METHOD(AddToEmptyTree)
+    TEST(Box_InsertTest, AddToEmptyTree)
     {
       std::vector<BoundingBox3D> boxes0;
       OctreeBox tree(
@@ -3341,13 +3339,13 @@ namespace Tree3DTest
 
       for (EntityID i = 0; i < boxes.size(); ++i)
       {
-        Assert::IsTrue(tree.InsertIntoLeaf(i, boxes[i], InsertionMode::LowestLeaf));
+        EXPECT_TRUE((tree.InsertIntoLeaf(i, boxes[i], InsertionMode::LowestLeaf)));
         boxes0.emplace_back(boxes[i]);
       }
       tree.UpdateIndexes({});
     }
 
-    TEST_METHOD(CreateWithDataThenInsert)
+    TEST(Box_InsertTest, CreateWithDataThenInsert)
     {
       // This gives a tree with 9 nodes.
       std::vector<BoundingBox3D> boxes = {
@@ -3371,9 +3369,9 @@ namespace Tree3DTest
         auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
         auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-        Assert::AreEqual<std::size_t>(4, nodes.size());
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 0, 1, 2 }, entitiesInBFS));
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 0, 1, 2 }, entitiesInDFS));
+        EXPECT_EQ(4, nodes.size());
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 0, 1, 2 }, entitiesInBFS)));
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 0, 1, 2 }, entitiesInDFS)));
       }
 
       tree.UpdateIndexes({});
@@ -3386,7 +3384,7 @@ namespace Tree3DTest
       auto const isOutsiderInserted = tree.InsertIntoLeaf(boxNo, boxes.back(), InsertionMode::ExistingLeaf);
       ++boxNo;
 
-      Assert::IsTrue(isOutsiderInserted);
+      EXPECT_TRUE((isOutsiderInserted));
 
       {
         boxes.emplace_back(
@@ -3401,9 +3399,9 @@ namespace Tree3DTest
         auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
         auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-        Assert::AreEqual<std::size_t>(4, nodes.size());
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4 }, entitiesInBFS));
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4 }, entitiesInDFS));
+        EXPECT_EQ(4, nodes.size());
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4 }, entitiesInBFS)));
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4 }, entitiesInDFS)));
       }
 
       {
@@ -3418,9 +3416,9 @@ namespace Tree3DTest
         auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
         auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-        Assert::AreEqual<std::size_t>(5, nodes.size());
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5 }, entitiesInBFS));
-        Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5 }, entitiesInDFS));
+        EXPECT_EQ(5, nodes.size());
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5 }, entitiesInBFS)));
+        EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5 }, entitiesInDFS)));
 
         ++boxNo;
       }
@@ -3463,9 +3461,9 @@ namespace Tree3DTest
           auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
           auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-          Assert::AreEqual<std::size_t>(6, nodes.size());
-          Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 8, 9 }, entitiesInBFS));
-          Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 8, 9 }, entitiesInDFS));
+          EXPECT_EQ(6, nodes.size());
+          EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 8, 9 }, entitiesInBFS)));
+          EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 8, 9 }, entitiesInDFS)));
         }
 
         {
@@ -3481,9 +3479,9 @@ namespace Tree3DTest
           auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
           auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-          Assert::AreEqual<std::size_t>(9, nodes.size());
-          Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInBFS));
-          Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInDFS));
+          EXPECT_EQ(9, nodes.size());
+          EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInBFS)));
+          EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInDFS)));
         }
 
         {
@@ -3499,9 +3497,9 @@ namespace Tree3DTest
           auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
           auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-          Assert::AreEqual<std::size_t>(10, nodes.size());
-          Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 11, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInBFS));
-          Assert::IsTrue(AreContainersItemsEqual(std::vector<EntityID>{ 3, 11, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInDFS));
+          EXPECT_EQ(10, nodes.size());
+          EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 11, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInBFS)));
+          EXPECT_TRUE((AreContainersItemsEqual(std::vector<EntityID>{ 3, 11, 0, 1, 2, 4, 5, 6, 7, 9, 8, 10 }, entitiesInDFS)));
         }
       }
 
@@ -3548,11 +3546,11 @@ namespace Tree3DTest
       auto const entitiesInBFS = tree.GetEntitiesBreadthFirst();
       auto const entitiesInDFS = tree.GetEntitiesDepthFirst();
 
-      Assert::AreEqual<std::size_t>(11, nodes.size());
-      Assert::IsTrue(entitiesInBFS == std::vector<EntityID>{ 3, 11, 2, 0, 1, 6, 5, 7, 9, 8, 4, 10 });
-      Assert::IsTrue(entitiesInDFS == std::vector<EntityID>{ 3, 11, 2, 0, 1, 6, 5, 7, 9, 8, 4, 10 });
+      EXPECT_EQ(11, nodes.size());
+      EXPECT_TRUE((entitiesInBFS == std::vector<EntityID>{ 3, 11, 2, 0, 1, 6, 5, 7, 9, 8, 4, 10 }));
+      EXPECT_TRUE((entitiesInDFS == std::vector<EntityID>{ 3, 11, 2, 0, 1, 6, 5, 7, 9, 8, 4, 10 }));
     }
-  };
+  }
 } // namespace Tree3DTest
 
 
@@ -3611,9 +3609,10 @@ namespace LongIntAdaptor
   using OrthoTreeBoxContainerCustom = OrthoTree::OrthoTreeManaged<OrthoTreeBoxCustom<N>>;
 
 
-  TEST_CLASS(LongIntTest)
+  namespace LongIntTest
+
   {
-    TEST_METHOD(RangeSearchPointAtTheBorder)
+    TEST(LongIntTest, RangeSearchPointAtTheBorder)
     {
       auto constexpr nDim = 1;
       using Vector = CustomVectorTypeND<nDim>;
@@ -3626,17 +3625,17 @@ namespace LongIntAdaptor
       {
         auto const vidActual = tree.RangeSearch(Box{ points[1], points[2] }, RangeSearchMode::Inside, 0.0f);
         auto constexpr vidExpected = std::array<EntityID, 2>{ 1, 2 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
 
       {
         auto const vidActual = tree.RangeSearch(Box{ points[2], Vector{ 6 } }, RangeSearchMode::Inside, 0.0f);
         auto constexpr vidExpected = std::array<EntityID, 1>{ 2 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
     } // namespace LongIntAdaptor
 
-    TEST_METHOD(RangeSearchBoxAtTheBorder)
+    TEST(LongIntTest, RangeSearchBoxAtTheBorder)
     {
       auto constexpr nDim = 1;
       using Box = CustomBoundingBoxND<nDim>;
@@ -3653,23 +3652,23 @@ namespace LongIntAdaptor
       {
         auto const vidActual = tree.RangeSearch(boxes[1], RangeSearchMode::Inside, 0.0f);
         auto constexpr vidExpected = array<EntityID, 1>{ 1 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
 
       {
         auto const vidActual = tree.RangeSearch(boxes[2], RangeSearchMode::Inside, 0.0f);
         auto constexpr vidExpected = array<EntityID, 1>{ 2 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
 
       {
         auto const vidActual = tree.RangeSearch(CustomBoundingBoxND<nDim>{ 4, 8 }, RangeSearchMode::Inside, 0.0f);
         auto constexpr vidExpected = array<EntityID, 3>{ 2, 3, 4 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
     }
 
-    TEST_METHOD(PickSearchAtTheBorder)
+    TEST(LongIntTest, PickSearchAtTheBorder)
     {
       auto constexpr nDim = 1;
       using Vector = CustomVectorTypeND<nDim>;
@@ -3687,11 +3686,11 @@ namespace LongIntAdaptor
       {
         auto const vidActual = tree.PickSearch(Vector{ 4 });
         auto constexpr vidExpected = array<EntityID, 2>{ 1, 2 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
     }
 
-    TEST_METHOD(PickSearchAtTheBorder3LevelPos)
+    TEST(LongIntTest, PickSearchAtTheBorder3LevelPos)
     {
       auto constexpr nDim = 1;
       using Vector = CustomVectorTypeND<nDim>;
@@ -3714,11 +3713,11 @@ namespace LongIntAdaptor
       {
         auto const vidActual = tree.PickSearch(Vector{ 4 });
         auto constexpr vidExpected = array<EntityID, 6>{ 0, 2, 3, 5, 6, 7 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
     }
 
-    TEST_METHOD(PickSearchAtTheBorder3LevelPosNeg)
+    TEST(LongIntTest, PickSearchAtTheBorder3LevelPosNeg)
     {
       auto constexpr nDim = 1;
       using Vector = CustomVectorTypeND<nDim>;
@@ -3741,11 +3740,11 @@ namespace LongIntAdaptor
       {
         auto const vidActual = tree.PickSearch(Vector{ -4 });
         auto constexpr vidExpected = array<EntityID, 4>{ 0, 2, 5, 7 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
     }
 
-    TEST_METHOD(PickSearchAtTheBorder3LevelNeg)
+    TEST(LongIntTest, PickSearchAtTheBorder3LevelNeg)
     {
       auto constexpr nDim = 1;
       using Vector = CustomVectorTypeND<nDim>;
@@ -3768,12 +3767,12 @@ namespace LongIntAdaptor
       {
         auto const vidActual = tree.PickSearch(Vector{ -4 });
         auto constexpr vidExpected = array<EntityID, 6>{ 0, 2, 3, 5, 6, 7 };
-        Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+        EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
       }
     }
 
 
-    TEST_METHOD(PickSearch_Issue8)
+    TEST(LongIntTest, PickSearch_Issue8)
     {
       auto constexpr nDim = 3;
 
@@ -4361,7 +4360,7 @@ namespace LongIntAdaptor
       auto const tree = OrthoTreeBoxContainerCustom<nDim>(mGridCells, 3, std::nullopt, 21, true);
       auto const vidActual = tree.PickSearch(Vector{ -864, 0, 1471 }, 0.0);
       auto constexpr vidExpected = array<EntityID, 1>{ 22 };
-      Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
     }
 
 
@@ -4410,7 +4409,7 @@ namespace LongIntAdaptor
     }
 
 
-    TEST_METHOD(BruteForceRangeSearch_UsingPredefinedData_IfAvailable)
+    TEST(LongIntTest, BruteForceRangeSearch_UsingPredefinedData_IfAvailable)
     {
       auto constexpr nDim = 3;
       using Vector = CustomVectorTypeND<nDim>;
@@ -4438,7 +4437,7 @@ namespace LongIntAdaptor
       auto missing_nodes = vector<OrthoTreePointCustom<nDim>::NodeID>(missing_ids.size());
       std::ranges::transform(missing_ids, missing_nodes.begin(), [&](auto const id) { return tree.GetCore().Find(id); });
 
-      Assert::IsTrue(std::ranges::is_permutation(vidActual, vidExpected));
+      EXPECT_TRUE((std::ranges::is_permutation(vidActual, vidExpected)));
     }
 
     template<int nDim, typename TScalar>
@@ -4517,7 +4516,7 @@ namespace LongIntAdaptor
       return points;
     }
 
-    TEST_METHOD(Issue26)
+    TEST(LongIntTest, Issue26)
     {
       const auto boxes = readBoxCloud<3, float>("../../../bbox_output.txt");
       if (boxes.empty())
@@ -4577,8 +4576,8 @@ namespace LongIntAdaptor
         for (auto entityID : resultOfRay)
           nodeIDRs.emplace_back(tree.GetCore().Find(entityID));
 
-        Assert::IsTrue(resultOfBruteForce == resultOfSearchBox);
-        Assert::IsTrue(resultOfBruteForce == resultOfRay);
+        EXPECT_TRUE((resultOfBruteForce == resultOfSearchBox));
+        EXPECT_TRUE((resultOfBruteForce == resultOfRay));
       }
     }
 
@@ -4639,11 +4638,11 @@ namespace LongIntAdaptor
       }
 
       // Test is not set correctly.
-      Assert::IsTrue(false);
+      EXPECT_TRUE((false));
       return result;
     }
 
-    TEST_METHOD(Issue36_kNN_Random)
+    TEST(LongIntTest, Issue36_kNN_Random)
     {
       constexpr dim_t N = 2;
 
@@ -4669,8 +4668,8 @@ namespace LongIntAdaptor
         for (auto const& searchPoint : searchPoints)
         {
           auto expected = kNNSearchBruteForce(points, searchPoint, k);
-          auto actual = tree.GetNearestNeighbors(searchPoint, k, points);
-          Assert::IsTrue(expected.size() == actual.size());
+          auto actual = tree.GetNearestNeighbors(searchPoint, k, points, 0.0);
+          EXPECT_TRUE((expected.size() == actual.size()));
 
           auto const areResultsEqual = expected == actual;
 
@@ -4684,7 +4683,7 @@ namespace LongIntAdaptor
 
             auto const expectedDistance = GA::Distance2(searchPoint, points[expected[i]]);
             auto const actualDistance = GA::Distance2(searchPoint, points[actual[i]]);
-            Assert::IsTrue(std::abs(actualDistance - expectedDistance) < std::numeric_limits<double>::epsilon() * 10.0);
+            EXPECT_TRUE((std::abs(actualDistance - expectedDistance) < std::numeric_limits<double>::epsilon() * 10.0));
           }
         }
       }
@@ -4725,7 +4724,7 @@ namespace LongIntAdaptor
       return isOK;
     }
 
-    TEST_METHOD(Issue38_ParallelCollisionDetection_Random)
+    TEST(LongIntTest, Issue38_ParallelCollisionDetection_Random)
     {
       constexpr dim_t N = 3;
       constexpr bool IS_LOOSE_TREE = true;
@@ -4765,18 +4764,19 @@ namespace LongIntAdaptor
             std::swap(a, b);
 
         std::ranges::sort(actualResult);
-        Assert::IsTrue(actualResult == expectedResult);
+        EXPECT_TRUE((actualResult == expectedResult));
       }
     }
-  };
+  }
 } // namespace LongIntAdaptor
 
 namespace StaticTree
 {
-  TEST_CLASS(StaticTree)
+  namespace StaticTree
+
   {
-  public:
-    TEST_METHOD(OctreeMap_Create)
+  // public:
+    TEST(StaticTree, OctreeMap_Create)
     {
       auto const points = std::unordered_map<index_t, Point3D>{
         { 1,   Point3D{ 0.0, 0.0, 0.0 } },
@@ -4793,7 +4793,7 @@ namespace StaticTree
 
       auto const octree = StaticOctreePointMap(points, std::nullopt, std::nullopt, 1);
     }
-  };
+  }
 } // namespace StaticTree
 
 namespace EntityAdapterFlexibilityTest
@@ -4874,13 +4874,14 @@ namespace EntityAdapterFlexibilityTest
   using StrongIDOctreeContainer = OrthoTreeManaged<StrongIDOctreeCore>;
 
 
-  TEST_CLASS(EntityAdapterFlexibilityTests)
+  namespace EntityAdapterFlexibilityTests
+
   {
-  public:
+  // public:
     // ----------------------------------------------------------
     // Move-only entity: Core tree usage with external container
     // ----------------------------------------------------------
-    TEST_METHOD(MoveOnlyEntity_CoreCreate)
+    TEST(EntityAdapterFlexibilityTests, MoveOnlyEntity_CoreCreate)
     {
       auto entities = MoveOnlyEntityAdapter::EntityContainer{};
       entities.emplace(
@@ -4918,10 +4919,10 @@ namespace EntityAdapterFlexibilityTest
       tree.Create(entities, 3, std::nullopt, 2);
 
       auto const box = tree.GetBox();
-      Assert::IsTrue(true); // If we got here, move-only entities work with Core
+      EXPECT_TRUE((true)); // If we got here, move-only entities work with Core
     }
 
-    TEST_METHOD(MoveOnlyEntity_CoreRangeSearch)
+    TEST(EntityAdapterFlexibilityTests, MoveOnlyEntity_CoreRangeSearch)
     {
       auto entities = MoveOnlyEntityAdapter::EntityContainer{};
       entities.emplace(
@@ -4965,13 +4966,13 @@ namespace EntityAdapterFlexibilityTest
       auto results = tree.RangeSearch(searchBox, entities);
 
       // Should find entities 1 and 2
-      Assert::AreEqual(std::size_t(2), results.size());
+      EXPECT_EQ(std::size_t(2), results.size());
       std::ranges::sort(results);
-      Assert::AreEqual(index_t(1), results[0]);
-      Assert::AreEqual(index_t(2), results[1]);
+      EXPECT_EQ(index_t(1), results[0]);
+      EXPECT_EQ(index_t(2), results[1]);
     }
 
-    TEST_METHOD(MoveOnlyEntity_CoreInsert)
+    TEST(EntityAdapterFlexibilityTests, MoveOnlyEntity_CoreInsert)
     {
       auto entities = MoveOnlyEntityAdapter::EntityContainer{};
       entities.emplace(
@@ -4998,15 +4999,15 @@ namespace EntityAdapterFlexibilityTest
           30
       });
       bool inserted = tree.Insert(index_t(2), Point3D{ 2.0, 2.0, 2.0 }, entities);
-      Assert::IsTrue(inserted);
+      EXPECT_TRUE((inserted));
 
       auto const searchBox = BoundingBox3D{
         Point3D{ 1.5, 1.5, 1.5 },
         Point3D{ 2.5, 2.5, 2.5 }
       };
       auto results = tree.RangeSearch(searchBox, entities);
-      Assert::AreEqual(std::size_t(1), results.size());
-      Assert::AreEqual(index_t(2), results[0]);
+      EXPECT_EQ(std::size_t(1), results.size());
+      EXPECT_EQ(index_t(2), results[0]);
     }
 
     // ----------------------------------------------------------
@@ -5014,7 +5015,7 @@ namespace EntityAdapterFlexibilityTest
     // This is expected to FAIL or require container changes
     // because OrthoTreeManaged copies/moves the container
     // ----------------------------------------------------------
-    TEST_METHOD(MoveOnlyEntity_ContainerCreate)
+    TEST(EntityAdapterFlexibilityTests, MoveOnlyEntity_ContainerCreate)
     {
       auto entities = MoveOnlyEntityAdapter::EntityContainer{};
       entities.emplace(
@@ -5052,10 +5053,10 @@ namespace EntityAdapterFlexibilityTest
       auto tree = MoveOnlyOctreeContainer(std::move(entities), 3, std::nullopt, 2);
 
       auto const& data = tree.GetData();
-      Assert::AreEqual(std::size_t(5), data.size());
+      EXPECT_EQ(std::size_t(5), data.size());
     }
 
-    TEST_METHOD(MoveOnlyEntity_ContainerRangeSearch)
+    TEST(EntityAdapterFlexibilityTests, MoveOnlyEntity_ContainerRangeSearch)
     {
       auto entities = MoveOnlyEntityAdapter::EntityContainer{};
       entities.emplace(
@@ -5097,17 +5098,17 @@ namespace EntityAdapterFlexibilityTest
       };
       auto results = tree.RangeSearch(searchBox);
 
-      Assert::AreEqual(std::size_t(2), results.size());
+      EXPECT_EQ(std::size_t(2), results.size());
       std::ranges::sort(results);
-      Assert::AreEqual(index_t(1), results[0]);
-      Assert::AreEqual(index_t(2), results[1]);
+      EXPECT_EQ(index_t(1), results[0]);
+      EXPECT_EQ(index_t(2), results[1]);
     }
 
 
     // ----------------------------------------------------------
     // Non-default-constructible EntityID: Core tree usage
     // ----------------------------------------------------------
-    TEST_METHOD(StrongEntityID_CoreCreate)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_CoreCreate)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5120,10 +5121,10 @@ namespace EntityAdapterFlexibilityTest
       StrongIDOctreeCore::Create(tree, entities, 3, std::nullopt, 2);
 
       auto const box = tree.GetBox();
-      Assert::IsTrue(true); // If we got here, non-default-constructible IDs work
+      EXPECT_TRUE((true)); // If we got here, non-default-constructible IDs work
     }
 
-    TEST_METHOD(StrongEntityID_CoreRangeSearch)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_CoreRangeSearch)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5141,13 +5142,13 @@ namespace EntityAdapterFlexibilityTest
       };
       auto results = tree.RangeSearch(searchBox, entities);
 
-      Assert::AreEqual(std::size_t(2), results.size());
+      EXPECT_EQ(std::size_t(2), results.size());
       std::ranges::sort(results);
-      Assert::IsTrue(StrongEntityID{ 1 } == results[0]);
-      Assert::IsTrue(StrongEntityID{ 2 } == results[1]);
+      EXPECT_TRUE((StrongEntityID{ 1 } == results[0]));
+      EXPECT_TRUE((StrongEntityID{ 2 } == results[1]));
     }
 
-    TEST_METHOD(StrongEntityID_CoreInsert)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_CoreInsert)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5158,18 +5159,18 @@ namespace EntityAdapterFlexibilityTest
 
       entities.emplace(StrongEntityID{ 2 }, Point3D{ 2.0, 2.0, 2.0 });
       bool inserted = tree.Insert(StrongEntityID{ 2 }, Point3D{ 2.0, 2.0, 2.0 }, entities);
-      Assert::IsTrue(inserted);
+      EXPECT_TRUE((inserted));
 
       auto const searchBox = BoundingBox3D{
         Point3D{ 1.5, 1.5, 1.5 },
         Point3D{ 2.5, 2.5, 2.5 }
       };
       auto results = tree.RangeSearch(searchBox, entities);
-      Assert::AreEqual(std::size_t(1), results.size());
-      Assert::IsTrue(StrongEntityID{ 2 } == results[0]);
+      EXPECT_EQ(std::size_t(1), results.size());
+      EXPECT_TRUE((StrongEntityID{ 2 } == results[0]));
     }
 
-    TEST_METHOD(StrongEntityID_CoreErase)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_CoreErase)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5181,21 +5182,21 @@ namespace EntityAdapterFlexibilityTest
       StrongIDOctreeCore::Create(tree, entities, 3, std::nullopt, 2);
 
       bool erased = tree.Erase(StrongEntityID{ 1 }, Point3D{ 1.0, 1.0, 1.0 });
-      Assert::IsTrue(erased);
+      EXPECT_TRUE((erased));
 
       auto const searchBox = BoundingBox3D{
         Point3D{ 0.5, 0.5, 0.5 },
         Point3D{ 1.5, 1.5, 1.5 }
       };
       auto results = tree.RangeSearch(searchBox, entities);
-      Assert::AreEqual(std::size_t(0), results.size());
+      EXPECT_EQ(std::size_t(0), results.size());
     }
 
     // ----------------------------------------------------------
     // Non-default-constructible EntityID: OrthoTreeManaged usage
     // This exercises the container's Add/Erase/Update paths
     // ----------------------------------------------------------
-    TEST_METHOD(StrongEntityID_ContainerCreate)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_ContainerCreate)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5207,10 +5208,10 @@ namespace EntityAdapterFlexibilityTest
       auto tree = StrongIDOctreeContainer(entities, 3, std::nullopt, 2);
 
       auto const& data = tree.GetData();
-      Assert::AreEqual(std::size_t(5), data.size());
+      EXPECT_EQ(std::size_t(5), data.size());
     }
 
-    TEST_METHOD(StrongEntityID_ContainerAdd)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_ContainerAdd)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5223,18 +5224,18 @@ namespace EntityAdapterFlexibilityTest
           StrongEntityID{ 2 },
           Point3D{ 2.0, 2.0, 2.0 }
       });
-      Assert::IsTrue(added.has_value());
+      EXPECT_TRUE((added.has_value()));
 
       auto const searchBox = BoundingBox3D{
         Point3D{ 1.5, 1.5, 1.5 },
         Point3D{ 2.5, 2.5, 2.5 }
       };
       auto results = tree.RangeSearch(searchBox);
-      Assert::AreEqual(std::size_t(1), results.size());
-      Assert::IsTrue(StrongEntityID{ 2 } == results[0]);
+      EXPECT_EQ(std::size_t(1), results.size());
+      EXPECT_TRUE((StrongEntityID{ 2 } == results[0]));
     }
 
-    TEST_METHOD(StrongEntityID_ContainerErase)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_ContainerErase)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5245,17 +5246,17 @@ namespace EntityAdapterFlexibilityTest
       auto tree = StrongIDOctreeContainer(entities, 3, std::nullopt, 2);
 
       bool erased = tree.Erase(StrongEntityID{ 1 });
-      Assert::IsTrue(erased);
+      EXPECT_TRUE((erased));
 
       auto const searchBox = BoundingBox3D{
         Point3D{ 0.5, 0.5, 0.5 },
         Point3D{ 1.5, 1.5, 1.5 }
       };
       auto results = tree.RangeSearch(searchBox);
-      Assert::AreEqual(std::size_t(0), results.size());
+      EXPECT_EQ(std::size_t(0), results.size());
     }
 
-    TEST_METHOD(StrongEntityID_ContainerUpdate)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_ContainerUpdate)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 0 }, Point3D{ 0.0, 0.0, 0.0 });
@@ -5270,7 +5271,7 @@ namespace EntityAdapterFlexibilityTest
           StrongEntityID{ 1 },
           Point3D{ 3.0, 3.0, 3.0 }
       });
-      Assert::IsTrue(updated);
+      EXPECT_TRUE((updated));
 
       // Should no longer be found at old position
       auto const oldSearchBox = BoundingBox3D{
@@ -5278,7 +5279,7 @@ namespace EntityAdapterFlexibilityTest
         Point3D{ 1.5, 1.5, 1.5 }
       };
       auto oldResults = tree.RangeSearch(oldSearchBox);
-      Assert::AreEqual(std::size_t(0), oldResults.size());
+      EXPECT_EQ(std::size_t(0), oldResults.size());
 
       // Should be found at new position
       auto const newSearchBox = BoundingBox3D{
@@ -5286,11 +5287,11 @@ namespace EntityAdapterFlexibilityTest
         Point3D{ 3.5, 3.5, 3.5 }
       };
       auto newResults = tree.RangeSearch(newSearchBox);
-      Assert::AreEqual(std::size_t(1), newResults.size());
-      Assert::IsTrue(StrongEntityID{ 1 } == newResults[0]);
+      EXPECT_EQ(std::size_t(1), newResults.size());
+      EXPECT_TRUE((StrongEntityID{ 1 } == newResults[0]));
     }
 
-    TEST_METHOD(StrongEntityID_ContainerPickSearch)
+    TEST(EntityAdapterFlexibilityTests, StrongEntityID_ContainerPickSearch)
     {
       auto entities = StrongIDEntityAdapter::EntityContainer{};
       entities.emplace(StrongEntityID{ 10 }, Point3D{ 1.0, 1.0, 1.0 });
@@ -5300,19 +5301,20 @@ namespace EntityAdapterFlexibilityTest
       auto tree = StrongIDOctreeContainer(entities, 3, std::nullopt, 2);
 
       auto results = tree.PickSearch(Point3D{ 2.0, 2.0, 2.0 }, 0.1);
-      Assert::AreEqual(std::size_t(1), results.size());
-      Assert::IsTrue(StrongEntityID{ 20 } == results[0]);
+      EXPECT_EQ(std::size_t(1), results.size());
+      EXPECT_TRUE((StrongEntityID{ 20 } == results[0]));
     }
-  };
+  }
 
 } // namespace EntityAdapterFlexibilityTest
 
 
 namespace GeneralTest
 {
-  TEST_CLASS(DynamicVsStaticTest)
+  namespace DynamicVsStaticTest
+
   {
-  private:
+  // private:
     template<dim_t DIM, bool IS_POINT, bool IS_LOOSE>
     void _compare()
     {
@@ -5357,9 +5359,9 @@ namespace GeneralTest
       auto treeDynamic = TreeDynamic(entities, maxDepth, domain, maxElement);
       auto treeStatic = TreeStatic(entities, maxDepth, domain, maxElement);
 
-      Assert::AreEqual(treeDynamic.GetNodeCount(), treeStatic.GetNodeCount());
-      Assert::IsTrue(treeDynamic.IsEqualTo(treeStatic));
-      Assert::IsTrue(treeStatic.IsEqualTo(treeDynamic));
+      EXPECT_EQ(treeDynamic.GetNodeCount(), treeStatic.GetNodeCount());
+      EXPECT_TRUE((treeDynamic.IsEqualTo(treeStatic)));
+      EXPECT_TRUE((treeStatic.IsEqualTo(treeDynamic)));
 
       // Test inequality after modification
       if (entities.size() > 0)
@@ -5371,38 +5373,39 @@ namespace GeneralTest
           entitiesModified[0].Min[0] -= 1.5;
 
         auto treeStaticModified = TreeStatic(entitiesModified, maxDepth, domain, maxElement);
-        Assert::IsFalse(treeDynamic.IsEqualTo(treeStaticModified));
+        EXPECT_FALSE((treeDynamic.IsEqualTo(treeStaticModified)));
       }
     }
 
-  public:
-    TEST_METHOD(ComparisonTest_MBR_NotLoose)
+  // public:
+    TEST(DynamicVsStaticTest, ComparisonTest_MBR_NotLoose)
     {
       _compare<3, false, false>();
     }
 
     // Dynamic does not have LCA calculation
-    // TEST_METHOD(ComparisonTest_Point_NotLoose)
+    // TEST(DynamicVsStaticTest, ComparisonTest_Point_NotLoose)
     // {
     //   _compare<3, true, false>();
     // }
 
-    TEST_METHOD(ComparisonTest_MBR_Loose)
+    TEST(DynamicVsStaticTest, ComparisonTest_MBR_Loose)
     {
       _compare<3, false, true>();
     }
 
     // Dynamic does not have LCA calculation
-    // TEST_METHOD(ComparisonTest_Point_Loose)
+    // TEST(DynamicVsStaticTest, ComparisonTest_Point_Loose)
     // {
     //   _compare<3, true, true>();
     // }
-  };
+  }
 
-  TEST_CLASS(DynamicHashCoreInsertTest)
+  namespace DynamicHashCoreInsertTest
+
   {
-  public:
-    TEST_METHOD(CoreInsert_SpanOfGeometry_2D)
+  // public:
+    TEST(DynamicHashCoreInsertTest, CoreInsert_SpanOfGeometry_2D)
     {
       using Tree = OrthoTreeBoxND<2>;
       using Box = BoundingBoxND<2>;
@@ -5423,11 +5426,11 @@ namespace GeneralTest
 
       auto const existing = std::vector<Box>{};
       bool success = core.Insert(std::span(entities), std::span(existing));
-      Assert::IsTrue(success);
-      Assert::AreEqual(size_t(2), core.GetEntitiesBreadthFirst().size());
+      EXPECT_TRUE((success));
+      EXPECT_EQ(size_t(2), core.GetEntitiesBreadthFirst().size());
     }
 
-    TEST_METHOD(CoreInsert_VectorOfPair_3D)
+    TEST(DynamicHashCoreInsertTest, CoreInsert_VectorOfPair_3D)
     {
       using Tree = OrthoTreeBoxND<3>;
       using Box = BoundingBoxND<3>;
@@ -5449,11 +5452,11 @@ namespace GeneralTest
 
       auto const existing = std::vector<Box>{};
       bool success = core.Insert(newEntities, std::span(existing));
-      Assert::IsTrue(success);
-      Assert::AreEqual(size_t(2), core.GetEntitiesBreadthFirst().size());
+      EXPECT_TRUE((success));
+      EXPECT_EQ(size_t(2), core.GetEntitiesBreadthFirst().size());
     }
 
-    TEST_METHOD(CoreInsert_VectorOfEntityStruct_6D)
+    TEST(DynamicHashCoreInsertTest, CoreInsert_VectorOfEntityStruct_6D)
     {
       using Tree = OrthoTreePointND<6>;
       using Point = PointND<6>;
@@ -5481,11 +5484,11 @@ namespace GeneralTest
 
       auto const existing = std::vector<Point>{};
       bool success = core.Insert(newEntities, std::span(existing));
-      Assert::IsTrue(success);
-      Assert::AreEqual(size_t(2), core.GetEntitiesBreadthFirst().size());
+      EXPECT_TRUE((success));
+      EXPECT_EQ(size_t(2), core.GetEntitiesBreadthFirst().size());
     }
 
-    TEST_METHOD(CoreInsert_SpanOfGeometry_12D)
+    TEST(DynamicHashCoreInsertTest, CoreInsert_SpanOfGeometry_12D)
     {
       using Tree = OrthoTreePointND<12>;
       using Point = PointND<12>;
@@ -5506,15 +5509,16 @@ namespace GeneralTest
 
       auto const existing = std::vector<Point>{};
       bool success = core.Insert(std::span(entities), std::span(existing));
-      Assert::IsTrue(success);
-      Assert::AreEqual(size_t(2), core.GetEntitiesBreadthFirst().size());
+      EXPECT_TRUE((success));
+      EXPECT_EQ(size_t(2), core.GetEntitiesBreadthFirst().size());
     }
-  };
+  }
 
-  TEST_CLASS(OrthoTreeManagedAddTest)
+  namespace OrthoTreeManagedAddTest
+
   {
-  public:
-    TEST_METHOD(ContainerAdd_SpanOfGeometry_2D)
+  // public:
+    TEST(OrthoTreeManagedAddTest, ContainerAdd_SpanOfGeometry_2D)
     {
       using Container = OrthoTreeBoxManagedND<2>;
       using Box = BoundingBoxND<2>;
@@ -5534,10 +5538,10 @@ namespace GeneralTest
       };
 
       container.Add(std::span(entities), SeqExec{});
-      Assert::AreEqual(size_t(2), container.GetEntitiesBreadthFirst().size());
+      EXPECT_EQ(size_t(2), container.GetEntitiesBreadthFirst().size());
     }
 
-    TEST_METHOD(ContainerAdd_VectorOfGeometry_3D)
+    TEST(OrthoTreeManagedAddTest, ContainerAdd_VectorOfGeometry_3D)
     {
       using Container = OrthoTreeBoxManagedND<3>;
       using Box = BoundingBoxND<3>;
@@ -5557,10 +5561,10 @@ namespace GeneralTest
       };
 
       container.Add(entities, SeqExec{});
-      Assert::AreEqual(size_t(2), container.GetEntitiesBreadthFirst().size());
+      EXPECT_EQ(size_t(2), container.GetEntitiesBreadthFirst().size());
     }
 
-    TEST_METHOD(ContainerAdd_VectorOfGeometry_6D)
+    TEST(OrthoTreeManagedAddTest, ContainerAdd_VectorOfGeometry_6D)
     {
       using Container = OrthoTreePointManagedND<6>;
       using Point = PointND<6>;
@@ -5580,10 +5584,10 @@ namespace GeneralTest
       };
 
       container.Add(entities, SeqExec{});
-      Assert::AreEqual(size_t(2), container.GetEntitiesBreadthFirst().size());
+      EXPECT_EQ(size_t(2), container.GetEntitiesBreadthFirst().size());
     }
 
-    TEST_METHOD(ContainerAdd_SpanOfGeometry_12D)
+    TEST(OrthoTreeManagedAddTest, ContainerAdd_SpanOfGeometry_12D)
     {
       using Container = OrthoTreePointManagedND<12>;
       using Point = PointND<12>;
@@ -5603,8 +5607,8 @@ namespace GeneralTest
       };
 
       container.Add(std::span(entities), SeqExec{});
-      Assert::AreEqual(size_t(2), container.GetEntitiesBreadthFirst().size());
+      EXPECT_EQ(size_t(2), container.GetEntitiesBreadthFirst().size());
     }
-  };
+  }
 
 } // namespace GeneralTest

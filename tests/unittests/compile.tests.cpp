@@ -7,11 +7,12 @@
 
 namespace CompileTest
 {
-  TEST_CLASS(CompileTest)
+  namespace CompileTest
+
   { 
-    TEST_METHOD(AllFunc)
+    TEST(CompileTest, AllFunc)
     { 
       testCompileBoxBatchSplitStrategy();
     }
-  };
+  }
 }

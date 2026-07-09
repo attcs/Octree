@@ -8,11 +8,12 @@
 #include <vector>
 
 using namespace OrthoTree;
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+
 
 namespace BVHTests
 {
-  TEST_CLASS(StaticBVHLinearCoreTests)
+  namespace StaticBVHLinearCoreTests
+
   {
     static constexpr std::size_t MAX_ELEMENT_NUM = 2;
 
@@ -28,27 +29,27 @@ namespace BVHTests
       return result;
     }
 
-  public:
-    TEST_METHOD(Test_Create_Empty)
+  // public:
+    TEST(StaticBVHLinearCoreTests, Test_Create_Empty)
     {
       StaticBVHBox3D bvh;
       auto ok = bvh.Create(std::vector<BoundingBox3D>{}, MAX_ELEMENT_NUM);
-      Assert::IsTrue(ok);
-      Assert::IsTrue(bvh.GetNodeCount() == 0);
+      EXPECT_TRUE((ok));
+      EXPECT_TRUE((bvh.GetNodeCount() == 0));
     }
 
-    TEST_METHOD(Test_Create_SingleEntity)
+    TEST(StaticBVHLinearCoreTests, Test_Create_SingleEntity)
     {
       auto boxes = std::vector<BoundingBox3D>{
         { { 1.0, 2.0, 3.0 }, { 4.0, 5.0, 6.0 } }
       };
       StaticBVHBox3D bvh;
       bvh.Create(boxes, MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() == 1);
-      Assert::IsTrue(bvh.GetNodeEntityCount(bvh.GetRootNodeValue()) == 1);
+      EXPECT_TRUE((bvh.GetNodeCount() == 1));
+      EXPECT_TRUE((bvh.GetNodeEntityCount(bvh.GetRootNodeValue()) == 1));
     }
 
-    TEST_METHOD(Test_Create_AllEntitiesPresent)
+    TEST(StaticBVHLinearCoreTests, Test_Create_AllEntitiesPresent)
     {
       auto boxes = std::vector<BoundingBox3D>{
         { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } },
@@ -62,17 +63,17 @@ namespace BVHTests
       auto const N = boxes.size();
       StaticBVHBox3D bvh;
       bvh.Create(boxes, MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() > 0);
+      EXPECT_TRUE((bvh.GetNodeCount() > 0));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == N);
+      EXPECT_TRUE((ids.size() == N));
 
       auto idSet = std::set<index_t>(ids.begin(), ids.end());
       for (index_t i = 0; i < N; ++i)
-        Assert::IsTrue(idSet.count(i) > 0);
+        EXPECT_TRUE((idSet.count(i) > 0));
     }
 
-    TEST_METHOD(Test_Create_NodeCountReasonable)
+    TEST(StaticBVHLinearCoreTests, Test_Create_NodeCountReasonable)
     {
       constexpr int N = 100;
       auto boxes = std::vector<BoundingBox3D>(N);
@@ -90,11 +91,11 @@ namespace BVHTests
 
       StaticBVHBox3D bvh;
       bvh.Create(std::span<BoundingBox3D const>(boxes), MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
-      Assert::IsTrue(bvh.GetNodeCount() <= std::size_t(N) * 4);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
+      EXPECT_TRUE((bvh.GetNodeCount() <= std::size_t(N) * 4));
     }
 
-    TEST_METHOD(Test_Create_Points2D)
+    TEST(StaticBVHLinearCoreTests, Test_Create_Points2D)
     {
       auto points = std::vector<Point2D>{
         {  0.0,  0.0 },
@@ -107,13 +108,13 @@ namespace BVHTests
       };
       StaticBVHPoint2D bvh;
       bvh.Create(std::span<Point2D const>(points), MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == points.size());
+      EXPECT_TRUE((ids.size() == points.size()));
     }
 
-    TEST_METHOD(Test_Create_1D)
+    TEST(StaticBVHLinearCoreTests, Test_Create_1D)
     {
       auto boxes = std::vector<BoundingBox1D>{
         {  { 0.0 },  { 1.0 } },
@@ -127,13 +128,13 @@ namespace BVHTests
       };
       StaticBVHBox1D bvh;
       bvh.Create(boxes, 2);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == boxes.size());
+      EXPECT_TRUE((ids.size() == boxes.size()));
     }
 
-    TEST_METHOD(Test_Create_4D)
+    TEST(StaticBVHLinearCoreTests, Test_Create_4D)
     {
       constexpr int N = 50;
       auto boxes = std::vector<BoundingBoxND<4>>(N);
@@ -150,13 +151,13 @@ namespace BVHTests
 
       StaticBVHBox4D bvh;
       bvh.Create(std::span<BoundingBoxND<4> const>(boxes), MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == std::size_t(N));
+      EXPECT_TRUE((ids.size() == std::size_t(N)));
     }
 
-    TEST_METHOD(Test_Create_CustomChildNum)
+    TEST(StaticBVHLinearCoreTests, Test_Create_CustomChildNum)
     {
       auto boxes = std::vector<BoundingBox3D>();
       for (int i = 0; i < 64; ++i)
@@ -175,11 +176,11 @@ namespace BVHTests
       bvh4.Create(boxes, MAX_ELEMENT_NUM);
       StaticBVHNBoxND<3, 16> bvh16;
       bvh16.Create(boxes, MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh4.GetNodeCount() >= 1);
-      Assert::IsTrue(bvh16.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh4.GetNodeCount() >= 1));
+      EXPECT_TRUE((bvh16.GetNodeCount() >= 1));
     }
 
-    TEST_METHOD(Test_Create_DuplicateEntities)
+    TEST(StaticBVHLinearCoreTests, Test_Create_DuplicateEntities)
     {
       auto boxes = std::vector<BoundingBox3D>{
         { { 1.0, 1.0, 1.0 }, { 2.0, 2.0, 2.0 } },
@@ -189,13 +190,13 @@ namespace BVHTests
       };
       StaticBVHBox3D bvh;
       bvh.Create(std::span<BoundingBox3D const>(boxes), MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == 4);
+      EXPECT_TRUE((ids.size() == 4));
     }
 
-    TEST_METHOD(Test_Create_LargeDataset)
+    TEST(StaticBVHLinearCoreTests, Test_Create_LargeDataset)
     {
       constexpr int N = 10000;
       auto boxes = std::vector<BoundingBox3D>(N);
@@ -213,13 +214,13 @@ namespace BVHTests
 
       StaticBVHBox3D bvh;
       bvh.Create(std::span<BoundingBox3D const>(boxes), MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == std::size_t(N));
+      EXPECT_TRUE((ids.size() == std::size_t(N)));
     }
 
-    TEST_METHOD(Test_Create_FewEntities)
+    TEST(StaticBVHLinearCoreTests, Test_Create_FewEntities)
     {
       auto boxes = std::vector<BoundingBox3D>{
         { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } },
@@ -228,11 +229,11 @@ namespace BVHTests
       };
       StaticBVHBox3D bvh;
       bvh.Create(std::span<BoundingBox3D const>(boxes), 3);
-      Assert::IsTrue(bvh.GetNodeCount() == 1);
-      Assert::IsTrue(bvh.GetNodeEntityCount(bvh.GetRootNodeValue()) == 3);
+      EXPECT_TRUE((bvh.GetNodeCount() == 1));
+      EXPECT_TRUE((bvh.GetNodeEntityCount(bvh.GetRootNodeValue()) == 3));
     }
 
-    TEST_METHOD(Test_Create_SmallMaxElements)
+    TEST(StaticBVHLinearCoreTests, Test_Create_SmallMaxElements)
     {
       auto boxes = std::vector<BoundingBox3D>{
         { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } },
@@ -243,13 +244,13 @@ namespace BVHTests
       };
       StaticBVHBox3D bvh;
       bvh.Create(std::span<BoundingBox3D const>(boxes), 1);
-      Assert::IsTrue(bvh.GetNodeCount() > 1);
+      EXPECT_TRUE((bvh.GetNodeCount() > 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == 5);
+      EXPECT_TRUE((ids.size() == 5));
     }
 
-    TEST_METHOD(Test_Create_2DBoxes)
+    TEST(StaticBVHLinearCoreTests, Test_Create_2DBoxes)
     {
       auto boxes = std::vector<BoundingBox2D>{
         { { 0.0, 0.0 }, { 1.0, 1.0 } },
@@ -260,10 +261,10 @@ namespace BVHTests
       };
       StaticBVHBox2D bvh;
       bvh.Create(boxes, MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
     }
 
-    TEST_METHOD(Test_Create_EntitiesOnLine)
+    TEST(StaticBVHLinearCoreTests, Test_Create_EntitiesOnLine)
     {
       auto boxes = std::vector<BoundingBox3D>();
       for (int i = 0; i < 100; ++i)
@@ -277,13 +278,13 @@ namespace BVHTests
       }
       StaticBVHBox3D bvh;
       bvh.Create(boxes, 4);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == 100);
+      EXPECT_TRUE((ids.size() == 100));
     }
 
-    TEST_METHOD(Test_Create_Clustered)
+    TEST(StaticBVHLinearCoreTests, Test_Create_Clustered)
     {
       auto boxes = std::vector<BoundingBox3D>();
       for (int i = 0; i < 20; ++i)
@@ -307,13 +308,13 @@ namespace BVHTests
 
       StaticBVHBox3D bvh;
       bvh.Create(boxes, 4);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == 40);
+      EXPECT_TRUE((ids.size() == 40));
     }
 
-    TEST_METHOD(Test_ChildrenInRange)
+    TEST(StaticBVHLinearCoreTests, Test_ChildrenInRange)
     {
       constexpr int N = 200;
       auto boxes = std::vector<BoundingBox3D>(N);
@@ -335,12 +336,12 @@ namespace BVHTests
 
       bvh.TraverseNodesDepthFirst([&](auto const nodeValue) {
         for (auto const childID : bvh.GetNodeChildren(nodeValue))
-          Assert::IsTrue(static_cast<std::size_t>(childID) < nodeCount);
+          EXPECT_TRUE((static_cast<std::size_t>(childID) < nodeCount));
         return TraverseControl::Continue;
       });
     }
 
-    TEST_METHOD(Test_TwoFarApart)
+    TEST(StaticBVHLinearCoreTests, Test_TwoFarApart)
     {
       auto boxes = std::vector<BoundingBox3D>{
         {       { 0.0, 0.0, 0.0 },       { 1.0, 1.0, 1.0 } },
@@ -348,18 +349,19 @@ namespace BVHTests
       };
       StaticBVHBox3D bvh;
       bvh.Create(boxes, MAX_ELEMENT_NUM);
-      Assert::IsTrue(bvh.GetNodeCount() >= 1);
+      EXPECT_TRUE((bvh.GetNodeCount() >= 1));
 
       auto ids = CollectAllEntities(bvh);
-      Assert::IsTrue(ids.size() == 2);
+      EXPECT_TRUE((ids.size() == 2));
     }
-  };
+  }
 
 
-  TEST_CLASS(ManagedBVHTests)
+  namespace ManagedBVHTests
+
   {
-  public:
-    TEST_METHOD(Test_ManagedBVH_Point3DM_Create)
+  // public:
+    TEST(ManagedBVHTests, Test_ManagedBVH_Point3DM_Create)
     {
       auto points = std::vector<Point3D>{
         { 0.0, 0.0, 0.0 },
@@ -369,11 +371,11 @@ namespace BVHTests
       };
 
       StaticBVHPoint3DM bvh(points, 2);
-      Assert::AreEqual(points.size(), bvh.GetData().size());
-      Assert::IsTrue(bvh.GetCore().GetNodeCount() > 0);
+      EXPECT_EQ(points.size(), bvh.GetData().size());
+      EXPECT_TRUE((bvh.GetCore().GetNodeCount() > 0));
     }
 
-    TEST_METHOD(Test_ManagedBVH_Box3DM_RangeSearch)
+    TEST(ManagedBVHTests, Test_ManagedBVH_Box3DM_RangeSearch)
     {
       auto boxes = std::vector<BoundingBox3D>{
         { { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0 } },
@@ -384,10 +386,10 @@ namespace BVHTests
       StaticBVHBox3DM bvh(boxes, 1);
 
       auto found = bvh.RangeSearch({ { 0.5, 0.5, 0.5 }, { 2.5, 2.5, 2.5 } }, RangeSearchMode::Overlap);
-      Assert::AreEqual<size_t>(2, found.size());
+      EXPECT_EQ(2, found.size());
     }
 
-    TEST_METHOD(Test_ManagedBVH_PointMap3DM)
+    TEST(ManagedBVHTests, Test_ManagedBVH_PointMap3DM)
     {
       auto points = std::unordered_map<index_t, Point3D>{
         { 10, { 0.0, 0.0, 0.0 } },
@@ -396,10 +398,10 @@ namespace BVHTests
       };
 
       StaticBVHPointMap3DM bvh(points, 1);
-      Assert::AreEqual<size_t>(3, bvh.GetData().size());
+      EXPECT_EQ(3, bvh.GetData().size());
 
       auto found = bvh.RangeSearch({ { -0.5, -0.5, -0.5 }, { 1.5, 1.5, 1.5 } });
-      Assert::AreEqual<size_t>(2, found.size());
+      EXPECT_EQ(2, found.size());
 
       // Check if IDs are correct (keyed)
       bool found10 = false;
@@ -409,8 +411,8 @@ namespace BVHTests
         if (id == 10) found10 = true;
         if (id == 20) found20 = true;
       }
-      Assert::IsTrue(found10);
-      Assert::IsTrue(found20);
+      EXPECT_TRUE((found10));
+      EXPECT_TRUE((found20));
     }
-  };
+  }
 } // namespace BVHTests
