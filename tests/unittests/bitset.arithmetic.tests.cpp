@@ -7,10 +7,7 @@ using std::vector;
 
 namespace BitsetArithmeticTest
 {
-  namespace BitsetArithmeticTest
-
-  {
-    TEST(BitsetArithmeticTest, Less_0_1__true)
+  TEST(BitsetArithmeticTest, Less_0_1__true)
     {
       EXPECT_TRUE((bitset_arithmetic<10>(0) < bitset_arithmetic<10>(1)));
     }
@@ -136,5 +133,4 @@ namespace BitsetArithmeticTest
       auto const n = bs.to_ulong();
       EXPECT_EQ(400, n);
     }
-  }
-}
+} // namespace BitsetArithmeticTest

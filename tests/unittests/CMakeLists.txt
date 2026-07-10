@@ -27,14 +27,19 @@ add_executable(orthotree_unittests
   adapter.tests.cpp
   bitset.arithmetic.tests.cpp
   bvh.tests.cpp
+  collision.tests.cpp
   compile.tests.cpp
   example.tests.cpp
   general.tests.cpp
+  knn.tests.cpp
+  longint.tests.cpp
   mr.tests.cpp
   performance.tests.cpp
   random.tests.cpp
+  search.tests.cpp
   serialize.tests.cpp
   single_header.tests.cpp
+  tree_core.tests.cpp
 )
 
 # Target configuration
