@@ -4618,19 +4618,25 @@ namespace LongIntAdaptor
 
     std::vector<EntityID> kNNSearchBruteForce(std::vector<Point2D> const& points, Point2D const& point, size_t k)
     {
+      auto dist_fn = [&](auto const& p) {
+        double dx = point[0] - p[0];
+        double dy = point[1] - p[1];
+        return std::sqrt(dx * dx + dy * dy);
+      };
 
       std::vector<EntityID> ids(points.size());
       std::iota(ids.begin(), ids.end(), 0);
       std::partial_sort(ids.begin(), ids.begin() + std::min(k + 10, points.size()), ids.end(), [&](auto const& i1, auto const& i2) {
-        return std::hypot(point[0] - points[i1][0], point[1] - points[i1][1]) < std::hypot(point[0] - points[i2][0], point[1] - points[i2][1]);
+        return dist_fn(points[i1]) < dist_fn(points[i2]);
       });
 
       auto result = std::vector<EntityID>(ids.begin(), ids.begin() + k);
-      auto distLast = std::hypot(point[0] - points[ids[k - 1]][0], point[1] - points[ids[k - 1]][1]);
-      auto limit = std::max(std::numeric_limits<double>::epsilon(), distLast * (1.0 + std::numeric_limits<double>::epsilon()));
+      auto distLast = dist_fn(points[ids[k - 1]]);
+      double tolerance = std::numeric_limits<double>::epsilon() * 100.0;
+      auto limit = std::max(tolerance, distLast * (1.0 + tolerance));
       for (size_t i = k; i < ids.size(); ++i)
       {
-        auto dist = std::hypot(point[0] - points[ids[i]][0], point[1] - points[ids[i]][1]);
+        auto dist = dist_fn(points[ids[i]]);
         if (dist < limit)
           result.push_back(ids[i]);
         else
@@ -4668,7 +4674,7 @@ namespace LongIntAdaptor
         for (auto const& searchPoint : searchPoints)
         {
           auto expected = kNNSearchBruteForce(points, searchPoint, k);
-          auto actual = tree.GetNearestNeighbors(searchPoint, k, points, 0.0);
+          auto actual = tree.GetNearestNeighbors(searchPoint, k, points);
           EXPECT_TRUE((expected.size() == actual.size()));
 
           auto const areResultsEqual = expected == actual;
