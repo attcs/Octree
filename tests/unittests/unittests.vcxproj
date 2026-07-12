@@ -193,6 +193,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="general.tests.cpp" />
+    <ClCompile Include="collision.tests.cpp" />
+    <ClCompile Include="knn.tests.cpp" />
+    <ClCompile Include="longint.tests.cpp" />
+    <ClCompile Include="search.tests.cpp" />
+    <ClCompile Include="tree_core.tests.cpp" />
     <ClCompile Include="adapter.tests.cpp" />
     <ClCompile Include="performance.tests.cpp" />
     <ClCompile Include="random.tests.cpp" />
@@ -246,6 +251,7 @@
     <ClInclude Include="..\..\include\orthotree\core\ot_managed.h" />
     <ClInclude Include="compile_test.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="test_helpers.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
